@@ -641,7 +641,7 @@ func _create_smartphone_mockup(parent: Control, is_centered: bool = true) -> VBo
 	# アンカー競合を回避し、常に安定したピクセル座標で配置・Tweenする設計
 	phone.anchor_left = 0.0; phone.anchor_top = 0.0; phone.anchor_right = 0.0; phone.anchor_bottom = 0.0
 	if is_centered:
-		phone.position = Vector2(760, 30)
+		phone.position = Vector2(760, 70)
 		phone.rotation_degrees = 0.0
 		phone.scale = Vector2(1.32, 1.32)
 	else:
@@ -673,7 +673,7 @@ func _create_smartphone_mockup(parent: Control, is_centered: bool = true) -> VBo
 	if is_centered: pickup_overlay.hide()
 	
 	phone.set_meta("is_picked_up", is_centered)
-	var orig_pos = Vector2(88, 300) if not is_centered else Vector2(760, 30)
+	var orig_pos = Vector2(88, 300) if not is_centered else Vector2(760, 70)
 	var orig_rot = phone.rotation_degrees
 	
 	var put_down = func():
@@ -702,9 +702,9 @@ func _create_smartphone_mockup(parent: Control, is_centered: bool = true) -> VBo
 		tw_dim.tween_property(dim_overlay, "modulate:a", 1.0, 0.2)
 		
 		var tw = phone.create_tween().set_parallel(true)
-		# スマホの拡大率をさらに上げ、上部にずらして全体をフルに収める究極サイズ（1.32倍/Y=30px）
+		# スマホの拡大率をさらに上げ、適度な余白で全体を美しく収める最適サイズ（1.32倍/Y=70px）
 		var target_scale = 1.32
-		var target_pos = Vector2(760, 30)
+		var target_pos = Vector2(760, 70)
 		tw.tween_property(phone, "position", target_pos, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_property(phone, "rotation_degrees", 0.0, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_property(phone, "scale", Vector2(target_scale, target_scale), 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
