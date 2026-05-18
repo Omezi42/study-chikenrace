@@ -1,0 +1,8 @@
+# Godot-specific ignores
+.godot/
+/android/
+
+# Build and export ignores
+/dist/
+*.tmp
+*.log
