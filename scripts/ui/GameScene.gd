@@ -2047,33 +2047,42 @@ func _trigger_burst_sequence():
 	shake.tween_callback(func(): camera_shake_offset = Vector2(randf_range(-14, 14), randf_range(-14, 14)))
 	shake.tween_interval(0.04)
 	
-	# 机の上の衝撃による「文房具ホップ」アニメーション
-	var hop_tw = create_tween().set_parallel(true)
-	if is_instance_valid(hud_notebook):
-		hud_notebook.pivot_offset = hud_notebook.size / 2.0
-		hop_tw.tween_property(hud_notebook, "position:y", hud_notebook.position.y - 25, 0.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		hop_tw.tween_property(hud_notebook, "rotation_degrees", -2.0, 0.1)
+	# 有効なカードノードの存在チェック
+	var has_cards = false
 	for node in drawn_card_nodes:
 		if is_instance_valid(node):
-			node.pivot_offset = node.size / 2.0
-			hop_tw.tween_property(node, "position:y", node.position.y - 35, 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-			hop_tw.tween_property(node, "rotation_degrees", node.rotation_degrees + randf_range(-15, 15), 0.12)
+			has_cards = true
+			break
 			
-	# 落下バウンド
-	hop_tw.chain().set_parallel(true)
-	if is_instance_valid(hud_notebook):
-		hop_tw.tween_property(hud_notebook, "position:y", hud_notebook.position.y, 0.18).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-		hop_tw.tween_property(hud_notebook, "rotation_degrees", 0.0, 0.18)
-	for node in drawn_card_nodes:
-		if is_instance_valid(node):
-			var orig_y = node.position.y
-			hop_tw.tween_property(node, "position:y", orig_y, 0.22).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	# 机の上の衝撃による「文房具ホップ」アニメーション (ホップ対象がある場合のみ生成)
+	if is_instance_valid(hud_notebook) or has_cards:
+		var hop_tw = create_tween().set_parallel(true)
+		if is_instance_valid(hud_notebook):
+			hud_notebook.pivot_offset = hud_notebook.size / 2.0
+			hop_tw.tween_property(hud_notebook, "position:y", hud_notebook.position.y - 25, 0.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			hop_tw.tween_property(hud_notebook, "rotation_degrees", -2.0, 0.1)
+		for node in drawn_card_nodes:
+			if is_instance_valid(node):
+				node.pivot_offset = node.size / 2.0
+				hop_tw.tween_property(node, "position:y", node.position.y - 35, 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+				hop_tw.tween_property(node, "rotation_degrees", node.rotation_degrees + randf_range(-15, 15), 0.12)
+				
+		# 落下バウンド
+		hop_tw.chain().set_parallel(true)
+		if is_instance_valid(hud_notebook):
+			hop_tw.tween_property(hud_notebook, "position:y", hud_notebook.position.y, 0.18).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+			hop_tw.tween_property(hud_notebook, "rotation_degrees", 0.0, 0.18)
+		for node in drawn_card_nodes:
+			if is_instance_valid(node):
+				var orig_y = node.position.y
+				hop_tw.tween_property(node, "position:y", orig_y, 0.22).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 			
-	# カードが青黒く染まる
-	var fade_black = create_tween().set_parallel(true)
-	for node in drawn_card_nodes:
-		if is_instance_valid(node):
-			fade_black.tween_property(node, "modulate", Color(0.25, 0.25, 0.45, 0.8), 0.4)
+	# カードが青黒く染まる (カードがある場合のみ生成)
+	if has_cards:
+		var fade_black = create_tween().set_parallel(true)
+		for node in drawn_card_nodes:
+			if is_instance_valid(node):
+				fade_black.tween_property(node, "modulate", Color(0.25, 0.25, 0.45, 0.8), 0.4)
 			
 	# 寝落ちスタンプ
 	var banner = DeskTheme.create_floating_badge("【 寝落ち（バースト）！】", DeskTheme.COLOR_BLUFF_RED, 28)
@@ -2097,12 +2106,9 @@ func _trigger_burst_sequence():
 		if audio_manager: audio_manager.play_se("place")
 	)
 	
-	await fade_black.finished
-	await shake.finished
-	await hop_tw.finished
+	# 空の Tween によるシグナル受信バグ（無限待機）を排除するため、安全なタイムアウトタイマーで同期待ちを行う設計に刷新！
+	await get_tree().create_timer(0.45).timeout
 	camera_shake_offset = Vector2.ZERO
-	if banner_tw.is_running():
-		await banner_tw.finished
 		
 	# バースト時の強制停止データ
 	var empty_scores = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
