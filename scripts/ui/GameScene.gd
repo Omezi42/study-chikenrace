@@ -704,9 +704,9 @@ func _create_smartphone_mockup(parent: Control, is_centered: bool = true) -> VBo
 		tw_dim.tween_property(dim_overlay, "modulate:a", 1.0, 0.2)
 		
 		var tw = phone.create_tween().set_parallel(true)
-		# スマホの拡大率をさらに上げ、上部にずらして全体をフルに収める究極サイズ（1.32倍）
+		# スマホの拡大率をさらに上げ、上部にずらして全体をフルに収める究極サイズ（1.32倍/Y=30px）
 		var target_scale = 1.32
-		var target_pos = Vector2(760, 60)
+		var target_pos = Vector2(760, 30)
 		tw.tween_property(phone, "global_position", target_pos, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_property(phone, "rotation_degrees", 0.0, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_property(phone, "scale", Vector2(target_scale, target_scale), 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
@@ -715,16 +715,19 @@ func _create_smartphone_mockup(parent: Control, is_centered: bool = true) -> VBo
 		put_down.call()
 	)
 	
-	# ビューポートレベルのグローバルクリック監視（どんなにイベントがブロックされても100%確実にクローズできる最強の方法）
+	# ビューポートレベルのグローバルクリック監視（メタデータ参照＆物理スクリーン領域ヒットテストによる絶対クローズ）
 	phone.tree_entered.connect(func():
 		var vp = phone.get_viewport()
 		if vp:
 			vp.input.connect(func(ev):
-				if not is_picked_up: return
+				if not phone.get_meta("is_picked_up", false): return
 				if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-					var local_click = phone.get_local_mouse_position()
-					var phone_rect = Rect2(Vector2.ZERO, phone.size)
-					if not phone_rect.has_point(local_click):
+					var click_pos = ev.global_position
+					var center = phone.global_position + phone.pivot_offset
+					var half_w = 200.0 * phone.scale.x
+					var half_h = 420.0 * phone.scale.y
+					var visual_rect = Rect2(center.x - half_w, center.y - half_h, half_w * 2.0, half_h * 2.0)
+					if not visual_rect.has_point(click_pos):
 						put_down.call()
 			)
 	)
