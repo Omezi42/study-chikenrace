@@ -638,13 +638,15 @@ func _create_smartphone_mockup(parent: Control, is_centered: bool = true) -> VBo
 	phone.custom_minimum_size = Vector2(400, 840)
 	phone.size = Vector2(400, 840)
 	
+	# アンカー競合を回避し、常に安定したピクセル座標で配置・Tweenする設計
+	phone.anchor_left = 0.0; phone.anchor_top = 0.0; phone.anchor_right = 0.0; phone.anchor_bottom = 0.0
 	if is_centered:
-		phone.anchor_left = 0.5; phone.anchor_top = 0.5; phone.anchor_right = 0.5; phone.anchor_bottom = 0.5
-		phone.offset_left = -200; phone.offset_top = -420; phone.offset_right = 200; phone.offset_bottom = 420
+		phone.position = Vector2(760, 30)
+		phone.rotation_degrees = 0.0
+		phone.scale = Vector2(1.32, 1.32)
 	else:
-		phone.anchor_left = 0.15; phone.anchor_top = 1.0; phone.anchor_right = 0.15; phone.anchor_bottom = 1.0
-		phone.offset_left = -200; phone.offset_top = -780; phone.offset_right = 200; phone.offset_bottom = 60
-		phone.rotation_degrees = -1.2 
+		phone.position = Vector2(88, 300)
+		phone.rotation_degrees = -1.2
 		phone.scale = Vector2(0.8, 0.8)
 		
 	phone.pivot_offset = Vector2(200, 420)
@@ -671,9 +673,8 @@ func _create_smartphone_mockup(parent: Control, is_centered: bool = true) -> VBo
 	if is_centered: pickup_overlay.hide()
 	
 	phone.set_meta("is_picked_up", is_centered)
-	var orig_pos = Vector2.ZERO
+	var orig_pos = Vector2(88, 300) if not is_centered else Vector2(760, 30)
 	var orig_rot = phone.rotation_degrees
-	var pos_initialized = false
 	
 	var put_down = func():
 		if not phone.get_meta("is_picked_up", false): return
@@ -681,9 +682,9 @@ func _create_smartphone_mockup(parent: Control, is_centered: bool = true) -> VBo
 		pickup_overlay.show()
 		if audio_manager: audio_manager.play_se("place")
 		var tw = phone.create_tween().set_parallel(true)
-		tw.tween_property(phone, "global_position", orig_pos, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(phone, "position", orig_pos, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_property(phone, "rotation_degrees", orig_rot, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		tw.tween_property(phone, "scale", Vector2(1.0, 1.0) if is_centered else Vector2(0.8, 0.8), 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(phone, "scale", Vector2(1.32, 1.32) if is_centered else Vector2(0.8, 0.8), 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		
 		var tw_dim = dim_overlay.create_tween()
 		tw_dim.tween_property(dim_overlay, "modulate:a", 0.0, 0.2)
@@ -691,9 +692,6 @@ func _create_smartphone_mockup(parent: Control, is_centered: bool = true) -> VBo
 		
 	var pick_up = func():
 		if phone.get_meta("is_picked_up", false): return
-		if not pos_initialized:
-			orig_pos = phone.global_position
-			pos_initialized = true
 		phone.set_meta("is_picked_up", true)
 		pickup_overlay.hide()
 		if audio_manager: audio_manager.play_se("draw")
@@ -707,7 +705,7 @@ func _create_smartphone_mockup(parent: Control, is_centered: bool = true) -> VBo
 		# スマホの拡大率をさらに上げ、上部にずらして全体をフルに収める究極サイズ（1.32倍/Y=30px）
 		var target_scale = 1.32
 		var target_pos = Vector2(760, 30)
-		tw.tween_property(phone, "global_position", target_pos, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(phone, "position", target_pos, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_property(phone, "rotation_degrees", 0.0, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_property(phone, "scale", Vector2(target_scale, target_scale), 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
@@ -873,9 +871,9 @@ func _show_bag_builder():
 	app_footer.add_child(app_footer_h)
 	
 	var tabs_info = [
-		{"text": "🏠タイムライン", "idx": 0},
-		{"text": "📊学習分析", "idx": 1},
-		{"text": "🎯目標", "idx": 2}
+		{"text": "タイムライン", "idx": 0},
+		{"text": "学習分析", "idx": 1},
+		{"text": "目標", "idx": 2}
 	]
 	
 	for tab in tabs_info:
