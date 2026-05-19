@@ -16,7 +16,7 @@ const COLOR_GLASS = Color(1, 1, 1, 0.12)
 const COLOR_CHALK_WHITE = Color(0.95, 0.95, 0.95, 0.9)
 const COLOR_CHALK_YELLOW = Color(1.0, 0.9, 0.4, 0.9)
 
-const DESK_TEXTURE = preload("res://assets/机の背景画像.png")
+const DESK_TEXTURE = preload("res://assets/机の背景画像-ノート無し.png")
 const CARD_FRONT = preload("res://assets/カード背景画像.png")
 const CARD_BACK = preload("res://assets/カード裏面画像.png")
 const BAG_TEXTURE = preload("res://assets/カバン画像.png")
@@ -43,12 +43,27 @@ static func decorate_scene(root: Control, dim_alpha: float = 0.14) -> void:
 	bg.texture = DESK_TEXTURE
 	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.anchor_left = 0.0
+	bg.anchor_top = 0.0
+	bg.anchor_right = 1.0
+	bg.anchor_bottom = 1.0
+	bg.offset_left = 0
+	bg.offset_top = 0
+	bg.offset_right = 0
+	bg.offset_bottom = 0
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(bg)
+	
 	var vignette = ColorRect.new()
 	vignette.color = Color(0.0, 0.0, 0.0, dim_alpha)
-	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vignette.anchor_left = 0.0
+	vignette.anchor_top = 0.0
+	vignette.anchor_right = 1.0
+	vignette.anchor_bottom = 1.0
+	vignette.offset_left = 0
+	vignette.offset_top = 0
+	vignette.offset_right = 0
+	vignette.offset_bottom = 0
 	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(vignette)
 
@@ -302,40 +317,105 @@ static func create_floating_badge(text: String, tint: Color, font_size: int = 18
 	badge.add_child(create_label(text, font_size, Color.WHITE if tint.v < 0.6 else COLOR_INK, true))
 	return badge
 
-static func create_app_stamp(text: String, tint: Color, font_size: int = 24) -> PanelContainer:
-	var stamp = PanelContainer.new()
-	stamp.custom_minimum_size = Vector2(240, 80)
-	stamp.size = Vector2(240, 80)
+static func create_app_stamp(text: String, tint: Color, font_size: int = 24) -> Control:
+	var root = Control.new()
+	root.custom_minimum_size = Vector2(240, 80)
+	root.size = Vector2(240, 80)
 	
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color(tint.r, tint.g, tint.b, 0.12) # インクの透け感
-	style.border_width_left = 4; style.border_width_right = 4
-	style.border_width_top = 4; style.border_width_bottom = 4
-	style.border_color = tint
-	style.corner_radius_top_left = 12; style.corner_radius_top_right = 12
-	style.corner_radius_bottom_left = 12; style.corner_radius_bottom_right = 12
-	style.content_margin_left = 16; style.content_margin_right = 16
-	stamp.add_theme_stylebox_override("panel", style)
+	# 外枠の影
+	var shadow = Panel.new()
+	shadow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var shadow_style = StyleBoxFlat.new()
+	shadow_style.bg_color = Color(0, 0, 0, 0.12)
+	shadow_style.corner_radius_top_left = 14; shadow_style.corner_radius_top_right = 14
+	shadow_style.corner_radius_bottom_left = 14; shadow_style.corner_radius_bottom_right = 14
+	shadow_style.shadow_color = Color(0, 0, 0, 0.20)
+	shadow_style.shadow_size = 5
+	shadow_style.shadow_offset = Vector2(3, 5)
+	shadow.add_theme_stylebox_override("panel", shadow_style)
+	root.add_child(shadow)
 	
-	var inner_border = Panel.new()
-	inner_border.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	inner_border.offset_left = 6; inner_border.offset_top = 6; inner_border.offset_right = -6; inner_border.offset_bottom = -6
+	# 外枠のインク背景
+	var bg = Panel.new()
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var bg_style = StyleBoxFlat.new()
+	bg_style.bg_color = Color(tint.r, tint.g, tint.b, 0.12) # インクの透け感
+	bg_style.border_width_left = 5; bg_style.border_width_right = 5
+	bg_style.border_width_top = 5; bg_style.border_width_bottom = 5
+	bg_style.border_color = tint
+	bg_style.corner_radius_top_left = 12; bg_style.corner_radius_top_right = 12
+	bg_style.corner_radius_bottom_left = 12; bg_style.corner_radius_bottom_right = 12
+	bg.add_theme_stylebox_override("panel", bg_style)
+	root.add_child(bg)
+	
+	# 内枠のライン
+	var inner = Panel.new()
+	inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	inner.offset_left = 9; inner.offset_top = 9; inner.offset_right = -9; inner.offset_bottom = -9
 	var inner_style = StyleBoxFlat.new()
 	inner_style.bg_color = Color.TRANSPARENT
-	inner_style.border_width_left = 1.5; inner_style.border_width_right = 1.5
-	inner_style.border_width_top = 1.5; inner_style.border_width_bottom = 1.5
-	inner_style.border_color = Color(tint.r, tint.g, tint.b, 0.7)
+	inner_style.border_width_left = 2; inner_style.border_width_right = 2
+	inner_style.border_width_top = 2; inner_style.border_width_bottom = 2
+	inner_style.border_color = Color(tint.r, tint.g, tint.b, 0.65)
 	inner_style.corner_radius_top_left = 8; inner_style.corner_radius_top_right = 8
 	inner_style.corner_radius_bottom_left = 8; inner_style.corner_radius_bottom_right = 8
-	inner_border.add_theme_stylebox_override("panel", inner_style)
-	stamp.add_child(inner_border)
+	inner.add_theme_stylebox_override("panel", inner_style)
+	root.add_child(inner)
 	
+	# ラベル
 	var lbl = create_label(text, font_size, tint, true)
+	lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	stamp.add_child(lbl)
+	# インクのにじみ・スタンプ感を出すための極厚アウトライン
+	lbl.add_theme_constant_override("outline_size", 5)
+	lbl.add_theme_color_override("font_outline_color", Color(tint.r, tint.g, tint.b, 0.22))
+	root.add_child(lbl)
 	
-	return stamp
+	return root
+
+static func create_mini_stamp(text: String, tint: Color, font_size: int = 13) -> Control:
+	var root = Control.new()
+	root.custom_minimum_size = Vector2(130, 36)
+	root.size = Vector2(130, 36)
+	
+	# インク背景
+	var bg = Panel.new()
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var bg_style = StyleBoxFlat.new()
+	bg_style.bg_color = Color(tint.r, tint.g, tint.b, 0.12)
+	bg_style.border_width_left = 2; bg_style.border_width_right = 2
+	bg_style.border_width_top = 2; bg_style.border_width_bottom = 2
+	bg_style.border_color = tint
+	bg_style.corner_radius_top_left = 6; bg_style.corner_radius_top_right = 6
+	bg_style.corner_radius_bottom_left = 6; bg_style.corner_radius_bottom_right = 6
+	bg.add_theme_stylebox_override("panel", bg_style)
+	root.add_child(bg)
+	
+	# 内枠
+	var inner = Panel.new()
+	inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	inner.offset_left = 4; inner.offset_top = 4; inner.offset_right = -4; inner.offset_bottom = -4
+	var inner_style = StyleBoxFlat.new()
+	inner_style.bg_color = Color.TRANSPARENT
+	inner_style.border_width_left = 1; inner_style.border_width_right = 1
+	inner_style.border_width_top = 1; inner_style.border_width_bottom = 1
+	inner_style.border_color = Color(tint.r, tint.g, tint.b, 0.6)
+	inner_style.corner_radius_top_left = 4; inner_style.corner_radius_top_right = 4
+	inner_style.corner_radius_bottom_left = 4; inner_style.corner_radius_bottom_right = 4
+	inner.add_theme_stylebox_override("panel", inner_style)
+	root.add_child(inner)
+	
+	# ラベル
+	var lbl = create_label(text, font_size, tint, true)
+	lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_constant_override("outline_size", 3)
+	lbl.add_theme_color_override("font_outline_color", Color(tint.r, tint.g, tint.b, 0.20))
+	root.add_child(lbl)
+	
+	return root
 
 static func animate_entrance(node: Control, delay: float = 0.0) -> void:
 	node.modulate.a = 0

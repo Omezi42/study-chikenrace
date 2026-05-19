@@ -4,16 +4,17 @@ extends RefCounted
 
 signal phase_completed()
 
-var ctx: GameContext
+var ctx: RefCounted
 
-func _init(context: GameContext):
+func _init(context: RefCounted):
 	self.ctx = context
 
 func start():
 	_show_day_transition()
 
 func _show_day_transition():
-	ctx.screen_content.get_tree().call_group("ui_elements", "queue_free") # 古いUIクリア
+	for child in ctx.screen_content.get_children():
+		child.queue_free()
 	
 	# 暗転フェードとカレンダーパネルの生成
 	var overlay = ColorRect.new()

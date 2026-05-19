@@ -23,10 +23,12 @@ func _ready():
 
 	vbox.add_child(DeskTheme.create_floating_badge("放課後の机の上で駆け引きする7日間", DeskTheme.COLOR_MUTED, 18))
 	
+
+	
 	# タイトルロゴ
-	var title_lbl = DeskTheme.create_label("テスト勉強\nチキンレース", 100, DeskTheme.COLOR_INK, true)
+	var title_lbl = DeskTheme.create_label("テスト勉強\nチキンレース", 80, DeskTheme.COLOR_INK, true)
 	# 文字に白いアウトライン（縁取り）をつける
-	title_lbl.add_theme_constant_override("outline_size", 20)
+	title_lbl.add_theme_constant_override("outline_size", 16)
 	title_lbl.add_theme_color_override("font_outline_color", Color.WHITE)
 	vbox.add_child(title_lbl)
 	
@@ -129,8 +131,8 @@ func _on_start_pressed():
 	_show_mode_select()
 
 func _show_mode_select():
-	var overlay: ColorRect
-	overlay = DeskTheme.create_dialog_overlay(self, "プレイモード選択", func(vbox: VBoxContainer):
+	var _overlay: ColorRect
+	_overlay = DeskTheme.create_dialog_overlay(self, "プレイモード選択", func(vbox: VBoxContainer):
 		vbox.add_theme_constant_override("separation", 28)
 		
 		# 1週間対戦（準備中）

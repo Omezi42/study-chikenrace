@@ -193,11 +193,37 @@ func vote_rival(rival_name: String, subject: int) -> void:
 	var key = "%s_%d" % [rival_name, subject]
 	_voted_rivals[key] = true
 	print("Voted for rival: ", key)
+	
+	# Globalの永続化辞書にも保存 (Dayベース)
+	var g_key = "day_%d_%s_%d" % [Global.play_count + 1, rival_name, subject]
+	Global.accumulated_votes[g_key] = true
+	Global.save_data()
 
 func has_voted_rival(rival_name: String, subject: int) -> bool:
+	# まずローカル（本日分）でチェック
 	var key = "%s_%d" % [rival_name, subject]
-	return _voted_rivals.get(key, false)
+	if _voted_rivals.get(key, false): return true
+	
+	# 次にGlobalの永続データでチェック
+	var g_key = "day_%d_%s_%d" % [Global.play_count + 1, rival_name, subject]
+	return Global.accumulated_votes.get(g_key, false)
 
 func clear_daily_votes() -> void:
 	_voted_rivals.clear()
 	print("Daily votes cleared.")
+
+func get_rival_history(rival_name: String) -> Array:
+	var history = []
+	var day = Global.play_count + 1
+	for d in range(1, day + 1):
+		var daily_score = 0
+		if rival_name == "慎重な優等生":
+			daily_score = 50
+		elif rival_name == "ギャンブラー":
+			daily_score = 0 if (d == 3 or d == 6) else 60
+		elif rival_name == "ブラフの達人":
+			daily_score = 40
+		else:
+			daily_score = randi_range(10, 50)
+		history.append({"day": d, "score": daily_score})
+	return history

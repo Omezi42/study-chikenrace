@@ -52,12 +52,21 @@ func setup(scene: Control) -> void:
 	ui_root = scene.get_node_or_null("UIRoot")
 	if not ui_root:
 		ui_root = scene
-	screen_content = scene.get_node_or_null("ScreenContent")
+	screen_content = scene.get_node_or_null("UIRoot/ScreenContent")
+	if not screen_content:
+		screen_content = scene.get_node_or_null("ScreenContent")
 	if not screen_content:
 		screen_content = scene
 		
-	audio_manager = scene.get_node_or_null("/root/AudioManager")
-	backend_manager = scene.get_node_or_null("/root/BackendManager")
+	if "audio_manager" in scene and scene.audio_manager != null:
+		audio_manager = scene.audio_manager
+	else:
+		audio_manager = scene.get_node_or_null("/root/AudioManager")
+		
+	if "backend_manager" in scene and scene.backend_manager != null:
+		backend_manager = scene.backend_manager
+	else:
+		backend_manager = scene.get_node_or_null("/root/BackendManager")
 	
 	# カバンデータの初期化 (デフォルトが空なら初期化)
 	for s in range(5):

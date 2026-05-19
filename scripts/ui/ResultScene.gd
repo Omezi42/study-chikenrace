@@ -16,6 +16,13 @@ var base_score: int = 0
 var bonus_score: int = 0
 var final_score: int = 0
 
+# 答え合わせ（Showdown Reveal）用ステート
+var current_live_score: int = 0
+var is_skipped: bool = false
+var board_overlay: Control
+var live_score_label: Label
+var skip_btn: Button
+
 func _ready():
 	audio_manager = AudioManager.new()
 	add_child(audio_manager)
@@ -36,7 +43,7 @@ func _ready():
 	
 	# 得点読み込み
 	base_score = Global.total_score
-	final_score = base_score
+	current_live_score = base_score
 	
 	backend_manager.load_daily_scores()
 	_show_loading()
@@ -56,8 +63,366 @@ func _show_loading():
 	vbox.add_child(DeskTheme.create_label("通知表を集計中...", 24, DeskTheme.COLOR_MUTED, true))
 
 func _on_scores_loaded(_scores):
+	_start_showdown_reveal()
+
+# ====================================================
+# 最終日「答え合わせ・Showdown Reveal」黒板演出
+# ====================================================
+func _start_showdown_reveal():
+	for child in screen_content.get_children():
+		child.queue_free()
+		
+	# 黒板の外枠パネル（レトロな木製フレーム）
+	board_overlay = Panel.new()
+	board_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var frame_style = StyleBoxFlat.new()
+	frame_style.bg_color = Color("133324") # 深みのあるレトロな黒板緑
+	frame_style.border_width_left = 18; frame_style.border_width_right = 18
+	frame_style.border_width_top = 18; frame_style.border_width_bottom = 18
+	frame_style.border_color = Color("5c4033") # 温かみのある濃い木目ブラウン
+	frame_style.corner_radius_top_left = 12; frame_style.corner_radius_top_right = 12
+	frame_style.corner_radius_bottom_left = 12; frame_style.corner_radius_bottom_right = 12
+	frame_style.shadow_color = Color(0, 0, 0, 0.6)
+	frame_style.shadow_size = 24
+	board_overlay.add_theme_stylebox_override("panel", frame_style)
+	screen_content.add_child(board_overlay)
+	
+	# 黒板のレトロな粉受け（下部トレイ）
+	var tray = Panel.new()
+	tray.anchor_left = 0.02; tray.anchor_top = 0.97; tray.anchor_right = 0.98; tray.anchor_bottom = 0.99
+	var tray_style = StyleBoxFlat.new()
+	tray_style.bg_color = Color("422e23") # 木製トレイ
+	tray_style.corner_radius_top_left = 4; tray_style.corner_radius_top_right = 4
+	tray.add_theme_stylebox_override("panel", tray_style)
+	board_overlay.add_child(tray)
+	
+	var title_lbl = DeskTheme.create_label("【 学年最終答え合わせ - Showdown Reveal 】", 28, DeskTheme.COLOR_CHALK_WHITE, true)
+	title_lbl.anchor_left = 0.5; title_lbl.anchor_top = 0.04; title_lbl.anchor_right = 0.5
+	title_lbl.offset_left = -350; title_lbl.offset_right = 350
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	board_overlay.add_child(title_lbl)
+	
+	live_score_label = DeskTheme.create_label("現在の得点: %d点" % current_live_score, 24, DeskTheme.COLOR_CHALK_YELLOW, true)
+	live_score_label.anchor_left = 0.5; live_score_label.anchor_top = 0.10; live_score_label.anchor_right = 0.5
+	live_score_label.offset_left = -200; live_score_label.offset_right = 200
+	live_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	board_overlay.add_child(live_score_label)
+	
+	var scroll = ScrollContainer.new()
+	scroll.anchor_left = 0.04; scroll.anchor_top = 0.17; scroll.anchor_right = 0.96; scroll.anchor_bottom = 0.83
+	scroll.set_horizontal_scroll_mode(ScrollContainer.SCROLL_MODE_DISABLED)
+	scroll.set_vertical_scroll_mode(ScrollContainer.SCROLL_MODE_AUTO)
+	board_overlay.add_child(scroll)
+	
+	var vbox = VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 10)
+	scroll.add_child(vbox)
+	
+	# スキップボタン
+	skip_btn = DeskTheme.create_button("⏩ 演出を早送り (スキップ)", Vector2(240, 48), DeskTheme.COLOR_ACCENT_GOLD, Color("b38f30"))
+	skip_btn.anchor_left = 0.96; skip_btn.anchor_top = 0.91; skip_btn.anchor_right = 0.96; skip_btn.anchor_bottom = 0.91
+	skip_btn.offset_left = -240; skip_btn.offset_top = -24; skip_btn.offset_right = 0; skip_btn.offset_bottom = 24
+	skip_btn.pressed.connect(func():
+		is_skipped = true
+		if audio_manager: audio_manager.play_se("click")
+		skip_btn.hide()
+	)
+	board_overlay.add_child(skip_btn)
+	
+	# 7日分の枠組みを事前生成して表示
+	var row_nodes = []
+	var total_days = Global.score_history.size()
+	for d in range(1, total_days + 1):
+		var row = _create_reveal_row(d)
+		vbox.add_child(row)
+		row_nodes.append(row)
+		
+	# 順次答え合わせアニメーション開始
+	await get_tree().create_timer(0.8).timeout
+	
+	for d in range(1, total_days + 1):
+		var entry = Global.score_history[d-1]
+		var row = row_nodes[d-1]
+		
+		# スキップされていなければスクロールとハイライトを行う
+		if not is_skipped:
+			scroll.ensure_control_visible(row)
+			
+			# 選択中行のやわらかい明滅Tween
+			var row_tw = row.create_tween()
+			row_tw.tween_property(row, "modulate", Color(1.2, 1.2, 1.2), 0.2)
+			row_tw.tween_property(row, "modulate", Color.WHITE, 0.2)
+			
+			await get_tree().create_timer(0.4).timeout
+			
+		var rivals_box = row.get_node("MarginContainer/HBoxContainer/RivalsBox")
+		var player_box = row.get_node("MarginContainer/HBoxContainer/PlayerBox")
+		
+		# ----------------------------------------------------
+		# 1. ライバルの暴露 (見破り＆応援)
+		# ----------------------------------------------------
+		for rival in entry["rivals"]:
+			var r_name = rival["name"]
+			var r_reported = rival["score"]
+			
+			# deterministicなライバルの嘘判定 (シード値固定)
+			var seed_val = hash(r_name) + d
+			var rng = RandomNumberGenerator.new()
+			rng.seed = seed_val
+			
+			var is_lying = false
+			# 慎重な優等生: 嘘つかない, ギャンブラー: 特定日, ブラフの達人: 隔日
+			if r_name == "ギャンブラー" and (d == 3 or d == 6):
+				is_lying = true
+			elif r_name == "ブラフの達人" and (d % 2 == 1):
+				is_lying = true
+			
+			var r_actual = r_reported
+			if is_lying:
+				r_actual = max(0, r_reported - rng.randi_range(6, 14))
+				
+			# プレイヤーがタイムラインでこのライバルに「いいね」を送っていたか全教科スキャン
+			var voted_subject = -1
+			for s in range(5):
+				var vote_key = "day_%d_%s_%d" % [d, r_name, s]
+				if Global.accumulated_votes.get(vote_key, false):
+					voted_subject = s
+					break
+			
+			# ライバル情報UIの構築
+			var r_lbl = DeskTheme.create_label("%s: 報告%d点➔実際%d点" % [r_name.left(5), r_reported, r_actual], 13, DeskTheme.COLOR_CHALK_WHITE)
+			rivals_box.add_child(r_lbl)
+			
+			if voted_subject != -1:
+				# いいね（投票）していた場合：スタンプ演出！
+				var stamp_lbl: Control
+				var score_diff = 0
+				
+				if is_lying:
+					stamp_lbl = DeskTheme.create_mini_stamp("見破り成功！", Color("ff6b6b"), 11)
+					score_diff = 10
+					if audio_manager: audio_manager.play_se("burst")
+				else:
+					stamp_lbl = DeskTheme.create_mini_stamp("応援成功！", Color("4dabf7"), 11)
+					score_diff = 5
+					if audio_manager: audio_manager.play_se("combo")
+					
+				rivals_box.add_child(stamp_lbl)
+				
+				# スタンプ捺印の叩きつけバウンドTween
+				stamp_lbl.pivot_offset = stamp_lbl.custom_minimum_size / 2.0
+				stamp_lbl.scale = Vector2(3.0, 3.0)
+				stamp_lbl.modulate.a = 0.0
+				var stw = stamp_lbl.create_tween().set_parallel(true)
+				stw.tween_property(stamp_lbl, "scale", Vector2(1.0, 1.0), 0.18).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+				stw.tween_property(stamp_lbl, "modulate:a", 1.0, 0.1)
+				stw.tween_property(stamp_lbl, "rotation_degrees", randf_range(-15.0, 15.0), 0.18)
+				
+				# スコア加算とカウンター更新
+				current_live_score += score_diff
+				_update_live_score_ui(score_diff)
+				
+				# 画面シェイク
+				_trigger_mini_shake(4.0)
+				
+				if not is_skipped:
+					await stw.finished
+					await get_tree().create_timer(0.3).timeout
+			else:
+				# 投票なし
+				var no_lbl = DeskTheme.create_label("[-] ", 13, DeskTheme.COLOR_MUTED)
+				rivals_box.add_child(no_lbl)
+				
+		# ----------------------------------------------------
+		# 2. プレイヤー自身の暴露 (完全犯罪＆見破られ＆正直応援)
+		# ----------------------------------------------------
+		var player_lied = false
+		var total_lie = 0
+		for s in entry["subjects"]:
+			var rep = entry["subjects"][s]
+			var act = entry["actual_subjects"].get(s, rep)
+			if rep > act:
+				player_lied = true
+				total_lie += (rep - act)
+				
+		var p_lbl_text = "あなた: 正直報告"
+		if player_lied:
+			p_lbl_text = "あなた: 盛った嘘 ＋%d点" % total_lie
+			
+		var p_lbl = DeskTheme.create_label(p_lbl_text, 13, DeskTheme.COLOR_CHALK_WHITE)
+		player_box.add_child(p_lbl)
+		
+		# プレイヤー結果判定
+		var p_stamp: Control
+		var p_score_diff = 0
+		
+		if player_lied:
+			# 嘘を盛っていた場合：バレるかどうかの裏確率判定
+			var p_seed = hash(Global.player_name) + d
+			var p_rng = RandomNumberGenerator.new()
+			p_rng.seed = p_seed
+			
+			var expose_prob = clamp(total_lie * 6, 15, 85)
+			var is_exposed = p_rng.randi() % 100 < expose_prob
+			
+			if is_exposed:
+				# バレてしまった！盛りスコアの2倍減点
+				p_stamp = DeskTheme.create_mini_stamp("見破られた！", DeskTheme.COLOR_BLUFF_RED, 11)
+				p_score_diff = -(total_lie * 2)
+				if audio_manager: audio_manager.play_se("burst")
+				_trigger_mini_shake(12.0)
+			else:
+				# バレずにすり抜けた！完全犯罪成立
+				p_stamp = DeskTheme.create_mini_stamp("完全犯罪成立！", DeskTheme.COLOR_SAFE, 11)
+				p_score_diff = 0
+				if audio_manager: audio_manager.play_se("combo")
+		else:
+			# 正直に報告していた場合：ライバルからのいいね被弾(応援)判定
+			var p_seed = hash(Global.player_name) + d + 999
+			var p_rng = RandomNumberGenerator.new()
+			p_rng.seed = p_seed
+			
+			var rival_cheered = p_rng.randf() < 0.35 # 35%の確率で応援されていた
+			if rival_cheered:
+				p_stamp = DeskTheme.create_mini_stamp("正直応援！", DeskTheme.COLOR_ACCENT_GOLD, 11)
+				p_score_diff = 10
+				if audio_manager: audio_manager.play_se("combo")
+			else:
+				p_stamp = DeskTheme.create_mini_stamp("正直合格", Color("8fbf9f"), 11)
+				p_score_diff = 0
+				if audio_manager: audio_manager.play_se("place")
+				
+		player_box.add_child(p_stamp)
+		
+		# スタンプアニメーション
+		p_stamp.pivot_offset = p_stamp.custom_minimum_size / 2.0
+		p_stamp.scale = Vector2(3.0, 3.0)
+		p_stamp.modulate.a = 0.0
+		var p_stw = p_stamp.create_tween().set_parallel(true)
+		p_stw.tween_property(p_stamp, "scale", Vector2(1.0, 1.0), 0.18).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+		p_stw.tween_property(p_stamp, "modulate:a", 1.0, 0.1)
+		p_stw.tween_property(p_stamp, "rotation_degrees", randf_range(-15.0, 15.0), 0.18)
+		
+		# スコア減算/加算とカウンター更新
+		current_live_score += p_score_diff
+		_update_live_score_ui(p_score_diff)
+		
+		if not is_skipped:
+			await p_stw.finished
+			await get_tree().create_timer(0.5).timeout
+			
+	# スキップ時対応：最終スコアへ即座に補正
+	if is_skipped:
+		live_score_label.text = "現在の得点: %d点" % current_live_score
+		
+	# 答え合わせ完了！通知表への遷移ボタンを出現させる
+	if skip_btn:
+		skip_btn.queue_free()
+		
+	var next_btn = DeskTheme.create_button("【 通知表を受け取る ➔ 】", Vector2(400, 64), DeskTheme.COLOR_ACCENT_GOLD, Color("b38f30"))
+	next_btn.anchor_left = 0.5; next_btn.anchor_top = 0.91; next_btn.anchor_right = 0.5; next_btn.anchor_bottom = 0.91
+	next_btn.offset_left = -200; next_btn.offset_top = -32; next_btn.offset_right = 200; next_btn.offset_bottom = 32
+	next_btn.pressed.connect(_finish_showdown_reveal)
+	board_overlay.add_child(next_btn)
+	
+	# ボタンの脈動アニメーション
+	next_btn.pivot_offset = Vector2(200, 32)
+	var pulse = next_btn.create_tween().set_loops()
+	pulse.tween_property(next_btn, "scale", Vector2(1.05, 1.05), 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	pulse.tween_property(next_btn, "scale", Vector2(1.0, 1.0), 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+
+func _create_reveal_row(d: int) -> PanelContainer:
+	var row = PanelContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.custom_minimum_size = Vector2(0, 56)
+	
+	var row_style = StyleBoxFlat.new()
+	row_style.bg_color = Color("1e3d30") # 少し明るめの黒板緑で区切る
+	row_style.border_width_left = 2; row_style.border_width_right = 2
+	row_style.border_width_top = 2; row_style.border_width_bottom = 2
+	row_style.border_color = Color("2e5c46")
+	row_style.corner_radius_top_left = 8; row_style.corner_radius_top_right = 8
+	row_style.corner_radius_bottom_left = 8; row_style.corner_radius_bottom_right = 8
+	row.add_theme_stylebox_override("panel", row_style)
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_top", 6)
+	margin.add_theme_constant_override("margin_bottom", 6)
+	row.add_child(margin)
+	
+	var hbox = HBoxContainer.new()
+	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	hbox.add_theme_constant_override("separation", 24)
+	margin.add_child(hbox)
+	
+	# Day表示
+	var day_lbl = DeskTheme.create_label("Day %d" % d, 16, DeskTheme.COLOR_CHALK_WHITE, true)
+	day_lbl.custom_minimum_size = Vector2(70, 0)
+	hbox.add_child(day_lbl)
+	
+	# --- ライバルたち ---
+	var rivals_box = HBoxContainer.new()
+	rivals_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rivals_box.add_theme_constant_override("separation", 16)
+	rivals_box.name = "RivalsBox"
+	hbox.add_child(rivals_box)
+	
+	# --- プレイヤー自身 ---
+	var player_box = HBoxContainer.new()
+	player_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	player_box.alignment = BoxContainer.ALIGNMENT_END
+	player_box.add_theme_constant_override("separation", 16)
+	player_box.name = "PlayerBox"
+	hbox.add_child(player_box)
+	
+	return row
+
+func _update_live_score_ui(diff: int):
+	# スコア表示テキストのポップアップ演出
+	live_score_label.text = "現在の得点: %d点" % current_live_score
+	
+	# 点数の増減によって色を変えてボヨヨンTween
+	var pop = live_score_label.create_tween()
+	live_score_label.pivot_offset = live_score_label.size / 2.0
+	pop.tween_property(live_score_label, "scale", Vector2(1.2, 1.2), 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	if diff > 0:
+		live_score_label.add_theme_color_override("font_color", DeskTheme.COLOR_BONUS)
+	elif diff < 0:
+		live_score_label.add_theme_color_override("font_color", DeskTheme.COLOR_BLUFF_RED)
+		
+	pop.tween_property(live_score_label, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_SINE)
+	pop.tween_callback(func():
+		live_score_label.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_YELLOW)
+	)
+
+func _trigger_mini_shake(intensity: float):
+	if is_skipped: return
+	var shake = create_tween().set_loops(4)
+	shake.tween_callback(func(): ui_root.position = Vector2(randf_range(-intensity, intensity), randf_range(-intensity, intensity)))
+	shake.tween_interval(0.04)
+	await shake.finished
+	ui_root.position = Vector2.ZERO
+
+func _finish_showdown_reveal():
+	if audio_manager: audio_manager.play_se("click")
+	
+	# スコアカウンタ同期
+	base_score = current_live_score
+	Global.total_score = base_score
+	Global.save_data()
+	
+	var fade = board_overlay.create_tween()
+	fade.tween_property(board_overlay, "modulate:a", 0.0, 0.4)
+	await fade.finished
+	
 	_show_final_report()
 
+# ====================================================
+# 成績発表（通知表）カード表示
+# ====================================================
 func _show_final_report():
 	for child in screen_content.get_children():
 		child.queue_free()
@@ -110,8 +475,6 @@ func _show_final_report():
 		var top_name = top_player["name"]
 		var top_sc = top_player["score"]
 		
-		# 自分が1位か判定 (モックと通信データ両対応)
-		# テストのため、自分がトップの場合や、スコアが0より大きくて自分がトップ扱いの場合にボーナスを付与
 		var is_my_top = (top_name == Global.player_name)
 		
 		var result_text = ""
@@ -170,7 +533,6 @@ func _run_stamp_sequence(subjects: Array):
 	
 	# 自分がトップを取った教科の数だけ王冠スタンプを押す
 	for s in subjects:
-		# 王冠スタンプ表示
 		var stamp = TextureRect.new()
 		stamp.texture = DeskTheme.CROWN_TEXTURE
 		stamp.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -292,6 +654,8 @@ func _on_title_pressed():
 	Global.play_count = 0
 	for s in Global.daily_noises:
 		Global.daily_noises[s] = 0
+	Global.score_history.clear()
+	Global.accumulated_votes.clear()
 	Global.save_data()
 	
 	SceneTransition.fade_to_scene("res://Title.tscn")

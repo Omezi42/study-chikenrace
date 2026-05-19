@@ -3,11 +3,22 @@ extends Control
 
 const GameSessionScript = preload("res://scripts/core/GameSession.gd")
 const BackendManagerScript = preload("res://scripts/core/BackendManager.gd")
+const GameContextScript = preload("res://scripts/ui/context/GameContext.gd")
+const NotebookBuilderScript = preload("res://scripts/ui/components/NotebookBuilder.gd")
+const SmartphoneBuilderScript = preload("res://scripts/ui/components/SmartphoneBuilder.gd")
+const ToastOverlayScript = preload("res://scripts/ui/components/ToastOverlay.gd")
+const BagBuilderPhaseScript = preload("res://scripts/ui/phases/BagBuilderPhase.gd")
+const ChickenRacePhaseScript = preload("res://scripts/ui/phases/ChickenRacePhase.gd")
+const ReportPhaseScript = preload("res://scripts/ui/phases/ReportPhase.gd")
+const DayTransitionPhaseScript = preload("res://scripts/ui/phases/DayTransitionPhase.gd")
+const BlackboardPhaseScript = preload("res://scripts/ui/phases/BlackboardPhase.gd")
+const DailyLikesPhaseScript = preload("res://scripts/ui/phases/DailyLikesPhase.gd")
 
 var game_session
 var audio_manager: AudioManager
 var backend_manager
-var game_context: GameContext
+var game_context: RefCounted
+var current_phase: RefCounted = null
 
 var ui_root: Control
 var screen_content: Control
@@ -22,7 +33,7 @@ var heartbeat_tween: Tween
 var camera_shake_offset: Vector2 = Vector2.ZERO
 
 func _create_double_page_notebook() -> PanelContainer:
-	return NotebookBuilder.create()
+	return NotebookBuilderScript.create()
 
 func _ready():
 	# 各種マネージャーのインスタンス化
@@ -36,15 +47,17 @@ func _ready():
 	# 背景とベースUIの構築
 	DeskTheme.decorate_scene(self)
 	ui_root = Control.new()
+	ui_root.name = "UIRoot"
 	ui_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(ui_root)
 	
 	screen_content = Control.new()
+	screen_content.name = "ScreenContent"
 	screen_content.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	ui_root.add_child(screen_content)
 	
 	# コンテクストの初期化
-	game_context = GameContext.new()
+	game_context = GameContextScript.new()
 	game_context.setup(self)
 	# 既存の変数への参照を同期
 	game_context.bag_assignments = bag_assignments
@@ -79,27 +92,27 @@ func _on_scores_loaded(_scores = []):
 func _clear_screen():
 	for child in screen_content.get_children():
 		child.queue_free()
-	drawn_card_nodes.clear()
 	if is_instance_valid(vignette_overlay):
 		vignette_overlay.queue_free()
 
 func _on_chikista_tab_pressed(tab_idx: int, scroll_container: ScrollContainer):
-	SmartphoneBuilder.on_chikista_tab_pressed(game_context, tab_idx, scroll_container)
+	SmartphoneBuilderScript.on_chikista_tab_pressed(game_context, tab_idx, scroll_container)
 
 func _build_timeline_feed(feed_v: VBoxContainer):
-	SmartphoneBuilder._build_timeline_feed(game_context, feed_v)
+	SmartphoneBuilderScript._build_timeline_feed(game_context, feed_v)
 
 func _build_analysis_tab(feed_v: VBoxContainer):
-	SmartphoneBuilder._build_analysis_tab(game_context, feed_v)
+	SmartphoneBuilderScript._build_analysis_tab(game_context, feed_v)
 
 func _build_goals_tab(feed_v: VBoxContainer):
-	SmartphoneBuilder._build_goals_tab(game_context, feed_v)
+	SmartphoneBuilderScript._build_goals_tab(game_context, feed_v)
 
-func _create_smartphone_mockup(parent: Control, is_centered: bool = true) -> VBoxContainer:
-	return SmartphoneBuilder.create_mockup(game_context, is_centered)
+func _create_smartphone_mockup(_parent: Control, is_centered: bool = true) -> VBoxContainer:
+	return SmartphoneBuilderScript.create_mockup(game_context, is_centered)
 
 func _start_phase_bag_builder():
-	var phase = BagBuilderPhase.new(game_context)
+	var phase = BagBuilderPhaseScript.new(game_context)
+	current_phase = phase
 	phase.phase_completed.connect(_on_bag_builder_completed)
 	phase.start()
 
@@ -126,7 +139,8 @@ func _on_start_race_pressed():
 	game_session = GameSessionScript.new()
 	add_child(game_session)
 	game_session.setup_session(weights)
-	_animate_page_turn(_show_race_screen)
+	game_context.game_session = game_session
+	_animate_page_turn(_start_phase_chicken_race)
 
 func _animate_page_turn(callback: Callable):
 	# おもちゃ感あふれるノートの「ページめくり」トランジション
@@ -146,8 +160,8 @@ func _animate_page_turn(callback: Callable):
 	pc_style.shadow_size = 12
 	paper_cover.add_theme_stylebox_override("panel", pc_style)
 	
-	# ビューポート中央に配置
-	paper_cover.position = Vector2(view.x / 2.0, (view.y - 920.0) / 2.0)
+	# 右寄せされたノート（中心が150px右にシフト）に完全同期して配置
+	paper_cover.position = Vector2(view.x / 2.0 + 150.0, (view.y - 920.0) / 2.0)
 	paper_cover.pivot_offset = Vector2(0, 460) # 背表紙（左端）を支点にしてめくる
 	paper_cover.scale = Vector2(1.0, 1.0)
 	
@@ -159,8 +173,8 @@ func _animate_page_turn(callback: Callable):
 	tw.tween_property(paper_cover, "scale:x", 0.0, 0.28).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tw.tween_callback(func():
 		callback.call() # 背後で画面をロード・切り替え
-		# ピボットを逆側（右端）にして展開する
-		paper_cover.position = Vector2(view.x / 2.0 - 690.0, (view.y - 920.0) / 2.0)
+		# ピボットを逆側（右端）にして展開する（同じく150px右にシフトした位置から展開）
+		paper_cover.position = Vector2(view.x / 2.0 + 150.0 - 690.0, (view.y - 920.0) / 2.0)
 		paper_cover.pivot_offset = Vector2(690, 460)
 	)
 	# 2. ページを開く (Xスケール 0 -> 1)
@@ -168,21 +182,22 @@ func _animate_page_turn(callback: Callable):
 	tw.tween_callback(paper_cover.queue_free)
 
 func _show_toast(msg: String, color: Color = DeskTheme.COLOR_INK):
-	ToastOverlay.show_toast(ui_root, msg, color)
+	ToastOverlayScript.show_toast(ui_root, msg, color)
 # ----------------------------------------------------
 # 3. 【チキンレース】HUDノート ＆ 机の上プレイエリア
 # ----------------------------------------------------
 func _start_phase_chicken_race():
-	var phase = ChickenRacePhase.new(game_context)
+	var phase = ChickenRacePhaseScript.new(game_context)
+	current_phase = phase
 	phase.phase_completed.connect(_on_chicken_race_completed)
 	phase.start()
 
 func _on_chicken_race_completed(_scores_data: Dictionary):
-	var final_scores = game_session.get_today_results()
-	_show_report_screen(final_scores)
+	_show_report_screen(_scores_data)
 
 func _show_report_screen(scores: Dictionary):
-	var phase = ReportPhase.new(game_context)
+	var phase = ReportPhaseScript.new(game_context)
+	current_phase = phase
 	phase.phase_completed.connect(_on_report_completed)
 	phase.start(scores)
 
@@ -190,7 +205,8 @@ func _on_report_completed():
 	_show_day_transition()
 
 func _show_day_transition():
-	var phase = DayTransitionPhase.new(game_context)
+	var phase = DayTransitionPhaseScript.new(game_context)
+	current_phase = phase
 	phase.phase_completed.connect(_on_day_transition_completed)
 	phase.start()
 
@@ -198,11 +214,11 @@ func _on_day_transition_completed():
 	_start_phase_bag_builder()
 
 func _show_blackboard_progress():
-	var phase = BlackboardPhase.new(game_context)
+	var phase = BlackboardPhaseScript.new(game_context)
+	current_phase = phase
 	phase.phase_completed.connect(_on_blackboard_completed)
 	phase.start()
 
 func _on_blackboard_completed():
 	backend_manager.load_daily_scores()
 	_show_loading()
-

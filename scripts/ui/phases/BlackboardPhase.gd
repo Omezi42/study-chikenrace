@@ -1,30 +1,35 @@
 # scripts/ui/phases/BlackboardPhase.gd
 class_name BlackboardPhase
 extends RefCounted
+const NotebookBuilderScript = preload("res://scripts/ui/components/NotebookBuilder.gd")
+const SmartphoneBuilderScript = preload("res://scripts/ui/components/SmartphoneBuilder.gd")
+const ToastOverlayScript = preload("res://scripts/ui/components/ToastOverlay.gd")
+
 
 signal phase_completed()
 
-var ctx: GameContext
+var ctx: RefCounted
 
 # UI参照保持
 var active_tab_state = {"active": 0}
 
-func _init(context: GameContext):
+func _init(context: RefCounted):
 	self.ctx = context
 
 func start():
 	_show_blackboard_progress()
 
 func _show_blackboard_progress():
-	ctx.screen_content.get_tree().call_group("ui_elements", "queue_free") # 古いUIクリア
+	for child in ctx.screen_content.get_children():
+		child.queue_free()
 	
 	# 背景に見開きノートを置く（ふせんフェーズと同じ世界観を維持）
-	var notebook = NotebookBuilder.create()
+	var notebook = NotebookBuilderScript.create()
 	notebook.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	notebook.offset_left = (1920.0 - 1380.0) / 2.0
-	notebook.offset_top = (1080.0 - 920.0) / 2.0
-	notebook.offset_right = -notebook.offset_left
-	notebook.offset_bottom = -notebook.offset_top
+	notebook.offset_left = 420.0
+	notebook.offset_top = 80.0
+	notebook.offset_right = -120.0
+	notebook.offset_bottom = -80.0
 	ctx.screen_content.add_child(notebook)
 	ctx.active_notebook = notebook
 	
@@ -34,7 +39,7 @@ func _show_blackboard_progress():
 	left_area.anchor_right = 0.3 # 画面左側30%
 	ctx.screen_content.add_child(left_area)
 	
-	var app_container = SmartphoneBuilder.create_mockup(ctx, false)
+	var app_container = SmartphoneBuilderScript.create_mockup(ctx, false)
 	
 	# 1. アプリヘッダー (Studyplus風)
 	var header = PanelContainer.new()
@@ -324,86 +329,50 @@ func _show_blackboard_progress():
 			details_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			c_h.add_child(details_lbl)
 			
-			# 3. 疑う と 応援 の極小丸型ボタン (他人かつ有効な相手のみ)
+			# 3. いいね（投票）の極小丸型ボタン (他人かつ有効な相手のみ)
 			if top["name"] != Global.player_name and top["name"] != "なし" and top["name"] != "誰もいない":
-				# 疑うボタン (小丸)
+				var already_voted = ctx.backend_manager.has_voted_rival(top["name"], s)
+				
+				# いいねボタン (👍)
 				var like_btn = Button.new()
-				like_btn.custom_minimum_size = Vector2(30, 30)
-				like_btn.size = Vector2(30, 30)
+				like_btn.custom_minimum_size = Vector2(32, 32)
+				like_btn.size = Vector2(32, 32)
+				
 				var lb_normal = StyleBoxFlat.new()
-				lb_normal.bg_color = Color("fff0f0")
+				lb_normal.bg_color = Color("f0f4f8") if not already_voted else Color("dbe3eb")
 				lb_normal.border_width_left = 1.0; lb_normal.border_width_right = 1.0
 				lb_normal.border_width_top = 1.0; lb_normal.border_width_bottom = 1.0
-				lb_normal.border_color = Color("ad3b3b")
-				lb_normal.corner_radius_top_left = 15; lb_normal.corner_radius_top_right = 15
-				lb_normal.corner_radius_bottom_left = 15; lb_normal.corner_radius_bottom_right = 15
+				lb_normal.border_color = Color("8fa4b8") if not already_voted else Color("a6b8c7")
+				lb_normal.corner_radius_top_left = 16; lb_normal.corner_radius_top_right = 16
+				lb_normal.corner_radius_bottom_left = 16; lb_normal.corner_radius_bottom_right = 16
 				like_btn.add_theme_stylebox_override("normal", lb_normal)
 				like_btn.add_theme_stylebox_override("hover", lb_normal)
 				
 				var lb_disabled = StyleBoxFlat.new()
-				lb_disabled.bg_color = Color("ad3b3b")
-				lb_disabled.corner_radius_top_left = 15; lb_disabled.corner_radius_top_right = 15
-				lb_disabled.corner_radius_bottom_left = 15; lb_disabled.corner_radius_bottom_right = 15
+				lb_disabled.bg_color = Color("dbe3eb")
+				lb_disabled.corner_radius_top_left = 16; lb_disabled.corner_radius_top_right = 16
+				lb_disabled.corner_radius_bottom_left = 16; lb_disabled.corner_radius_bottom_right = 16
 				like_btn.add_theme_stylebox_override("disabled", lb_disabled)
 				
-				like_btn.text = "疑"
-				like_btn.add_theme_color_override("font_color", Color("ad3b3b"))
-				like_btn.add_theme_color_override("font_disabled_color", Color.WHITE)
-				like_btn.add_theme_font_size_override("font_size", 11)
+				like_btn.text = "👍"
+				like_btn.add_theme_color_override("font_color", Color("1c7ed6"))
+				like_btn.add_theme_color_override("font_disabled_color", Color("748ffc"))
+				like_btn.add_theme_font_size_override("font_size", 12)
 				like_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+				like_btn.disabled = already_voted
 				
 				like_btn.pressed.connect(func():
-					if state["liked"]: return
+					if state["liked"] or ctx.backend_manager.has_voted_rival(top["name"], s): return
 					state["liked"] = true
+					ctx.backend_manager.vote_rival(top["name"], s)
+					
 					if ctx.audio_manager: ctx.audio_manager.play_se("place")
 					like_btn.disabled = true
 					
-					# 相手が嘘をついているか判定
-					var is_bluff = randf() < 0.6 if top["score"] >= 16 else randf() < 0.2
-					if top["name"] == "ブラフの達人": is_bluff = true
-					if top["name"] == "慎重な優等生": is_bluff = false
-					
-					if is_bluff:
-						ToastOverlay.show_toast(ctx.ui_root, "相手は嘘を報告していた！\nプレッシャーで翌日のペナルティが倍増！", DeskTheme.COLOR_BLUFF_RED)
-					else:
-						ToastOverlay.show_toast(ctx.ui_root, "相手は正直に勉強していた！\nペナルティは発生しなかった。", DeskTheme.COLOR_SAFE)
+					# 中立的で楽しげなトーストを表示
+					ToastOverlayScript.show_toast(ctx.ui_root, "%s の報告に『いいね』しました！\n（嘘を見破れたかは最終日の通知表で公開！）" % top["name"], DeskTheme.COLOR_SAFE)
 				)
 				c_h.add_child(like_btn)
-				
-				# 応援ボタン (小丸)
-				var cheer_btn = Button.new()
-				cheer_btn.custom_minimum_size = Vector2(30, 30)
-				cheer_btn.size = Vector2(30, 30)
-				var cb_normal = StyleBoxFlat.new()
-				cb_normal.bg_color = Color("f0fffb")
-				cb_normal.border_width_left = 1.0; cb_normal.border_width_right = 1.0
-				cb_normal.border_width_top = 1.0; cb_normal.border_width_bottom = 1.0
-				cb_normal.border_color = Color("1e7b85")
-				cb_normal.corner_radius_top_left = 15; cb_normal.corner_radius_top_right = 15
-				cb_normal.corner_radius_bottom_left = 15; cb_normal.corner_radius_bottom_right = 15
-				cheer_btn.add_theme_stylebox_override("normal", cb_normal)
-				cheer_btn.add_theme_stylebox_override("hover", cb_normal)
-				
-				var cb_disabled = StyleBoxFlat.new()
-				cb_disabled.bg_color = Color("1e7b85")
-				cb_disabled.corner_radius_top_left = 15; cb_disabled.corner_radius_top_right = 15
-				cb_disabled.corner_radius_bottom_left = 15; cb_disabled.corner_radius_bottom_right = 15
-				cheer_btn.add_theme_stylebox_override("disabled", cb_disabled)
-				
-				cheer_btn.text = "応"
-				cheer_btn.add_theme_color_override("font_color", Color("1e7b85"))
-				cheer_btn.add_theme_color_override("font_disabled_color", Color.WHITE)
-				cheer_btn.add_theme_font_size_override("font_size", 11)
-				cheer_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-				
-				cheer_btn.pressed.connect(func():
-					if state["liked"]: return
-					state["liked"] = true
-					if ctx.audio_manager: ctx.audio_manager.play_se("combo")
-					cheer_btn.disabled = true
-					ToastOverlay.show_toast(ctx.ui_root, "%s を心から応援した！\nタイムラインに温かい拍手が送られました。" % top["name"], DeskTheme.COLOR_SAFE)
-				)
-				c_h.add_child(cheer_btn)
 				
 	# 3. アプリフッター (翌日の勉強へ進むボタン)
 	var footer = PanelContainer.new()

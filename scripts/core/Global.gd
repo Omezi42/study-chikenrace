@@ -24,6 +24,10 @@ var last_top_subjects: Array = []
 # [{"day": 1, "total": 42, "subjects": {0: 10, ...}, "rivals": [{"name": "...", "score": 30, "subjects": {...}}]}]
 var score_history: Array = []
 
+# タイムラインでのライバルへのいいね（投票）履歴の永続化
+# キー: "day_【Day数】_【ライバル名】_【教科ID】" -> true
+var accumulated_votes: Dictionary = {}
+
 const SAVE_PATH = "user://savegame.json"
 
 func _ready():
@@ -41,7 +45,8 @@ func save_data():
 		"last_reported_scores": last_reported_scores,
 		"last_actual_scores": last_actual_scores,
 		"last_top_subjects": last_top_subjects,
-		"score_history": score_history
+		"score_history": score_history,
+		"accumulated_votes": accumulated_votes
 	}
 	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file: file.store_string(JSON.stringify(data))
@@ -67,6 +72,8 @@ func load_data():
 			for k in last_act: last_actual_scores[int(k)] = last_act[k]
 			last_top_subjects = data.get("last_top_subjects", [])
 			score_history = data.get("score_history", [])
+			accumulated_votes = data.get("accumulated_votes", {})
+
 
 func unlock_achievement(_id: String, _title: String):
 	print("Achievement Unlocked: ", _title)

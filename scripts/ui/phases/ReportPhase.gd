@@ -1,10 +1,13 @@
 # scripts/ui/phases/ReportPhase.gd
 class_name ReportPhase
 extends RefCounted
+const NotebookBuilderScript = preload("res://scripts/ui/components/NotebookBuilder.gd")
+const SmartphoneBuilderScript = preload("res://scripts/ui/components/SmartphoneBuilder.gd")
+
 
 signal phase_completed()
 
-var ctx: GameContext
+var ctx: RefCounted
 var scores: Dictionary
 var reported_scores: Dictionary = {}
 var slider_labels: Dictionary = {}
@@ -12,7 +15,7 @@ var slider_labels: Dictionary = {}
 # UI参照保持
 var ui_elements: Dictionary = {}
 
-func _init(context: GameContext):
+func _init(context: RefCounted):
 	self.ctx = context
 
 func start(today_scores: Dictionary):
@@ -20,18 +23,19 @@ func start(today_scores: Dictionary):
 	_show_report_screen()
 
 func _show_report_screen():
-	ctx.screen_content.get_tree().call_group("ui_elements", "queue_free") # 古いUIクリア
+	for child in ctx.screen_content.get_children():
+		child.queue_free()
 	ui_elements.clear()
 	reported_scores.clear()
 	slider_labels.clear()
 	
 	# 背景に見開きノートを置く（ふせんフェーズと同じ世界観を維持）
-	var notebook = NotebookBuilder.create()
+	var notebook = NotebookBuilderScript.create()
 	notebook.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	notebook.offset_left = (1920.0 - 1380.0) / 2.0
-	notebook.offset_top = (1080.0 - 920.0) / 2.0
-	notebook.offset_right = -notebook.offset_left
-	notebook.offset_bottom = -notebook.offset_top
+	notebook.offset_left = 420.0
+	notebook.offset_top = 80.0
+	notebook.offset_right = -120.0
+	notebook.offset_bottom = -80.0
 	ctx.screen_content.add_child(notebook)
 	ctx.active_notebook = notebook
 	
@@ -41,7 +45,10 @@ func _show_report_screen():
 	left_area.anchor_right = 0.3 # 画面左側30%
 	ctx.screen_content.add_child(left_area)
 	
-	var app_container = SmartphoneBuilder.create_mockup(ctx, false)
+	var app_container = SmartphoneBuilderScript.create_mockup(ctx, true)
+	var phone = ctx.bag_ui_elements.get("report_page")
+	if is_instance_valid(phone):
+		phone.set_meta("lock_zoom", true)
 	
 	# 1. アプリヘッダー (Studyplus風)
 	var app_header = PanelContainer.new()
@@ -117,7 +124,7 @@ func _show_report_screen():
 	title_v.add_theme_constant_override("separation", 2)
 	tm.add_child(title_v)
 	
-	title_v.add_child(DeskTheme.create_label("📊 本日の学習報告（成績発表）", 18, DeskTheme.COLOR_INK, true))
+	title_v.add_child(DeskTheme.create_label("[ 本日の学習報告（成績発表） ]", 18, DeskTheme.COLOR_INK, true))
 	title_v.add_child(DeskTheme.create_label("スライダーを動かして勉強時間を報告しよう！\n(嘘を盛るリスク・謙虚にするボーナスあり)", 13, DeskTheme.COLOR_MUTED, true))
 	
 	# スライダーリストカード
@@ -163,8 +170,8 @@ func _show_report_screen():
 		slider_h.add_theme_constant_override("separation", 4)
 		s_row.add_child(slider_h)
 		
-		# ➖ボタン (クリックでボヨヨン ＆ ホバーぷっくり)
-		var minus_btn = DeskTheme.create_button("➖", Vector2(32, 32), Color("e9edf2"), Color("b8c4d1"), true)
+		# -ボタン (クリックでボヨヨン ＆ ホバーぷっくり)
+		var minus_btn = DeskTheme.create_button("-", Vector2(32, 32), Color("e9edf2"), Color("b8c4d1"), true)
 		minus_btn.add_theme_font_size_override("font_size", 11)
 		minus_btn.pivot_offset = Vector2(16, 16)
 		slider_h.add_child(minus_btn)
@@ -205,8 +212,8 @@ func _show_report_screen():
 		slider.add_theme_stylebox_override("slider", ruler_bg)
 		slider_h.add_child(slider)
 		
-		# ➕ボタン (クリックでボヨヨン ＆ ホバーぷっくり)
-		var plus_btn = DeskTheme.create_button("➕", Vector2(32, 32), DeskTheme.COLOR_ACCENT_GOLD, Color("b38f30"))
+		# +ボタン (クリックでボヨヨン ＆ ホバーぷっくり)
+		var plus_btn = DeskTheme.create_button("+", Vector2(32, 32), DeskTheme.COLOR_ACCENT_GOLD, Color("b38f30"))
 		plus_btn.add_theme_font_size_override("font_size", 11)
 		plus_btn.pivot_offset = Vector2(16, 16)
 		slider_h.add_child(plus_btn)
@@ -231,7 +238,7 @@ func _show_report_screen():
 		# 前回の値を保持して整数値の変化だけを検知する
 		var last_val = { "val": actual_val }
 		
-		# ➕➖物理ボタンの連動
+		# +-物理ボタンの連動
 		minus_btn.pressed.connect(func():
 			if slider.value > slider.min_value:
 				slider.value -= 1
@@ -415,7 +422,14 @@ func _submit_final():
 		await s_tw.finished
 		await p_tw.finished
 		# 余韻
-		await ctx.screen_content.get_tree().create_timer(0.5).timeout
+		await ctx.screen_content.get_tree().create_timer(0.4).timeout
+		
+		# 物理スライドダウン ＆ 縮小退場アニメーション！
+		var exit_tw = page_panel.create_tween().set_parallel(true)
+		exit_tw.tween_property(page_panel, "position:y", 1200, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+		exit_tw.tween_property(page_panel, "scale", Vector2(0.5, 0.5), 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+		if ctx.audio_manager: ctx.audio_manager.play_se("place")
+		await exit_tw.finished
 	else:
 		if ctx.audio_manager: ctx.audio_manager.play_se("click")
 		
@@ -445,10 +459,13 @@ func _submit_final():
 		"day": Global.play_count,
 		"total": Global.total_score,
 		"subjects": {},
+		"actual_subjects": {},
 		"rivals": []
 	}
 	for s in reported_scores:
 		day_entry["subjects"][s] = reported_scores[s]
+	for s in scores:
+		day_entry["actual_subjects"][s] = scores[s]
 	for rival in ctx.backend_manager.current_scores:
 		day_entry["rivals"].append({"name": rival.get("name", "???"), "score": rival.get("score", 0)})
 	Global.score_history.append(day_entry)

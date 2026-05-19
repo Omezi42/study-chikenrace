@@ -1,401 +1,363 @@
 # scripts/ui/phases/BagBuilderPhase.gd
 class_name BagBuilderPhase
 extends RefCounted
+const SmartphoneBuilderScript = preload("res://scripts/ui/components/SmartphoneBuilder.gd")
+const NotebookBuilderScript = preload("res://scripts/ui/components/NotebookBuilder.gd")
+const ToastOverlayScript = preload("res://scripts/ui/components/ToastOverlay.gd")
+const DailyLikesPhaseScript = preload("res://scripts/ui/phases/DailyLikesPhase.gd")
 
 signal phase_completed()
 
-var ctx: GameContext
+var ctx: RefCounted
+
+# 付箋カラー定義 (旧版の10色Post-itパレット)
+const POSTIT_COLORS = [
+	Color("ffd43b"), Color("ff6b6b"), Color("339af0"), Color("51cf66"), Color("cc5de8"),
+	Color("ff922b"), Color("f06595"), Color("20c997"), Color("5c7cfa"), Color("845ef7")
+]
+
+# タップ選択用の状態
+var selected_bag_subject: int = 8
+var selected_bag_slot: int = -1
+var active_likes_phase: RefCounted = null
 
 # ドラッグ&ドロップ用の一時状態
-var drag_data: Dictionary = {
-	"active": false,
-	"value": 0,
-	"source": "", # "palette" or "slot"
-	"subject": -1,
-	"slot": -1,
-	"node": null
-}
+var drag_data: Dictionary = {"active": false, "value": 0, "source": "", "subject": -1, "slot": -1, "node": null}
+var drag_start_pos: Vector2 = Vector2.ZERO
+var drag_threshold: float = 10.0
+var has_dragged: bool = false
+var hovered_slot_subject: int = -1
+var hovered_slot_idx: int = -1
+var drag_helper: Node
 
-func _init(context: GameContext):
+# グローバル入力を監視するための一時ノード
+class DragHelper extends Node:
+	var phase: RefCounted
+	func _input(event: InputEvent):
+		if phase:
+			phase._handle_global_input(event)
+
+func _init(context: RefCounted):
 	self.ctx = context
 
 func start():
 	_show_bag_builder()
 
 func _show_bag_builder():
-	ctx.screen_content.get_tree().call_group("ui_elements", "queue_free") # 古いUIのクリア
+	for child in ctx.screen_content.get_children():
+		child.queue_free()
 	
 	ctx.bag_assignments.clear()
 	for s in range(5):
 		ctx.bag_assignments[s] = [null, null]
 	
-	# メインの横分割コンテナ (左: チキスタスマホ / 右: リングノート)
-	var main_hbox = HBoxContainer.new()
-	main_hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	main_hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	main_hbox.add_theme_constant_override("separation", 40)
-	main_hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	main_hbox.offset_left = 40; main_hbox.offset_top = 40; main_hbox.offset_right = -40; main_hbox.offset_bottom = -40
-	ctx.screen_content.add_child(main_hbox)
+	# ドラッグ＆ドロップ監視ヘルパーの起動
+	if is_instance_valid(drag_helper):
+		drag_helper.queue_free()
+	drag_helper = DragHelper.new()
+	drag_helper.phase = self
+	ctx.ui_root.add_child(drag_helper)
 	
-	# ==========================================
-	# 左側: 教室の机に置かれた「スマートフォン (チキスタアプリ)」
-	# ==========================================
-	var phone_container = Control.new()
-	phone_container.custom_minimum_size = Vector2(400, 0)
-	phone_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	main_hbox.add_child(phone_container)
-	
-	var app_container = SmartphoneBuilder.create_mockup(ctx, false)
-	
-	# 1. アプリヘッダー
-	var app_header = PanelContainer.new()
-	app_header.custom_minimum_size = Vector2(0, 52)
-	var header_style = StyleBoxFlat.new()
-	header_style.bg_color = Color("ffffff")
-	header_style.border_width_bottom = 2
-	header_style.border_color = Color("e1e4e6")
-	app_header.add_theme_stylebox_override("panel", header_style)
-	app_container.add_child(app_header)
-	
-	var app_header_h = HBoxContainer.new()
-	app_header_h.add_theme_constant_override("separation", 8)
-	app_header_h.alignment = BoxContainer.ALIGNMENT_CENTER
-	app_header.add_child(app_header_h)
-	
-	var app_icon = ColorRect.new()
-	app_icon.custom_minimum_size = Vector2(28, 28)
-	var icon_style = StyleBoxFlat.new()
-	icon_style.bg_color = DeskTheme.COLOR_SAFE
-	icon_style.corner_radius_top_left = 8; icon_style.corner_radius_top_right = 8
-	icon_style.corner_radius_bottom_left = 8; icon_style.corner_radius_bottom_right = 8
-	app_icon.add_theme_stylebox_override("panel", icon_style)
-	app_header_h.add_child(app_icon)
-	
-	var app_icon_lbl = DeskTheme.create_label("S", 14, Color.WHITE)
-	app_icon_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	app_icon_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	app_icon_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	app_icon.add_child(app_icon_lbl)
-	
-	var app_title = DeskTheme.create_label("チキスタ !", 18, DeskTheme.COLOR_SAFE, true)
-	app_header_h.add_child(app_title)
-	
-	# 2. アプリ内メインスクロールエリア
-	var app_scroll = ScrollContainer.new()
-	app_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	app_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	app_container.add_child(app_scroll)
-	
-	# 初期のタイムライン表示
-	var feed_v = VBoxContainer.new()
-	feed_v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	feed_v.add_theme_constant_override("separation", 10)
-	app_scroll.add_child(feed_v)
-	ctx.chikista_active_tab = 0
-	SmartphoneBuilder._build_timeline_feed(ctx, feed_v)
-	
-	# 3. ボトムナビゲーションバー
-	var app_footer = PanelContainer.new()
-	app_footer.custom_minimum_size = Vector2(0, 60)
-	var footer_style = StyleBoxFlat.new()
-	footer_style.bg_color = Color("f8f9fa")
-	footer_style.border_width_top = 2
-	footer_style.border_color = Color("e1e4e6")
-	app_footer.add_theme_stylebox_override("panel", footer_style)
-	app_container.add_child(app_footer)
-	
-	var app_footer_h = HBoxContainer.new()
-	app_footer_h.alignment = BoxContainer.ALIGNMENT_CENTER
-	app_footer_h.add_theme_constant_override("separation", 16)
-	app_footer.add_child(app_footer_h)
-	
-	var tabs_info = [
-		{"text": "タイムライン", "idx": 0},
-		{"text": "学習分析", "idx": 1},
-		{"text": "目標", "idx": 2}
-	]
-	
-	for tab in tabs_info:
-		var tab_btn = Button.new()
-		tab_btn.text = tab["text"]
-		tab_btn.custom_minimum_size = Vector2(110, 48)
-		tab_btn.add_theme_font_override("font", DeskTheme.DEFAULT_FONT)
-		tab_btn.add_theme_font_size_override("font_size", 13)
-		tab_btn.add_theme_color_override("font_color", DeskTheme.COLOR_MUTED)
-		
-		var b_normal = StyleBoxFlat.new()
-		b_normal.bg_color = Color(0,0,0,0)
-		b_normal.corner_radius_top_left = 8; b_normal.corner_radius_top_right = 8
-		b_normal.corner_radius_bottom_left = 8; b_normal.corner_radius_bottom_right = 8
-		tab_btn.add_theme_stylebox_override("normal", b_normal)
-		
-		var b_hover = StyleBoxFlat.new()
-		b_hover.bg_color = Color(0.9, 0.9, 0.92, 0.5)
-		b_hover.corner_radius_top_left = 8; b_hover.corner_radius_top_right = 8
-		b_hover.corner_radius_bottom_left = 8; b_hover.corner_radius_bottom_right = 8
-		tab_btn.add_theme_stylebox_override("hover", b_hover)
-		
-		var b_pressed = StyleBoxFlat.new()
-		b_pressed.bg_color = Color(0.85, 0.85, 0.88)
-		b_pressed.corner_radius_top_left = 8; b_pressed.corner_radius_top_right = 8
-		b_pressed.corner_radius_bottom_left = 8; b_pressed.corner_radius_bottom_right = 8
-		tab_btn.add_theme_stylebox_override("pressed", b_pressed)
-		
-		tab_btn.pressed.connect(SmartphoneBuilder.on_chikista_tab_pressed.bind(ctx, tab["idx"], app_scroll))
-		app_footer_h.add_child(tab_btn)
-		
-	# ==========================================
-	# 右側: カバン構築用 見開きリングノートUI
-	# ==========================================
-	var note_panel = NotebookBuilder.create()
+	# === カバン構築用 見開きリングノートUIを先に追加（手前に入力レイヤーを置くための順序調整） ===
+	var note_panel = NotebookBuilderScript.create()
 	ctx.active_notebook = note_panel
-	main_hbox.add_child(note_panel)
+	note_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	note_panel.offset_left = 420.0 # 少し右寄りに配置してスマホと被らないようにする
+	note_panel.offset_top = 80.0
+	note_panel.offset_right = -120.0
+	note_panel.offset_bottom = -80.0
+	ctx.screen_content.add_child(note_panel)
+	
+	SmartphoneBuilderScript.build_standard_smartphone(ctx)
 	
 	var left_margin = note_panel.find_child("LeftContent", true, false) as MarginContainer
 	var right_margin = note_panel.find_child("RightContent", true, false) as MarginContainer
 	
-	# ---------------- Left Page Content ----------------
+	# ---- Left Page: カレンダー + 教科スロット一覧 ----
 	var left_content = VBoxContainer.new()
 	left_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	left_content.add_theme_constant_override("separation", 24)
 	left_margin.add_child(left_content)
 	
-	# カレンダーと手書きヘッダー
 	var cal_h = HBoxContainer.new()
-	cal_h.add_theme_constant_override("separation", 12)
+	cal_h.add_theme_constant_override("separation", 16)
 	left_content.add_child(cal_h)
 	
-	var day_num = 1
-	if is_instance_valid(ctx.game_session):
-		day_num = ctx.game_session.current_day
-	var cal_lbl = DeskTheme.create_label("📅 %d日目 / 7日中" % day_num, 20, DeskTheme.COLOR_INK, true)
-	cal_h.add_child(cal_lbl)
+	var cal_note = TextureRect.new()
+	cal_note.texture = DeskTheme.CALENDAR_TEXTURE
+	cal_note.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	cal_note.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	cal_note.custom_minimum_size = Vector2(90, 90)
+	cal_note.rotation_degrees = -4.0
+	cal_h.add_child(cal_note)
 	
-	# 計画計画のタイトル
-	var title_lbl = DeskTheme.create_label("✏️ 今日のカバンの中身（学習計画）", 26, DeskTheme.COLOR_INK, true)
-	left_content.add_child(title_lbl)
+	var cal_v = VBoxContainer.new()
+	cal_v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	cal_v.alignment = BoxContainer.ALIGNMENT_CENTER
+	cal_v.position.y += 8
+	cal_note.add_child(cal_v)
+	cal_v.add_child(DeskTheme.create_label("Day", 15, DeskTheme.COLOR_MUTED, true))
+	cal_v.add_child(DeskTheme.create_label(str(Global.play_count + 1), 38, Color("d94040"), true))
 	
-	# 指示書き
-	var desc_lbl = DeskTheme.create_label("下の手書きの「重り」を、教科のスロットへドラッグ＆ドロップして学習計画を立てましょう。\n計画ができたら右下の【通学開始！】ボタンを押して、今日の勉強チキンレースに挑みます！", 14, DeskTheme.COLOR_MUTED)
-	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	left_content.add_child(desc_lbl)
+	var title_lbl = DeskTheme.create_label("[ 今週の学習計画ノート ]", 34, DeskTheme.COLOR_INK, true)
+	title_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	cal_h.add_child(title_lbl)
 	
-	# 重りパレット
-	var pal_lbl = DeskTheme.create_label("▼ 勉強の「重り」パレット (ドラッグしてカバンに入れてね)", 13, DeskTheme.COLOR_MUTED)
-	left_content.add_child(pal_lbl)
+	# カバンスロットリスト（5教科×2スロット）
+	var pockets_v = VBoxContainer.new()
+	pockets_v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pockets_v.add_theme_constant_override("separation", 26)
+	left_content.add_child(pockets_v)
 	
-	var weights_grid = GridContainer.new()
-	weights_grid.columns = 4
-	weights_grid.add_theme_constant_override("h_separation", 24)
-	weights_grid.add_theme_constant_override("v_separation", 16)
-	left_content.add_child(weights_grid)
+	ctx.bag_ui_elements["slots"] = {}
+	for s in range(5):
+		var pocket_h = HBoxContainer.new()
+		pocket_h.add_theme_constant_override("separation", 16)
+		pockets_v.add_child(pocket_h)
+		
+		var p_header = DeskTheme.create_stat_chip(DeskTheme.subject_name(s), DeskTheme.subject_color(s), 18)
+		p_header.custom_minimum_size = Vector2(92, 44)
+		pocket_h.add_child(p_header)
+		
+		var icon = DeskTheme.create_icon_rect(DeskTheme.subject_texture(s), Vector2(44, 44))
+		pocket_h.add_child(icon)
+		
+		var slot_btns = []
+		for i in range(2):
+			var slot_btn = Button.new()
+			slot_btn.custom_minimum_size = Vector2(150, 88)
+			var btn_style = StyleBoxFlat.new()
+			btn_style.bg_color = Color("ffffff", 0.8)
+			btn_style.border_width_left = 2; btn_style.border_width_right = 2
+			btn_style.border_width_top = 2; btn_style.border_width_bottom = 4
+			btn_style.border_color = DeskTheme.COLOR_MUTED
+			btn_style.corner_radius_top_left = 8; btn_style.corner_radius_top_right = 8
+			btn_style.corner_radius_bottom_left = 8; btn_style.corner_radius_bottom_right = 8
+			slot_btn.add_theme_stylebox_override("normal", btn_style)
+			slot_btn.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+			slot_btn.add_theme_font_size_override("font_size", 32)
+			slot_btn.add_theme_font_override("font", DeskTheme.DEFAULT_FONT)
+			slot_btn.pressed.connect(_on_bag_slot_pressed.bind(s, i))
+			slot_btn.gui_input.connect(_on_slot_gui_input.bind(s, i))
+			pocket_h.add_child(slot_btn)
+			slot_btns.append(slot_btn)
+			# ホバー時のボヨヨン拡大
+			slot_btn.pivot_offset = Vector2(75, 44)
+			slot_btn.mouse_entered.connect(func():
+				slot_btn.pivot_offset = slot_btn.size / 2.0
+				var tw = slot_btn.create_tween()
+				tw.tween_property(slot_btn, "scale", Vector2(1.12, 1.12), 0.08).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			)
+			slot_btn.mouse_exited.connect(func():
+				var tw = slot_btn.create_tween()
+				tw.tween_property(slot_btn, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			)
+		ctx.bag_ui_elements["slots"][s] = slot_btns
 	
-	var weights = [10, 20, 30, 40, 50, 60, 70, 80]
-	for w in weights:
-		var w_panel = PanelContainer.new()
-		w_panel.custom_minimum_size = Vector2(110, 76)
-		
-		var w_style = StyleBoxFlat.new()
-		w_style.bg_color = Color("faf8f5")
-		w_style.border_width_left = 2; w_style.border_width_top = 2
-		w_style.border_width_right = 2; w_style.border_width_bottom = 4
-		w_style.border_color = Color("c2b29d")
-		w_style.corner_radius_top_left = 12; w_style.corner_radius_top_right = 12
-		w_style.corner_radius_bottom_left = 12; w_style.corner_radius_bottom_right = 12
-		w_style.content_margin_left = 8; w_style.content_margin_right = 8
-		w_style.content_margin_top = 6; w_style.content_margin_bottom = 6
-		
-		# ドロップシャドウ
-		w_style.shadow_color = Color(0,0,0, 0.08)
-		w_style.shadow_size = 5
-		w_style.shadow_offset = Vector2(2, 4)
-		w_panel.add_theme_stylebox_override("panel", w_style)
-		weights_grid.add_child(w_panel)
-		
-		# 手書きふせんデザイン (付箋感)
-		var w_v = VBoxContainer.new()
-		w_v.alignment = BoxContainer.ALIGNMENT_CENTER
-		w_panel.add_child(w_v)
-		
-		var w_lbl = DeskTheme.create_label(str(w) + "g", 24, DeskTheme.COLOR_INK, true)
-		w_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		w_v.add_child(w_lbl)
-		
-		var label_text = "極軽"
-		if w >= 80: label_text = "極重"
-		elif w >= 60: label_text = "激重"
-		elif w >= 40: label_text = "普通"
-		elif w >= 20: label_text = "軽め"
-		var sub_lbl = DeskTheme.create_label(label_text, 11, DeskTheme.COLOR_MUTED)
-		sub_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		w_v.add_child(sub_lbl)
-		
-		w_panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		w_panel.gui_input.connect(_on_weight_gui_input.bind(w))
-		ctx.bag_ui_elements["palette_" + str(w)] = w_panel
-		
-	# ---------------- Right Page Content ----------------
+	# ---- Right Page: 数字付箋パレット ----
 	var right_content = VBoxContainer.new()
 	right_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right_content.add_theme_constant_override("separation", 20)
 	right_margin.add_child(right_content)
 	
-	# カバンヘッダー
-	var right_header_h = HBoxContainer.new()
-	right_header_h.alignment = BoxContainer.ALIGNMENT_BEGIN
-	right_content.add_child(right_header_h)
+	var rp_header = VBoxContainer.new()
+	rp_header.add_theme_constant_override("separation", 6)
+	right_content.add_child(rp_header)
+	rp_header.add_child(DeskTheme.create_label("[ 数字付箋パレット ]", 32, DeskTheme.COLOR_INK, true))
+	rp_header.add_child(DeskTheme.create_label("付箋をタップ（またはドラッグ）して左ページのスロットに貼ろう！", 16, DeskTheme.COLOR_MUTED, true))
 	
-	right_header_h.add_child(DeskTheme.create_label("🎒 カバンの中身スロット (最大2個/教科)", 20, DeskTheme.COLOR_INK, true))
+	var grid_center = CenterContainer.new()
+	grid_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right_content.add_child(grid_center)
 	
-	# カバンスロットリスト
-	var slots_v = VBoxContainer.new()
-	slots_v.add_theme_constant_override("separation", 14)
-	right_content.add_child(slots_v)
+	var grid = GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 24)
+	grid.add_theme_constant_override("v_separation", 24)
+	grid_center.add_child(grid)
 	
-	for s in range(5):
-		var s_row = PanelContainer.new()
-		var s_style = StyleBoxFlat.new()
-		s_style.bg_color = Color("ffffff")
-		s_style.corner_radius_top_left = 12; s_style.corner_radius_top_right = 12
-		s_style.corner_radius_bottom_left = 12; s_style.corner_radius_bottom_right = 12
-		s_style.content_margin_left = 16; s_style.content_margin_right = 16
-		s_style.content_margin_top = 10; s_style.content_margin_bottom = 10
-		
-		# 微細なシャドウで浮かせる
-		s_style.shadow_color = Color(0,0,0, 0.04)
-		s_style.shadow_size = 4
-		s_style.shadow_offset = Vector2(1, 2)
-		s_row.add_theme_stylebox_override("panel", s_style)
-		slots_v.add_child(s_row)
-		
-		var s_hbox = HBoxContainer.new()
-		s_hbox.alignment = BoxContainer.ALIGNMENT_BEGIN
-		s_hbox.add_theme_constant_override("separation", 16)
-		s_row.add_child(s_hbox)
-		
-		# 教科表示
-		var sub_info_h = HBoxContainer.new()
-		sub_info_h.custom_minimum_size = Vector2(150, 0)
-		sub_info_h.add_theme_constant_override("separation", 10)
-		s_hbox.add_child(sub_info_h)
-		
-		var sub_tex = DeskTheme.subject_texture(s)
-		sub_info_h.add_child(DeskTheme.create_icon_rect(sub_tex, Vector2(38, 38)))
-		
-		var sub_lbl_v = VBoxContainer.new()
-		sub_lbl_v.alignment = BoxContainer.ALIGNMENT_CENTER
-		sub_info_h.add_child(sub_lbl_v)
-		
-		sub_lbl_v.add_child(DeskTheme.create_label(DeskTheme.subject_name(s), 18, DeskTheme.COLOR_INK, true))
-		var sub_col_lbl = DeskTheme.create_label("目標: 20点", 11, DeskTheme.COLOR_MUTED)
-		sub_lbl_v.add_child(sub_col_lbl)
-		
-		# スロット1 & スロット2 (3D巨大スロット)
-		for slot in range(2):
-			var slot_panel = PanelContainer.new()
-			slot_panel.custom_minimum_size = Vector2(110, 56)
-			
-			var slot_style = StyleBoxFlat.new()
-			slot_style.bg_color = Color("f5f4f0")
-			slot_style.border_width_left = 3; slot_style.border_width_top = 3
-			slot_style.border_width_right = 3; slot_style.border_width_bottom = 3
-			slot_style.border_color = Color("d3cbbf")
-			slot_style.corner_radius_top_left = 10; slot_style.corner_radius_top_right = 10
-			slot_style.corner_radius_bottom_left = 10; slot_style.corner_radius_bottom_right = 10
-			
-			slot_panel.add_theme_stylebox_override("panel", slot_style)
-			s_hbox.add_child(slot_panel)
-			
-			var slot_lbl = DeskTheme.create_label("計画なし", 12, Color("bdae9c"))
-			slot_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			slot_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			slot_panel.add_child(slot_lbl)
-			
-			slot_panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-			slot_panel.gui_input.connect(_on_slot_gui_input.bind(s, slot))
-			ctx.bag_ui_elements["slot_%d_%d" % [s, slot]] = slot_panel
-			
-	# 下部フッター
-	var footer_hbox = HBoxContainer.new()
-	footer_hbox.alignment = BoxContainer.ALIGNMENT_END
-	right_content.add_child(footer_hbox)
+	ctx.bag_ui_elements["weights"] = {}
+	for w in range(1, 11):
+		var btn = Button.new()
+		btn.text = str(w)
+		btn.custom_minimum_size = Vector2(110, 110)
+		btn.add_theme_font_override("font", DeskTheme.DEFAULT_FONT)
+		btn.add_theme_font_size_override("font_size", 42)
+		btn.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+		btn.add_theme_color_override("font_hover_color", DeskTheme.COLOR_INK)
+		btn.add_theme_color_override("font_pressed_color", DeskTheme.COLOR_INK)
+		btn.add_theme_color_override("font_disabled_color", Color("868e96"))
+		var sticky_style = StyleBoxFlat.new()
+		var postit_col = POSTIT_COLORS[w - 1]
+		sticky_style.bg_color = postit_col
+		sticky_style.corner_radius_top_left = 2; sticky_style.corner_radius_top_right = 2
+		sticky_style.corner_radius_bottom_left = 6; sticky_style.corner_radius_bottom_right = 6
+		sticky_style.shadow_color = Color(0, 0, 0, 0.16)
+		sticky_style.shadow_size = 6
+		sticky_style.shadow_offset = Vector2(2, 4)
+		btn.add_theme_stylebox_override("normal", sticky_style)
+		var sticky_hov = sticky_style.duplicate()
+		sticky_hov.bg_color = postit_col.lightened(0.06)
+		sticky_hov.shadow_size = 10
+		btn.add_theme_stylebox_override("hover", sticky_hov)
+		var sticky_prs = sticky_style.duplicate()
+		sticky_prs.bg_color = postit_col.darkened(0.06)
+		sticky_prs.shadow_size = 3
+		btn.add_theme_stylebox_override("pressed", sticky_prs)
+		btn.pressed.connect(_on_bag_weight_pressed.bind(w))
+		btn.gui_input.connect(_on_weight_gui_input.bind(w))
+		grid.add_child(btn)
+		btn.pivot_offset = Vector2(55, 55)
+		btn.rotation_degrees = randf_range(-6.0, 6.0)
+		ctx.bag_ui_elements["weights"][w] = btn
+		# 付箋のプルプルおもちゃホバー
+		btn.mouse_entered.connect(func():
+			if btn.disabled: return
+			btn.pivot_offset = btn.size / 2.0
+			var random_rot = randf_range(-0.06, 0.06)
+			var tw = btn.create_tween().set_parallel(true)
+			tw.tween_property(btn, "scale", Vector2(1.2, 1.2), 0.08).set_trans(Tween.TRANS_CUBIC)
+			tw.tween_property(btn, "rotation", random_rot, 0.1).set_trans(Tween.TRANS_BACK)
+		)
+		btn.mouse_exited.connect(func():
+			var tw = btn.create_tween().set_parallel(true)
+			tw.tween_property(btn, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_CUBIC)
+			tw.tween_property(btn, "rotation", deg_to_rad(btn.rotation_degrees), 0.1).set_trans(Tween.TRANS_CUBIC)
+		)
 	
-	var start_btn = DeskTheme.create_button("通学開始！ 🎒", Vector2(240, 56), DeskTheme.COLOR_SAFE, Color("1b8a4f"), true, 20)
+	# 右ページ下部の開始ボタン（ハンコ風スタンプ）
+	var footer_center = CenterContainer.new()
+	right_content.add_child(footer_center)
+	var start_btn = DeskTheme.create_button("チキンレース開始！", Vector2(280, 64), DeskTheme.COLOR_SAFE, Color("2d928a"))
+	start_btn.add_theme_font_size_override("font_size", 18)
 	start_btn.pressed.connect(_on_start_race_pressed)
-	footer_hbox.add_child(start_btn)
+	footer_center.add_child(start_btn)
 	
+	ctx.bag_ui_elements["start_btn"] = start_btn
+	ctx.bag_ui_elements["was_all_placed"] = false
+	ctx.bag_ui_elements["bonus_given"] = false
+	
+	DeskTheme.animate_entrance(note_panel)
+	selected_bag_subject = 8
+	selected_bag_slot = -1
 	_update_bag_ui()
 	
-	# 【翌日朝の会】いいね被弾判定演出の自動開始 (0.5秒後)
 	var timer = ctx.screen_content.get_tree().create_timer(0.5)
 	timer.timeout.connect(func():
-		var likes_phase = DailyLikesPhase.new(ctx)
+		var likes_phase = DailyLikesPhaseScript.new(ctx)
+		active_likes_phase = likes_phase
 		likes_phase.phase_completed.connect(func():
-			_update_bag_ui() # 完了後にHUDの点数などを再同期
+			_update_bag_ui()
+			active_likes_phase = null
 		)
 		likes_phase.start()
 	)
 
+func _on_bag_slot_pressed(subject: int, slot: int):
+	if ctx.audio_manager: ctx.audio_manager.play_se("click")
+	selected_bag_subject = subject
+	selected_bag_slot = slot
+	_update_bag_ui()
+
+func _on_bag_weight_pressed(weight: int):
+	_remove_weight_from_assignments(weight)
+	var target_subject = selected_bag_subject
+	var target_slot = selected_bag_slot
+	if target_subject != 8 and target_slot != -1:
+		ctx.bag_assignments[target_subject][target_slot] = weight
+		var slot_btn = ctx.bag_ui_elements["slots"][target_subject][target_slot] as Control
+		slot_btn.pivot_offset = slot_btn.size / 2.0
+		var tw = slot_btn.create_tween()
+		tw.tween_property(slot_btn, "scale", Vector2(1.15, 1.15), 0.1).set_trans(Tween.TRANS_CUBIC)
+		tw.tween_property(slot_btn, "scale", Vector2(1.0, 1.0), 0.12).set_trans(Tween.TRANS_BACK)
+		selected_bag_subject = 8
+		selected_bag_slot = -1
+	else:
+		var assigned = false
+		for s in range(5):
+			for i in range(2):
+				if ctx.bag_assignments[s][i] == null:
+					ctx.bag_assignments[s][i] = weight
+					assigned = true
+					var slot_btn = ctx.bag_ui_elements["slots"][s][i] as Control
+					slot_btn.pivot_offset = slot_btn.size / 2.0
+					var tw = slot_btn.create_tween()
+					tw.tween_property(slot_btn, "scale", Vector2(1.25, 1.25), 0.08).set_trans(Tween.TRANS_CUBIC)
+					tw.tween_property(slot_btn, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_BOUNCE)
+					break
+			if assigned: break
+	if ctx.audio_manager: ctx.audio_manager.play_se("place")
+	_update_bag_ui()
+
 func _on_weight_gui_input(event: InputEvent, weight: int):
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			if event.pressed:
-				_start_drag(weight, "palette")
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			drag_start_pos = event.global_position
+			drag_data = {"active": false, "value": weight, "source": "tray", "subject": -1, "slot": -1, "node": null}
+			has_dragged = false
 
 func _on_slot_gui_input(event: InputEvent, subject: int, slot: int):
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			if event.pressed:
-				# すでにスロットに何かあればそれをドラッグ開始
-				var cur_val = ctx.bag_assignments[subject][slot]
-				if cur_val != null:
-					_start_drag(cur_val, "slot", subject, slot)
+	var current_weight = ctx.bag_assignments[subject][slot]
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			drag_start_pos = event.global_position
+			if current_weight != null:
+				drag_data = {"active": false, "value": current_weight, "source": "slot", "subject": subject, "slot": slot, "node": null}
+			else:
+				drag_data = {"active": false, "value": 0, "source": "", "subject": -1, "slot": -1, "node": null}
+			has_dragged = false
+
+func _handle_global_input(event: InputEvent):
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if not event.pressed:
+			if drag_data["active"]:
+				_end_drag()
+			elif drag_data.get("value", 0) > 0:
+				# 通常のタップ処理
+				if drag_data["source"] == "tray":
+					_on_bag_weight_pressed(drag_data["value"])
+				elif drag_data["source"] == "slot":
+					_on_bag_slot_pressed(drag_data["subject"], drag_data["slot"])
+			drag_data = {"active": false, "value": 0, "source": "", "subject": -1, "slot": -1, "node": null}
+	elif event is InputEventMouseMotion and drag_data.get("value", 0) > 0 and not drag_data["active"]:
+		if event.global_position.distance_to(drag_start_pos) > drag_threshold:
+			_start_drag(drag_data["value"], drag_data["source"], drag_data["subject"], drag_data["slot"])
 
 func _start_drag(value: int, source: String, subject: int = -1, slot: int = -1):
-	if drag_data["active"]: return
-	
 	drag_data["active"] = true
-	drag_data["value"] = value
-	drag_data["source"] = source
-	drag_data["subject"] = subject
-	drag_data["slot"] = slot
+	has_dragged = true
+	if ctx.audio_manager: ctx.audio_manager.play_se("click")
+	var postit_col = POSTIT_COLORS[value - 1]
 	
-	# ドラッグ中の浮遊ビジュアルノード作成
-	var drag_node = PanelContainer.new()
-	drag_node.custom_minimum_size = Vector2(100, 60)
+	var drag_preview = PanelContainer.new()
+	drag_preview.custom_minimum_size = Vector2(110, 110)
+	drag_preview.size = Vector2(110, 110)
+	drag_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color("faf8f5", 0.9)
-	style.border_width_left = 2; style.border_width_top = 2
-	style.border_width_right = 2; style.border_width_bottom = 4
-	style.border_color = Color("c2b29d")
-	style.corner_radius_top_left = 12; style.corner_radius_top_right = 12
-	style.corner_radius_bottom_left = 12; style.corner_radius_bottom_right = 12
-	drag_node.add_theme_stylebox_override("panel", style)
-	
-	var lbl = DeskTheme.create_label(str(value) + "g", 20, DeskTheme.COLOR_INK, true)
+	style.bg_color = Color(postit_col.r, postit_col.g, postit_col.b, 0.82)
+	style.corner_radius_top_left = 2; style.corner_radius_top_right = 2
+	style.corner_radius_bottom_left = 6; style.corner_radius_bottom_right = 6
+	style.shadow_color = Color(0, 0, 0, 0.22)
+	style.shadow_size = 12
+	style.shadow_offset = Vector2(4, 8)
+	drag_preview.add_theme_stylebox_override("panel", style)
+	var lbl = DeskTheme.create_label(str(value), 42, DeskTheme.COLOR_INK, true)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	drag_node.add_child(lbl)
+	drag_preview.add_child(lbl)
+	ctx.screen_content.add_child(drag_preview)
+	drag_preview.z_index = 200
+	drag_preview.global_position = ctx.ui_root.get_global_mouse_position() - Vector2(55, 55)
+	drag_data["node"] = drag_preview
 	
-	ctx.ui_root.add_child(drag_node)
-	drag_node.z_index = 200
-	drag_data["node"] = drag_node
+	if source == "slot" and subject != -1 and slot != -1:
+		ctx.bag_ui_elements["slots"][subject][slot].modulate = Color(1, 1, 1, 0.3)
+	elif source == "tray":
+		ctx.bag_ui_elements["weights"][value].modulate = Color(1, 1, 1, 0.3)
 	
-	# 元のスロットやパレットから一時的に見た目を薄くするなどの処理
-	if source == "slot":
-		ctx.bag_assignments[subject][slot] = null
-		_update_bag_ui()
-		
-	if ctx.audio_manager:
-		ctx.audio_manager.play_se("draw")
-		
-	# ドラッグ追従処理
-	_update_drag_position()
-	
-	# ドラッグループ用ポーリング開始
+	# ドラッグポーリング用Timer
 	var timer = Timer.new()
 	timer.name = "DragTimer"
 	timer.wait_time = 0.016
@@ -403,145 +365,189 @@ func _start_drag(value: int, source: String, subject: int = -1, slot: int = -1):
 	timer.timeout.connect(_on_drag_poll)
 	ctx.ui_root.add_child(timer)
 
-func _update_drag_position():
-	if drag_data["node"]:
-		var mouse_pos = ctx.ui_root.get_local_mouse_position()
-		drag_data["node"].position = mouse_pos - Vector2(50, 30) # ピボット調整
-
 func _on_drag_poll():
 	if not drag_data["active"]:
 		var timer = ctx.ui_root.find_child("DragTimer")
 		if timer: timer.queue_free()
 		return
-		
-	_update_drag_position()
+	if drag_data["node"]:
+		drag_data["node"].global_position = ctx.ui_root.get_global_mouse_position() - Vector2(55, 55)
 	_update_drag_hover()
-	
-	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		_end_drag()
 
 func _update_drag_hover():
-	# ホバー時のスロットの強調表示などのおもちゃ感フィードバック
-	var mouse_pos = ctx.ui_root.get_local_mouse_position()
+	var mouse_pos = ctx.ui_root.get_global_mouse_position()
+	var found_subject = -1
+	var found_slot = -1
 	for s in range(5):
-		for slot in range(2):
-			var key = "slot_%d_%d" % [s, slot]
-			var panel = ctx.bag_ui_elements.get(key)
-			if panel and is_instance_valid(panel):
-				var rect = panel.get_global_rect()
-				var local_mouse = panel.get_global_mouse_position()
-				if rect.has_point(local_mouse):
-					var style = panel.get_theme_stylebox("normal").duplicate() as StyleBoxFlat
-					style.border_color = DeskTheme.COLOR_SAFE
-					style.bg_color = Color("eef9f3")
-					panel.add_theme_stylebox_override("panel", style)
-				else:
-					var style = panel.get_theme_stylebox("normal").duplicate() as StyleBoxFlat
-					style.border_color = Color("d3cbbf")
-					style.bg_color = Color("f5f4f0")
-					panel.add_theme_stylebox_override("panel", style)
+		for i in range(2):
+			var slot_btn = ctx.bag_ui_elements["slots"][s][i] as Button
+			if slot_btn.get_global_rect().has_point(mouse_pos):
+				found_subject = s
+				found_slot = i
+				break
+		if found_subject != -1: break
+	if found_subject != hovered_slot_subject or found_slot != hovered_slot_idx:
+		if hovered_slot_subject != -1 and hovered_slot_idx != -1:
+			var old_btn = ctx.bag_ui_elements["slots"][hovered_slot_subject][hovered_slot_idx] as Button
+			var style = old_btn.get_theme_stylebox("normal").duplicate() as StyleBoxFlat
+			style.border_color = DeskTheme.COLOR_MUTED
+			style.border_width_bottom = 4
+			old_btn.add_theme_stylebox_override("normal", style)
+		hovered_slot_subject = found_subject
+		hovered_slot_idx = found_slot
+		if hovered_slot_subject != -1 and hovered_slot_idx != -1:
+			var new_btn = ctx.bag_ui_elements["slots"][hovered_slot_subject][hovered_slot_idx] as Button
+			var style = new_btn.get_theme_stylebox("normal").duplicate() as StyleBoxFlat
+			style.border_color = DeskTheme.COLOR_ACCENT_GOLD
+			style.border_width_bottom = 6
+			new_btn.add_theme_stylebox_override("normal", style)
+			if ctx.audio_manager: ctx.audio_manager.play_se("place")
 
 func _end_drag():
 	drag_data["active"] = false
-	if drag_data["node"]:
+	if is_instance_valid(drag_data.get("node")):
 		drag_data["node"].queue_free()
-		drag_data["node"] = null
-		
-	# ドロップ位置判定
-	var dropped_on_slot = false
-	var target_subject = -1
-	var target_slot = -1
-	
-	for s in range(5):
-		for slot in range(2):
-			var key = "slot_%d_%d" % [s, slot]
-			var panel = ctx.bag_ui_elements.get(key)
-			if panel and is_instance_valid(panel):
-				var rect = panel.get_global_rect()
-				var local_mouse = panel.get_global_mouse_position()
-				if rect.has_point(local_mouse):
-					dropped_on_slot = true
-					target_subject = s
-					target_slot = slot
-					break
-		if dropped_on_slot: break
-		
-	if dropped_on_slot:
-		# 対象スロットの置き換え
-		var prev_val = ctx.bag_assignments[target_subject][target_slot]
-		# すでに他のスロットに同じ重りがあれば重複配置を避けるため消去
-		_remove_weight_from_assignments(drag_data["value"])
-		
-		ctx.bag_assignments[target_subject][target_slot] = drag_data["value"]
-		
-		if ctx.audio_manager:
-			ctx.audio_manager.play_se("place")
+	drag_data["node"] = null
+	# ドラッグ元のモジュレーションを元に戻す
+	if drag_data.get("source") == "slot":
+		var s = drag_data["subject"]
+		var idx = drag_data["slot"]
+		ctx.bag_ui_elements["slots"][s][idx].modulate = Color.WHITE
+	elif drag_data.get("source") == "tray":
+		var val = drag_data["value"]
+		ctx.bag_ui_elements["weights"][val].modulate = Color.WHITE
+	_update_drag_hover()
+	var value = drag_data.get("value", 0)
+	var source = drag_data.get("source", "")
+	if hovered_slot_subject != -1 and hovered_slot_idx != -1:
+		var dest_subject = hovered_slot_subject
+		var dest_slot = hovered_slot_idx
+		var dest_current_val = ctx.bag_assignments[dest_subject][dest_slot]
+		if source == "tray":
+			_remove_weight_from_assignments(value)
+			ctx.bag_assignments[dest_subject][dest_slot] = value
+			var btn = ctx.bag_ui_elements["slots"][dest_subject][dest_slot] as Control
+			btn.pivot_offset = btn.size / 2.0
+			var tw = btn.create_tween()
+			tw.tween_property(btn, "scale", Vector2(1.15, 1.15), 0.08).set_trans(Tween.TRANS_CUBIC)
+			tw.tween_property(btn, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_BACK)
+		elif source == "slot":
+			var src_subject = drag_data["subject"]
+			var src_slot = drag_data["slot"]
+			if not (src_subject == dest_subject and src_slot == dest_slot):
+				ctx.bag_assignments[src_subject][src_slot] = dest_current_val
+				ctx.bag_assignments[dest_subject][dest_slot] = value
+				for btn in [ctx.bag_ui_elements["slots"][src_subject][src_slot], ctx.bag_ui_elements["slots"][dest_subject][dest_slot]]:
+					btn.pivot_offset = btn.size / 2.0
+					var tw = btn.create_tween()
+					tw.tween_property(btn, "scale", Vector2(1.15, 1.15), 0.08).set_trans(Tween.TRANS_CUBIC)
+					tw.tween_property(btn, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_BACK)
+		if ctx.audio_manager: ctx.audio_manager.play_se("place")
 	else:
-		# スロット外に落とした場合、元のソースがスロットなら何もしない（すでに消えているのでパレットに戻る）
-		if ctx.audio_manager:
-			ctx.audio_manager.play_se("place")
-			
+		if source == "slot":
+			var src_subject = drag_data["subject"]
+			var src_slot = drag_data["slot"]
+			ctx.bag_assignments[src_subject][src_slot] = null
+			if ctx.audio_manager: ctx.audio_manager.play_se("click")
+	if hovered_slot_subject != -1 and hovered_slot_idx != -1:
+		var btn = ctx.bag_ui_elements["slots"][hovered_slot_subject][hovered_slot_idx] as Button
+		var style = btn.get_theme_stylebox("normal").duplicate() as StyleBoxFlat
+		style.border_color = DeskTheme.COLOR_MUTED
+		style.border_width_bottom = 4
+		btn.add_theme_stylebox_override("normal", style)
+	hovered_slot_subject = -1
+	hovered_slot_idx = -1
+	drag_data = {"active": false, "value": 0, "source": "", "subject": -1, "slot": -1, "node": null}
 	_update_bag_ui()
 
-func _remove_weight_from_assignments(value: int):
+func _remove_weight_from_assignments(weight: int):
 	for s in range(5):
-		for slot in range(2):
-			if ctx.bag_assignments[s][slot] == value:
-				ctx.bag_assignments[s][slot] = null
+		for i in range(2):
+			if ctx.bag_assignments[s][i] == weight:
+				ctx.bag_assignments[s][i] = null
 
 func _update_bag_ui():
-	# 全スロットを現在の割り当てに同期
+	var placed = 0
+	var assigned_weights = []
+	
+	# 教科スロット付箋の更新
 	for s in range(5):
-		for slot in range(2):
-			var key = "slot_%d_%d" % [s, slot]
-			var panel = ctx.bag_ui_elements.get(key)
-			if panel and is_instance_valid(panel):
-				var val = ctx.bag_assignments[s][slot]
-				var lbl = panel.get_child(0) as Label
-				
-				# 既存のスタイル複製
-				var style = panel.get_theme_stylebox("panel").duplicate() as StyleBoxFlat
-				
-				if val != null:
-					lbl.text = str(val) + "g"
-					lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-					
-					style.bg_color = Color("faf8f5") # 割り当てあり
-					style.border_color = Color("c2b29d")
-					
-					# ゴムスタンプ風の「ペチッ」としたTweenアニメーション
-					if not panel.has_meta("has_element") or panel.get_meta("has_element") != val:
-						panel.set_meta("has_element", val)
-						panel.pivot_offset = panel.size / 2.0
-						panel.scale = Vector2(1.15, 1.15)
-						var tw = panel.create_tween()
-						tw.tween_property(panel, "scale", Vector2(1.0, 1.0), 0.12).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+		for i in range(2):
+			var btn = ctx.bag_ui_elements["slots"][s][i]
+			var val = ctx.bag_assignments[s][i]
+			var is_selected = (s == selected_bag_subject and i == selected_bag_slot)
+			var style: StyleBoxFlat = btn.get_theme_stylebox("normal").duplicate()
+			
+			if val != null:
+				placed += 1
+				btn.text = str(val)
+				assigned_weights.append(val)
+				# 配置済み：ふせんの色に変化（Post-itスタイル + 3Dシャドウ）
+				var postit_col = POSTIT_COLORS[val - 1]
+				style.bg_color = postit_col
+				style.border_color = postit_col.darkened(0.15)
+				style.border_width_left = 1; style.border_width_right = 1
+				style.border_width_top = 1; style.border_width_bottom = 3
+				style.corner_radius_top_left = 2; style.corner_radius_top_right = 2
+				style.corner_radius_bottom_left = 6; style.corner_radius_bottom_right = 6
+				style.shadow_color = Color(0, 0, 0, 0.16)
+				style.shadow_size = 5
+				style.shadow_offset = Vector2(2, 4)
+				btn.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+			else:
+				# 空きスロット
+				style.shadow_size = 0
+				style.shadow_offset = Vector2.ZERO
+				style.border_width_left = 2; style.border_width_right = 2
+				style.border_width_top = 2; style.border_width_bottom = 4
+				style.corner_radius_top_left = 8; style.corner_radius_top_right = 8
+				style.corner_radius_bottom_left = 8; style.corner_radius_bottom_right = 8
+				if is_selected:
+					style.border_color = DeskTheme.COLOR_BLUFF_RED
+					style.bg_color = Color("fff0f0", 0.6)
 				else:
-					lbl.text = "計画なし"
-					lbl.add_theme_color_override("font_color", Color("bdae9c"))
-					
-					style.bg_color = Color("f5f4f0") # 空白
-					style.border_color = Color("d3cbbf")
-					panel.set_meta("has_element", null)
-					
-				panel.add_theme_stylebox_override("panel", style)
+					style.border_color = DeskTheme.COLOR_MUTED
+					style.bg_color = Color("ffffff", 0.2)
+				btn.text = "空き"
+				btn.add_theme_color_override("font_color", DeskTheme.COLOR_MUTED)
+			btn.add_theme_stylebox_override("normal", style)
+	
+	# 数字付箋パレットのグレーアウト処理
+	for w in range(1, 11):
+		var btn = ctx.bag_ui_elements["weights"][w]
+		if assigned_weights.has(w):
+			btn.disabled = true
+			btn.modulate = Color(0.4, 0.4, 0.4, 0.7)
+		else:
+			btn.disabled = false
+			btn.modulate = Color.WHITE
+	
+	# チキンレース開始ボタンのハンコ演出（すべて配置された時）
+	var is_all_placed = (placed >= 10)
+	if not ctx.bag_ui_elements.has("was_all_placed"):
+		ctx.bag_ui_elements["was_all_placed"] = false
+	if is_all_placed and not ctx.bag_ui_elements["was_all_placed"]:
+		var target_btn = ctx.bag_ui_elements["start_btn"]
+		target_btn.pivot_offset = target_btn.size / 2.0
+		var tw = target_btn.create_tween()
+		tw.tween_property(target_btn, "scale", Vector2(1.15, 1.15), 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(target_btn, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		if ctx.audio_manager: ctx.audio_manager.play_se("combo")
+	ctx.bag_ui_elements["was_all_placed"] = is_all_placed
 
 func _on_start_race_pressed():
-	# 各スロットが設定されているか確認（最低1つは必要）
-	var count = 0
+	if ctx.audio_manager: ctx.audio_manager.play_se("click")
+	var weights = {}
+	var placed_count = 0
 	for s in range(5):
-		for slot in range(2):
-			if ctx.bag_assignments[s][slot] != null:
-				count += 1
-				
-	if count == 0:
-		ToastOverlay.show_toast(ctx.ui_root, "最低1つの教科に「重り」を設定してください！", DeskTheme.COLOR_BLUFF_RED)
-		if ctx.audio_manager:
-			ctx.audio_manager.play_se("place") # エラーSE代わり
+		weights[s] = []
+		for v in ctx.bag_assignments[s]:
+			if v != null:
+				weights[s].append(v)
+				placed_count += 1
+	if placed_count < 10:
+		ToastOverlayScript.show_toast(ctx.ui_root, "すべてのポケットに付箋を入れてね！", DeskTheme.COLOR_BLUFF_RED)
 		return
-		
-	if ctx.audio_manager:
-		ctx.audio_manager.play_se("click")
-		
-	# フェーズ終了シグナル発火
+	if is_instance_valid(drag_helper):
+		drag_helper.queue_free()
 	phase_completed.emit()

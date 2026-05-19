@@ -1,12 +1,14 @@
 # scripts/ui/phases/DailyLikesPhase.gd
 class_name DailyLikesPhase
 extends RefCounted
+const ToastOverlayScript = preload("res://scripts/ui/components/ToastOverlay.gd")
+
 
 signal phase_completed()
 
-var ctx: GameContext
+var ctx: RefCounted
 
-func _init(context: GameContext):
+func _init(context: RefCounted):
 	self.ctx = context
 
 func start():
@@ -32,7 +34,7 @@ func _trigger_daily_likes_sequence():
 			bonus_text += " " + DeskTheme.subject_name(s)
 		if bonus_earned > 0:
 			Global.total_score += bonus_earned
-			ToastOverlay.show_toast(ctx.ui_root, "日次トップ配当＋%d点！ (王座: %s)" % [bonus_earned, bonus_text], DeskTheme.COLOR_ACCENT_GOLD)
+			ToastOverlayScript.show_toast(ctx.ui_root, "日次トップ配当＋%d点！ (王座: %s)" % [bonus_earned, bonus_text], DeskTheme.COLOR_ACCENT_GOLD)
 			if ctx.audio_manager: ctx.audio_manager.play_se("combo")
 			await ctx.screen_content.get_tree().create_timer(1.2).timeout
 			
@@ -50,12 +52,9 @@ func _trigger_daily_likes_sequence():
 	# ターゲット（ノートパネル全体を揺らす）
 	var note_panel_node = null
 	for c in ctx.screen_content.get_children():
-		if c is HBoxContainer:
-			for gc in c.get_children():
-				if gc is PanelContainer and gc.size_flags_horizontal == Control.SIZE_EXPAND_FILL:
-					note_panel_node = gc
-					break
-			if note_panel_node != null: break
+		if c is PanelContainer:
+			note_panel_node = c
+			break
 			
 	if note_panel_node == null: note_panel_node = ctx.screen_content
 	
@@ -68,7 +67,7 @@ func _trigger_daily_likes_sequence():
 			var penalty = lie_diff_total * 2
 			Global.total_score = max(0, Global.total_score - penalty)
 			
-			var stamp = DeskTheme.create_app_stamp("疑 [!]", DeskTheme.COLOR_BLUFF_RED, 28)
+			var stamp = DeskTheme.create_app_stamp("見破り！", DeskTheme.COLOR_BLUFF_RED, 28)
 			stamp.position = note_panel_node.size / 2.0 - stamp.size / 2.0
 			note_panel_node.add_child(stamp)
 			stamp.pivot_offset = stamp.size / 2.0
@@ -79,7 +78,7 @@ func _trigger_daily_likes_sequence():
 			tw.tween_property(stamp, "modulate:a", 1.0, 0.08)
 			tw.tween_property(stamp, "rotation_degrees", randf_range(-15.0, 15.0), 0.15)
 			if ctx.audio_manager: ctx.audio_manager.play_se("burst")
-			ToastOverlay.show_toast(ctx.ui_root, "【見破り】嘘の報告がバレた！\n(偽造合計%d点 × 2) −%d点！" % [lie_diff_total, penalty], DeskTheme.COLOR_BLUFF_RED)
+			ToastOverlayScript.show_toast(ctx.ui_root, "【見破り】嘘の報告がバレた！\n(偽造合計%d点 × 2) −%d点！" % [lie_diff_total, penalty], DeskTheme.COLOR_BLUFF_RED)
 			
 			var s_tw = note_panel_node.create_tween()
 			s_tw.tween_property(note_panel_node, "position:y", note_panel_node.position.y + 8, 0.06)
@@ -92,7 +91,7 @@ func _trigger_daily_likes_sequence():
 			var modest_bonus = 10 + modest_diff_total * 3
 			Global.total_score += modest_bonus
 			
-			var stamp = DeskTheme.create_app_stamp("応援 [OK]", DeskTheme.COLOR_SAFE, 28)
+			var stamp = DeskTheme.create_app_stamp("応援！", DeskTheme.COLOR_SAFE, 28)
 			stamp.position = note_panel_node.size / 2.0 - stamp.size / 2.0
 			note_panel_node.add_child(stamp)
 			stamp.pivot_offset = stamp.size / 2.0
@@ -103,7 +102,7 @@ func _trigger_daily_likes_sequence():
 			tw.tween_property(stamp, "modulate:a", 1.0, 0.08)
 			tw.tween_property(stamp, "rotation_degrees", randf_range(-15.0, 15.0), 0.15)
 			if ctx.audio_manager: ctx.audio_manager.play_se("combo")
-			ToastOverlay.show_toast(ctx.ui_root, "【謙虚応援】控えめな報告にいいね！\nボーナス (基本10＋差分%d点×3): ＋%d点！" % [modest_diff_total, modest_bonus], DeskTheme.COLOR_SAFE)
+			ToastOverlayScript.show_toast(ctx.ui_root, "【謙虚応援】控えめな報告にいいね！\nボーナス (基本10＋差分%d点×3): ＋%d点！" % [modest_diff_total, modest_bonus], DeskTheme.COLOR_SAFE)
 			
 			var s_tw = note_panel_node.create_tween()
 			s_tw.tween_property(note_panel_node, "scale", Vector2(1.05, 1.05), 0.08).set_trans(Tween.TRANS_CUBIC)
@@ -114,7 +113,7 @@ func _trigger_daily_likes_sequence():
 			score_changed = true
 			Global.total_score += 10 # 正直ボーナスを少し強化
 			
-			var stamp = DeskTheme.create_app_stamp("応援 [OK]", DeskTheme.COLOR_SAFE, 28)
+			var stamp = DeskTheme.create_app_stamp("応援！", DeskTheme.COLOR_SAFE, 28)
 			stamp.position = note_panel_node.size / 2.0 - stamp.size / 2.0
 			note_panel_node.add_child(stamp)
 			stamp.pivot_offset = stamp.size / 2.0
@@ -125,7 +124,7 @@ func _trigger_daily_likes_sequence():
 			tw.tween_property(stamp, "modulate:a", 1.0, 0.08)
 			tw.tween_property(stamp, "rotation_degrees", randf_range(-15.0, 15.0), 0.15)
 			if ctx.audio_manager: ctx.audio_manager.play_se("combo")
-			ToastOverlay.show_toast(ctx.ui_root, "【応援】正直な努力にいいね！ ＋10点！", DeskTheme.COLOR_SAFE)
+			ToastOverlayScript.show_toast(ctx.ui_root, "【応援】正直な努力にいいね！ ＋10点！", DeskTheme.COLOR_SAFE)
 			
 			var s_tw = note_panel_node.create_tween()
 			s_tw.tween_property(note_panel_node, "scale", Vector2(1.05, 1.05), 0.08).set_trans(Tween.TRANS_CUBIC)

@@ -2,452 +2,315 @@
 class_name ChickenRacePhase
 extends RefCounted
 
+const NotebookBuilderScript = preload("res://scripts/ui/components/NotebookBuilder.gd")
+const SmartphoneBuilderScript = preload("res://scripts/ui/components/SmartphoneBuilder.gd")
+
 signal phase_completed(scores_data: Dictionary)
 
-var ctx: GameContext
+var ctx: RefCounted
 
-# チキンレース中の状態
-var current_subject_idx: int = 0
-var active_subjects: Array = []
+# UI要素
+var active_notebook: Control
+var hud_notebook: Control
+var status_label: Label
+var subject_gauges: Dictionary = {}
+var item_count_labels: Dictionary = {}
+var play_desk: Control
+var card_container: Control
+var burst_warning_banner: Panel
+var next_burst_label: Label
+var button_box: HBoxContainer
 var drawn_card_nodes: Array = []
+var heartbeat_tween: Tween
+var camera_shake_offset: Vector2 = Vector2.ZERO
 
-# HUD要素の参照保持
-var hud_elements: Dictionary = {}
-var sleepiness_bar: TextureProgressBar
-var sleepiness_pulse: TextureRect
-var vignette_overlay: ColorRect
-
-var is_animating: bool = false
-
-func _init(context: GameContext):
+func _init(context: RefCounted):
 	self.ctx = context
 
 func start():
-	# 割り当てのある教科（カバンに重りが入っている教科）を抽出
-	active_subjects.clear()
-	for s in range(5):
-		var has_weight = false
-		for w in ctx.bag_assignments[s]:
-			if w != null:
-				has_weight = true
-				break
-		if has_weight:
-			active_subjects.append(s)
-			
-	if active_subjects.size() == 0:
-		# 例外的なガード処理：カバン計画が空なら即フェーズ完了
-		phase_completed.emit({})
-		return
-		
-	current_subject_idx = 0
-	_start_next_subject_race()
+	_show_race_screen()
 
-func _start_next_subject_race():
-	if current_subject_idx >= active_subjects.size():
-		# すべての教科のチキンレースが完了
-		phase_completed.emit({})
-		return
-		
-	var s = active_subjects[current_subject_idx]
-	_show_race_screen(s)
-
-func _show_race_screen(subject: int):
-	ctx.screen_content.get_tree().call_group("ui_elements", "queue_free") # 古いUIクリア
+func _show_race_screen():
+	for child in ctx.screen_content.get_children():
+		child.queue_free()
 	drawn_card_nodes.clear()
-	is_animating = false
+	heartbeat_tween = null
+	camera_shake_offset = Vector2.ZERO
 	
-	# チキンレースセッションの開始
-	var weights = []
-	for w in ctx.bag_assignments[subject]:
-		if w != null: weights.append(w)
+	var notebook = NotebookBuilderScript.create()
+	active_notebook = notebook
+	notebook.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	notebook.offset_left = 420.0
+	notebook.offset_top = 80.0
+	notebook.offset_right = -120.0
+	notebook.offset_bottom = -80.0
+	ctx.screen_content.add_child(notebook)
+	
+	SmartphoneBuilderScript.build_standard_smartphone(ctx)
+	
+	hud_notebook = notebook.find_child("LeftContent", true, false) as MarginContainer
+	var hud_v = VBoxContainer.new()
+	hud_v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	hud_v.add_theme_constant_override("separation", 14)
+	DeskTheme.apply_font(hud_v)
+	hud_notebook.add_child(hud_v)
+	
+	hud_v.add_child(DeskTheme.create_label("[ 本日の学習ノート ]", 32, DeskTheme.COLOR_INK, true))
+	
+	var score_h = HBoxContainer.new()
+	score_h.alignment = BoxContainer.ALIGNMENT_CENTER
+	hud_v.add_child(score_h)
+	score_h.add_child(DeskTheme.create_label("合計点: ", 22, DeskTheme.COLOR_INK, true))
+	status_label = DeskTheme.create_label("0", 54, DeskTheme.COLOR_BLUFF_RED, true)
+	score_h.add_child(status_label)
+	
+	subject_gauges.clear()
+	for s in range(5):
+		var s_row = HBoxContainer.new()
+		s_row.add_theme_constant_override("separation", 12)
+		hud_v.add_child(s_row)
 		
-	# バックエンドのセッション初期化
-	ctx.game_session.start_chicken_race(subject, weights)
+		var mini_icon = DeskTheme.create_icon_rect(DeskTheme.subject_texture(s), Vector2(36, 36))
+		s_row.add_child(mini_icon)
+		
+		var name_lbl = DeskTheme.create_label(DeskTheme.subject_name(s), 18, DeskTheme.subject_color(s), true)
+		name_lbl.custom_minimum_size = Vector2(56, 0)
+		s_row.add_child(name_lbl)
+		
+		var bar = DeskTheme.create_gauge_bar(0.0, 20.0, DeskTheme.subject_color(s), Vector2(200, 22))
+		s_row.add_child(bar)
+		
+		var val_lbl = DeskTheme.create_label("0点", 18, DeskTheme.COLOR_INK, true)
+		s_row.add_child(val_lbl)
+		subject_gauges[s] = {"bar": bar, "label": val_lbl}
+		
+	var items_v = VBoxContainer.new()
+	items_v.add_theme_constant_override("separation", 12)
+	hud_v.add_child(items_v)
+	item_count_labels.clear()
+	for type in range(1, 4):
+		var item_h = HBoxContainer.new()
+		item_h.add_theme_constant_override("separation", 12)
+		items_v.add_child(item_h)
+		var item_tex = DeskTheme.item_texture(type)
+		if item_tex:
+			var icon = DeskTheme.create_icon_rect(item_tex, Vector2(32, 32))
+			item_h.add_child(icon)
+		var name_lbl = DeskTheme.create_label("消しゴム(回避)" if type == 1 else "ペン(+1倍)" if type == 2 else "定規(+5点)", 18, DeskTheme.COLOR_INK, true)
+		item_h.add_child(name_lbl)
+		var count_lbl = DeskTheme.create_label("残り:2枚", 16, DeskTheme.COLOR_MUTED, true)
+		item_h.add_child(count_lbl)
+		item_count_labels[type] = count_lbl
+		
+	var hud_rival_note = DeskTheme.create_sticky_note(Color("f0f8ff"), Vector2(360, 180), -1.0)
+	hud_v.add_child(hud_rival_note)
+	var hr_v = VBoxContainer.new()
+	hr_v.add_theme_constant_override("separation", 8)
+	hud_rival_note.add_child(hr_v)
 	
-	# 見開きノート外枠
-	var note_panel = NotebookBuilder.create()
-	ctx.active_notebook = note_panel
-	ctx.screen_content.add_child(note_panel)
+	if Global.play_count == 0:
+		hr_v.add_child(DeskTheme.create_label("[ 1日目の目標 ]", 18, Color("2b5a9e"), true))
+		var msg = "まずは各教科を満遍なく勉強して、本日の学習報告（初投稿）を完了させよう！寝落ちに気をつけて！"
+		var lbl = DeskTheme.create_label(msg, 14, DeskTheme.COLOR_INK, true)
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		hr_v.add_child(lbl)
+	else:
+		hr_v.add_child(DeskTheme.create_label("[ ライバル暫定トップ ]", 18, Color("2b5a9e"), true))
+		var top_scores = ctx.backend_manager.get_subject_top_scores()
+		var top_str = ""
+		for s in range(5):
+			var top_info = top_scores[s]
+			top_str += "%s:%d点  " % [DeskTheme.subject_name(s), top_info["score"]]
+		var lbl = DeskTheme.create_label(top_str, 15, DeskTheme.COLOR_INK, true)
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		hr_v.add_child(lbl)
 	
-	var left_margin = note_panel.find_child("LeftContent", true, false) as MarginContainer
-	var right_margin = note_panel.find_child("RightContent", true, false) as MarginContainer
-	
-	# ---------------- Left Page: チキンレースHUD ----------------
-	var left_v = VBoxContainer.new()
-	left_v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left_v.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	left_v.add_theme_constant_override("separation", 20)
-	left_margin.add_child(left_v)
-	
-	# 睡魔の脈動ビネットを背景（親）にアタッチ
-	_create_sleepy_vignette(ctx.screen_content)
-	
-	# ヘッダー
-	var header_hbox = HBoxContainer.new()
-	header_hbox.add_theme_constant_override("separation", 12)
-	left_v.add_child(header_hbox)
-	
-	var sub_tex = DeskTheme.subject_texture(subject)
-	header_hbox.add_child(DeskTheme.create_icon_rect(sub_tex, Vector2(48, 48)))
-	
-	var title_lbl = DeskTheme.create_label("✏️ %s の勉強チキンレース" % DeskTheme.subject_name(subject), 24, DeskTheme.COLOR_INK, true)
-	header_hbox.add_child(title_lbl)
-	
-	# パラメータHUDカード
-	var hud_card = PanelContainer.new()
-	var hud_style = StyleBoxFlat.new()
-	hud_style.bg_color = Color("ffffff")
-	hud_style.corner_radius_top_left = 12; hud_style.corner_radius_top_right = 12
-	hud_style.corner_radius_bottom_left = 12; hud_style.corner_radius_bottom_right = 12
-	hud_style.content_margin_left = 16; hud_style.content_margin_right = 16
-	hud_style.content_margin_top = 16; hud_style.content_margin_bottom = 16
-	hud_style.shadow_color = Color(0,0,0, 0.05)
-	hud_style.shadow_size = 6
-	hud_style.shadow_offset = Vector2(2, 3)
-	hud_card.add_theme_stylebox_override("panel", hud_style)
-	left_v.add_child(hud_card)
-	
-	var hud_grid = GridContainer.new()
-	hud_grid.columns = 2
-	hud_grid.add_theme_constant_override("h_separation", 24)
-	hud_grid.add_theme_constant_override("v_separation", 14)
-	hud_card.add_child(hud_grid)
-	
-	hud_grid.add_child(DeskTheme.create_label("現在の総勉強量:", 14, DeskTheme.COLOR_MUTED))
-	var score_val = DeskTheme.create_label("0g / 目標 20g", 18, DeskTheme.COLOR_INK, true)
-	hud_grid.add_child(score_val)
-	hud_elements["score"] = score_val
-	
-	hud_grid.add_child(DeskTheme.create_label("カバンの最大容量:", 14, DeskTheme.COLOR_MUTED))
-	var cap_val = DeskTheme.create_label("--- g", 16, DeskTheme.COLOR_INK, true)
-	hud_grid.add_child(cap_val)
-	hud_elements["capacity"] = cap_val
-	
-	hud_grid.add_child(DeskTheme.create_label("今日引いた山札:", 14, DeskTheme.COLOR_MUTED))
-	var cards_val = DeskTheme.create_label("--- 枚", 16, DeskTheme.COLOR_INK, true)
-	hud_grid.add_child(cards_val)
-	hud_elements["deck_count"] = cards_val
-	
-	# お手元お助け文房具
-	left_v.add_child(DeskTheme.create_label("🛠️ 所持しているお助け文房具", 13, DeskTheme.COLOR_MUTED))
-	
-	var items_hbox = HBoxContainer.new()
-	items_hbox.add_theme_constant_override("separation", 16)
-	left_v.add_child(items_hbox)
-	
-	# 消しゴム
-	var item_era = PanelContainer.new()
-	item_era.custom_minimum_size = Vector2(120, 52)
-	var era_style = StyleBoxFlat.new()
-	era_style.bg_color = Color("ffffff")
-	era_style.corner_radius_top_left = 8; era_style.corner_radius_top_right = 8
-	era_style.corner_radius_bottom_left = 8; era_style.corner_radius_bottom_right = 8
-	era_style.content_margin_left = 10; era_style.content_margin_right = 10
-	era_style.border_width_left = 1; era_style.border_width_top = 1; era_style.border_width_right = 1; era_style.border_width_bottom = 1
-	era_style.border_color = Color("e0e0e0")
-	item_era.add_theme_stylebox_override("panel", era_style)
-	items_hbox.add_child(item_era)
-	
-	var era_lbl = DeskTheme.create_label("🧹 消しゴム: ---", 12, DeskTheme.COLOR_INK)
-	item_era.add_child(era_lbl)
-	hud_elements["eraser"] = era_lbl
-	
-	# 定規
-	var item_rul = PanelContainer.new()
-	item_rul.custom_minimum_size = Vector2(120, 52)
-	var rul_style = era_style.duplicate() as StyleBoxFlat
-	item_rul.add_theme_stylebox_override("panel", rul_style)
-	items_hbox.add_child(item_rul)
-	
-	var rul_lbl = DeskTheme.create_label("📐 定規: ---", 12, DeskTheme.COLOR_INK)
-	item_rul.add_child(rul_lbl)
-	hud_elements["ruler"] = rul_lbl
-	
-	# 3D風睡眠メーター（睡魔メーター）
-	left_v.add_child(DeskTheme.create_label("💤 今日の睡魔ゲージ (満タンで寝落ちバースト！)", 13, DeskTheme.COLOR_MUTED))
-	
-	# メーター外枠
-	var meter_container = PanelContainer.new()
-	meter_container.custom_minimum_size = Vector2(0, 48)
-	var met_style = StyleBoxFlat.new()
-	met_style.bg_color = Color("23272a") # ダークなスリット
-	met_style.border_width_left = 3; met_style.border_width_top = 3
-	met_style.border_width_right = 3; met_style.border_width_bottom = 3
-	met_style.border_color = Color("4b5358")
-	met_style.corner_radius_top_left = 10; met_style.corner_radius_top_right = 10
-	met_style.corner_radius_bottom_left = 10; met_style.corner_radius_bottom_right = 10
-	meter_container.add_theme_stylebox_override("panel", met_style)
-	left_v.add_child(meter_container)
-	
-	# 進捗 ProgressBar
-	sleepiness_bar = TextureProgressBar.new()
-	sleepiness_bar.value = 0
-	sleepiness_bar.max_value = 100
-	sleepiness_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sleepiness_bar.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	
-	var bar_fill = GradientTexture2D.new()
-	bar_fill.width = 300
-	bar_fill.height = 36
-	var g = Gradient.new()
-	g.set_color(0, Color("4a90e2")) # はじめは青いリラックスした眠気
-	g.set_color(1, Color("e34a4a")) # バースト間近は赤い警告
-	bar_fill.gradient = g
-	sleepiness_bar.texture_progress = bar_fill
-	
-	# 滑らかな角丸マスク用 StyleBoxFlat を進捗に乗せる（Godotのお作法）
-	sleepiness_bar.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	meter_container.add_child(sleepiness_bar)
-	
-	# ---------------- Right Page: 山札＆勉強机の上 ----------------
+	var right_margin = notebook.find_child("RightContent", true, false) as MarginContainer
 	var right_v = VBoxContainer.new()
 	right_v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right_v.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	right_v.add_theme_constant_override("separation", 24)
+	right_v.add_theme_constant_override("separation", 16)
 	right_margin.add_child(right_v)
 	
-	# 机の上に並べた勉強ノート風の枠
-	var desk_area = PanelContainer.new()
-	desk_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var da_style = StyleBoxFlat.new()
-	da_style.bg_color = Color("faf8f5", 0.75) # 半透明で罫線を透かす
-	da_style.border_width_left = 2; da_style.border_width_top = 2
-	da_style.border_width_right = 2; da_style.border_width_bottom = 2
-	da_style.border_color = Color("c2b29d", 0.5)
-	da_style.corner_radius_top_left = 12; da_style.corner_radius_top_right = 12
-	da_style.corner_radius_bottom_left = 12; da_style.corner_radius_bottom_right = 12
-	desk_area.add_theme_stylebox_override("panel", da_style)
-	right_v.add_child(desk_area)
+	play_desk = Control.new()
+	play_desk.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	play_desk.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	right_v.add_child(play_desk)
 	
-	var desk_c = Control.new()
-	desk_area.add_child(desk_c)
-	
-	# 引いたカードの配置用コンテナ
-	var card_container = Control.new()
-	card_container.name = "CardContainer"
+	card_container = Control.new()
 	card_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	desk_c.add_child(card_container)
+	card_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	play_desk.add_child(card_container)
 	
-	# 操作ボタン群
-	var button_box = HBoxContainer.new()
+	burst_warning_banner = Panel.new()
+	burst_warning_banner.custom_minimum_size = Vector2(0, 52)
+	burst_warning_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var banner_style = StyleBoxFlat.new()
+	banner_style.bg_color = DeskTheme.COLOR_SAFE
+	banner_style.corner_radius_top_left = 12; banner_style.corner_radius_top_right = 12
+	banner_style.corner_radius_bottom_left = 12; banner_style.corner_radius_bottom_right = 12
+	burst_warning_banner.add_theme_stylebox_override("panel", banner_style)
+	right_v.add_child(burst_warning_banner)
+	
+	var banner_h = HBoxContainer.new()
+	banner_h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	banner_h.alignment = BoxContainer.ALIGNMENT_CENTER
+	DeskTheme.apply_font(banner_h)
+	burst_warning_banner.add_child(banner_h)
+	
+	var warning_lbl = DeskTheme.create_label("睡魔度: 0%", 18, Color.WHITE, true)
+	banner_h.add_child(warning_lbl)
+	
+	next_burst_label = DeskTheme.create_label("安全レベル: 脳内すっきり、まだ引ける！", 14, DeskTheme.COLOR_SAFE, true)
+	right_v.add_child(next_burst_label)
+	
+	button_box = HBoxContainer.new()
 	button_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	button_box.add_theme_constant_override("separation", 32)
 	right_v.add_child(button_box)
 	
-	# ドロー（勉強する）
-	var draw_btn = DeskTheme.create_button("さらに勉強する ✍️", Vector2(200, 56), DeskTheme.COLOR_SAFE, Color("1b8a4f"), true, 18)
+	var draw_btn = DeskTheme.create_button("カードを引く (ドロー)", Vector2(260, 76), DeskTheme.COLOR_SAFE, Color("2d928a"))
 	draw_btn.pressed.connect(_on_draw_pressed)
 	button_box.add_child(draw_btn)
-	hud_elements["draw_btn"] = draw_btn
 	
-	# パス（寝る/切り上げる）
-	var stop_btn = DeskTheme.create_button("今日の勉強を切り上げる 😴", Vector2(240, 56), Color("b85a1b"), Color("8a3f1b"), true, 16)
+	var stop_btn = DeskTheme.create_button("ここで勉強終了 (ストップ)", Vector2(260, 76), DeskTheme.COLOR_BURST, Color("bd4f4f"))
 	stop_btn.pressed.connect(_on_stop_pressed)
 	button_box.add_child(stop_btn)
-	hud_elements["stop_btn"] = stop_btn
 	
-	DeskTheme.animate_entrance(note_panel)
+	DeskTheme.animate_entrance(notebook)
 	_update_race_hud()
 
-func _create_sleepy_vignette(parent: Control):
-	vignette_overlay = ColorRect.new()
-	vignette_overlay.name = "SleepyVignette"
-	vignette_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	vignette_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vignette_overlay.color = Color(0,0,0,0)
-	
-	var mat = ShaderMaterial.new()
-	var code = """
-	shader_type canvas_item;
-	uniform float intensity : hint_range(0.0, 5.0) = 1.0;
-	uniform float pulse_speed : hint_range(0.0, 10.0) = 1.5;
-	uniform vec4 vignette_color : source_color = vec4(0.03, 0.01, 0.05, 0.9);
-	
-	void fragment() {
-		vec2 uv = UV - vec2(0.5);
-		float d = length(uv);
-		float pulse = 1.0 + sin(TIME * pulse_speed) * 0.15;
-		float alpha = smoothstep(0.4, 0.95 - (intensity * 0.06 * pulse), d);
-		COLOR = vec4(vignette_color.rgb, alpha * vignette_color.a);
-	}
-	"""
-	var sh = Shader.new()
-	sh.code = code
-	mat.shader = sh
-	mat.set_shader_parameter("intensity", 0.0)
-	vignette_overlay.material = mat
-	parent.add_child(vignette_overlay)
-	vignette_overlay.z_index = 50
-
 func _update_race_hud():
-	var race = ctx.game_session.current_race
-	if not race: return
+	status_label.text = str(ctx.game_session.current_score)
+	for s in range(5):
+		var score = ctx.game_session.subject_scores[s]
+		var data = subject_gauges[s]
+		var ratio = clamp(float(score) / 20.0, 0.0, 1.0)
+		var fill = data["bar"].get_child(1)
+		var tw = fill.create_tween()
+		tw.tween_property(fill, "offset_right", max(4.0, data["bar"].custom_minimum_size.x * ratio), 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		data["label"].text = "%d点" % score
+		
+	var deck = ctx.game_session.deck
+	var num_erasers = deck.remaining_erasers
+	var num_pens = 2
+	var num_rulers = 2
+	for c in deck.drawn_cards:
+		if c.item_type == 2: num_pens -= 1
+		elif c.item_type == 3: num_rulers -= 1
+	item_count_labels[1].text = "残り:%d枚" % num_erasers
+	item_count_labels[2].text = "残り:%d枚" % max(0, num_pens)
+	item_count_labels[3].text = "残り:%d枚" % max(0, num_rulers)
 	
-	var count = race["score"]
-	var target = race["target"]
-	var cap = race["capacity"]
-	
-	var score_lbl = hud_elements["score"] as Label
-	score_lbl.text = "%d g / 目標 %d g" % [count, target]
-	if count >= target:
-		score_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_SAFE)
+	var deck_cards = deck.deck
+	var conflict_count = 0
+	var total_deck = deck_cards.size()
+	for c in deck_cards:
+		if c.item_type == 0:
+			for dc in deck.drawn_cards:
+				if dc.item_type == 0 and dc.weight == c.weight:
+					conflict_count += 1
+					break
+	var burst_prob = 0
+	if total_deck > 0:
+		burst_prob = int((float(conflict_count) / float(total_deck)) * 100.0)
+		
+	var sleep_icon = "[ 睡魔度 ]: [||          ] すっきり！"
+	var style: StyleBoxFlat = burst_warning_banner.get_theme_stylebox("panel")
+	if burst_prob >= 50:
+		style.bg_color = DeskTheme.COLOR_BLUFF_RED
+		sleep_icon = "[ 瞼の重さ ]: [||||||||||] 寝落ち寸前！ (限界!)"
+		next_burst_label.text = "警告: 限界寸前！いつ寝落ち(バースト)してもおかしくない！"
+		next_burst_label.add_theme_color_override("font_color", DeskTheme.COLOR_BLUFF_RED)
+	elif burst_prob >= 25:
+		style.bg_color = DeskTheme.COLOR_ACCENT_GOLD
+		sleep_icon = "[ 瞼の重さ ]: [|||||     ] 睡魔が襲ってきた... (眠気)"
+		next_burst_label.text = "注意: 限界が近い... そろそろ引き際か？"
+		next_burst_label.add_theme_color_override("font_color", Color("a87d00"))
 	else:
-		score_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-		
-	var cap_lbl = hud_elements["capacity"] as Label
-	cap_lbl.text = "%d g" % cap
+		style.bg_color = DeskTheme.COLOR_SAFE
+		sleep_icon = "[ 睡魔度 ]: [||          ] 脳内すっきり、まだ引ける！"
+		next_burst_label.text = "安全レベル: まだ睡魔は感じない！"
+		next_burst_label.add_theme_color_override("font_color", DeskTheme.COLOR_SAFE)
+	burst_warning_banner.get_child(0).get_child(0).text = sleep_icon
 	
-	var deck_lbl = hud_elements["deck_count"] as Label
-	deck_lbl.text = "%d 枚" % race["deck_size"]
+	if heartbeat_tween != null:
+		heartbeat_tween.kill()
+		heartbeat_tween = null
 	
-	# お助け文房具
-	var era_lbl = hud_elements["eraser"] as Label
-	era_lbl.text = "🧹 消しゴム: " + ("あり" if race["has_eraser"] else "使用済み")
-	era_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK if race["has_eraser"] else DeskTheme.COLOR_MUTED)
-	
-	var rul_lbl = hud_elements["ruler"] as Label
-	rul_lbl.text = "📐 定規: " + ("あり" if race["has_ruler"] else "使用済み")
-	rul_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK if race["has_ruler"] else DeskTheme.COLOR_MUTED)
-	
-	# 睡魔メーター (パーセント)
-	var pct = 0.0
-	if cap > 0:
-		pct = float(count) / float(cap) * 100.0
-	sleepiness_bar.value = min(pct, 100.0)
-	
-	# 睡魔の脈動ビネット強度の更新
-	if is_instance_valid(vignette_overlay) and vignette_overlay.material:
-		var intensity = float(count) / float(cap) * 5.0 if cap > 0 else 0.0
-		var mat = vignette_overlay.material as ShaderMaterial
-		
-		# 睡魔の脈動がじんわり強まる極上のTween遷移
-		var tw = vignette_overlay.create_tween()
-		tw.tween_property(mat, "shader_material:intensity" if mat.get("shader_material:intensity") != null else "shader_parameter/intensity", intensity, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	if burst_prob >= 80:
+		if is_instance_valid(active_notebook):
+			active_notebook.pivot_offset = active_notebook.size / 2.0
+			heartbeat_tween = active_notebook.create_tween().set_loops()
+			heartbeat_tween.tween_property(active_notebook, "scale", Vector2(1.02, 1.02), 0.07).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			heartbeat_tween.tween_property(active_notebook, "scale", Vector2(1.0, 1.0), 0.08).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+			heartbeat_tween.tween_interval(0.06)
+			heartbeat_tween.tween_property(active_notebook, "scale", Vector2(1.015, 1.015), 0.07).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			heartbeat_tween.tween_property(active_notebook, "scale", Vector2(1.0, 1.0), 0.08).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+			heartbeat_tween.tween_interval(0.70)
+		next_burst_label.pivot_offset = next_burst_label.size / 2.0
+		var lbl_tw = next_burst_label.create_tween()
+		lbl_tw.tween_property(next_burst_label, "scale", Vector2(1.15, 1.15), 0.3).set_trans(Tween.TRANS_SINE)
+		lbl_tw.tween_property(next_burst_label, "scale", Vector2(1.0, 1.0), 0.3).set_trans(Tween.TRANS_SINE)
+		lbl_tw.set_loops()
+	else:
+		if is_instance_valid(active_notebook):
+			var tw_reset = active_notebook.create_tween()
+			tw_reset.tween_property(active_notebook, "scale", Vector2.ONE, 0.15)
+		next_burst_label.scale = Vector2.ONE
 
 func _set_action_buttons_enabled(enabled: bool):
-	var draw_btn = hud_elements.get("draw_btn") as Button
-	var stop_btn = hud_elements.get("stop_btn") as Button
-	if is_instance_valid(draw_btn): draw_btn.disabled = not enabled
-	if is_instance_valid(stop_btn): stop_btn.disabled = not enabled
+	if is_instance_valid(button_box):
+		for child in button_box.get_children():
+			if child is Button:
+				child.disabled = not enabled
 
 func _on_draw_pressed():
-	if is_animating: return
-	is_animating = true
 	_set_action_buttons_enabled(false)
-	
-	var race = ctx.game_session.current_race
-	if not race: 
-		is_animating = false
-		_set_action_buttons_enabled(true)
-		return
-		
-	var prev_score = race["score"]
-	var res = ctx.game_session.draw_study_card()
-	
+	var res = ctx.game_session.draw_card()
 	var card = res["card"]
-	var cap = race["capacity"]
-	var current_score = race["score"]
-	
-	# カードビジュアルノード生成
-	var card_container = ctx.active_notebook.find_child("CardContainer", true, false)
-	if not card_container:
-		is_animating = false
+	if card == null:
 		_set_action_buttons_enabled(true)
 		return
-		
-	var card_node = PanelContainer.new()
-	var card_sz = Vector2(130, 190)
-	card_node.custom_minimum_size = card_sz
-	card_node.size = card_sz
+	if ctx.audio_manager: ctx.audio_manager.play_se("draw")
 	
-	# 高級なカード枠スタイル (手書き単語カード風)
-	var card_style = StyleBoxFlat.new()
-	card_style.bg_color = Color("ffffff")
-	card_style.border_width_left = 3; card_style.border_width_top = 3
-	card_style.border_width_right = 3; card_style.border_width_bottom = 3
-	card_style.border_color = DeskTheme.COLOR_INK
-	card_style.corner_radius_top_left = 12; card_style.corner_radius_top_right = 12
-	card_style.corner_radius_bottom_left = 12; card_style.corner_radius_bottom_right = 12
-	card_style.content_margin_left = 8; card_style.content_margin_right = 8
-	card_style.content_margin_top = 8; card_style.content_margin_bottom = 8
-	
-	# ドロップシャドウ
-	card_style.shadow_color = Color(0,0,0, 0.18)
-	card_style.shadow_size = 12
-	card_style.shadow_offset = Vector2(4, 8)
-	card_node.add_theme_stylebox_override("panel", card_style)
+	var card_node: Control
+	if card.item_type == 0:
+		card_node = DeskTheme.create_subject_card_large(card.subject, card.weight)
+	else:
+		card_node = DeskTheme.create_item_card_large(card.item_type)
+	var back_tex = TextureRect.new()
+	back_tex.texture = DeskTheme.CARD_BACK
+	back_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	back_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	back_tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	card_node.add_child(back_tex)
 	
 	card_container.add_child(card_node)
 	drawn_card_nodes.append(card_node)
 	
-	var cv = VBoxContainer.new()
-	cv.alignment = BoxContainer.ALIGNMENT_CENTER
-	cv.add_theme_constant_override("separation", 10)
-	card_node.add_child(cv)
+	var num_cards = drawn_card_nodes.size()
+	var desk_sz = play_desk.size
+	if desk_sz.x < 100 or desk_sz.y < 100:
+		desk_sz = Vector2(600, 460)
+	var center = desk_sz / 2.0
+	center.x += 60.0
+	var offset_x = (num_cards - 1) * 36.0 - 180.0
+	var card_sz = Vector2(190, 260)
+	var target_pos = center + Vector2(offset_x, randf_range(-40.0, 40.0)) - card_sz / 2.0
 	
-	# タイトル (教科名アイコンなど)
-	var sub_name = DeskTheme.create_label(DeskTheme.subject_name(card.subject_type), 11, DeskTheme.COLOR_MUTED, true)
-	sub_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	cv.add_child(sub_name)
+	var view_size = ctx.screen_content.get_viewport_rect().size
+	var start_pos = Vector2(view_size.x / 2.0, view_size.y) - card_sz / 2.0
+	if is_instance_valid(button_box) and button_box.get_child_count() > 0:
+		var draw_btn = button_box.get_child(0) as Button
+		if is_instance_valid(draw_btn):
+			start_pos = draw_btn.global_position + draw_btn.size / 2.0 - card_sz / 2.0
 	
-	# 特大g表示
-	var g_lbl = DeskTheme.create_label(str(card.weight) + "g", 32, DeskTheme.COLOR_INK, true)
-	g_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	cv.add_child(g_lbl)
-	
-	# カード裏面テクスチャ（スライド演出のフリップ用）
-	var back_tex = Panel.new()
-	back_tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var bs = StyleBoxFlat.new()
-	bs.bg_color = Color("c2b29d") # 単語カードの厚紙裏地
-	bs.border_width_left = 6; bs.border_width_top = 6; bs.border_width_right = 6; bs.border_width_bottom = 6
-	bs.border_color = Color("8e7a63")
-	bs.corner_radius_top_left = 12; bs.corner_radius_top_right = 12
-	bs.corner_radius_bottom_left = 12; bs.corner_radius_bottom_right = 12
-	back_tex.add_theme_stylebox_override("panel", bs)
-	card_node.add_child(back_tex)
-	
-	# 裏側の単語カードリング穴デザイン
-	var hole = ColorRect.new()
-	hole.custom_minimum_size = Vector2(16, 16)
-	hole.color = Color("ffffff") # 穴
-	hole.anchor_left = 0.5; hole.anchor_right = 0.5
-	hole.offset_left = -8; hole.offset_top = 10; hole.offset_right = 8; hole.offset_bottom = 26
-	var hole_style = StyleBoxFlat.new()
-	hole_style.bg_color = Color("faf8f5")
-	hole_style.border_width_left = 2; hole_style.border_width_top = 2
-	hole_style.border_width_right = 2; hole_style.border_width_bottom = 2
-	hole_style.border_color = Color("8e7a63")
-	hole_style.corner_radius_top_left = 8; hole_style.corner_radius_top_right = 8
-	hole_style.corner_radius_bottom_left = 8; hole_style.corner_radius_bottom_right = 8
-	hole.add_theme_stylebox_override("panel", hole_style)
-	back_tex.add_child(hole)
-	
-	# 最終整列位置（山札からの飛び出し目標）
-	var cols = 5
-	var card_idx = drawn_card_nodes.size() - 1
-	var col = card_idx % cols
-	var row = card_idx / cols
-	var gap = Vector2(24, 32)
-	
-	var target_pos = Vector2(
-		40 + col * (card_sz.x + gap.x),
-		40 + row * (card_sz.y + gap.y)
-	)
-	
-	# 山札（ドローボタン）のグローバル座標から出現
-	var start_pos = Vector2(400, 400)
-	var button_box = hud_elements.get("draw_btn")
-	if is_instance_valid(button_box):
-		start_pos = button_box.global_position + button_box.size / 2.0 - card_sz / 2.0
-		
 	card_node.position = start_pos - card_container.global_position
 	card_node.rotation_degrees = -45.0
 	card_node.scale = Vector2(0.2, 0.2)
 	card_node.modulate.a = 0.0
 	card_node.pivot_offset = card_sz / 2.0
-	
-	if ctx.audio_manager: ctx.audio_manager.play_se("draw")
 	
 	var tw = card_node.create_tween()
 	tw.set_parallel(true)
@@ -455,302 +318,299 @@ func _on_draw_pressed():
 	tw.tween_property(card_node, "rotation_degrees", randf_range(-10.0, 10.0), 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(card_node, "modulate:a", 1.0, 0.15)
 	tw.tween_property(card_node, "scale", Vector2(0.0, 1.3), 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	tw.chain().tween_callback(func(): back_tex.hide())
+	tw.chain().tween_callback(func():
+		back_tex.hide()
+	)
 	tw.tween_property(card_node, "scale", Vector2(1.0, 1.0), 0.17).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	
 	if ctx.audio_manager: ctx.audio_manager.play_se("place")
 	await tw.finished
 	
 	_update_race_hud()
 	
-	# RULER 定規お助け効果発動
-	if card.item_type == 3: # RULER
+	if card.item_type == 3:
 		_trigger_ruler_effect(card_node)
 		return
-		
-	# バースト検知時の演出
+	
 	if res["burst"]:
 		await _trigger_burst_sequence()
 		return
-		
-	is_animating = false
+	elif res["erased"]:
+		await _trigger_eraser_evasion_sequence(card_node, card.weight)
+	
+	if not res["burst"] and not res["erased"]:
+		var combo_num = drawn_card_nodes.size()
+		if combo_num >= 2:
+			var combo_badge = DeskTheme.create_floating_badge("%d COMBO!" % combo_num, DeskTheme.subject_color(card.subject) if card.item_type == 0 else DeskTheme.COLOR_SAFE, 20)
+			combo_badge.global_position = target_pos + Vector2(card_sz.x / 2.0 - combo_badge.size.x / 2.0, -35.0)
+			play_desk.add_child(combo_badge)
+			combo_badge.pivot_offset = combo_badge.size / 2.0
+			combo_badge.scale = Vector2(0.1, 0.1)
+			var b_tw = combo_badge.create_tween()
+			b_tw.tween_property(combo_badge, "scale", Vector2(1.3, 1.3), 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			b_tw.parallel().tween_property(combo_badge, "rotation_degrees", randf_range(-12.0, 12.0), 0.12)
+			b_tw.tween_property(combo_badge, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_BACK)
+			b_tw.tween_interval(0.8)
+			b_tw.tween_property(combo_badge, "modulate:a", 0.0, 0.25)
+			b_tw.tween_callback(combo_badge.queue_free)
 	_set_action_buttons_enabled(true)
 
 func _trigger_ruler_effect(card_node: Control):
-	var race = ctx.game_session.current_race
-	if not race: return
-	
-	if ctx.audio_manager: ctx.audio_manager.play_se("draw") # お助け出現SE
-	
-	var diag = PanelContainer.new()
-	diag.custom_minimum_size = Vector2(450, 240)
-	var diag_style = StyleBoxFlat.new()
-	diag_style.bg_color = Color("ffffff")
-	diag_style.border_width_left = 4; diag_style.border_width_top = 4
-	diag_style.border_width_right = 4; diag_style.border_width_bottom = 4
-	diag_style.border_color = DeskTheme.COLOR_SAFE
-	diag_style.corner_radius_top_left = 16; diag_style.corner_radius_top_right = 16
-	diag_style.corner_radius_bottom_left = 16; diag_style.corner_radius_bottom_right = 16
-	diag_style.content_margin_left = 24; diag_style.content_margin_right = 24
-	diag_style.content_margin_top = 20; diag_style.content_margin_bottom = 20
-	
-	# ドロップシャドウ
-	diag_style.shadow_color = Color(0,0,0, 0.3)
-	diag_style.shadow_size = 24
-	diag_style.shadow_offset = Vector2(8, 12)
-	diag.add_theme_stylebox_override("panel", diag_style)
-	
-	# 画面中央表示
-	var view_size = ctx.ui_root.get_viewport_rect().size
-	diag.position = Vector2(view_size.x / 2.0 - 225, view_size.y / 2.0 - 120)
-	ctx.ui_root.add_child(diag)
-	diag.z_index = 150
-	
-	var dv = VBoxContainer.new()
-	dv.alignment = BoxContainer.ALIGNMENT_CENTER
-	dv.add_theme_constant_override("separation", 16)
-	diag.add_child(dv)
-	
-	dv.add_child(DeskTheme.create_label("📐 定規お助け効果発動！", 22, DeskTheme.COLOR_SAFE, true))
-	dv.add_child(DeskTheme.create_label("カバンの最大容量（許容量）が、今日だけ特別に +20g 拡張されました！寝落ちバーストを防ぎやすくなります。", 14, DeskTheme.COLOR_INK))
-	
-	var ok_btn = DeskTheme.create_button("効果を確認する", Vector2(160, 48), DeskTheme.COLOR_SAFE, Color("1b8a4f"))
-	dv.add_child(ok_btn)
-	
-	# 軽快な出現バウンスTween
-	diag.pivot_offset = Vector2(225, 120)
-	diag.scale = Vector2(0.8, 0.8)
-	var tw = diag.create_tween()
-	tw.tween_property(diag, "scale", Vector2(1.0, 1.0), 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	
-	ok_btn.pressed.connect(func():
-		if ctx.audio_manager: ctx.audio_manager.play_se("click")
+	if ctx.audio_manager: ctx.audio_manager.play_se("combo")
+	var bounce = card_node.create_tween()
+	bounce.tween_property(card_node, "scale", Vector2(1.2, 1.2), 0.15).set_trans(Tween.TRANS_CUBIC)
+	bounce.tween_property(card_node, "scale", Vector2(1.0, 1.0), 0.2).set_trans(Tween.TRANS_BACK)
+	button_box.hide()
+	var overlay
+	overlay = DeskTheme.create_dialog_overlay(ctx.screen_content, "📏 定規でスコア補強！", func(vbox: VBoxContainer):
+		var ticks_top = DeskTheme.create_label("| . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |", 12, Color("5c4033"), true)
+		ticks_top.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vbox.add_child(ticks_top)
+		vbox.move_child(ticks_top, 0)
 		
-		# ダイアログ閉じるTween
-		var tw_close = diag.create_tween()
-		tw_close.tween_property(diag, "scale", Vector2(0.8, 0.8), 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-		tw_close.tween_callback(func():
-			diag.queue_free()
-			# バックエンド拡張＆同期
-			ctx.game_session.apply_ruler_effect()
-			_update_race_hud()
+		vbox.add_child(DeskTheme.create_label("好きな教科を1つ選んでスコアを「＋5点」補強できます。", 15, DeskTheme.COLOR_INK, true))
+		
+		var grid = GridContainer.new()
+		grid.columns = 5
+		grid.add_theme_constant_override("h_separation", 12)
+		vbox.add_child(grid)
+		
+		for s in range(5):
+			var btn = DeskTheme.create_button(DeskTheme.subject_name(s), Vector2(110, 56), DeskTheme.subject_color(s), DeskTheme.subject_color(s).darkened(0.1))
+			btn.pivot_offset = Vector2(55, 28)
+			btn.pressed.connect(func():
+				if ctx.audio_manager: ctx.audio_manager.play_se("place")
+				var btn_tw = btn.create_tween()
+				btn_tw.tween_property(btn, "scale", Vector2(0.85, 0.85), 0.08)
+				btn_tw.chain().tween_property(btn, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_BACK)
+				await btn_tw.finished
+				
+				ctx.game_session.subject_scores[s] += 5
+				ctx.game_session.current_score += 5
+				_update_race_hud()
+				
+				var node = vbox
+				while node and not node is ColorRect: node = node.get_parent()
+				if node: node.queue_free()
+				button_box.show()
+				_set_action_buttons_enabled(true)
+			)
+			grid.add_child(btn)
 			
-			is_animating = false
-			_set_action_buttons_enabled(true)
-		)
+		var ticks_bottom = DeskTheme.create_label("| . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |", 12, Color("5c4033"), true)
+		ticks_bottom.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vbox.add_child(ticks_bottom)
 	)
+	
+	var ruler_panel = overlay.get_child(0) as PanelContainer
+	if is_instance_valid(ruler_panel):
+		var ruler_style = StyleBoxFlat.new()
+		ruler_style.bg_color = Color("dfd5b8")
+		ruler_style.border_width_left = 6; ruler_style.border_width_right = 6
+		ruler_style.border_width_top = 18; ruler_style.border_width_bottom = 18
+		ruler_style.border_color = Color("8c6d4f")
+		ruler_style.corner_radius_top_left = 8; ruler_style.corner_radius_top_right = 8
+		ruler_style.corner_radius_bottom_left = 8; ruler_style.corner_radius_bottom_right = 8
+		ruler_panel.add_theme_stylebox_override("panel", ruler_style)
 
 func _trigger_eraser_evasion_sequence(new_card_node: Control, weight: int):
-	# 消しゴム回避アニメーション
-	is_animating = true
-	_set_action_buttons_enabled(false)
+	if ctx.audio_manager: ctx.audio_manager.play_se("combo")
+	var conflicting_node: Control = null
+	for node in drawn_card_nodes:
+		if node != new_card_node and node.has_node("Content"):
+			var lbl = node.get_child(0).get_child(0) as Label
+			if lbl and lbl.text == str(weight):
+				conflicting_node = node
+				break
 	
-	var diag = PanelContainer.new()
-	diag.custom_minimum_size = Vector2(450, 240)
-	var diag_style = StyleBoxFlat.new()
-	diag_style.bg_color = Color("ffffff")
-	diag_style.border_width_left = 4; diag_style.border_width_top = 4
-	diag_style.border_width_right = 4; diag_style.border_width_bottom = 4
-	diag_style.border_color = Color("b85a1b")
-	diag_style.corner_radius_top_left = 16; diag_style.corner_radius_top_right = 16
-	diag_style.corner_radius_bottom_left = 16; diag_style.corner_radius_bottom_right = 16
-	diag_style.content_margin_left = 24; diag_style.content_margin_right = 24
-	diag_style.content_margin_top = 20; diag_style.content_margin_bottom = 20
-	diag.add_theme_stylebox_override("panel", diag_style)
-	
-	var view_size = ctx.ui_root.get_viewport_rect().size
-	diag.position = Vector2(view_size.x / 2.0 - 225, view_size.y / 2.0 - 120)
-	ctx.ui_root.add_child(diag)
-	diag.z_index = 150
-	
-	var dv = VBoxContainer.new()
-	dv.alignment = BoxContainer.ALIGNMENT_CENTER
-	dv.add_theme_constant_override("separation", 16)
-	diag.add_child(dv)
-	
-	dv.add_child(DeskTheme.create_label("🧹 消しゴム回避発動！", 22, Color("b85a1b"), true))
-	dv.add_child(DeskTheme.create_label("総勉強量が許容量を超えました！しかし、所持している消しゴムで今回引いた重りを無効化し、今日の寝落ちを回避します！", 14, DeskTheme.COLOR_INK))
-	
-	var use_btn = DeskTheme.create_button("消しゴムを使用する", Vector2(200, 48), Color("b85a1b"), Color("8a3f1b"))
-	dv.add_child(use_btn)
-	
-	diag.pivot_offset = Vector2(225, 120)
-	diag.scale = Vector2(0.8, 0.8)
-	var tw = diag.create_tween()
-	tw.tween_property(diag, "scale", Vector2(1.0, 1.0), 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	
-	use_btn.pressed.connect(func():
-		if ctx.audio_manager: ctx.audio_manager.play_se("place")
+	if conflicting_node:
+		var eraser_img = TextureRect.new()
+		eraser_img.texture = DeskTheme.ITEM_ERASER
+		eraser_img.custom_minimum_size = Vector2(80, 80)
+		eraser_img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		eraser_img.position = conflicting_node.position + conflicting_node.size / 2.0 - Vector2(40, 40)
+		eraser_img.pivot_offset = Vector2(40, 40)
+		play_desk.add_child(eraser_img)
 		
-		# ノートの上で該当のカードが弾け飛んで消え去るようなTween演出
-		if is_instance_valid(new_card_node):
-			var card_tw = new_card_node.create_tween().set_parallel(true)
-			card_tw.tween_property(new_card_node, "position:y", new_card_node.position.y - 120, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-			card_tw.tween_property(new_card_node, "scale", Vector2.ZERO, 0.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-			card_tw.tween_property(new_card_node, "rotation_degrees", 180.0, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-			card_tw.chain().tween_callback(func():
-				drawn_card_nodes.erase(new_card_node)
-				new_card_node.queue_free()
-			)
+		var particle_count = 6
+		var particles = []
+		for p_i in range(particle_count):
+			var part = ColorRect.new()
+			part.color = Color("ffffff")
+			part.custom_minimum_size = Vector2(randf_range(4, 8), randf_range(2, 4))
+			part.position = conflicting_node.position + conflicting_node.size / 2.0 + Vector2(randf_range(-20, 20), randf_range(-20, 20))
+			part.pivot_offset = part.custom_minimum_size / 2.0
+			part.rotation_degrees = randf_range(0, 360)
+			part.modulate.a = 0.0
+			play_desk.add_child(part)
+			particles.append(part)
+		
+		var slide_tw = eraser_img.create_tween()
+		var part_tw = ctx.screen_content.create_tween().set_parallel(true)
+		var orig_x = eraser_img.position.x
+		
+		for w in range(3):
+			slide_tw.tween_property(eraser_img, "position:x", orig_x - 24, 0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			slide_tw.tween_property(eraser_img, "rotation_degrees", 12.0, 0.07)
+			slide_tw.tween_callback(func(): if ctx.audio_manager: ctx.audio_manager.play_se("click"))
 			
-		var tw_close = diag.create_tween()
-		tw_close.tween_property(diag, "scale", Vector2(0.8, 0.8), 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-		tw_close.tween_callback(func():
-			diag.queue_free()
-			# 回避適用
-			ctx.game_session.apply_eraser_evasion()
-			_update_race_hud()
+			slide_tw.tween_property(eraser_img, "position:x", orig_x + 24, 0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			slide_tw.tween_property(eraser_img, "rotation_degrees", -12.0, 0.07)
+			slide_tw.tween_callback(func(): if ctx.audio_manager: ctx.audio_manager.play_se("click"))
 			
-			is_animating = false
-			_set_action_buttons_enabled(true)
-		)
-	)
+		slide_tw.set_parallel(true)
+		slide_tw.tween_property(conflicting_node, "modulate:a", 0.3, 0.42)
+		slide_tw.tween_property(new_card_node, "modulate:a", 0.3, 0.42)
+		
+		for p_idx in range(particle_count):
+			var part = particles[p_idx]
+			part_tw.tween_property(part, "modulate:a", 1.0, 0.1)
+			part_tw.tween_property(part, "position", part.position + Vector2(randf_range(-60, 60), randf_range(-30, 60)), 0.42).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			part_tw.tween_property(part, "rotation_degrees", part.rotation_degrees + randf_range(-90, 90), 0.42)
+			part_tw.tween_property(part, "scale", Vector2(0.1, 0.1), 0.42).set_delay(0.2)
+			
+		await slide_tw.finished
+		
+		for part in particles:
+			part.queue_free()
+			
+		var disappear = ctx.screen_content.create_tween().set_parallel(true)
+		disappear.tween_property(conflicting_node, "modulate:a", 0.0, 0.2)
+		disappear.tween_property(conflicting_node, "scale", Vector2(0.2, 0.2), 0.2)
+		disappear.tween_property(new_card_node, "modulate:a", 0.0, 0.2)
+		disappear.tween_property(new_card_node, "scale", Vector2(0.2, 0.2), 0.2)
+		disappear.tween_property(eraser_img, "modulate:a", 0.0, 0.15)
+		await disappear.finished
+		
+		drawn_card_nodes.erase(conflicting_node)
+		drawn_card_nodes.erase(new_card_node)
+		conflicting_node.queue_free()
+		new_card_node.queue_free()
+		eraser_img.queue_free()
+		_update_race_hud()
 
 func _trigger_burst_sequence():
-	# 寝落ちバースト演出
-	is_animating = true
-	_set_action_buttons_enabled(false)
+	if ctx.audio_manager: ctx.audio_manager.play_se("burst")
+	if is_instance_valid(button_box):
+		button_box.hide()
 	
-	# 所持消しゴムチェック
-	var race = ctx.game_session.current_race
-	if race and race["has_eraser"]:
-		var last_node = drawn_card_nodes.back() if drawn_card_nodes.size() > 0 else null
-		var last_val = race["score"] - ctx.game_session.current_race["score"] # 増加分
-		await _trigger_eraser_evasion_sequence(last_node, last_val)
-		return
-		
-	# 暗転フェード＆極上の睡魔脈動Tween（Godot 4 の堅牢なタイマー連動）
-	if ctx.audio_manager: ctx.audio_manager.play_se("place") # ドスンと寝落ちるSE
+	var shake = ctx.screen_content.create_tween().set_loops(8)
+	shake.tween_callback(func(): camera_shake_offset = Vector2(randf_range(-14, 14), randf_range(-14, 14)))
+	shake.tween_interval(0.04)
 	
-	var fade_black = ColorRect.new()
-	fade_black.color = Color(0,0,0,0)
-	fade_black.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	ctx.ui_root.add_child(fade_black)
-	fade_black.z_index = 100
-	
-	var fade_tw = fade_black.create_tween()
-	fade_tw.tween_property(fade_black, "color", Color(0,0,0, 0.8), 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	
-	# おもちゃ感が弾け飛ぶ：引いたカードたちが画面上で跳ねるコメディ風Tween
 	var has_cards = false
-	var hop_tw = ctx.ui_root.create_tween().set_parallel(true)
-	for i in range(drawn_card_nodes.size()):
-		var node = drawn_card_nodes[i]
+	for node in drawn_card_nodes:
 		if is_instance_valid(node):
 			has_cards = true
-			node.pivot_offset = node.size / 2.0
-			hop_tw.tween_property(node, "scale", Vector2.ZERO, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-			hop_tw.tween_property(node, "position:y", node.position.y + 150, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-			hop_tw.tween_property(node, "rotation_degrees", randf_range(-45.0, 45.0), 0.45)
+			break
 			
-	# Godot 4 エンジンの finished 発火ハングバグを完全に回避するため、空Tween同期を時間ベースに一本化！
-	await ctx.ui_root.get_tree().create_timer(0.45).timeout
+	if is_instance_valid(hud_notebook) or has_cards:
+		var hop_tw = ctx.screen_content.create_tween().set_parallel(true)
+		if is_instance_valid(hud_notebook):
+			hud_notebook.pivot_offset = hud_notebook.size / 2.0
+			hop_tw.tween_property(hud_notebook, "position:y", hud_notebook.position.y - 25, 0.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			hop_tw.tween_property(hud_notebook, "rotation_degrees", -2.0, 0.1)
+		for node in drawn_card_nodes:
+			if is_instance_valid(node):
+				node.pivot_offset = node.size / 2.0
+				hop_tw.tween_property(node, "position:y", node.position.y - 35, 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+				hop_tw.tween_property(node, "rotation_degrees", node.rotation_degrees + randf_range(-15, 15), 0.12)
+				
+		hop_tw.chain().set_parallel(true)
+		if is_instance_valid(hud_notebook):
+			hop_tw.tween_property(hud_notebook, "position:y", hud_notebook.position.y, 0.18).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+			hop_tw.tween_property(hud_notebook, "rotation_degrees", 0.0, 0.18)
+		for node in drawn_card_nodes:
+			if is_instance_valid(node):
+				var orig_y = node.position.y
+				hop_tw.tween_property(node, "position:y", orig_y, 0.22).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+			
+	if has_cards:
+		var fade_black = ctx.screen_content.create_tween().set_parallel(true)
+		for node in drawn_card_nodes:
+			if is_instance_valid(node):
+				fade_black.tween_property(node, "modulate", Color(0.25, 0.25, 0.45, 0.8), 0.4)
+			
+	var banner = DeskTheme.create_floating_badge("【 寝落ち（バースト）！】", DeskTheme.COLOR_BLUFF_RED, 28)
+	banner.anchor_left = 0.5; banner.anchor_top = 0.5; banner.anchor_right = 0.5; banner.anchor_bottom = 0.5
+	banner.offset_left = -300; banner.offset_top = -140; banner.offset_right = 300; banner.offset_bottom = -60
+	if is_instance_valid(play_desk):
+		play_desk.add_child(banner)
+	else:
+		ctx.screen_content.add_child(banner)
+	banner.scale = Vector2(4.0, 4.0)
+	banner.modulate.a = 0.0
+	banner.pivot_offset = banner.size / 2.0
 	
-	# バーストリザルトダイアログの表示
-	var diag = PanelContainer.new()
-	diag.custom_minimum_size = Vector2(480, 260)
-	var diag_style = StyleBoxFlat.new()
-	diag_style.bg_color = Color("1a0d24") # 深い紫色の夜更け・寝落ちイメージ
-	diag_style.border_width_left = 4; diag_style.border_width_top = 4
-	diag_style.border_width_right = 4; diag_style.border_width_bottom = 4
-	diag_style.border_color = Color("6c3a93")
-	diag_style.corner_radius_top_left = 18; diag_style.corner_radius_top_right = 18
-	diag_style.corner_radius_bottom_left = 18; diag_style.corner_radius_bottom_right = 18
-	diag_style.content_margin_left = 28; diag_style.content_margin_right = 28
-	diag_style.content_margin_top = 22; diag_style.content_margin_bottom = 22
-	diag_style.shadow_color = Color(0,0,0, 0.5)
-	diag_style.shadow_size = 32
-	diag_style.shadow_offset = Vector2(10, 15)
-	diag.add_theme_stylebox_override("panel", diag_style)
+	var banner_tw = banner.create_tween()
+	banner_tw.set_parallel(true)
+	banner_tw.tween_property(banner, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	banner_tw.tween_property(banner, "modulate:a", 1.0, 0.1)
+	banner_tw.tween_property(banner, "rotation_degrees", randf_range(-8.0, 8.0), 0.15)
 	
-	var view_size = ctx.ui_root.get_viewport_rect().size
-	diag.position = Vector2(view_size.x / 2.0 - 240, view_size.y / 2.0 - 130)
-	ctx.ui_root.add_child(diag)
-	diag.z_index = 101
+	banner_tw.chain().tween_callback(func():
+		if ctx.audio_manager: ctx.audio_manager.play_se("place")
+	)
 	
+	await ctx.screen_content.get_tree().create_timer(0.45).timeout
+	camera_shake_offset = Vector2.ZERO
+		
+	var empty_scores = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
+	ctx.game_session.current_score = 0
+	
+	var dialog = PanelContainer.new()
+	dialog.custom_minimum_size = Vector2(600, 280)
+	dialog.anchor_left = 0.5; dialog.anchor_top = 0.5; dialog.anchor_right = 0.5; dialog.anchor_bottom = 0.5
+	dialog.offset_left = -300; dialog.offset_top = -20; dialog.offset_right = 300; dialog.offset_bottom = 260
+	
+	var dialog_style = StyleBoxFlat.new()
+	dialog_style.bg_color = Color("1e1610")
+	dialog_style.border_width_left = 4; dialog_style.border_width_right = 4
+	dialog_style.border_width_top = 4; dialog_style.border_width_bottom = 6
+	dialog_style.border_color = DeskTheme.COLOR_BLUFF_RED
+	dialog_style.corner_radius_top_left = 16; dialog_style.corner_radius_top_right = 16
+	dialog_style.corner_radius_bottom_left = 16; dialog_style.corner_radius_bottom_right = 16
+	dialog_style.shadow_color = Color(0, 0, 0, 0.6)
+	dialog_style.shadow_size = 20
+	dialog.add_theme_stylebox_override("panel", dialog_style)
+	
+	if is_instance_valid(play_desk):
+		play_desk.add_child(dialog)
+	else:
+		ctx.screen_content.add_child(dialog)
+		
 	var dv = VBoxContainer.new()
+	dv.add_theme_constant_override("separation", 16)
 	dv.alignment = BoxContainer.ALIGNMENT_CENTER
-	dv.add_theme_constant_override("separation", 18)
-	diag.add_child(dv)
+	dialog.add_child(dv)
 	
-	dv.add_child(DeskTheme.create_label("😴 机の上で寝落ちした...", 24, Color("dca5ff"), true))
+	dv.add_child(DeskTheme.create_label("💤 睡魔に敗れて寝落ちした！", 22, DeskTheme.COLOR_BLUFF_RED, true))
 	
-	# 面白いコメディ風寝落ちテキスト
-	var txt = "今日のノルマを超えて無理に勉強しようとしたため、睡魔に負けて机の上でぐっすり寝てしまいました！\n今日の「%s」の勉強量は【 0g （バースト判定）】となります..." % DeskTheme.subject_name(race["subject_type"])
-	var desc = DeskTheme.create_label(txt, 13, Color("ffffff"))
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	dv.add_child(desc)
+	var msg = DeskTheme.create_label("勉強した記憶がすべて夢の彼方へ消え去ってしまった...\n(本日の獲得点数は すべて「0点」になります)", 14, Color("dfd5cb"))
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dv.add_child(msg)
 	
-	var cont_btn = DeskTheme.create_button("翌朝をむかえる ☀️", Vector2(220, 52), Color("6c3a93"), Color("4e2470"))
-	dv.add_child(cont_btn)
+	var wake_btn = DeskTheme.create_button("【 🛏️ 目をこすって起きる (通知表へ進む) ➔ 】", Vector2(400, 56), DeskTheme.COLOR_ACCENT_GOLD, Color("b38f30"))
+	wake_btn.add_theme_font_size_override("font_size", 16)
+	dv.add_child(wake_btn)
 	
-	diag.pivot_offset = Vector2(240, 130)
-	diag.scale = Vector2(0.8, 0.8)
-	var tw_diag = diag.create_tween()
-	tw_diag.tween_property(diag, "scale", Vector2(1.0, 1.0), 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	wake_btn.pivot_offset = Vector2(200, 28)
+	var pulse_tw = wake_btn.create_tween().set_loops()
+	pulse_tw.tween_property(wake_btn, "scale", Vector2(1.04, 1.04), 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	pulse_tw.tween_property(wake_btn, "scale", Vector2(1.0, 1.0), 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	
-	cont_btn.pressed.connect(func():
+	wake_btn.pressed.connect(func():
+		pulse_tw.kill()
 		if ctx.audio_manager: ctx.audio_manager.play_se("click")
-		
-		# バックエンドのバースト処理（スコア0で終了）
-		ctx.game_session.burst_chicken_race()
-		
-		diag.queue_free()
-		fade_black.queue_free()
-		
-		# 次の教科へ進む
-		current_subject_idx += 1
-		_start_next_subject_race()
+		dialog.queue_free()
+		phase_completed.emit(empty_scores)
 	)
 
 func _on_stop_pressed():
-	if is_animating: return
-	is_animating = true
-	_set_action_buttons_enabled(false)
-	
 	if ctx.audio_manager: ctx.audio_manager.play_se("click")
-	
-	# 切り上げ処理を実行
-	var race = ctx.game_session.current_race
-	if race:
-		ctx.game_session.stop_chicken_race()
-		
-	# ページめくりアニメーション演出
-	_animate_page_turn(func():
-		current_subject_idx += 1
-		_start_next_subject_race()
-	)
-
-func _animate_page_turn(callback: Callable):
-	if not is_instance_valid(ctx.active_notebook):
-		callback.call()
-		return
-		
-	if ctx.audio_manager: ctx.audio_manager.play_se("place") # パサッという音
-	
-	# 右ページの紙を左へめくる3D風フリップアニメーション
-	var paper_cover = PanelContainer.new()
-	paper_cover.custom_minimum_size = Vector2(620, 840)
-	paper_cover.size = Vector2(620, 840)
-	paper_cover.pivot_offset = Vector2(0, 420) # リングノートの中央綴じ目をピボット
-	
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color("faf8f5") # 白い用紙
-	style.border_width_left = 1; style.border_width_top = 2
-	style.border_width_right = 2; style.border_width_bottom = 3
-	style.border_color = Color("c2b29d")
-	style.corner_radius_top_left = 4; style.corner_radius_top_right = 24
-	style.corner_radius_bottom_left = 4; style.corner_radius_bottom_right = 24
-	paper_cover.add_theme_stylebox_override("panel", style)
-	
-	ctx.active_notebook.add_child(paper_cover)
-	paper_cover.position = Vector2(620, 20) # 右ページの位置
-	
-	var tw = paper_cover.create_tween()
-	tw.set_parallel(true)
-	# 180度フリップして左ページに被さる
-	tw.tween_property(paper_cover, "scale:x", -1.0, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	tw.tween_property(paper_cover, "position:x", 0.0, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	
-	tw.chain().tween_callback(callback)
-	tw.tween_callback(paper_cover.queue_free)
+	var stamp = hud_notebook.create_tween()
+	stamp.tween_property(hud_notebook, "scale", Vector2(1.05, 1.05), 0.12).set_trans(Tween.TRANS_CUBIC)
+	stamp.tween_property(hud_notebook, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_BACK)
+	if ctx.audio_manager: ctx.audio_manager.play_se("combo")
+	await stamp.finished
+	var scores = ctx.game_session.stop_and_report()
+	phase_completed.emit(scores)

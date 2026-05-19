@@ -3,6 +3,8 @@ extends RefCounted
 ## 見開きノートUIを生成するファクトリクラス。
 ## 元の GameScene.gd 内の _create_double_page_notebook() を独立コンポーネント化しました。
 
+const CozyDoodleNodeScript = preload("res://scripts/ui/components/CozyDoodleNode.gd")
+
 static func create() -> PanelContainer:
 	var root = PanelContainer.new()
 	root.custom_minimum_size = Vector2(1260, 920)
@@ -14,6 +16,7 @@ static func create() -> PanelContainer:
 	# ドロップシャドウ用の巨大パネル
 	var shadow = Panel.new()
 	shadow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shadow.offset_left = 12; shadow.offset_top = 16; shadow.offset_right = -12; shadow.offset_bottom = -16
 	var shadow_style = StyleBoxFlat.new()
 	shadow_style.bg_color = Color(0.06, 0.04, 0.02, 0.24)
@@ -27,6 +30,7 @@ static func create() -> PanelContainer:
 	# ノート見開き外枠（表紙の厚み部分、少しはみ出る茶色の革）
 	var cover = Panel.new()
 	cover.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var cover_style = StyleBoxFlat.new()
 	cover_style.bg_color = Color("8c6d4f") # 温かみのある革バインダーの茶色
 	cover_style.corner_radius_top_left = 20; cover_style.corner_radius_top_right = 20
@@ -61,11 +65,11 @@ static func create() -> PanelContainer:
 	left_page.add_child(left_lines)
 	
 	# 左ページに情緒ある手書き落書きを追加
-	var doodle_left_coffee = CozyDoodleNode.new(0, Color("8c6d4f", 0.07)) # 薄いコーヒー染み
+	var doodle_left_coffee = CozyDoodleNodeScript.new(0, Color("8c6d4f", 0.07)) # 薄いコーヒー染み
 	doodle_left_coffee.position = Vector2(10, 720) # 左下
 	left_lines.add_child(doodle_left_coffee)
 	
-	var doodle_left_star = CozyDoodleNode.new(1, Color("5c5340", 0.12)) # 手書きの星と渦
+	var doodle_left_star = CozyDoodleNodeScript.new(1, Color("5c5340", 0.12)) # 手書きの星と渦
 	doodle_left_star.position = Vector2(500, 40) # 右上
 	left_lines.add_child(doodle_left_star)
 	
@@ -96,6 +100,7 @@ static func create() -> PanelContainer:
 	
 	# 中央バインダー / リング
 	var spine = Control.new()
+	spine.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	spine.custom_minimum_size = Vector2(48, 0)
 	spine.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	pages_hbox.add_child(spine)
@@ -104,10 +109,12 @@ static func create() -> PanelContainer:
 	var spine_shadow = ColorRect.new()
 	spine_shadow.color = Color("0f0c08", 0.15)
 	spine_shadow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	spine.add_child(spine_shadow)
 	
 	# リアルなスチールリングを縦に並べる
 	var rings_v = VBoxContainer.new()
+	rings_v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rings_v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	rings_v.alignment = BoxContainer.ALIGNMENT_CENTER
 	rings_v.add_theme_constant_override("separation", 28)
@@ -145,11 +152,11 @@ static func create() -> PanelContainer:
 	right_page.add_child(right_lines)
 	
 	# 右ページに手書き落書きを追加
-	var doodle_right_spiral = CozyDoodleNode.new(2, Color("4b5c70", 0.12)) # 手書きのうずまき
+	var doodle_right_spiral = CozyDoodleNodeScript.new(2, Color("4b5c70", 0.12)) # 手書きのうずまき
 	doodle_right_spiral.position = Vector2(40, 80) # 左上
 	right_lines.add_child(doodle_right_spiral)
 	
-	var doodle_right_tally = CozyDoodleNode.new(3, Color("b24c4c", 0.14)) # 赤ペンで書いた「正」の字（勉強の記録感）
+	var doodle_right_tally = CozyDoodleNodeScript.new(3, Color("b24c4c", 0.14)) # 赤ペンで書いた「正」の字（勉強の記録感）
 	doodle_right_tally.position = Vector2(540, 750) # 右下
 	right_lines.add_child(doodle_right_tally)
 	
