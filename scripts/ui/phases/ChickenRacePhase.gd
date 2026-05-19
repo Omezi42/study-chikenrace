@@ -137,31 +137,51 @@ func _show_race_screen():
 	play_desk.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right_v.add_child(play_desk)
 	
+	# カード情報バー（引いた枚数・残り山札）
+	var card_info_h = HBoxContainer.new()
+	card_info_h.alignment = BoxContainer.ALIGNMENT_CENTER
+	card_info_h.add_theme_constant_override("separation", 24)
+	right_v.add_child(card_info_h)
+	
+	var drawn_count_lbl = DeskTheme.create_label("引いたカード: 0枚", 14, DeskTheme.COLOR_INK, true)
+	card_info_h.add_child(drawn_count_lbl)
+	subject_gauges["drawn_count"] = drawn_count_lbl
+	
+	var remain_lbl = DeskTheme.create_label("残り山札: --枚", 14, DeskTheme.COLOR_MUTED, true)
+	card_info_h.add_child(remain_lbl)
+	subject_gauges["remain_count"] = remain_lbl
+	
 	card_container = Control.new()
 	card_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	card_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	play_desk.add_child(card_container)
 	
 	burst_warning_banner = Panel.new()
-	burst_warning_banner.custom_minimum_size = Vector2(0, 52)
+	burst_warning_banner.custom_minimum_size = Vector2(0, 42)
 	burst_warning_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var banner_style = StyleBoxFlat.new()
 	banner_style.bg_color = DeskTheme.COLOR_SAFE
-	banner_style.corner_radius_top_left = 12; banner_style.corner_radius_top_right = 12
-	banner_style.corner_radius_bottom_left = 12; banner_style.corner_radius_bottom_right = 12
+	banner_style.corner_radius_top_left = 10; banner_style.corner_radius_top_right = 10
+	banner_style.corner_radius_bottom_left = 10; banner_style.corner_radius_bottom_right = 10
 	burst_warning_banner.add_theme_stylebox_override("panel", banner_style)
 	right_v.add_child(burst_warning_banner)
 	
-	var banner_h = HBoxContainer.new()
-	banner_h.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	banner_h.alignment = BoxContainer.ALIGNMENT_CENTER
-	DeskTheme.apply_font(banner_h)
-	burst_warning_banner.add_child(banner_h)
+	var banner_v = VBoxContainer.new()
+	banner_v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	banner_v.alignment = BoxContainer.ALIGNMENT_CENTER
+	banner_v.add_theme_constant_override("separation", 4)
+	DeskTheme.apply_font(banner_v)
+	burst_warning_banner.add_child(banner_v)
 	
-	var warning_lbl = DeskTheme.create_label("睡魔度: 0%", 18, Color.WHITE, true)
-	banner_h.add_child(warning_lbl)
+	var sleep_title = DeskTheme.create_label("睡魔度", 13, Color.WHITE, true)
+	banner_v.add_child(sleep_title)
 	
-	next_burst_label = DeskTheme.create_label("安全レベル: 脳内すっきり、まだ引ける！", 14, DeskTheme.COLOR_SAFE, true)
+	var sleep_gauge = DeskTheme.create_gauge_bar(0.0, 100.0, DeskTheme.COLOR_SAFE, Vector2(280, 10))
+	banner_v.add_child(sleep_gauge)
+	subject_gauges["sleep_gauge"] = sleep_gauge
+	subject_gauges["sleep_title"] = sleep_title
+	
+	next_burst_label = DeskTheme.create_label("安全レベル: 脳内すっきり、まだ引ける！", 13, DeskTheme.COLOR_SAFE, true)
 	right_v.add_child(next_burst_label)
 	
 	button_box = HBoxContainer.new()
@@ -169,11 +189,11 @@ func _show_race_screen():
 	button_box.add_theme_constant_override("separation", 32)
 	right_v.add_child(button_box)
 	
-	var draw_btn = DeskTheme.create_button("カードを引く (ドロー)", Vector2(260, 76), DeskTheme.COLOR_SAFE, Color("2d928a"))
+	var draw_btn = DeskTheme.create_button("カードを引く", Vector2(240, 72), DeskTheme.COLOR_SAFE, Color("2d928a"))
 	draw_btn.pressed.connect(_on_draw_pressed)
 	button_box.add_child(draw_btn)
 	
-	var stop_btn = DeskTheme.create_button("ここで勉強終了 (ストップ)", Vector2(260, 76), DeskTheme.COLOR_BURST, Color("bd4f4f"))
+	var stop_btn = DeskTheme.create_button("勉強を切り上げる", Vector2(240, 72), DeskTheme.COLOR_BURST, Color("bd4f4f"))
 	stop_btn.pressed.connect(_on_stop_pressed)
 	button_box.add_child(stop_btn)
 	
@@ -186,7 +206,7 @@ func _update_race_hud():
 		var score = ctx.game_session.subject_scores[s]
 		var data = subject_gauges[s]
 		var ratio = clamp(float(score) / 20.0, 0.0, 1.0)
-		var fill = data["bar"].get_child(1)
+		var fill = data["bar"].get_child(0)
 		var tw = fill.create_tween()
 		tw.tween_property(fill, "offset_right", max(4.0, data["bar"].custom_minimum_size.x * ratio), 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		data["label"].text = "%d点" % score
@@ -202,6 +222,13 @@ func _update_race_hud():
 	item_count_labels[2].text = "残り:%d枚" % max(0, num_pens)
 	item_count_labels[3].text = "残り:%d枚" % max(0, num_rulers)
 	
+	# カード枚数＆残り山札の更新
+	var drawn_num = drawn_card_nodes.size()
+	if subject_gauges.has("drawn_count"):
+		subject_gauges["drawn_count"].text = "引いたカード: %d枚" % drawn_num
+	if subject_gauges.has("remain_count"):
+		subject_gauges["remain_count"].text = "残り山札: %d枚" % deck.deck.size()
+	
 	var deck_cards = deck.deck
 	var conflict_count = 0
 	var total_deck = deck_cards.size()
@@ -215,24 +242,41 @@ func _update_race_hud():
 	if total_deck > 0:
 		burst_prob = int((float(conflict_count) / float(total_deck)) * 100.0)
 		
-	var sleep_icon = "[ 睡魔度 ]: [||          ] すっきり！"
+	# 睡魔ゲージのビジュアル更新
 	var style: StyleBoxFlat = burst_warning_banner.get_theme_stylebox("panel")
+	var gauge_color = DeskTheme.COLOR_SAFE
 	if burst_prob >= 50:
 		style.bg_color = DeskTheme.COLOR_BLUFF_RED
-		sleep_icon = "[ 瞼の重さ ]: [||||||||||] 寝落ち寸前！ (限界!)"
-		next_burst_label.text = "警告: 限界寸前！いつ寝落ち(バースト)してもおかしくない！"
+		gauge_color = DeskTheme.COLOR_BLUFF_RED
+		next_burst_label.text = "警告: 限界寸前！いつ寝落ちしてもおかしくない！"
 		next_burst_label.add_theme_color_override("font_color", DeskTheme.COLOR_BLUFF_RED)
+		if subject_gauges.has("sleep_title"):
+			subject_gauges["sleep_title"].text = "睡魔度 (%d%%) - 限界!" % burst_prob
 	elif burst_prob >= 25:
 		style.bg_color = DeskTheme.COLOR_ACCENT_GOLD
-		sleep_icon = "[ 瞼の重さ ]: [|||||     ] 睡魔が襲ってきた... (眠気)"
+		gauge_color = DeskTheme.COLOR_ACCENT_GOLD
 		next_burst_label.text = "注意: 限界が近い... そろそろ引き際か？"
 		next_burst_label.add_theme_color_override("font_color", Color("a87d00"))
+		if subject_gauges.has("sleep_title"):
+			subject_gauges["sleep_title"].text = "睡魔度 (%d%%) - 眠気" % burst_prob
 	else:
 		style.bg_color = DeskTheme.COLOR_SAFE
-		sleep_icon = "[ 睡魔度 ]: [||          ] 脳内すっきり、まだ引ける！"
+		gauge_color = DeskTheme.COLOR_SAFE
 		next_burst_label.text = "安全レベル: まだ睡魔は感じない！"
 		next_burst_label.add_theme_color_override("font_color", DeskTheme.COLOR_SAFE)
-	burst_warning_banner.get_child(0).get_child(0).text = sleep_icon
+		if subject_gauges.has("sleep_title"):
+			subject_gauges["sleep_title"].text = "睡魔度 (%d%%)" % burst_prob
+	
+	# 睡魔ゲージバーの塗りを更新
+	if subject_gauges.has("sleep_gauge"):
+		var sg = subject_gauges["sleep_gauge"]
+		var sg_fill = sg.get_child(0)
+		var sg_ratio = clamp(float(burst_prob) / 100.0, 0.0, 1.0)
+		var sg_tw = sg_fill.create_tween()
+		sg_tw.tween_property(sg_fill, "offset_right", max(4.0, 280.0 * sg_ratio), 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		var sg_style = sg_fill.get_theme_stylebox("panel").duplicate()
+		sg_style.bg_color = gauge_color
+		sg_fill.add_theme_stylebox_override("panel", sg_style)
 	
 	if heartbeat_tween != null:
 		heartbeat_tween.kill()
@@ -280,6 +324,7 @@ func _on_draw_pressed():
 	else:
 		card_node = DeskTheme.create_item_card_large(card.item_type)
 	var back_tex = TextureRect.new()
+	back_tex.name = "BackTex"
 	back_tex.texture = DeskTheme.CARD_BACK
 	back_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	back_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -290,14 +335,8 @@ func _on_draw_pressed():
 	drawn_card_nodes.append(card_node)
 	
 	var num_cards = drawn_card_nodes.size()
-	var desk_sz = play_desk.size
-	if desk_sz.x < 100 or desk_sz.y < 100:
-		desk_sz = Vector2(600, 460)
-	var center = desk_sz / 2.0
-	center.x += 60.0
-	var offset_x = (num_cards - 1) * 36.0 - 180.0
-	var card_sz = Vector2(190, 260)
-	var target_pos = center + Vector2(offset_x, randf_range(-40.0, 40.0)) - card_sz / 2.0
+	var card_scale_factor = 1.0 if num_cards <= 5 else max(0.65, 1.0 - (num_cards - 5) * 0.05)
+	var card_sz = Vector2(190, 260) * card_scale_factor
 	
 	var view_size = ctx.screen_content.get_viewport_rect().size
 	var start_pos = Vector2(view_size.x / 2.0, view_size.y) - card_sz / 2.0
@@ -310,22 +349,71 @@ func _on_draw_pressed():
 	card_node.rotation_degrees = -45.0
 	card_node.scale = Vector2(0.2, 0.2)
 	card_node.modulate.a = 0.0
-	card_node.pivot_offset = card_sz / 2.0
+	card_node.pivot_offset = Vector2(190, 260) / 2.0
 	
-	var tw = card_node.create_tween()
-	tw.set_parallel(true)
-	tw.tween_property(card_node, "position", target_pos, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(card_node, "rotation_degrees", randf_range(-10.0, 10.0), 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(card_node, "modulate:a", 1.0, 0.15)
-	tw.tween_property(card_node, "scale", Vector2(0.0, 1.3), 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	tw.chain().tween_callback(func():
-		back_tex.hide()
-	)
-	tw.tween_property(card_node, "scale", Vector2(1.0, 1.0), 0.17).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# 場にあるすべてのカードを並び替えて整列させる
+	await _rearrange_drawn_cards(true)
 	if ctx.audio_manager: ctx.audio_manager.play_se("place")
-	await tw.finished
 	
 	_update_race_hud()
+
+func _rearrange_drawn_cards(animate: bool = true):
+	var num_cards = drawn_card_nodes.size()
+	if num_cards == 0: return
+	
+	var desk_sz = play_desk.size
+	if desk_sz.x < 100 or desk_sz.y < 100:
+		desk_sz = Vector2(600, 460)
+	var center = desk_sz / 2.0
+	center.x += 60.0
+	
+	var card_spacing = 38.0 if num_cards <= 5 else max(18.0, 180.0 / float(num_cards))
+	var card_scale_factor = 1.0 if num_cards <= 5 else max(0.65, 1.0 - (num_cards - 5) * 0.05)
+	var card_sz = Vector2(190, 260) * card_scale_factor
+	
+	var last_tween: Tween = null
+	for i in range(num_cards):
+		var node = drawn_card_nodes[i]
+		if not is_instance_valid(node): continue
+		
+		var item_offset_x = (i * card_spacing) - (card_spacing * float(num_cards - 1)) / 2.0
+		var item_offset_y = -abs(item_offset_x) * 0.08
+		
+		var target_pos = center + Vector2(item_offset_x, item_offset_y) - card_sz / 2.0
+		var target_rot = (i - (num_cards - 1) / 2.0) * (20.0 / max(float(num_cards), 1.0))
+		target_rot = clamp(target_rot, -12.0, 12.0)
+		
+		node.pivot_offset = Vector2(190, 260) / 2.0
+		
+		if animate:
+			var tw = node.create_tween().set_parallel(true)
+			last_tween = tw
+			var has_back = node.has_node("BackTex")
+			
+			if i == num_cards - 1 and has_back:
+				var back_node = node.get_node("BackTex")
+				tw.tween_property(node, "position", target_pos, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+				tw.tween_property(node, "rotation_degrees", target_rot, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+				tw.tween_property(node, "modulate:a", 1.0, 0.15)
+				
+				var flip_tw = node.create_tween()
+				flip_tw.tween_property(node, "scale", Vector2(0.0, card_scale_factor * 1.2), 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+				flip_tw.tween_callback(func():
+					if is_instance_valid(back_node): back_node.hide()
+				)
+				flip_tw.tween_property(node, "scale", Vector2(card_scale_factor, card_scale_factor), 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			else:
+				tw.tween_property(node, "position", target_pos, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+				tw.tween_property(node, "scale", Vector2(card_scale_factor, card_scale_factor), 0.28).set_trans(Tween.TRANS_CUBIC)
+				tw.tween_property(node, "rotation_degrees", target_rot, 0.28).set_trans(Tween.TRANS_CUBIC)
+		else:
+			node.position = target_pos
+			node.scale = Vector2(card_scale_factor, card_scale_factor)
+			node.rotation_degrees = target_rot
+			
+	if last_tween and last_tween.is_valid():
+		await last_tween.finished
+
 	
 	if card.item_type == 3:
 		_trigger_ruler_effect(card_node)
@@ -341,7 +429,7 @@ func _on_draw_pressed():
 		var combo_num = drawn_card_nodes.size()
 		if combo_num >= 2:
 			var combo_badge = DeskTheme.create_floating_badge("%d COMBO!" % combo_num, DeskTheme.subject_color(card.subject) if card.item_type == 0 else DeskTheme.COLOR_SAFE, 20)
-			combo_badge.global_position = target_pos + Vector2(card_sz.x / 2.0 - combo_badge.size.x / 2.0, -35.0)
+			combo_badge.global_position = card_node.global_position + Vector2(card_sz.x / 2.0 - combo_badge.size.x / 2.0, -35.0)
 			play_desk.add_child(combo_badge)
 			combo_badge.pivot_offset = combo_badge.size / 2.0
 			combo_badge.scale = Vector2(0.1, 0.1)
@@ -362,16 +450,19 @@ func _trigger_ruler_effect(card_node: Control):
 	button_box.hide()
 	var overlay
 	overlay = DeskTheme.create_dialog_overlay(ctx.screen_content, "📏 定規でスコア補強！", func(vbox: VBoxContainer):
-		var ticks_top = DeskTheme.create_label("| . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |", 12, Color("5c4033"), true)
+		# 目盛りを視認性の良い明るい木目調に変更
+		var ticks_top = DeskTheme.create_label("| . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |", 12, Color("ebd4be"), true)
 		ticks_top.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		vbox.add_child(ticks_top)
 		vbox.move_child(ticks_top, 0)
 		
-		vbox.add_child(DeskTheme.create_label("好きな教科を1つ選んでスコアを「＋5点」補強できます。", 15, DeskTheme.COLOR_INK, true))
+		# 黒板上の説明テキストをチョークホワイトに変更
+		vbox.add_child(DeskTheme.create_label("好きな教科を1つ選んでスコアを「＋5点」補強できます。", 16, DeskTheme.COLOR_CHALK_WHITE, true))
 		
 		var grid = GridContainer.new()
 		grid.columns = 5
 		grid.add_theme_constant_override("h_separation", 12)
+		grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER # グリッドを中央寄せ！
 		vbox.add_child(grid)
 		
 		for s in range(5):
@@ -384,8 +475,8 @@ func _trigger_ruler_effect(card_node: Control):
 				btn_tw.chain().tween_property(btn, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_BACK)
 				await btn_tw.finished
 				
-				ctx.game_session.subject_scores[s] += 5
-				ctx.game_session.current_score += 5
+				# GameSessionの同期メソッドを使用！
+				ctx.game_session.apply_ruler_bonus(s)
 				_update_race_hud()
 				
 				var node = vbox
@@ -396,7 +487,7 @@ func _trigger_ruler_effect(card_node: Control):
 			)
 			grid.add_child(btn)
 			
-		var ticks_bottom = DeskTheme.create_label("| . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |", 12, Color("5c4033"), true)
+		var ticks_bottom = DeskTheme.create_label("| . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |", 12, Color("ebd4be"), true)
 		ticks_bottom.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		vbox.add_child(ticks_bottom)
 	)
@@ -412,81 +503,70 @@ func _trigger_ruler_effect(card_node: Control):
 		ruler_style.corner_radius_bottom_left = 8; ruler_style.corner_radius_bottom_right = 8
 		ruler_panel.add_theme_stylebox_override("panel", ruler_style)
 
-func _trigger_eraser_evasion_sequence(new_card_node: Control, weight: int):
+func _trigger_eraser_evasion_sequence(new_card_node: Control, _weight: int):
 	if ctx.audio_manager: ctx.audio_manager.play_se("combo")
-	var conflicting_node: Control = null
-	for node in drawn_card_nodes:
-		if node != new_card_node and node.has_node("Content"):
-			var lbl = node.get_child(0).get_child(0) as Label
-			if lbl and lbl.text == str(weight):
-				conflicting_node = node
-				break
 	
-	if conflicting_node:
-		var eraser_img = TextureRect.new()
-		eraser_img.texture = DeskTheme.ITEM_ERASER
-		eraser_img.custom_minimum_size = Vector2(80, 80)
-		eraser_img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		eraser_img.position = conflicting_node.position + conflicting_node.size / 2.0 - Vector2(40, 40)
-		eraser_img.pivot_offset = Vector2(40, 40)
-		play_desk.add_child(eraser_img)
+	var eraser_img = TextureRect.new()
+	eraser_img.texture = DeskTheme.ITEM_ERASER
+	eraser_img.custom_minimum_size = Vector2(80, 80)
+	eraser_img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	eraser_img.position = new_card_node.position + new_card_node.size / 2.0 - Vector2(40, 40)
+	eraser_img.pivot_offset = Vector2(40, 40)
+	play_desk.add_child(eraser_img)
+	
+	var particle_count = 6
+	var particles = []
+	for p_i in range(particle_count):
+		var part = ColorRect.new()
+		part.color = Color("ffffff")
+		part.custom_minimum_size = Vector2(randf_range(4, 8), randf_range(2, 4))
+		part.position = new_card_node.position + new_card_node.size / 2.0 + Vector2(randf_range(-20, 20), randf_range(-20, 20))
+		part.pivot_offset = part.custom_minimum_size / 2.0
+		part.rotation_degrees = randf_range(0, 360)
+		part.modulate.a = 0.0
+		play_desk.add_child(part)
+		particles.append(part)
+	
+	var slide_tw = eraser_img.create_tween()
+	var part_tw = ctx.screen_content.create_tween().set_parallel(true)
+	var orig_x = eraser_img.position.x
+	
+	for w in range(3):
+		slide_tw.tween_property(eraser_img, "position:x", orig_x - 24, 0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		slide_tw.tween_property(eraser_img, "rotation_degrees", 12.0, 0.07)
+		slide_tw.tween_callback(func(): if ctx.audio_manager: ctx.audio_manager.play_se("click"))
 		
-		var particle_count = 6
-		var particles = []
-		for p_i in range(particle_count):
-			var part = ColorRect.new()
-			part.color = Color("ffffff")
-			part.custom_minimum_size = Vector2(randf_range(4, 8), randf_range(2, 4))
-			part.position = conflicting_node.position + conflicting_node.size / 2.0 + Vector2(randf_range(-20, 20), randf_range(-20, 20))
-			part.pivot_offset = part.custom_minimum_size / 2.0
-			part.rotation_degrees = randf_range(0, 360)
-			part.modulate.a = 0.0
-			play_desk.add_child(part)
-			particles.append(part)
+		slide_tw.tween_property(eraser_img, "position:x", orig_x + 24, 0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		slide_tw.tween_property(eraser_img, "rotation_degrees", -12.0, 0.07)
+		slide_tw.tween_callback(func(): if ctx.audio_manager: ctx.audio_manager.play_se("click"))
 		
-		var slide_tw = eraser_img.create_tween()
-		var part_tw = ctx.screen_content.create_tween().set_parallel(true)
-		var orig_x = eraser_img.position.x
+	slide_tw.set_parallel(true)
+	slide_tw.tween_property(new_card_node, "modulate:a", 0.3, 0.42)
+	
+	for p_idx in range(particle_count):
+		var part = particles[p_idx]
+		part_tw.tween_property(part, "modulate:a", 1.0, 0.1)
+		part_tw.tween_property(part, "position", part.position + Vector2(randf_range(-60, 60), randf_range(-30, 60)), 0.42).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		part_tw.tween_property(part, "rotation_degrees", part.rotation_degrees + randf_range(-90, 90), 0.42)
+		part_tw.tween_property(part, "scale", Vector2(0.1, 0.1), 0.42).set_delay(0.2)
 		
-		for w in range(3):
-			slide_tw.tween_property(eraser_img, "position:x", orig_x - 24, 0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-			slide_tw.tween_property(eraser_img, "rotation_degrees", 12.0, 0.07)
-			slide_tw.tween_callback(func(): if ctx.audio_manager: ctx.audio_manager.play_se("click"))
-			
-			slide_tw.tween_property(eraser_img, "position:x", orig_x + 24, 0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-			slide_tw.tween_property(eraser_img, "rotation_degrees", -12.0, 0.07)
-			slide_tw.tween_callback(func(): if ctx.audio_manager: ctx.audio_manager.play_se("click"))
-			
-		slide_tw.set_parallel(true)
-		slide_tw.tween_property(conflicting_node, "modulate:a", 0.3, 0.42)
-		slide_tw.tween_property(new_card_node, "modulate:a", 0.3, 0.42)
+	await slide_tw.finished
+	
+	for part in particles:
+		part.queue_free()
 		
-		for p_idx in range(particle_count):
-			var part = particles[p_idx]
-			part_tw.tween_property(part, "modulate:a", 1.0, 0.1)
-			part_tw.tween_property(part, "position", part.position + Vector2(randf_range(-60, 60), randf_range(-30, 60)), 0.42).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-			part_tw.tween_property(part, "rotation_degrees", part.rotation_degrees + randf_range(-90, 90), 0.42)
-			part_tw.tween_property(part, "scale", Vector2(0.1, 0.1), 0.42).set_delay(0.2)
-			
-		await slide_tw.finished
-		
-		for part in particles:
-			part.queue_free()
-			
-		var disappear = ctx.screen_content.create_tween().set_parallel(true)
-		disappear.tween_property(conflicting_node, "modulate:a", 0.0, 0.2)
-		disappear.tween_property(conflicting_node, "scale", Vector2(0.2, 0.2), 0.2)
-		disappear.tween_property(new_card_node, "modulate:a", 0.0, 0.2)
-		disappear.tween_property(new_card_node, "scale", Vector2(0.2, 0.2), 0.2)
-		disappear.tween_property(eraser_img, "modulate:a", 0.0, 0.15)
-		await disappear.finished
-		
-		drawn_card_nodes.erase(conflicting_node)
-		drawn_card_nodes.erase(new_card_node)
-		conflicting_node.queue_free()
-		new_card_node.queue_free()
-		eraser_img.queue_free()
-		_update_race_hud()
+	var disappear = ctx.screen_content.create_tween().set_parallel(true)
+	disappear.tween_property(new_card_node, "modulate:a", 0.0, 0.2)
+	disappear.tween_property(new_card_node, "scale", Vector2(0.2, 0.2), 0.2)
+	disappear.tween_property(eraser_img, "modulate:a", 0.0, 0.15)
+	await disappear.finished
+	
+	drawn_card_nodes.erase(new_card_node)
+	new_card_node.queue_free()
+	eraser_img.queue_free()
+	
+	_rearrange_drawn_cards(true)
+	_update_race_hud()
 
 func _trigger_burst_sequence():
 	if ctx.audio_manager: ctx.audio_manager.play_se("burst")

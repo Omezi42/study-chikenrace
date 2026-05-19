@@ -426,6 +426,24 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 		var score_lbl = DeskTheme.create_label("%d点" % total_score, 14, DeskTheme.COLOR_INK, true)
 		card_h.add_child(score_lbl)
 		
+		# デイリー教科1位バッジ（そのプレイヤーがトップの教科数を表示）
+		var top_subj_count = 0
+		var tops = ctx.backend_manager.get_subject_top_scores()
+		for ts in range(5):
+			if tops[ts]["name"] == rival_name:
+				top_subj_count += 1
+		if top_subj_count > 0:
+			var badge = PanelContainer.new()
+			var badge_style = StyleBoxFlat.new()
+			badge_style.bg_color = DeskTheme.COLOR_ACCENT_GOLD
+			badge_style.corner_radius_top_left = 6; badge_style.corner_radius_top_right = 6
+			badge_style.corner_radius_bottom_left = 6; badge_style.corner_radius_bottom_right = 6
+			badge_style.content_margin_left = 4; badge_style.content_margin_right = 4
+			badge_style.content_margin_top = 1; badge_style.content_margin_bottom = 1
+			badge.add_theme_stylebox_override("panel", badge_style)
+			badge.add_child(DeskTheme.create_label("[*]x%d" % top_subj_count, 9, Color.WHITE, true))
+			card_h.add_child(badge)
+		
 		# いいねボタン
 		var like_wrap = Control.new()
 		like_wrap.custom_minimum_size = Vector2(64, 32)
@@ -507,7 +525,7 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 	prof_v.add_theme_constant_override("separation", 0)
 	prof_panel.add_child(prof_v)
 	
-	# Header
+	# Header (固定)
 	var header_p = PanelContainer.new()
 	var h_style = StyleBoxFlat.new()
 	h_style.bg_color = Color.WHITE
@@ -534,38 +552,123 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 	var title = DeskTheme.create_label("プロフィール", 18, DeskTheme.COLOR_INK, true)
 	h_h.add_child(title)
 	
-	# Profile Info
+	# 縦スクロールコンテナを追加して画面はみ出しを防ぐ！
+	var scroll = ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	prof_v.add_child(scroll)
+	
+	var scroll_v = VBoxContainer.new()
+	scroll_v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll_v.add_theme_constant_override("separation", 16)
+	scroll.add_child(scroll_v)
+	
+	# Profile Info (SNS風)
 	var info_m = MarginContainer.new()
-	info_m.add_theme_constant_override("margin_left", 20)
-	info_m.add_theme_constant_override("margin_top", 24)
-	info_m.add_theme_constant_override("margin_right", 20)
-	info_m.add_theme_constant_override("margin_bottom", 24)
-	prof_v.add_child(info_m)
+	info_m.add_theme_constant_override("margin_left", 16)
+	info_m.add_theme_constant_override("margin_top", 16)
+	info_m.add_theme_constant_override("margin_right", 16)
+	info_m.add_theme_constant_override("margin_bottom", 8)
+	scroll_v.add_child(info_m)
 	
 	var info_v = VBoxContainer.new()
-	info_v.alignment = BoxContainer.ALIGNMENT_CENTER
 	info_v.add_theme_constant_override("separation", 12)
 	info_m.add_child(info_v)
 	
-	var avatar = ColorRect.new()
-	avatar.custom_minimum_size = Vector2(80, 80)
-	avatar.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	# 上段: アバター ＋ 3列のスタッツ情報 (Instagram/Studyplusレイアウト)
+	var upper_h = HBoxContainer.new()
+	upper_h.add_theme_constant_override("separation", 16)
+	upper_h.alignment = BoxContainer.ALIGNMENT_CENTER
+	info_v.add_child(upper_h)
+	
+	# 丸型アバター
+	var avatar = PanelContainer.new()
+	avatar.custom_minimum_size = Vector2(74, 74)
 	var av_style = StyleBoxFlat.new()
 	av_style.bg_color = DeskTheme.COLOR_NOTE_DARK
-	av_style.corner_radius_top_left = 40; av_style.corner_radius_top_right = 40
-	av_style.corner_radius_bottom_left = 40; av_style.corner_radius_bottom_right = 40
+	av_style.corner_radius_top_left = 37; av_style.corner_radius_top_right = 37
+	av_style.corner_radius_bottom_left = 37; av_style.corner_radius_bottom_right = 37
 	avatar.add_theme_stylebox_override("panel", av_style)
-	info_v.add_child(avatar)
+	upper_h.add_child(avatar)
 	
-	var av_lbl = DeskTheme.create_label(rival_name.left(1), 36, Color.WHITE, true)
+	var av_lbl = DeskTheme.create_label(rival_name.left(1), 32, Color.WHITE, true)
 	av_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	av_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	av_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	avatar.add_child(av_lbl)
 	
-	var name_lbl = DeskTheme.create_label(rival_name, 22, DeskTheme.COLOR_INK, true)
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	info_v.add_child(name_lbl)
+	# スタッツ表示
+	var stats_h = HBoxContainer.new()
+	stats_h.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stats_h.alignment = BoxContainer.ALIGNMENT_CENTER
+	stats_h.add_theme_constant_override("separation", 12)
+	upper_h.add_child(stats_h)
+	
+	# 各種スタッツデータ計算
+	var hist_arr = ctx.backend_manager.get_rival_history(rival_name)
+	var total_sc = 0
+	for h in hist_arr: total_sc += h["score"]
+	
+	var tops = ctx.backend_manager.get_subject_top_scores()
+	var first_places = 0
+	for s in range(5):
+		if tops[s]["name"] == rival_name and tops[s]["score"] > 0:
+			first_places += 1
+			
+	var stats_configs = [
+		{"val": str(hist_arr.size()) + "日", "lbl": "継続"},
+		{"val": str(total_sc) + "点", "lbl": "累計スコア"},
+		{"val": str(first_places) + "教科", "lbl": "現在1位"}
+	]
+	
+	for cfg in stats_configs:
+		var col = VBoxContainer.new()
+		col.alignment = BoxContainer.ALIGNMENT_CENTER
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		col.add_theme_constant_override("separation", 2)
+		stats_h.add_child(col)
+		
+		var v_lbl = DeskTheme.create_label(cfg["val"], 16, DeskTheme.COLOR_INK, true)
+		v_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(v_lbl)
+		
+		var l_lbl = DeskTheme.create_label(cfg["lbl"], 10, DeskTheme.COLOR_MUTED)
+		l_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(l_lbl)
+		
+	# 下段: 名前と自己紹介（バイオ）
+	var bio_v = VBoxContainer.new()
+	bio_v.add_theme_constant_override("separation", 4)
+	info_v.add_child(bio_v)
+	
+	var name_lbl = DeskTheme.create_label(rival_name, 18, DeskTheme.COLOR_INK, true)
+	bio_v.add_child(name_lbl)
+	
+	# 自己紹介テキストの決定
+	var bio_text = ""
+	if rival_name == "慎重な優等生":
+		bio_text = "毎日コツコツが一番の近道。確実に進捗を出して計画的に合格を目指します。寝落ち（バースト）は絶対に避ける主義です。"
+	elif rival_name == "ギャンブラー":
+		bio_text = "人生すべてチキンレース！一攫千金を狙って爆速で勉強中！寝落ち（バースト）は友達、怖くないぜ！"
+	elif rival_name == "ブラフの達人":
+		bio_text = "報告された数字だけが全てじゃない。心理戦を制する者が試験を制する。私の本気をいつ見抜けるかな？"
+	else:
+		bio_text = "マイペースに勉強中。コツコツ頑張ります！"
+		
+	var bio_p = PanelContainer.new()
+	var bp_style = StyleBoxFlat.new()
+	bp_style.bg_color = Color("fafafa")
+	bp_style.content_margin_left = 10; bp_style.content_margin_right = 10
+	bp_style.content_margin_top = 8; bp_style.content_margin_bottom = 8
+	bp_style.border_width_left = 3
+	bp_style.border_color = Color("1c7ed6") # 左側にSNS風アクセント線
+	bp_style.corner_radius_top_right = 6; bp_style.corner_radius_bottom_right = 6
+	bio_p.add_theme_stylebox_override("panel", bp_style)
+	bio_v.add_child(bio_p)
+	
+	var bio_lbl = DeskTheme.create_label(bio_text, 11, DeskTheme.COLOR_INK)
+	bio_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	bio_p.add_child(bio_lbl)
 	
 	# History Chart
 	var chart_p = PanelContainer.new()
@@ -581,15 +684,14 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 	chart_m.add_theme_constant_override("margin_left", 16)
 	chart_m.add_theme_constant_override("margin_right", 16)
 	chart_m.add_child(chart_p)
-	prof_v.add_child(chart_m)
+	scroll_v.add_child(chart_m)
 	
 	var chart_v = VBoxContainer.new()
 	chart_v.add_theme_constant_override("separation", 16)
 	chart_p.add_child(chart_v)
 	
-	chart_v.add_child(DeskTheme.create_label("📈 過去の学習スコア推移", 16, DeskTheme.COLOR_INK, true))
+	chart_v.add_child(DeskTheme.create_label("📈 過去の学習スコア推移", 15, DeskTheme.COLOR_INK, true))
 	
-	var hist_arr = ctx.backend_manager.get_rival_history(rival_name)
 	var bars_h = HBoxContainer.new()
 	bars_h.alignment = BoxContainer.ALIGNMENT_CENTER
 	bars_h.add_theme_constant_override("separation", 16)
@@ -627,6 +729,55 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 		var d_lbl = DeskTheme.create_label("D"+str(h_data["day"]), 12, DeskTheme.COLOR_INK)
 		d_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		day_v.add_child(d_lbl)
+	
+	# 教科別累計スコアの内訳カード
+	var subj_card = PanelContainer.new()
+	var sc_style = StyleBoxFlat.new()
+	sc_style.bg_color = Color.WHITE
+	sc_style.corner_radius_top_left = 12; sc_style.corner_radius_top_right = 12
+	sc_style.corner_radius_bottom_left = 12; sc_style.corner_radius_bottom_right = 12
+	sc_style.content_margin_left = 12; sc_style.content_margin_right = 12
+	sc_style.content_margin_top = 12; sc_style.content_margin_bottom = 12
+	subj_card.add_theme_stylebox_override("panel", sc_style)
+	
+	var sc_m = MarginContainer.new()
+	sc_m.add_theme_constant_override("margin_left", 16)
+	sc_m.add_theme_constant_override("margin_right", 16)
+	sc_m.add_theme_constant_override("margin_top", 0)
+	sc_m.add_theme_constant_override("margin_bottom", 24) # 最下部にマージンを持たせてスクロールに余裕を作る
+	sc_m.add_child(subj_card)
+	scroll_v.add_child(sc_m)
+	
+	var sc_v = VBoxContainer.new()
+	sc_v.add_theme_constant_override("separation", 8)
+	subj_card.add_child(sc_v)
+	
+	sc_v.add_child(DeskTheme.create_label("教科別スコア内訳", 14, DeskTheme.COLOR_INK, true))
+	
+	var all_data = ctx.backend_manager.get_all_player_daily_scores()
+	var player_data = all_data.get(rival_name, [])
+	var tops = ctx.backend_manager.get_subject_top_scores()
+	
+	for s in range(5):
+		var subj_total = 0
+		for d_entry in player_data:
+			var subjs = d_entry.get("subjects", {})
+			subj_total += int(subjs.get(s, subjs.get(str(s), 0)))
+		
+		var s_h = HBoxContainer.new()
+		s_h.add_theme_constant_override("separation", 6)
+		sc_v.add_child(s_h)
+		
+		s_h.add_child(DeskTheme.create_label(DeskTheme.subject_name(s), 11, DeskTheme.subject_color(s), true))
+		s_h.add_child(DeskTheme.create_label("%d点" % subj_total, 11, DeskTheme.COLOR_INK))
+		
+		# 1位バッジ
+		if tops[s]["name"] == rival_name and tops[s]["score"] > 0:
+			var crown_lbl = DeskTheme.create_label("[*]1位", 9, DeskTheme.COLOR_ACCENT_GOLD, true)
+			s_h.add_child(crown_lbl)
+		
+		var bar = DeskTheme.create_gauge_bar(subj_total, 140.0, DeskTheme.subject_color(s), Vector2(100, 6))
+		s_h.add_child(bar)
 
 static func _build_analysis_tab(ctx: RefCounted, feed_v: VBoxContainer) -> void:
 	var margin_c = MarginContainer.new()
@@ -637,46 +788,160 @@ static func _build_analysis_tab(ctx: RefCounted, feed_v: VBoxContainer) -> void:
 	feed_v.add_child(margin_c)
 	
 	var cv = VBoxContainer.new()
-	cv.add_theme_constant_override("separation", 12)
+	cv.add_theme_constant_override("separation", 10)
 	margin_c.add_child(cv)
 	
-	cv.add_child(DeskTheme.create_label("[ 週次学習成果分析 ]", 15, DeskTheme.COLOR_INK, true))
+	cv.add_child(DeskTheme.create_label("[ 全プレイヤー学習履歴 ]", 15, DeskTheme.COLOR_INK, true))
 	
-	var card = PanelContainer.new()
-	var card_style = StyleBoxFlat.new()
-	card_style.bg_color = Color("ffffff")
-	card_style.corner_radius_top_left = 12; card_style.corner_radius_top_right = 12
-	card_style.corner_radius_bottom_left = 12; card_style.corner_radius_bottom_right = 12
-	card_style.content_margin_left = 12; card_style.content_margin_right = 12
-	card_style.content_margin_top = 12; card_style.content_margin_bottom = 12
-	card_style.shadow_color = Color(0,0,0, 0.05)
-	card_style.shadow_size = 4
-	card.add_theme_stylebox_override("panel", card_style)
-	cv.add_child(card)
+	# 教科選択タブ
+	var tab_state = {"active": 0}
+	var tab_h = HBoxContainer.new()
+	tab_h.alignment = BoxContainer.ALIGNMENT_CENTER
+	tab_h.add_theme_constant_override("separation", 4)
+	cv.add_child(tab_h)
 	
-	var list_v = VBoxContainer.new()
-	list_v.add_theme_constant_override("separation", 10)
-	card.add_child(list_v)
+	var content_scroll = ScrollContainer.new()
+	content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	content_scroll.custom_minimum_size = Vector2(0, 400)
+	cv.add_child(content_scroll)
 	
-	list_v.add_child(DeskTheme.create_label("[ 教科別進捗 (目標20点) ]", 12, DeskTheme.COLOR_MUTED))
+	var content_v = VBoxContainer.new()
+	content_v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_v.add_theme_constant_override("separation", 8)
+	content_scroll.add_child(content_v)
 	
-	for s in range(5):
-		var score = randi_range(6, 18)
-		if is_instance_valid(ctx.game_session):
-			score = ctx.game_session.subject_scores[s]
+	var all_data = ctx.backend_manager.get_all_player_daily_scores()
+	
+	var build_subject_view = func(subj_idx: int):
+		for ch in content_v.get_children():
+			ch.queue_free()
+		
+		# 各プレイヤーごとのカード
+		for player_name in all_data:
+			var days = all_data[player_name]
 			
-		var row = VBoxContainer.new()
-		row.add_theme_constant_override("separation", 2)
-		list_v.add_child(row)
+			var card = PanelContainer.new()
+			var card_style = StyleBoxFlat.new()
+			card_style.bg_color = Color("ffffff")
+			card_style.corner_radius_top_left = 10; card_style.corner_radius_top_right = 10
+			card_style.corner_radius_bottom_left = 10; card_style.corner_radius_bottom_right = 10
+			card_style.content_margin_left = 10; card_style.content_margin_right = 10
+			card_style.content_margin_top = 8; card_style.content_margin_bottom = 8
+			card_style.shadow_color = Color(0, 0, 0, 0.05)
+			card_style.shadow_size = 3
+			card.add_theme_stylebox_override("panel", card_style)
+			content_v.add_child(card)
+			
+			var card_v = VBoxContainer.new()
+			card_v.add_theme_constant_override("separation", 6)
+			card.add_child(card_v)
+			
+			# プレイヤー名ヘッダー
+			var is_self = (player_name == Global.player_name)
+			var name_color = DeskTheme.COLOR_SAFE if is_self else DeskTheme.COLOR_INK
+			var name_suffix = " (あなた)" if is_self else ""
+			card_v.add_child(DeskTheme.create_label(player_name + name_suffix, 14, name_color, true))
+			
+			# 累計スコア
+			var cumulative = 0
+			for day_entry in days:
+				var subjs = day_entry.get("subjects", {})
+				cumulative += int(subjs.get(subj_idx, subjs.get(str(subj_idx), 0)))
+			
+			var cum_lbl = DeskTheme.create_label("累計: %d点" % cumulative, 12, DeskTheme.subject_color(subj_idx), true)
+			card_v.add_child(cum_lbl)
+			
+			# 日別スコア行
+			var days_h = HBoxContainer.new()
+			days_h.add_theme_constant_override("separation", 4)
+			days_h.alignment = BoxContainer.ALIGNMENT_CENTER
+			card_v.add_child(days_h)
+			
+			for day_entry in days:
+				var d = day_entry.get("day", 0)
+				var subjs = day_entry.get("subjects", {})
+				var score_val = int(subjs.get(subj_idx, subjs.get(str(subj_idx), 0)))
+				
+				var day_cell = VBoxContainer.new()
+				day_cell.add_theme_constant_override("separation", 1)
+				day_cell.alignment = BoxContainer.ALIGNMENT_CENTER
+				days_h.add_child(day_cell)
+				
+				# デイリー1位チェック
+				var is_daily_top = false
+				var best_score_that_day = 0
+				for pn in all_data:
+					for de in all_data[pn]:
+						if de.get("day", 0) == d:
+							var ps = de.get("subjects", {})
+							var pv = int(ps.get(subj_idx, ps.get(str(subj_idx), 0)))
+							if pv > best_score_that_day:
+								best_score_that_day = pv
+				if score_val > 0 and score_val >= best_score_that_day:
+					is_daily_top = true
+				
+				# 王冠マーク (デイリー1位)
+				if is_daily_top and score_val > 0:
+					var crown = DeskTheme.create_label("[*]", 9, DeskTheme.COLOR_ACCENT_GOLD, true)
+					crown.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+					day_cell.add_child(crown)
+				else:
+					var spacer = Control.new()
+					spacer.custom_minimum_size = Vector2(0, 12)
+					day_cell.add_child(spacer)
+				
+				# スコア値
+				var score_color = DeskTheme.subject_color(subj_idx) if score_val > 0 else DeskTheme.COLOR_MUTED
+				var s_lbl = DeskTheme.create_label(str(score_val), 11, score_color, score_val > 0)
+				s_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				s_lbl.custom_minimum_size = Vector2(32, 0)
+				day_cell.add_child(s_lbl)
+				
+				# Day番号
+				var d_lbl = DeskTheme.create_label("D%d" % d, 9, DeskTheme.COLOR_MUTED)
+				d_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				day_cell.add_child(d_lbl)
+			
+			# 累計バー
+			var bar = DeskTheme.create_gauge_bar(cumulative, 140.0, DeskTheme.subject_color(subj_idx), Vector2(260, 8))
+			card_v.add_child(bar)
+	
+	# 教科タブボタンを作成
+	for s in range(5):
+		var tab_btn = Button.new()
+		tab_btn.text = DeskTheme.subject_name(s).left(1)
+		tab_btn.custom_minimum_size = Vector2(52, 36)
+		tab_btn.add_theme_font_override("font", DeskTheme.DEFAULT_FONT)
+		tab_btn.add_theme_font_size_override("font_size", 13)
 		
-		var info = HBoxContainer.new()
-		row.add_child(info)
-		info.add_child(DeskTheme.create_icon_rect(DeskTheme.subject_texture(s), Vector2(16, 16)))
-		info.add_child(DeskTheme.create_label(DeskTheme.subject_name(s) + ": ", 11, DeskTheme.COLOR_INK))
-		info.add_child(DeskTheme.create_label(str(score) + "点", 11, DeskTheme.subject_color(s), true))
+		var tb_style = StyleBoxFlat.new()
+		tb_style.bg_color = DeskTheme.subject_color(s).lightened(0.6) if s != 0 else DeskTheme.subject_color(s).lightened(0.3)
+		tb_style.corner_radius_top_left = 8; tb_style.corner_radius_top_right = 8
+		tb_style.corner_radius_bottom_left = 8; tb_style.corner_radius_bottom_right = 8
+		tab_btn.add_theme_stylebox_override("normal", tb_style)
 		
-		var progress = DeskTheme.create_gauge_bar(score, 20.0, DeskTheme.subject_color(s), Vector2(260, 10))
-		row.add_child(progress)
+		var tb_hover = tb_style.duplicate()
+		tb_hover.bg_color = DeskTheme.subject_color(s).lightened(0.3)
+		tab_btn.add_theme_stylebox_override("hover", tb_hover)
+		
+		tab_btn.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+		tab_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		
+		tab_btn.pressed.connect(func():
+			tab_state["active"] = s
+			build_subject_view.call(s)
+			# タブのアクティブ状態を視覚更新
+			for i in range(tab_h.get_child_count()):
+				var btn = tab_h.get_child(i)
+				var st = btn.get_theme_stylebox("normal").duplicate()
+				st.bg_color = DeskTheme.subject_color(i).lightened(0.3 if i == s else 0.6)
+				btn.add_theme_stylebox_override("normal", st)
+		)
+		tab_h.add_child(tab_btn)
+	
+	# 初期表示: 教科0（国語）
+	build_subject_view.call(0)
 
 static func _build_goals_tab(_ctx: RefCounted, feed_v: VBoxContainer) -> void:
 	var margin_c = MarginContainer.new()

@@ -105,6 +105,7 @@ func _show_report_screen():
 	var content_v = VBoxContainer.new()
 	content_v.add_theme_constant_override("separation", 12)
 	margin_c.add_child(content_v)
+	ui_elements["content_v"] = content_v
 	
 	# 報告画面タイトル＆説明カード
 	var title_card = PanelContainer.new()
@@ -317,7 +318,7 @@ func _show_report_screen():
 	warning_v.add_child(warning_title)
 	ui_elements["noise_warning_title"] = warning_title
 	
-	var warning_desc = DeskTheme.create_label("正直な報告です！\n(応援されたら＋5点！)", 16, DeskTheme.COLOR_INK, true)
+	var warning_desc = DeskTheme.create_label("正直な報告です！\n(応援されたら＋10点！)", 16, DeskTheme.COLOR_INK, true)
 	warning_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	warning_v.add_child(warning_desc)
 	ui_elements["noise_warning"] = warning_desc
@@ -393,37 +394,35 @@ func _update_report_warning():
 		warning_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		tw.tween_property(wc_style, "bg_color", Color("f1f8ff"), 0.15)
 		tw.tween_property(wc_style, "border_color", Color("d0e1fd"), 0.15)
+	
+	# 全教科の盛り合計サマリーを警告カード外に表示
+	var total_lie = 0
+	var lie_subjects = 0
+	for s_idx in scores:
+		var diff = reported_scores[s_idx] - scores[s_idx]
+		if diff > 0:
+			total_lie += diff
+			lie_subjects += 1
+	
+	var summary_key = "lie_summary"
+	var content_v_ref = ui_elements.get("content_v")
+	if not ui_elements.has(summary_key) and is_instance_valid(content_v_ref):
+		var sum_lbl = DeskTheme.create_label("", 12, DeskTheme.COLOR_MUTED, true)
+		sum_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		content_v_ref.add_child(sum_lbl)
+		ui_elements[summary_key] = sum_lbl
+	
+	var sum_lbl = ui_elements[summary_key] as Label
+	if total_lie > 0:
+		sum_lbl.text = "盛り合計: +%d点 (%d教科)  バレたら: −%d点" % [total_lie, lie_subjects, total_lie * 2]
+		sum_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_BLUFF_RED)
+	else:
+		sum_lbl.text = "全教科正直に報告中 ✔"
+		sum_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_SAFE)
 
 func _submit_final():
-	# 提出済スタンプをスマホの上にドンッ！と押す物理おもちゃ演出
 	var page_panel = ctx.bag_ui_elements.get("report_page") # これはスマホ本体 (phone)
 	if is_instance_valid(page_panel):
-		var stamp_badge = DeskTheme.create_app_stamp("提出済", DeskTheme.COLOR_BLUFF_RED, 26)
-		# スマホの画面中央に配置
-		stamp_badge.position = page_panel.size / 2.0 - stamp_badge.size / 2.0
-		page_panel.add_child(stamp_badge)
-		stamp_badge.pivot_offset = stamp_badge.size / 2.0
-		stamp_badge.scale = Vector2(4.0, 4.0) # 巨大スケールから
-		stamp_badge.modulate.a = 0.0
-		var s_tw = stamp_badge.create_tween()
-		s_tw.set_parallel(true)
-		s_tw.tween_property(stamp_badge, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-		s_tw.tween_property(stamp_badge, "modulate:a", 1.0, 0.08)
-		s_tw.tween_property(stamp_badge, "rotation_degrees", randf_range(-16.0, -8.0), 0.15) # わずかに左傾き
-		
-		# スマホ本体そのものを衝撃でポヨンとホップ＆バウンドさせる物理衝撃演出！
-		var p_tw = page_panel.create_tween()
-		page_panel.pivot_offset = page_panel.size / 2.0
-		var orig_y = page_panel.position.y
-		p_tw.tween_property(page_panel, "position:y", orig_y - 20, 0.08).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		p_tw.chain().tween_property(page_panel, "position:y", orig_y, 0.12).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-		
-		if ctx.audio_manager: ctx.audio_manager.play_se("place")
-		await s_tw.finished
-		await p_tw.finished
-		# 余韻
-		await ctx.screen_content.get_tree().create_timer(0.4).timeout
-		
 		# 物理スライドダウン ＆ 縮小退場アニメーション！
 		var exit_tw = page_panel.create_tween().set_parallel(true)
 		exit_tw.tween_property(page_panel, "position:y", 1200, 0.45).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
@@ -469,6 +468,15 @@ func _submit_final():
 	for rival in ctx.backend_manager.current_scores:
 		day_entry["rivals"].append({"name": rival.get("name", "???"), "score": rival.get("score", 0)})
 	Global.score_history.append(day_entry)
+	
+	# デイリー教科トップボーナス判定: 各教科でその日のスコアが1位なら+5点を蓄積
+	var daily_tops = ctx.backend_manager.get_subject_top_scores()
+	for s in range(5):
+		var top = daily_tops[s]
+		if top["name"] == Global.player_name and top["score"] > 0:
+			var bonus_key = "%d_%d" % [Global.play_count, s]
+			Global.daily_subject_top_bonus[bonus_key] = 5
+	
 	Global.save_data()
 	
 	# Supabaseサーバーへ提出

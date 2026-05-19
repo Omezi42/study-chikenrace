@@ -46,7 +46,7 @@ func draw() -> Dictionary:
 	var is_burst = _check_burst(card)
 	if is_burst and remaining_erasers > 0:
 		remaining_erasers -= 1
-		_remove_conflicting_card(card.weight)
+		# _remove_conflicting_card(card.weight) は呼ばない（1枚目は残す）
 		return { "card": card, "burst": false, "erased": true }
 		
 	drawn_cards.append(card)

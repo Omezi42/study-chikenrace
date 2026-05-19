@@ -6,6 +6,7 @@ const StudyDeckScript = preload("res://scripts/core/StudyDeck.gd")
 var deck
 var current_score: int = 0
 var subject_scores: Dictionary = {}
+var ruler_bonuses: Dictionary = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
 
 func _init():
 	deck = StudyDeckScript.new()
@@ -17,14 +18,22 @@ func setup_session(weights: Dictionary):
 
 func draw_card() -> Dictionary:
 	var result = deck.draw()
-	if not result["burst"] and result["card"]:
-		var card = result["card"]
-		if card.item_type == 0: # SUBJECT
-			subject_scores[card.subject] += card.weight
-			current_score = deck.calculate_scores()["total"]
+	sync_scores()
 	return result
 
+func apply_ruler_bonus(subject: int) -> void:
+	ruler_bonuses[subject] += 5
+	sync_scores()
+
+func sync_scores() -> void:
+	var calc = deck.calculate_scores()
+	current_score = calc["total"]
+	for s in range(5):
+		subject_scores[s] = calc["subjects"][s] + ruler_bonuses[s]
+		# 定規分のスコアを全体スコアにも加算
+		current_score += ruler_bonuses[s]
+
 func stop_and_report() -> Dictionary:
-	var final = deck.calculate_scores()
-	return final["subjects"]
+	sync_scores()
+	return subject_scores
 

@@ -189,7 +189,7 @@ func _show_mode_select():
 			if node: node.queue_free()
 		)
 		vbox.add_child(close_btn)
-	, Vector2(1100, 800))
+	, Vector2(1320, 920))
 
 func _start_game():
 	# 新規セッション開始時に状態を完全初期化

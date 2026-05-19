@@ -1,4 +1,4 @@
-﻿class_name AudioManager
+class_name AudioManager
 extends Node
 
 var bgm_player: AudioStreamPlayer
@@ -38,9 +38,13 @@ func _ready():
 func play_se(type: String):
 	var stream: AudioStream = null
 	var pitch = 1.0
+	var vol = 0.0
 	match type:
 		"draw": stream = se_draw
-		"burst": stream = se_burst
+		"burst":
+			stream = se_burst
+			pitch = 1.3 # ピッチをコミカルな高さにして怖さを緩和
+			vol = -5.0 # 音量を下げてマイルドにする
 		"click": stream = se_click
 		"place": 
 			stream = se_place
@@ -53,4 +57,5 @@ func play_se(type: String):
 	if stream:
 		se_player.stream = stream
 		se_player.pitch_scale = pitch
+		se_player.volume_db = vol
 		se_player.play()

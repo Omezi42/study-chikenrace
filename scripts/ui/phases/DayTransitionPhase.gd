@@ -50,7 +50,22 @@ func _show_day_transition():
 	var day_lbl = DeskTheme.create_label(str(Global.play_count), 96, Color("d94040"), true)
 	day_lbl.add_theme_font_size_override("font_size", 96)
 	cal_v.add_child(day_lbl)
-	cal_v.add_child(DeskTheme.create_label("放課後のテスト勉強が終了しました...", 14, DeskTheme.COLOR_MUTED, true))
+	
+	# 前日スコアサマリー
+	var last_total = 0
+	for s in Global.last_reported_scores.keys():
+		last_total += Global.last_reported_scores[s]
+	if last_total > 0:
+		cal_v.add_child(DeskTheme.create_label("本日の成果: %d点獲得！" % last_total, 14, DeskTheme.COLOR_SAFE, true))
+	else:
+		cal_v.add_child(DeskTheme.create_label("放課後のテスト勉強が終了しました...", 14, DeskTheme.COLOR_MUTED, true))
+	
+	# 残り日数
+	var remaining = 7 - Global.play_count
+	if remaining > 0:
+		var remain_color = DeskTheme.COLOR_BLUFF_RED if remaining <= 2 else DeskTheme.COLOR_ACCENT_GOLD if remaining <= 4 else DeskTheme.COLOR_MUTED
+		var remain_text = "あと%d日！" % remaining if remaining > 1 else "明日が最終日！"
+		cal_v.add_child(DeskTheme.create_label(remain_text, 16, remain_color, true))
 	
 	# ぽよんと登場
 	cal_panel.pivot_offset = cal_panel.size / 2.0

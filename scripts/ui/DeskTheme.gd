@@ -260,14 +260,20 @@ static func create_item_card_large(item_type: int) -> Control:
 	return container
 
 static func create_gauge_bar(value: float, max_val: float, fill_color: Color, bar_size: Vector2 = Vector2(200, 18)) -> Control:
-	var wrap_ctrl = Control.new()
+	var wrap_ctrl = PanelContainer.new()
 	wrap_ctrl.custom_minimum_size = bar_size
-	var bg = ColorRect.new()
-	bg.color = Color(0.14, 0.12, 0.10, 0.18)
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	wrap_ctrl.add_child(bg)
-	var fill = ColorRect.new()
-	fill.color = fill_color
+	var bg_style = StyleBoxFlat.new()
+	bg_style.bg_color = Color(0.14, 0.12, 0.10, 0.18)
+	bg_style.corner_radius_top_left = 4; bg_style.corner_radius_top_right = 4
+	bg_style.corner_radius_bottom_left = 4; bg_style.corner_radius_bottom_right = 4
+	wrap_ctrl.add_theme_stylebox_override("panel", bg_style)
+	# 塗り部分（角丸付き）
+	var fill = Panel.new()
+	var fill_style = StyleBoxFlat.new()
+	fill_style.bg_color = fill_color
+	fill_style.corner_radius_top_left = 4; fill_style.corner_radius_top_right = 4
+	fill_style.corner_radius_bottom_left = 4; fill_style.corner_radius_bottom_right = 4
+	fill.add_theme_stylebox_override("panel", fill_style)
 	fill.anchor_bottom = 1.0
 	var ratio = clamp(value / max(max_val, 1.0), 0.0, 1.0)
 	fill.offset_right = max(4.0, bar_size.x * ratio)
@@ -419,9 +425,12 @@ static func create_mini_stamp(text: String, tint: Color, font_size: int = 13) ->
 
 static func animate_entrance(node: Control, delay: float = 0.0) -> void:
 	node.modulate.a = 0
-	var tw = node.create_tween()
+	var orig_y = node.position.y
+	node.position.y = orig_y + 20.0
+	var tw = node.create_tween().set_parallel(true)
 	tw.tween_interval(delay)
-	tw.tween_property(node, "modulate:a", 1.0, 0.3)
+	tw.tween_property(node, "modulate:a", 1.0, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT).set_delay(delay)
+	tw.tween_property(node, "position:y", orig_y, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT).set_delay(delay)
 
 static func create_button(text: String, min_size: Vector2, fill: Color = COLOR_SAFE, edge: Color = Color("0e5057"), dark_text: bool = false, font_size: int = 20) -> Button:
 	var btn = Button.new()

@@ -156,8 +156,8 @@ func _start_showdown_reveal():
 			
 			await get_tree().create_timer(0.4).timeout
 			
-		var rivals_box = row.get_node("MarginContainer/HBoxContainer/RivalsBox")
-		var player_box = row.get_node("MarginContainer/HBoxContainer/PlayerBox")
+		var rivals_box = row.find_child("RivalsBox", true, false)
+		var player_box = row.find_child("PlayerBox", true, false)
 		
 		# ----------------------------------------------------
 		# 1. ライバルの暴露 (見破り＆応援)
@@ -182,29 +182,27 @@ func _start_showdown_reveal():
 			if is_lying:
 				r_actual = max(0, r_reported - rng.randi_range(6, 14))
 				
-			# プレイヤーがタイムラインでこのライバルに「いいね」を送っていたか全教科スキャン
-			var voted_subject = -1
-			for s in range(5):
-				var vote_key = "day_%d_%s_%d" % [d, r_name, s]
-				if Global.accumulated_votes.get(vote_key, false):
-					voted_subject = s
-					break
+			# プレイヤーがタイムラインでこのライバルに「いいね」を送っていたか
+			var voted = false
+			var vote_key = "day_%d_%s" % [d, r_name]
+			if Global.accumulated_votes.get(vote_key, false):
+				voted = true
 			
 			# ライバル情報UIの構築
-			var r_lbl = DeskTheme.create_label("%s: 報告%d点➔実際%d点" % [r_name.left(5), r_reported, r_actual], 13, DeskTheme.COLOR_CHALK_WHITE)
+			var r_lbl = DeskTheme.create_label("%s: 報告%d点➔実際%d点" % [r_name.left(5), r_reported, r_actual], 18, DeskTheme.COLOR_CHALK_WHITE)
 			rivals_box.add_child(r_lbl)
 			
-			if voted_subject != -1:
+			if voted:
 				# いいね（投票）していた場合：スタンプ演出！
 				var stamp_lbl: Control
 				var score_diff = 0
 				
 				if is_lying:
-					stamp_lbl = DeskTheme.create_mini_stamp("見破り成功！", Color("ff6b6b"), 11)
+					stamp_lbl = DeskTheme.create_mini_stamp("見破り成功！", Color("ff6b6b"), 15)
 					score_diff = 10
 					if audio_manager: audio_manager.play_se("burst")
 				else:
-					stamp_lbl = DeskTheme.create_mini_stamp("応援成功！", Color("4dabf7"), 11)
+					stamp_lbl = DeskTheme.create_mini_stamp("応援成功！", Color("4dabf7"), 15)
 					score_diff = 5
 					if audio_manager: audio_manager.play_se("combo")
 					
@@ -231,7 +229,7 @@ func _start_showdown_reveal():
 					await get_tree().create_timer(0.3).timeout
 			else:
 				# 投票なし
-				var no_lbl = DeskTheme.create_label("[-] ", 13, DeskTheme.COLOR_MUTED)
+				var no_lbl = DeskTheme.create_label("[-] ", 18, DeskTheme.COLOR_MUTED)
 				rivals_box.add_child(no_lbl)
 				
 		# ----------------------------------------------------
@@ -250,7 +248,7 @@ func _start_showdown_reveal():
 		if player_lied:
 			p_lbl_text = "あなた: 盛った嘘 ＋%d点" % total_lie
 			
-		var p_lbl = DeskTheme.create_label(p_lbl_text, 13, DeskTheme.COLOR_CHALK_WHITE)
+		var p_lbl = DeskTheme.create_label(p_lbl_text, 18, DeskTheme.COLOR_CHALK_WHITE)
 		player_box.add_child(p_lbl)
 		
 		# プレイヤー結果判定
@@ -268,13 +266,13 @@ func _start_showdown_reveal():
 			
 			if is_exposed:
 				# バレてしまった！盛りスコアの2倍減点
-				p_stamp = DeskTheme.create_mini_stamp("見破られた！", DeskTheme.COLOR_BLUFF_RED, 11)
+				p_stamp = DeskTheme.create_mini_stamp("見破られた！", DeskTheme.COLOR_BLUFF_RED, 15)
 				p_score_diff = -(total_lie * 2)
 				if audio_manager: audio_manager.play_se("burst")
 				_trigger_mini_shake(12.0)
 			else:
 				# バレずにすり抜けた！完全犯罪成立
-				p_stamp = DeskTheme.create_mini_stamp("完全犯罪成立！", DeskTheme.COLOR_SAFE, 11)
+				p_stamp = DeskTheme.create_mini_stamp("完全犯罪成立！", DeskTheme.COLOR_SAFE, 15)
 				p_score_diff = 0
 				if audio_manager: audio_manager.play_se("combo")
 		else:
@@ -285,11 +283,11 @@ func _start_showdown_reveal():
 			
 			var rival_cheered = p_rng.randf() < 0.35 # 35%の確率で応援されていた
 			if rival_cheered:
-				p_stamp = DeskTheme.create_mini_stamp("正直応援！", DeskTheme.COLOR_ACCENT_GOLD, 11)
+				p_stamp = DeskTheme.create_mini_stamp("正直応援！", DeskTheme.COLOR_ACCENT_GOLD, 15)
 				p_score_diff = 10
 				if audio_manager: audio_manager.play_se("combo")
 			else:
-				p_stamp = DeskTheme.create_mini_stamp("正直合格", Color("8fbf9f"), 11)
+				p_stamp = DeskTheme.create_mini_stamp("正直合格", Color("8fbf9f"), 15)
 				p_score_diff = 0
 				if audio_manager: audio_manager.play_se("place")
 				
@@ -335,7 +333,7 @@ func _start_showdown_reveal():
 func _create_reveal_row(d: int) -> PanelContainer:
 	var row = PanelContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.custom_minimum_size = Vector2(0, 56)
+	row.custom_minimum_size = Vector2(0, 80)
 	
 	var row_style = StyleBoxFlat.new()
 	row_style.bg_color = Color("1e3d30") # 少し明るめの黒板緑で区切る
@@ -359,8 +357,8 @@ func _create_reveal_row(d: int) -> PanelContainer:
 	margin.add_child(hbox)
 	
 	# Day表示
-	var day_lbl = DeskTheme.create_label("Day %d" % d, 16, DeskTheme.COLOR_CHALK_WHITE, true)
-	day_lbl.custom_minimum_size = Vector2(70, 0)
+	var day_lbl = DeskTheme.create_label("Day %d" % d, 22, DeskTheme.COLOR_CHALK_WHITE, true)
+	day_lbl.custom_minimum_size = Vector2(100, 0)
 	hbox.add_child(day_lbl)
 	
 	# --- ライバルたち ---
@@ -427,49 +425,65 @@ func _show_final_report():
 	for child in screen_content.get_children():
 		child.queue_free()
 		
-	var page = DeskTheme.create_notebook_panel(Vector2(920, 680), 64, 48, 64, 32)
+	# ノート自体のサイズを1040x780に拡大！
+	var page = DeskTheme.create_notebook_panel(Vector2(1040, 780), 64, 48, 64, 32)
 	page.anchor_left = 0.5; page.anchor_top = 0.5; page.anchor_right = 0.5; page.anchor_bottom = 0.5
-	page.offset_left = -460; page.offset_top = -340; page.offset_right = 460; page.offset_bottom = 340
+	page.offset_left = -520; page.offset_top = -390; page.offset_right = 520; page.offset_bottom = 390
 	screen_content.add_child(page)
 	
 	var vbox = VBoxContainer.new()
 	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	vbox.add_theme_constant_override("separation", 18)
+	vbox.add_theme_constant_override("separation", 24)
 	DeskTheme.apply_font(vbox)
 	page.get_node("Content").add_child(vbox)
 	
-	vbox.add_child(DeskTheme.create_label("学末最終通知表", 36, DeskTheme.COLOR_INK, true))
-	vbox.add_child(DeskTheme.create_label("名前: " + Global.player_name, 18, DeskTheme.COLOR_INK, true))
+	vbox.add_child(DeskTheme.create_label("学末最終通知表", 42, DeskTheme.COLOR_INK, true))
+	vbox.add_child(DeskTheme.create_label("名前: " + Global.player_name, 24, DeskTheme.COLOR_INK, true))
 	
 	# 5教科の勝敗表
 	var table_h = HBoxContainer.new()
 	table_h.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	table_h.add_theme_constant_override("separation", 24)
+	table_h.add_theme_constant_override("separation", 36)
 	vbox.add_child(table_h)
 	
 	# 左列: 教科勝敗リスト (幅約500)
 	var win_list_v = VBoxContainer.new()
 	win_list_v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	win_list_v.alignment = BoxContainer.ALIGNMENT_CENTER
-	win_list_v.add_theme_constant_override("separation", 8)
+	win_list_v.add_theme_constant_override("separation", 12)
 	table_h.add_child(win_list_v)
 	
-	win_list_v.add_child(DeskTheme.create_label("【教科別トップ争い結果】", 16, DeskTheme.COLOR_INK))
+	win_list_v.add_child(DeskTheme.create_label("【教科別トップ争い結果】", 22, DeskTheme.COLOR_INK, true))
 	
 	var bonus_added_subjects = []
 	bonus_score = 0
 	
+	# デイリー教科1位ボーナスの教科別集計
+	var daily_bonus_per_subject = {}
 	for s in range(5):
-		var row = HBoxContainer.new()
-		row.add_theme_constant_override("separation", 12)
+		daily_bonus_per_subject[s] = 0
+	for key in Global.daily_subject_top_bonus:
+		var parts = str(key).split("_")
+		if parts.size() >= 2:
+			var subj = int(parts[1])
+			if subj >= 0 and subj < 5:
+				daily_bonus_per_subject[subj] += Global.daily_subject_top_bonus[key]
+	
+	for s in range(5):
+		var row = VBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
 		win_list_v.add_child(row)
 		
-		var icon = DeskTheme.create_icon_rect(DeskTheme.subject_texture(s), Vector2(32, 32))
-		row.add_child(icon)
+		var row_h = HBoxContainer.new()
+		row_h.add_theme_constant_override("separation", 12)
+		row.add_child(row_h)
 		
-		var name_lbl = DeskTheme.create_label(DeskTheme.subject_name(s), 16, DeskTheme.subject_color(s))
-		name_lbl.custom_minimum_size = Vector2(50, 0)
-		row.add_child(name_lbl)
+		var icon = DeskTheme.create_icon_rect(DeskTheme.subject_texture(s), Vector2(34, 34))
+		row_h.add_child(icon)
+		
+		var name_lbl = DeskTheme.create_label(DeskTheme.subject_name(s), 18, DeskTheme.subject_color(s), true)
+		name_lbl.custom_minimum_size = Vector2(60, 0)
+		row_h.add_child(name_lbl)
 		
 		var top_player = backend_manager.get_top_player_for_subject(s)
 		var top_name = top_player["name"]
@@ -477,49 +491,58 @@ func _show_final_report():
 		
 		var is_my_top = (top_name == Global.player_name)
 		
+		# シーズン教科トップボーナス (+20点)
 		var result_text = ""
 		var result_color = DeskTheme.COLOR_MUTED
 		if is_my_top:
-			result_text = "学年トップ！(＋10点)"
+			result_text = "学年トップ! +20点"
 			result_color = DeskTheme.COLOR_BLUFF_RED
-			bonus_score += 10
+			bonus_score += 20
 			bonus_added_subjects.append(s)
 		else:
-			result_text = "暫定トップ: %s (%d点)" % [top_name, top_sc]
+			result_text = "1位: %s (%d点)" % [top_name, top_sc]
 			result_color = DeskTheme.COLOR_INK
 			
-		var res_lbl = DeskTheme.create_label(result_text, 15, result_color)
-		row.add_child(res_lbl)
+		var res_lbl = DeskTheme.create_label(result_text, 18, result_color, true)
+		row_h.add_child(res_lbl)
 		
+		# デイリーボーナス行
+		var d_bonus = daily_bonus_per_subject[s]
+		if d_bonus > 0:
+			var daily_count = d_bonus / 5
+			var d_lbl = DeskTheme.create_label("  デイリー1位 x%d日 = +%d点" % [daily_count, d_bonus], 16, DeskTheme.COLOR_ACCENT_GOLD, true)
+			row.add_child(d_lbl)
+			bonus_score += d_bonus
+	
 	final_score = base_score + bonus_score
 	
-	# 右列: 総合成績通知表 (幅約320)
-	var report_card = DeskTheme.create_sticky_note(Color("fffae6"), Vector2(300, 320), 1.0)
+	# 右列: 総合成績通知表 (幅約380, 高さ420に拡大！)
+	var report_card = DeskTheme.create_sticky_note(Color("fffae6"), Vector2(380, 420), 1.0)
 	report_card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	table_h.add_child(report_card)
 	
 	var rc_v = VBoxContainer.new()
 	rc_v.alignment = BoxContainer.ALIGNMENT_CENTER
-	rc_v.add_theme_constant_override("separation", 8)
+	rc_v.add_theme_constant_override("separation", 16)
 	report_card.add_child(rc_v)
 	
-	rc_v.add_child(DeskTheme.create_label("【総評】", 16, DeskTheme.COLOR_MUTED, true))
+	rc_v.add_child(DeskTheme.create_label("【総評】", 22, DeskTheme.COLOR_MUTED, true))
 	
-	var base_lbl = DeskTheme.create_label("素点合計: %d点" % base_score, 18, DeskTheme.COLOR_INK, true)
+	var base_lbl = DeskTheme.create_label("素点合計: %d点" % base_score, 24, DeskTheme.COLOR_INK, true)
 	rc_v.add_child(base_lbl)
 	
-	bonus_score_label = DeskTheme.create_label("トップボーナス: ＋0点", 18, DeskTheme.COLOR_INK, true)
+	bonus_score_label = DeskTheme.create_label("トップボーナス: ＋0点", 24, DeskTheme.COLOR_INK, true)
 	rc_v.add_child(bonus_score_label)
 	
-	final_score_label = DeskTheme.create_label("総合評価点: %d点" % base_score, 24, DeskTheme.COLOR_INK, true)
+	final_score_label = DeskTheme.create_label("総合評価点: %d点" % base_score, 32, DeskTheme.COLOR_INK, true)
 	rc_v.add_child(final_score_label)
 	
-	# ランク判定
-	rank_label = DeskTheme.create_label("判定: F", 36, DeskTheme.COLOR_MUTED, true)
+	# ランク判定を大きく！
+	rank_label = DeskTheme.create_label("判定: F", 52, DeskTheme.COLOR_MUTED, true)
 	rc_v.add_child(rank_label)
 	
 	# タイトルに戻るボタン
-	var close_btn = DeskTheme.create_button("シーズンを終了してタイトルへ", Vector2(360, 72), DeskTheme.COLOR_SAFE, Color("2d928a"))
+	var close_btn = DeskTheme.create_button("シーズンを終了してタイトルへ", Vector2(400, 72), DeskTheme.COLOR_SAFE, Color("2d928a"))
 	close_btn.pressed.connect(_on_title_pressed)
 	vbox.add_child(close_btn)
 	
@@ -656,6 +679,7 @@ func _on_title_pressed():
 		Global.daily_noises[s] = 0
 	Global.score_history.clear()
 	Global.accumulated_votes.clear()
+	Global.daily_subject_top_bonus.clear()
 	Global.save_data()
 	
 	SceneTransition.fade_to_scene("res://Title.tscn")

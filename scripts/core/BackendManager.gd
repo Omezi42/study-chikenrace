@@ -189,23 +189,23 @@ func get_timeline_feeds() -> Array:
 	
 	return feeds
 
-func vote_rival(rival_name: String, subject: int) -> void:
-	var key = "%s_%d" % [rival_name, subject]
+func vote_rival(rival_name: String, _subject: int = -1) -> void:
+	var key = "%s" % [rival_name]
 	_voted_rivals[key] = true
 	print("Voted for rival: ", key)
 	
 	# Globalの永続化辞書にも保存 (Dayベース)
-	var g_key = "day_%d_%s_%d" % [Global.play_count + 1, rival_name, subject]
+	var g_key = "day_%d_%s" % [Global.play_count + 1, rival_name]
 	Global.accumulated_votes[g_key] = true
 	Global.save_data()
 
-func has_voted_rival(rival_name: String, subject: int) -> bool:
+func has_voted_rival(rival_name: String, _subject: int = -1) -> bool:
 	# まずローカル（本日分）でチェック
-	var key = "%s_%d" % [rival_name, subject]
+	var key = "%s" % [rival_name]
 	if _voted_rivals.get(key, false): return true
 	
 	# 次にGlobalの永続データでチェック
-	var g_key = "day_%d_%s_%d" % [Global.play_count + 1, rival_name, subject]
+	var g_key = "day_%d_%s" % [Global.play_count + 1, rival_name]
 	return Global.accumulated_votes.get(g_key, false)
 
 func clear_daily_votes() -> void:
@@ -227,3 +227,54 @@ func get_rival_history(rival_name: String) -> Array:
 			daily_score = randi_range(10, 50)
 		history.append({"day": d, "score": daily_score})
 	return history
+
+## 全プレイヤーの日別・教科別スコアを返す（スタチキ「学習分析」タブ用）
+## 戻り値形式: { "プレイヤー名": [ { "day": 1, "subjects": {0: 10, 1: 5, ...}, "total": 50 }, ... ] }
+func get_all_player_daily_scores() -> Dictionary:
+	var result = {}
+	var day = Global.play_count
+	if day <= 0: day = 1
+	
+	# --- CPUモック: 慎重な優等生 ---
+	var steady_days = []
+	for d in range(1, day + 1):
+		var subjs = {}
+		for i in range(5):
+			subjs[i] = d * 10  # 累計ではなくその日の報告スコア=10点/日
+		var total = 0
+		for v in subjs.values(): total += v
+		steady_days.append({"day": d, "subjects": subjs, "total": total})
+	result["慎重な優等生"] = steady_days
+	
+	# --- CPUモック: ギャンブラー ---
+	var gambler_days = []
+	for d in range(1, day + 1):
+		var subjs = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
+		if d != 3: subjs[1] = 30  # 数学
+		if d != 6: subjs[2] = 30  # 英語
+		var total = 0
+		for v in subjs.values(): total += v
+		gambler_days.append({"day": d, "subjects": subjs, "total": total})
+	result["ギャンブラー"] = gambler_days
+	
+	# --- CPUモック: ブラフの達人 ---
+	var bluffer_days = []
+	for d in range(1, day + 1):
+		var subjs = {0: 15, 1: 0, 2: 0, 3: 20, 4: 5}  # その日の報告スコア
+		var total = 0
+		for v in subjs.values(): total += v
+		bluffer_days.append({"day": d, "subjects": subjs, "total": total})
+	result["ブラフの達人"] = bluffer_days
+	
+	# --- プレイヤー自身（Global.score_historyから復元） ---
+	var player_days = []
+	for entry in Global.score_history:
+		var subjs = {}
+		for k in entry.get("subjects", {}):
+			subjs[int(k)] = entry["subjects"][k]
+		player_days.append({"day": entry.get("day", 0), "subjects": subjs, "total": entry.get("total", 0)})
+	if player_days.size() > 0:
+		result[Global.player_name] = player_days
+	
+	return result
+

@@ -47,9 +47,10 @@ func _show_bag_builder():
 	for child in ctx.screen_content.get_children():
 		child.queue_free()
 	
-	ctx.bag_assignments.clear()
-	for s in range(5):
-		ctx.bag_assignments[s] = [null, null]
+	# 初回起動時のみ初期化を行い、2日目以降は配置を維持して引き継ぐ
+	if ctx.bag_assignments.is_empty():
+		for s in range(5):
+			ctx.bag_assignments[s] = [null, null]
 	
 	# ドラッグ＆ドロップ監視ヘルパーの起動
 	if is_instance_valid(drag_helper):
@@ -166,7 +167,17 @@ func _show_bag_builder():
 	rp_header.add_theme_constant_override("separation", 6)
 	right_content.add_child(rp_header)
 	rp_header.add_child(DeskTheme.create_label("[ 数字付箋パレット ]", 32, DeskTheme.COLOR_INK, true))
-	rp_header.add_child(DeskTheme.create_label("付箋をタップ（またはドラッグ）して左ページのスロットに貼ろう！", 16, DeskTheme.COLOR_MUTED, true))
+	
+	var placement_h = HBoxContainer.new()
+	placement_h.alignment = BoxContainer.ALIGNMENT_CENTER
+	placement_h.add_theme_constant_override("separation", 8)
+	rp_header.add_child(placement_h)
+	
+	placement_h.add_child(DeskTheme.create_label("付箋を選んでスロットに貼ろう！", 15, DeskTheme.COLOR_MUTED, true))
+	
+	var placed_counter = DeskTheme.create_label("配置: 0/10", 15, DeskTheme.COLOR_SAFE, true)
+	placement_h.add_child(placed_counter)
+	ctx.bag_ui_elements["placed_counter"] = placed_counter
 	
 	var grid_center = CenterContainer.new()
 	grid_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -534,6 +545,30 @@ func _update_bag_ui():
 		tw.tween_property(target_btn, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		if ctx.audio_manager: ctx.audio_manager.play_se("combo")
 	ctx.bag_ui_elements["was_all_placed"] = is_all_placed
+	
+	# 配置済みカウンターの更新
+	if ctx.bag_ui_elements.has("placed_counter"):
+		var counter_lbl = ctx.bag_ui_elements["placed_counter"] as Label
+		counter_lbl.text = "配置: %d/10" % placed
+		if placed >= 10:
+			counter_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_ACCENT_GOLD)
+		else:
+			counter_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_SAFE)
+	
+	# 選択中スロットのパルスアニメーション
+	for s in range(5):
+		for i in range(2):
+			var btn = ctx.bag_ui_elements["slots"][s][i]
+			var is_sel = (s == selected_bag_subject and i == selected_bag_slot)
+			if is_sel and ctx.bag_assignments[s][i] == null:
+				# 選択中の空スロットにパルス
+				btn.pivot_offset = btn.size / 2.0
+				var pulse = btn.create_tween().set_loops()
+				pulse.set_meta("is_pulse", true)
+				pulse.tween_property(btn, "scale", Vector2(1.08, 1.08), 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+				pulse.tween_property(btn, "scale", Vector2(1.0, 1.0), 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			else:
+				btn.scale = Vector2.ONE
 
 func _on_start_race_pressed():
 	if ctx.audio_manager: ctx.audio_manager.play_se("click")

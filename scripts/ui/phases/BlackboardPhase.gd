@@ -329,6 +329,11 @@ func _show_blackboard_progress():
 			details_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			c_h.add_child(details_lbl)
 			
+			# デイリー1位ボーナスバッジ (+5pt)
+			if top["name"] != "なし" and top["name"] != "誰もいない" and top["score"] > 0:
+				var bonus_badge = DeskTheme.create_label("+5pt", 9, DeskTheme.COLOR_ACCENT_GOLD, true)
+				c_h.add_child(bonus_badge)
+			
 			# 3. いいね（投票）の極小丸型ボタン (他人かつ有効な相手のみ)
 			if top["name"] != Global.player_name and top["name"] != "なし" and top["name"] != "誰もいない":
 				var already_voted = ctx.backend_manager.has_voted_rival(top["name"], s)
