@@ -27,6 +27,8 @@ var camera_shake_offset: Vector2 = Vector2.ZERO
 var vignette_node: Control
 var vignette_tween: Tween
 var rival_sim_states: Dictionary = {}
+var current_hour: int = 1
+var hour_label: Control
 
 func _init(context: RefCounted):
 	self.ctx = context
@@ -35,6 +37,7 @@ func start():
 	_show_race_screen()
 
 func _show_race_screen():
+	current_hour = 1
 	for child in ctx.screen_content.get_children():
 		child.queue_free()
 	drawn_card_nodes.clear()
@@ -64,6 +67,9 @@ func _show_race_screen():
 	hud_v.add_theme_constant_override("separation", 14)
 	DeskTheme.apply_font(hud_v)
 	hud_notebook.add_child(hud_v)
+	
+	hour_label = DeskTheme.create_floating_badge("1時間目", DeskTheme.COLOR_ACCENT_GOLD, 20)
+	hud_v.add_child(hour_label)
 	
 	hud_v.add_child(DeskTheme.create_label("[ 本日の学習ノート ]", 32, DeskTheme.COLOR_INK, true))
 	
@@ -228,9 +234,13 @@ func _show_race_screen():
 	_update_race_hud()
 
 func _update_race_hud():
-	status_label.text = str(ctx.game_session.current_score)
+	var total_accum = 0
 	for s in range(5):
-		var score = ctx.game_session.subject_scores[s]
+		total_accum += ctx.game_session.accumulated_subject_scores[s]
+	status_label.text = str(total_accum + ctx.game_session.current_score)
+	
+	for s in range(5):
+		var score = ctx.game_session.accumulated_subject_scores[s] + ctx.game_session.subject_scores[s]
 		var data = subject_gauges[s]
 		var ratio = clamp(float(score) / 20.0, 0.0, 1.0)
 		var fill = data["bar"].get_child(0)
@@ -685,9 +695,12 @@ func _trigger_burst_sequence():
 	
 	await ctx.screen_content.get_tree().create_timer(0.45).timeout
 	camera_shake_offset = Vector2.ZERO
-		
-	var empty_scores = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
-	ctx.game_session.current_score = 0
+	
+	# セッション側で当時間目のスコアを切り捨ててリセット
+	ctx.game_session.burst_period()
+	
+	if is_instance_valid(banner):
+		banner.queue_free()
 	
 	var dialog = PanelContainer.new()
 	dialog.custom_minimum_size = Vector2(600, 280)
@@ -715,13 +728,17 @@ func _trigger_burst_sequence():
 	dv.alignment = BoxContainer.ALIGNMENT_CENTER
 	dialog.add_child(dv)
 	
-	dv.add_child(DeskTheme.create_label("💤 睡魔に敗れて寝落ちした！", 22, DeskTheme.COLOR_BLUFF_RED, true))
+	dv.add_child(DeskTheme.create_label("💤 %d時間目に寝落ちした！" % current_hour, 22, DeskTheme.COLOR_BLUFF_RED, true))
 	
-	var msg = DeskTheme.create_label("勉強した記憶がすべて夢の彼方へ消え去ってしまった...\n(本日の獲得点数は すべて「0点」になります)", 14, Color("dfd5cb"))
+	var msg = DeskTheme.create_label("睡魔に敗れ、この時間目の勉強成果が消え去ってしまった...\n(この時間目の獲得スコアは「0点」になります)", 14, Color("dfd5cb"))
 	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	dv.add_child(msg)
 	
-	var wake_btn = DeskTheme.create_button("【 🛏️ 目をこすって起きる (通知表へ進む) ➔ 】", Vector2(400, 56), DeskTheme.COLOR_ACCENT_GOLD, Color("b38f30"))
+	var next_btn_text = "【 🛏️ 目をこすって起きる (次の時間目へ) ➔ 】"
+	if current_hour >= 6:
+		next_btn_text = "【 🛏️ 目をこすって起きる (結果報告へ) ➔ 】"
+		
+	var wake_btn = DeskTheme.create_button(next_btn_text, Vector2(400, 56), DeskTheme.COLOR_ACCENT_GOLD, Color("b38f30"))
 	wake_btn.add_theme_font_size_override("font_size", 16)
 	dv.add_child(wake_btn)
 	
@@ -734,7 +751,13 @@ func _trigger_burst_sequence():
 		pulse_tw.kill()
 		if ctx.audio_manager: ctx.audio_manager.play_se("click")
 		dialog.queue_free()
-		phase_completed.emit(empty_scores)
+		
+		if current_hour < 6:
+			current_hour += 1
+			_reset_for_new_hour()
+		else:
+			var final_scores = ctx.game_session.stop_and_report()
+			phase_completed.emit(final_scores)
 	)
 
 func _on_stop_pressed():
@@ -744,8 +767,57 @@ func _on_stop_pressed():
 	stamp.tween_property(hud_notebook, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_BACK)
 	if ctx.audio_manager: ctx.audio_manager.play_se("combo")
 	await stamp.finished
-	var scores = ctx.game_session.stop_and_report()
-	phase_completed.emit(scores)
+	
+	# 時間目終了とスコア確定
+	var gained = ctx.game_session.current_score
+	ctx.game_session.stop_period()
+	
+	ToastOverlayScript.show_toast(ctx.ui_root, "%d時間目の勉強を切り上げ、+%d点獲得！" % [current_hour, gained], Color("81c784"))
+	
+	if current_hour < 6:
+		current_hour += 1
+		_reset_for_new_hour()
+	else:
+		var final_scores = ctx.game_session.stop_and_report()
+		phase_completed.emit(final_scores)
+
+func _reset_for_new_hour():
+	# ライバル状態のリセット
+	for r_name in rival_sim_states:
+		rival_sim_states[r_name]["score"] = 0
+		rival_sim_states[r_name]["cards"] = 0
+		rival_sim_states[r_name]["status"] = "active"
+		
+	# 場にあるカードノードの削除
+	for node in drawn_card_nodes:
+		if is_instance_valid(node):
+			node.queue_free()
+	drawn_card_nodes.clear()
+	
+	# 時間目バッジのテキスト更新
+	if is_instance_valid(hour_label):
+		var badge_lbl = hour_label.find_child("BadgeLabel", true, false)
+		if badge_lbl:
+			badge_lbl.text = "%d時間目" % current_hour
+		else:
+			# find_childで取れなかった場合は直接最初の子ノードのテキストを更新
+			for child in hour_label.get_children():
+				if child is Label:
+					child.text = "%d時間目" % current_hour
+					break
+		
+	# トースト通知
+	ToastOverlayScript.show_toast(ctx.ui_root, "%d時間目の勉強が始まりました！" % current_hour, DeskTheme.COLOR_SAFE)
+	
+	# ボタンの再表示
+	if is_instance_valid(button_box):
+		button_box.show()
+		
+	# Vignette 明滅をリセット
+	if is_instance_valid(vignette_node):
+		vignette_node.modulate.a = 0.0
+		
+	_update_race_hud()
 
 func _are_buttons_enabled() -> bool:
 	if is_instance_valid(button_box) and button_box.get_child_count() > 0:

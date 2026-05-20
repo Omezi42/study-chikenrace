@@ -219,11 +219,11 @@ func _show_tutorial(start_after: bool = false):
 	
 	var slides = [
 		{"img": get_slide_img.call("res://assets/tutorial/slide1.png"), "text": "1. まずは5つの教科に、手持ちの「学習付箋（1〜10）」を\n2枚ずつ計画ノートの『計画スロット』へ貼って学習計画を行います。"},
-		{"img": get_slide_img.call("res://assets/tutorial/slide2.png"), "text": "2. 各教科の勉強では、学習ノートのページを1枚ずつ引き\n寝落ちしないギリギリまでスコア（進捗）を稼ぐチキンレースに挑みます。"},
-		{"img": get_slide_img.call("res://assets/tutorial/slide3.png"), "text": "3. ただし、場に出ているカードと同じ計画時間（数字）を引くと「寝落ち（バースト）」！\nその教科の当日の獲得スコアは0点になってしまいます。"},
+		{"img": get_slide_img.call("res://assets/tutorial/slide2.png"), "text": "2. 本日の勉強は1時間目〜6時間目の【計6回】のチキンレースです。\nドローしたカードは1日中そのまま引き継がれます（カウンティング要素！）。"},
+		{"img": get_slide_img.call("res://assets/tutorial/slide3.png"), "text": "3. 進行中の時間目に場と同じ数字を引くと、その時間目は寝落ち（バースト）！\nバーストした時間目の獲得点数は0点になりますが、山札はそのまま引き継がれます。"},
 		{"img": get_slide_img.call("res://assets/tutorial/slide4.png"), "text": "4. 勉強後、チキスタ（スマホ）で「嘘の成績（盛った点数）」を\nスライダーで報告できます。嘘がバレなければそのまま高得点をキープ！"},
-		{"img": get_slide_img.call("res://assets/tutorial/slide5.png"), "text": "5. 翌朝、嘘をライバルに見見破られると【1教科につき−10点】の大ペナルティ！\n逆に正直者で応援スタンプを貰えると【＋5点】！極限の心理戦を勝ち抜きましょう！"},
-		{"img": null, "text": "💡 必勝ワンポイントアドバイス！\n特定の教科に計画時間（数字）を大きく貼るほど、その教科のスコアは激増しますが、\n山札に高い数字が沢山入るためバースト率も急上昇！バランスよく散らすのが寝落ち回避の極意です。"}
+		{"img": get_slide_img.call("res://assets/tutorial/slide5.png"), "text": "5. 翌朝、嘘をライバルに見破られると大ペナルティ（盛ったスコアの2倍がマイナス）！\n逆に正直者で応援スタンプを貰えると【＋5点】！極限の心理戦を勝ち抜きましょう！"},
+		{"img": null, "text": "💡 必勝ワンポイントアドバイス！\nカードは1日を通じて引き継がれるため、すでに場に出たカード（カウンティング）を\n記憶しておけば、残りの時間目でバーストする確率を完璧に予測できます！"}
 	]
 	
 	var state = {"page": 0}

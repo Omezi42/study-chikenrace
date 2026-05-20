@@ -5,15 +5,23 @@ const CardDataScript = preload("res://scripts/data/CardData.gd")
 
 var deck: Array = []
 var drawn_cards: Array = []
+var used_cards: Array = []
 var remaining_erasers: int = 0
 var ruler_bonuses: Dictionary = {}
 
 func _init():
 	for s in range(5): ruler_bonuses[s] = 0
 
+func reset_for_next_hour() -> void:
+	used_cards.append_array(drawn_cards)
+	drawn_cards.clear()
+	remaining_erasers = 0
+	for s in ruler_bonuses.keys(): ruler_bonuses[s] = 0
+
 func build_deck(weights: Dictionary, noise_count: int = 0) -> void:
 	deck.clear()
 	drawn_cards.clear()
+	used_cards.clear()
 	remaining_erasers = 0
 	for s in ruler_bonuses.keys(): ruler_bonuses[s] = 0
 	
@@ -35,7 +43,15 @@ func build_deck(weights: Dictionary, noise_count: int = 0) -> void:
 
 
 func draw() -> Dictionary:
-	if deck.is_empty(): return { "card": null, "burst": false, "erased": false }
+	if deck.is_empty():
+		if not used_cards.is_empty():
+			# 墓地から山札をリシャッフル（現在進行中の時間目の場にあるカードを除く）
+			deck = used_cards.duplicate()
+			used_cards.clear()
+			deck.shuffle()
+		else:
+			return { "card": null, "burst": false, "erased": false }
+			
 	var card = deck.pop_back()
 	
 	if card.item_type == 1: # ERASER
