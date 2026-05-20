@@ -444,6 +444,30 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 			badge.add_child(DeskTheme.create_label("[*]x%d" % top_subj_count, 9, Color.WHITE, true))
 			card_h.add_child(badge)
 		
+		# 不自然さ警告チェック
+		var is_suspicious = false
+		var past_days = ctx.backend_manager.get_all_player_daily_scores().get(rival_name, [])
+		var prev_total_sum = 0
+		var prev_days_count = 0
+		for d_entry in past_days:
+			var d_num = d_entry.get("day", 0)
+			if d_num < Global.play_count + 1:
+				var subjs = d_entry.get("subjects", {})
+				var day_sum = 0
+				for s in subjs:
+					day_sum += int(subjs[s])
+				prev_total_sum += day_sum
+				prev_days_count += 1
+		if prev_days_count > 0:
+			var avg_total = float(prev_total_sum) / float(prev_days_count)
+			if total_score >= avg_total + 20.0:
+				is_suspicious = true
+		
+		if is_suspicious and not already_voted:
+			var warn_lbl = DeskTheme.create_label("⚠️ ", 14, DeskTheme.COLOR_BLUFF_RED, true)
+			warn_lbl.tooltip_text = "報告値が過去の平均よりも大幅に高いため、嘘の可能性があります！"
+			card_h.add_child(warn_lbl)
+
 		# いいねボタン
 		var like_wrap = Control.new()
 		like_wrap.custom_minimum_size = Vector2(64, 32)
@@ -670,6 +694,89 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 	bio_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bio_p.add_child(bio_lbl)
 	
+	# 🧠 AI心理分析カード（嘘の傾向）
+	var bluff_card = PanelContainer.new()
+	var bc_style = StyleBoxFlat.new()
+	bc_style.bg_color = Color.WHITE
+	bc_style.corner_radius_top_left = 12; bc_style.corner_radius_top_right = 12
+	bc_style.corner_radius_bottom_left = 12; bc_style.corner_radius_bottom_right = 12
+	bc_style.content_margin_left = 14; bc_style.content_margin_right = 14
+	bc_style.content_margin_top = 12; bc_style.content_margin_bottom = 12
+	bluff_card.add_theme_stylebox_override("panel", bc_style)
+	
+	var bc_m = MarginContainer.new()
+	bc_m.add_theme_constant_override("margin_left", 16)
+	bc_m.add_theme_constant_override("margin_right", 16)
+	bc_m.add_theme_constant_override("margin_top", 4)
+	bc_m.add_theme_constant_override("margin_bottom", 4)
+	bc_m.add_child(bluff_card)
+	scroll_v.add_child(bc_m)
+	
+	var bc_v = VBoxContainer.new()
+	bc_v.add_theme_constant_override("separation", 8)
+	bluff_card.add_child(bc_v)
+	
+	bc_v.add_child(DeskTheme.create_label("🧠 チキスタAI行動分析", 13, DeskTheme.COLOR_MUTED, true))
+	
+	var bluff_title = ""
+	var bluff_rate = 0.0
+	var bluff_color = Color.GREEN
+	var bluff_desc = ""
+	
+	if rival_name == "慎重な優等生":
+		bluff_title = "極めて誠実・堅実"
+		bluff_rate = 0.05
+		bluff_color = DeskTheme.COLOR_SAFE
+		bluff_desc = "ほとんど嘘の報告を行いません。報告値は信頼できますが、たまに保険で小さく盛る程度です。"
+	elif rival_name == "ギャンブラー":
+		bluff_title = "ギャンブル報告（中〜高ブラフ）"
+		bluff_rate = 0.55
+		bluff_color = DeskTheme.COLOR_ACCENT_GOLD
+		bluff_desc = "バーストしていない日は大きく盛る傾向があります。本日の気分で報告点数が乱高下します。"
+	elif rival_name == "ブラフの達人":
+		bluff_title = "変幻自在・危険度高"
+		bluff_rate = 0.85
+		bluff_color = DeskTheme.COLOR_BLUFF_RED
+		bluff_desc = "巧妙に嘘を織り交ぜ、こちらの出方を窺っています。彼らの報告を鵜呑みにするのは極めて危険です。"
+	else:
+		bluff_title = "自己分析結果"
+		bluff_rate = 0.3
+		bluff_color = Color("1c7ed6")
+		bluff_desc = "あなた自身のこれまでの行動履歴に基づき、システムが誠実な学習活動を推奨しています。"
+		
+	var bh = HBoxContainer.new()
+	bh.add_theme_constant_override("separation", 10)
+	bc_v.add_child(bh)
+	
+	bh.add_child(DeskTheme.create_label("ブラフ傾向:", 11, DeskTheme.COLOR_INK))
+	bh.add_child(DeskTheme.create_label(bluff_title, 12, bluff_color, true))
+	
+	var indicator_bg = PanelContainer.new()
+	indicator_bg.custom_minimum_size = Vector2(0, 16)
+	indicator_bg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var ind_bg_style = StyleBoxFlat.new()
+	ind_bg_style.bg_color = Color("f0f0f0")
+	ind_bg_style.corner_radius_top_left = 8; ind_bg_style.corner_radius_top_right = 8
+	ind_bg_style.corner_radius_bottom_left = 8; ind_bg_style.corner_radius_bottom_right = 8
+	indicator_bg.add_theme_stylebox_override("panel", ind_bg_style)
+	bc_v.add_child(indicator_bg)
+	
+	var indicator_val = PanelContainer.new()
+	indicator_val.custom_minimum_size = Vector2(0, 16)
+	indicator_val.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	var ind_val_style = StyleBoxFlat.new()
+	ind_val_style.bg_color = bluff_color
+	ind_val_style.corner_radius_top_left = 8; ind_val_style.corner_radius_bottom_left = 8
+	if bluff_rate >= 0.95:
+		ind_val_style.corner_radius_top_right = 8; ind_val_style.corner_radius_bottom_right = 8
+	indicator_val.add_theme_stylebox_override("panel", ind_val_style)
+	indicator_bg.add_child(indicator_val)
+	indicator_val.custom_minimum_size.x = max(16, 260.0 * bluff_rate)
+	
+	var desc_lbl = DeskTheme.create_label(bluff_desc, 10, DeskTheme.COLOR_MUTED)
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	bc_v.add_child(desc_lbl)
+	
 	# History Chart
 	var chart_p = PanelContainer.new()
 	var c_style = StyleBoxFlat.new()
@@ -756,7 +863,63 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 	
 	var all_data = ctx.backend_manager.get_all_player_daily_scores()
 	var player_data = all_data.get(rival_name, [])
-	var tops = ctx.backend_manager.get_subject_top_scores()
+	
+	# 美しいレーダーチャート
+	var radar_height = 140.0
+	var radar_control = Control.new()
+	radar_control.custom_minimum_size = Vector2(0, radar_height)
+	radar_control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc_v.add_child(radar_control)
+	
+	var subj_scores = []
+	for s in range(5):
+		var subj_total = 0
+		for d_entry in player_data:
+			var subjs = d_entry.get("subjects", {})
+			subj_total += int(subjs.get(s, subjs.get(str(s), 0)))
+		subj_scores.append(subj_total)
+	
+	radar_control.draw.connect(func():
+		var center = Vector2(radar_control.size.x / 2.0, radar_height / 2.0)
+		var max_radius = 50.0
+		var num_points = 5
+		
+		# 1. 五角形グリッド（同心円）
+		var grid_steps = 4
+		for step in range(1, grid_steps + 1):
+			var r = max_radius * (float(step) / float(grid_steps))
+			var grid_points = PackedVector2Array()
+			for i in range(num_points + 1):
+				var angle = i * 2.0 * PI / float(num_points) - PI / 2.0
+				grid_points.append(center + Vector2(cos(angle), sin(angle)) * r)
+			radar_control.draw_polyline(grid_points, Color("e0e0e0"), 1.0)
+			
+		# 2. 中心から頂点への放射線
+		for i in range(num_points):
+			var angle = i * 2.0 * PI / float(num_points) - PI / 2.0
+			var outer_point = center + Vector2(cos(angle), sin(angle)) * max_radius
+			radar_control.draw_line(center, outer_point, Color("e0e0e0"), 1.0)
+			
+		# 3. プレイヤーデータのプロットポリゴン
+		var plot_points = PackedVector2Array()
+		for i in range(num_points):
+			var score = subj_scores[i]
+			var ratio = clamp(float(score) / 140.0, 0.08, 1.0)
+			var r = max_radius * ratio
+			var angle = i * 2.0 * PI / float(num_points) - PI / 2.0
+			plot_points.append(center + Vector2(cos(angle), sin(angle)) * r)
+		
+		var fill_color = Color("1c7ed6", 0.35) if rival_name != Global.player_name else Color("2b8a3e", 0.35)
+		var line_color = Color("1c7ed6", 0.8) if rival_name != Global.player_name else Color("2b8a3e", 0.8)
+		
+		var closed_points = PackedVector2Array(plot_points)
+		closed_points.append(plot_points[0])
+		radar_control.draw_polygon(plot_points, PackedColorArray([fill_color]))
+		radar_control.draw_polyline(closed_points, line_color, 2.0)
+		
+		for pt in plot_points:
+			radar_control.draw_circle(pt, 3.5, line_color)
+	)
 	
 	for s in range(5):
 		var subj_total = 0

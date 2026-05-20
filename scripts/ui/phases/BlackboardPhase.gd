@@ -338,6 +338,28 @@ func _show_blackboard_progress():
 			if top["name"] != Global.player_name and top["name"] != "なし" and top["name"] != "誰もいない":
 				var already_voted = ctx.backend_manager.has_voted_rival(top["name"], s)
 				
+				# 教科ごとの不自然さ警告チェック
+				var is_subj_suspicious = false
+				var past_days = ctx.backend_manager.get_all_player_daily_scores().get(top["name"], [])
+				var prev_subj_sum = 0
+				var prev_subj_days = 0
+				for d_entry in past_days:
+					var d_num = d_entry.get("day", 0)
+					if d_num < Global.play_count + 1:
+						var subjs = d_entry.get("subjects", {})
+						var val = int(subjs.get(s, subjs.get(str(s), 0)))
+						prev_subj_sum += val
+						prev_subj_days += 1
+				if prev_subj_days > 0:
+					var avg_subj = float(prev_subj_sum) / float(prev_subj_days)
+					if float(top["score"]) >= avg_subj + 6.0:
+						is_subj_suspicious = true
+				
+				if is_subj_suspicious and not already_voted:
+					var warn_lbl = DeskTheme.create_label("⚠️", 12, DeskTheme.COLOR_BLUFF_RED)
+					warn_lbl.tooltip_text = "この教科の報告値が過去の平均よりも大幅に高いため、嘘の可能性があります！"
+					c_h.add_child(warn_lbl)
+				
 				# いいねボタン (👍)
 				var like_btn = Button.new()
 				like_btn.custom_minimum_size = Vector2(32, 32)

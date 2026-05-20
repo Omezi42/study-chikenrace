@@ -71,8 +71,10 @@ func _process(_delta):
 	# カメラシェイクの適用
 	if ui_root:
 		ui_root.position = camera_shake_offset
-		
 
+func _input(event):
+	if current_phase and current_phase.has_method("_input"):
+		current_phase._input(event)
 
 func _show_loading():
 	_clear_screen()

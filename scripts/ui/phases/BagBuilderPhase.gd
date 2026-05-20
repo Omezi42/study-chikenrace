@@ -268,8 +268,15 @@ func _show_bag_builder():
 
 func _on_bag_slot_pressed(subject: int, slot: int):
 	if ctx.audio_manager: ctx.audio_manager.play_se("click")
-	selected_bag_subject = subject
-	selected_bag_slot = slot
+	var val = ctx.bag_assignments[subject][slot]
+	if val != null:
+		ctx.bag_assignments[subject][slot] = null
+		if ctx.audio_manager: ctx.audio_manager.play_se("place")
+		selected_bag_subject = 8
+		selected_bag_slot = -1
+	else:
+		selected_bag_subject = subject
+		selected_bag_slot = slot
 	_update_bag_ui()
 
 func _on_bag_weight_pressed(weight: int):
@@ -375,6 +382,8 @@ func _start_drag(value: int, source: String, subject: int = -1, slot: int = -1):
 	timer.autostart = true
 	timer.timeout.connect(_on_drag_poll)
 	ctx.ui_root.add_child(timer)
+	
+	_highlight_all_slots(true)
 
 func _on_drag_poll():
 	if not drag_data["active"]:
@@ -384,6 +393,17 @@ func _on_drag_poll():
 	if drag_data["node"]:
 		drag_data["node"].global_position = ctx.ui_root.get_global_mouse_position() - Vector2(55, 55)
 	_update_drag_hover()
+
+func _highlight_all_slots(active: bool):
+	var highlight_color = Color("74c0fc") if active else DeskTheme.COLOR_MUTED
+	for s in range(5):
+		for i in range(2):
+			var slot_btn = ctx.bag_ui_elements["slots"][s][i] as Button
+			if not is_instance_valid(slot_btn): continue
+			var style = slot_btn.get_theme_stylebox("normal").duplicate() as StyleBoxFlat
+			style.border_color = highlight_color
+			style.border_width_bottom = 4
+			slot_btn.add_theme_stylebox_override("normal", style)
 
 func _update_drag_hover():
 	var mouse_pos = ctx.ui_root.get_global_mouse_position()
@@ -401,7 +421,7 @@ func _update_drag_hover():
 		if hovered_slot_subject != -1 and hovered_slot_idx != -1:
 			var old_btn = ctx.bag_ui_elements["slots"][hovered_slot_subject][hovered_slot_idx] as Button
 			var style = old_btn.get_theme_stylebox("normal").duplicate() as StyleBoxFlat
-			style.border_color = DeskTheme.COLOR_MUTED
+			style.border_color = Color("74c0fc")
 			style.border_width_bottom = 4
 			old_btn.add_theme_stylebox_override("normal", style)
 		hovered_slot_subject = found_subject
@@ -416,6 +436,7 @@ func _update_drag_hover():
 
 func _end_drag():
 	drag_data["active"] = false
+	_highlight_all_slots(false)
 	if is_instance_valid(drag_data.get("node")):
 		drag_data["node"].queue_free()
 	drag_data["node"] = null

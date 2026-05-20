@@ -254,6 +254,7 @@ func _start_showdown_reveal():
 		# プレイヤー結果判定
 		var p_stamp: Control
 		var p_score_diff = 0
+		var is_perfect_crime = false
 		
 		if player_lied:
 			# 嘘を盛っていた場合：バレるかどうかの裏確率判定
@@ -274,6 +275,7 @@ func _start_showdown_reveal():
 				# バレずにすり抜けた！完全犯罪成立
 				p_stamp = DeskTheme.create_mini_stamp("完全犯罪成立！", DeskTheme.COLOR_SAFE, 15)
 				p_score_diff = 0
+				is_perfect_crime = true
 				if audio_manager: audio_manager.play_se("combo")
 		else:
 			# 正直に報告していた場合：ライバルからのいいね被弾(応援)判定
@@ -295,12 +297,15 @@ func _start_showdown_reveal():
 		
 		# スタンプアニメーション
 		p_stamp.pivot_offset = p_stamp.custom_minimum_size / 2.0
-		p_stamp.scale = Vector2(3.0, 3.0)
+		p_stamp.scale = Vector2(4.5, 4.5)
 		p_stamp.modulate.a = 0.0
 		var p_stw = p_stamp.create_tween().set_parallel(true)
-		p_stw.tween_property(p_stamp, "scale", Vector2(1.0, 1.0), 0.18).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-		p_stw.tween_property(p_stamp, "modulate:a", 1.0, 0.1)
-		p_stw.tween_property(p_stamp, "rotation_degrees", randf_range(-15.0, 15.0), 0.18)
+		p_stw.tween_property(p_stamp, "scale", Vector2(1.0, 1.0), 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		p_stw.tween_property(p_stamp, "modulate:a", 1.0, 0.08)
+		p_stw.tween_property(p_stamp, "rotation_degrees", randf_range(-18.0, 18.0), 0.22)
+		
+		if is_perfect_crime:
+			_spawn_confetti(player_box.global_position + Vector2(250, 40))
 		
 		# スコア減算/加算とカウンター更新
 		current_live_score += p_score_diff
@@ -683,3 +688,37 @@ func _on_title_pressed():
 	Global.save_data()
 	
 	SceneTransition.fade_to_scene("res://Title.tscn")
+
+func _spawn_confetti(pos: Vector2) -> void:
+	var particles = CPUParticles2D.new()
+	particles.position = pos
+	particles.emitting = true
+	particles.one_shot = true
+	particles.amount = 60
+	particles.lifetime = 2.0
+	particles.explosiveness = 0.85
+	particles.direction = Vector2(0, -1)
+	particles.spread = 75.0
+	particles.gravity = Vector2(0, 300.0)
+	particles.initial_velocity_min = 180.0
+	particles.initial_velocity_max = 350.0
+	particles.scale_amount_min = 6.0
+	particles.scale_amount_max = 12.0
+	
+	var grad = Gradient.new()
+	grad.set_offsets(PackedFloat32Array([0.0, 0.25, 0.5, 0.75, 1.0]))
+	grad.set_colors(PackedColorArray([
+		Color("ff8787"), Color("ffc078"), Color("63e6be"),
+		Color("74c0fc"), Color("da77f2")
+	]))
+	particles.color_ramp = grad
+	
+	particles.angular_velocity_min = -150.0
+	particles.angular_velocity_max = 150.0
+	particles.linear_damp_min = 1.0
+	particles.linear_damp_max = 2.0
+	
+	add_child(particles)
+	
+	var timer = get_tree().create_timer(2.2)
+	timer.timeout.connect(particles.queue_free)

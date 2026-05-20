@@ -23,6 +23,9 @@ var button_box: HBoxContainer
 var drawn_card_nodes: Array = []
 var heartbeat_tween: Tween
 var camera_shake_offset: Vector2 = Vector2.ZERO
+var vignette_node: Control
+var vignette_tween: Tween
+var rival_sim_states: Dictionary = {}
 
 func _init(context: RefCounted):
 	self.ctx = context
@@ -36,6 +39,12 @@ func _show_race_screen():
 	drawn_card_nodes.clear()
 	heartbeat_tween = null
 	camera_shake_offset = Vector2.ZERO
+	
+	rival_sim_states = {
+		"たかし": {"score": 0, "cards": 0, "status": "active", "style": "gambler"},
+		"さやか": {"score": 0, "cards": 0, "status": "active", "style": "safe"},
+		"けんじ": {"score": 0, "cards": 0, "status": "active", "style": "normal"}
+	}
 	
 	var notebook = NotebookBuilderScript.create()
 	active_notebook = notebook
@@ -197,6 +206,23 @@ func _show_race_screen():
 	stop_btn.pressed.connect(_on_stop_pressed)
 	button_box.add_child(stop_btn)
 	
+	# Vignette (睡魔エフェクト) の追加
+	vignette_node = Panel.new()
+	vignette_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vignette_node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var v_style = StyleBoxFlat.new()
+	v_style.bg_color = Color(0, 0, 0, 0)
+	v_style.draw_center = false
+	v_style.border_width_left = 120; v_style.border_width_right = 120
+	v_style.border_width_top = 120; v_style.border_width_bottom = 120
+	v_style.border_color = Color(0, 0, 0, 0.6)
+	v_style.shadow_color = Color(0, 0, 0, 0.8)
+	v_style.shadow_size = 180
+	v_style.shadow_offset = Vector2.ZERO
+	vignette_node.add_theme_stylebox_override("panel", v_style)
+	ctx.screen_content.add_child(vignette_node)
+	vignette_node.modulate.a = 0.0
+	
 	DeskTheme.animate_entrance(notebook)
 	_update_race_hud()
 
@@ -281,6 +307,10 @@ func _update_race_hud():
 	if heartbeat_tween != null:
 		heartbeat_tween.kill()
 		heartbeat_tween = null
+		
+	if vignette_tween != null:
+		vignette_tween.kill()
+		vignette_tween = null
 	
 	if burst_prob >= 80:
 		if is_instance_valid(active_notebook):
@@ -292,6 +322,17 @@ func _update_race_hud():
 			heartbeat_tween.tween_property(active_notebook, "scale", Vector2(1.015, 1.015), 0.07).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 			heartbeat_tween.tween_property(active_notebook, "scale", Vector2(1.0, 1.0), 0.08).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 			heartbeat_tween.tween_interval(0.70)
+			
+		if is_instance_valid(vignette_node):
+			vignette_node.modulate.a = 0.5
+			vignette_tween = vignette_node.create_tween().set_loops()
+			vignette_tween.tween_property(vignette_node, "modulate:a", 0.85, 0.07).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			vignette_tween.tween_property(vignette_node, "modulate:a", 0.5, 0.08).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+			vignette_tween.tween_interval(0.06)
+			vignette_tween.tween_property(vignette_node, "modulate:a", 0.75, 0.07).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			vignette_tween.tween_property(vignette_node, "modulate:a", 0.5, 0.08).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+			vignette_tween.tween_interval(0.70)
+			
 		next_burst_label.pivot_offset = next_burst_label.size / 2.0
 		var lbl_tw = next_burst_label.create_tween()
 		lbl_tw.tween_property(next_burst_label, "scale", Vector2(1.15, 1.15), 0.3).set_trans(Tween.TRANS_SINE)
@@ -301,6 +342,16 @@ func _update_race_hud():
 		if is_instance_valid(active_notebook):
 			var tw_reset = active_notebook.create_tween()
 			tw_reset.tween_property(active_notebook, "scale", Vector2.ONE, 0.15)
+			
+		if is_instance_valid(vignette_node):
+			vignette_tween = vignette_node.create_tween()
+			var target_alpha = 0.0
+			if burst_prob >= 50:
+				target_alpha = 0.4
+			elif burst_prob >= 25:
+				target_alpha = 0.15
+			vignette_tween.tween_property(vignette_node, "modulate:a", target_alpha, 0.25).set_trans(Tween.TRANS_SINE)
+			
 		next_burst_label.scale = Vector2.ONE
 
 func _set_action_buttons_enabled(enabled: bool):
@@ -356,6 +407,34 @@ func _on_draw_pressed():
 	if ctx.audio_manager: ctx.audio_manager.play_se("place")
 	
 	_update_race_hud()
+
+	if card.item_type == 3:
+		_trigger_ruler_effect(card_node)
+		return
+	
+	if res["burst"]:
+		await _trigger_burst_sequence()
+		return
+	elif res["erased"]:
+		await _trigger_eraser_evasion_sequence(card_node, card.weight)
+	
+	if not res["burst"] and not res["erased"]:
+		var combo_num = drawn_card_nodes.size()
+		if combo_num >= 2:
+			var combo_badge = DeskTheme.create_floating_badge("%d COMBO!" % combo_num, DeskTheme.subject_color(card.subject) if card.item_type == 0 else DeskTheme.COLOR_SAFE, 20)
+			combo_badge.global_position = card_node.global_position + Vector2(card_sz.x / 2.0 - combo_badge.size.x / 2.0, -35.0)
+			play_desk.add_child(combo_badge)
+			combo_badge.pivot_offset = combo_badge.size / 2.0
+			combo_badge.scale = Vector2(0.1, 0.1)
+			var b_tw = combo_badge.create_tween()
+			b_tw.tween_property(combo_badge, "scale", Vector2(1.3, 1.3), 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			b_tw.parallel().tween_property(combo_badge, "rotation_degrees", randf_range(-12.0, 12.0), 0.12)
+			b_tw.tween_property(combo_badge, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_BACK)
+			b_tw.tween_interval(0.8)
+			b_tw.tween_property(combo_badge, "modulate:a", 0.0, 0.25)
+			b_tw.tween_callback(combo_badge.queue_free)
+	_step_rival_simulation()
+	_set_action_buttons_enabled(true)
 
 func _rearrange_drawn_cards(animate: bool = true):
 	var num_cards = drawn_card_nodes.size()
@@ -413,34 +492,6 @@ func _rearrange_drawn_cards(animate: bool = true):
 			
 	if last_tween and last_tween.is_valid():
 		await last_tween.finished
-
-	
-	if card.item_type == 3:
-		_trigger_ruler_effect(card_node)
-		return
-	
-	if res["burst"]:
-		await _trigger_burst_sequence()
-		return
-	elif res["erased"]:
-		await _trigger_eraser_evasion_sequence(card_node, card.weight)
-	
-	if not res["burst"] and not res["erased"]:
-		var combo_num = drawn_card_nodes.size()
-		if combo_num >= 2:
-			var combo_badge = DeskTheme.create_floating_badge("%d COMBO!" % combo_num, DeskTheme.subject_color(card.subject) if card.item_type == 0 else DeskTheme.COLOR_SAFE, 20)
-			combo_badge.global_position = card_node.global_position + Vector2(card_sz.x / 2.0 - combo_badge.size.x / 2.0, -35.0)
-			play_desk.add_child(combo_badge)
-			combo_badge.pivot_offset = combo_badge.size / 2.0
-			combo_badge.scale = Vector2(0.1, 0.1)
-			var b_tw = combo_badge.create_tween()
-			b_tw.tween_property(combo_badge, "scale", Vector2(1.3, 1.3), 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-			b_tw.parallel().tween_property(combo_badge, "rotation_degrees", randf_range(-12.0, 12.0), 0.12)
-			b_tw.tween_property(combo_badge, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_BACK)
-			b_tw.tween_interval(0.8)
-			b_tw.tween_property(combo_badge, "modulate:a", 0.0, 0.25)
-			b_tw.tween_callback(combo_badge.queue_free)
-	_set_action_buttons_enabled(true)
 
 func _trigger_ruler_effect(card_node: Control):
 	if ctx.audio_manager: ctx.audio_manager.play_se("combo")
@@ -694,3 +745,89 @@ func _on_stop_pressed():
 	await stamp.finished
 	var scores = ctx.game_session.stop_and_report()
 	phase_completed.emit(scores)
+
+func _are_buttons_enabled() -> bool:
+	if is_instance_valid(button_box) and button_box.get_child_count() > 0:
+		var btn = button_box.get_child(0) as Button
+		if is_instance_valid(btn):
+			return not btn.disabled
+	return false
+
+func _input(event: InputEvent):
+	if not _are_buttons_enabled():
+		return
+	if event is InputEventKey and event.pressed and not event.is_echo():
+		if event.keycode == KEY_SPACE:
+			ctx.ui_root.get_viewport().set_input_as_handled()
+			_on_draw_pressed()
+		elif event.keycode == KEY_ENTER or event.keycode == KEY_KP_ENTER:
+			ctx.ui_root.get_viewport().set_input_as_handled()
+			_on_stop_pressed()
+
+func _step_rival_simulation():
+	# 全員終了している場合は何も行わない
+	var all_done = true
+	for r_name in rival_sim_states:
+		if rival_sim_states[r_name]["status"] == "active":
+			all_done = false
+			break
+	if all_done:
+		return
+
+	var active_rivals = []
+	for r_name in rival_sim_states:
+		if rival_sim_states[r_name]["status"] == "active":
+			active_rivals.append(r_name)
+	
+	if active_rivals.is_empty(): return
+	
+	# シャッフルしてランダムな相手を選ぶ
+	active_rivals.shuffle()
+	
+	# 同時に行動するのは最大2人
+	var action_count = randi() % 2 + 1
+	action_count = min(action_count, active_rivals.size())
+	
+	for i in range(action_count):
+		var r_name = active_rivals[i]
+		var state = rival_sim_states[r_name]
+		var draw_prob = 0.8
+		var style = state["style"]
+		
+		# スタイルに応じた行動確率
+		if style == "safe":
+			if state["cards"] >= 3: draw_prob = 0.15
+			elif state["cards"] >= 2: draw_prob = 0.45
+		elif style == "gambler":
+			if state["cards"] >= 5: draw_prob = 0.2
+			elif state["cards"] >= 3: draw_prob = 0.75
+		else:
+			if state["cards"] >= 4: draw_prob = 0.1
+			elif state["cards"] >= 3: draw_prob = 0.35
+			elif state["cards"] >= 2: draw_prob = 0.65
+			
+		var r_val = randf()
+		if r_val < draw_prob:
+			# ドロー！
+			state["cards"] += 1
+			var add_score = randi_range(6, 12)
+			state["score"] += add_score
+			
+			# バースト確率チェック
+			var burst_prob = 0.0
+			if state["cards"] >= 5: burst_prob = 0.6
+			elif state["cards"] >= 4: burst_prob = 0.3
+			elif state["cards"] >= 3: burst_prob = 0.1
+			
+			if randf() < burst_prob:
+				state["status"] = "burst"
+				var burst_msg = "【ライバル】%s が寝落ちした！(バースト)" % r_name
+				ToastOverlayScript.show_toast(ctx.ui_root, burst_msg, DeskTheme.COLOR_BLUFF_RED)
+			else:
+				var draw_msg = "【ライバル】%s がカードを引いた！\n(計%d枚 / 予測%d点)" % [r_name, state["cards"], state["score"]]
+				ToastOverlayScript.show_toast(ctx.ui_root, draw_msg, Color("a5d6a7"))
+		else:
+			# ストップ
+			state["status"] = "stopped"
+			var stop_msg = "【ライバル】%s が勉強を切り上げた！\n(報告予測: %d点)" % [r_name, state["score"]]
+			ToastOverlayScript.show_toast(ctx.ui_root, stop_msg, Color("90caf9"))
