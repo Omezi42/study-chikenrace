@@ -166,10 +166,23 @@ func _show_report_screen():
 		name_lbl.custom_minimum_size = Vector2(48, 0)
 		s_row.add_child(name_lbl)
 		
-		# 実際スコア
-		var actual_lbl = DeskTheme.create_label("実際:%d" % actual_val, 13, Color("4a7de0"))
-		actual_lbl.custom_minimum_size = Vector2(56, 0)
-		s_row.add_child(actual_lbl)
+		# 実際スコア（グラフィカルな青いバッジ）
+		var actual_badge = PanelContainer.new()
+		var ab_style = StyleBoxFlat.new()
+		ab_style.bg_color = Color("3a86f0")
+		ab_style.corner_radius_top_left = 6
+		ab_style.corner_radius_top_right = 6
+		ab_style.corner_radius_bottom_left = 6
+		ab_style.corner_radius_bottom_right = 6
+		ab_style.content_margin_left = 6
+		ab_style.content_margin_right = 6
+		ab_style.content_margin_top = 2
+		ab_style.content_margin_bottom = 2
+		actual_badge.add_theme_stylebox_override("panel", ab_style)
+		s_row.add_child(actual_badge)
+		
+		var actual_lbl = DeskTheme.create_label("%d点" % actual_val, 13, Color.WHITE, true)
+		actual_badge.add_child(actual_lbl)
 		
 		# ➖➕付きスライダー
 		var slider_h = HBoxContainer.new()
@@ -237,11 +250,19 @@ func _show_report_screen():
 			tw.tween_property(plus_btn, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		)
 		
-		# 報告スコアラベル
-		var report_lbl = DeskTheme.create_label("正直: %d点" % actual_val, 15, DeskTheme.COLOR_INK, true)
-		report_lbl.custom_minimum_size = Vector2(80, 0)
-		s_row.add_child(report_lbl)
-		slider_labels[s] = report_lbl
+		var report_h = HBoxContainer.new()
+		report_h.custom_minimum_size = Vector2(85, 0)
+		report_h.alignment = BoxContainer.ALIGNMENT_CENTER
+		report_h.add_theme_constant_override("separation", 4)
+		s_row.add_child(report_h)
+		
+		var status_icon = DeskTheme.create_label("🟢", 14, Color.WHITE, true)
+		report_h.add_child(status_icon)
+		
+		var report_lbl = DeskTheme.create_label("%d点" % actual_val, 15, DeskTheme.COLOR_INK, true)
+		report_h.add_child(report_lbl)
+		
+		slider_labels[s] = {"hbox": report_h, "label": report_lbl, "icon": status_icon, "actual_val": actual_val}
 		
 		# 前回の値を保持して整数値の変化だけを検知する
 		var last_val = { "val": actual_val }
@@ -276,22 +297,28 @@ func _show_report_screen():
 			s_tw.tween_property(slider, "position:y", slider.position.y, 0.05).set_trans(Tween.TRANS_BACK)
 			if ctx.audio_manager: ctx.audio_manager.play_se("place") # カチッというダイヤル音代わり
 			
-			var lbl = slider_labels[s] as Label
-			lbl.pivot_offset = lbl.size / 2.0
-			var tw = lbl.create_tween()
+			var label_data = slider_labels[s] as Dictionary
+			var lbl = label_data["label"] as Label
+			var icon = label_data["icon"] as Label
+			var hbox = label_data["hbox"] as HBoxContainer
+			
+			hbox.pivot_offset = hbox.size / 2.0
+			var tw = hbox.create_tween()
 			if i_val > actual_val:
-				lbl.text = "盛った: %d点" % i_val
+				lbl.text = "%d点" % i_val
 				lbl.add_theme_color_override("font_color", DeskTheme.COLOR_BLUFF_RED)
-				# 嘘を盛れば盛るほど、ラベルが大きく膨らみ、赤ペンが強調される
-				tw.tween_property(lbl, "scale", Vector2(1.22, 1.22), 0.08).set_trans(Tween.TRANS_CUBIC)
-				tw.tween_property(lbl, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_BACK)
+				icon.text = "⚠️"
+				tw.tween_property(hbox, "scale", Vector2(1.22, 1.22), 0.08).set_trans(Tween.TRANS_CUBIC)
+				tw.tween_property(hbox, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_BACK)
 				if ctx.audio_manager:
 					ctx.audio_manager.play_se("click")
 			else:
-				lbl.text = "正直: %d点" % i_val
+				lbl.text = "%d点" % i_val
 				lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-				tw.tween_property(lbl, "scale", Vector2(1.0, 1.0), 0.08)
+				icon.text = "🟢"
+				tw.tween_property(hbox, "scale", Vector2(1.0, 1.0), 0.08)
 				if ctx.audio_manager:
+					ctx.audio_manager.play_se("click")
 					ctx.audio_manager.play_se("click")
 			_update_report_warning()
 		)
