@@ -586,7 +586,8 @@ func _rearrange_drawn_cards(animate: bool = true):
 	var center = desk_sz / 2.0
 	center.x += 60.0
 	
-	var card_spacing = 38.0 if num_cards <= 5 else max(18.0, 180.0 / float(num_cards))
+	# 重なりつつも左上の数字バッジ（幅40px）が見えるように間隔を調整
+	var card_spacing = 52.0 if num_cards <= 5 else max(38.0, 240.0 / float(num_cards))
 	var card_scale_factor = 1.0 if num_cards <= 5 else max(0.65, 1.0 - (num_cards - 5) * 0.05)
 	var card_sz = Vector2(190, 260) * card_scale_factor
 	
@@ -599,6 +600,7 @@ func _rearrange_drawn_cards(animate: bool = true):
 		pass
 		
 		var item_offset_x = (i * card_spacing) - (card_spacing * float(num_cards - 1)) / 2.0
+		# 扇状（アーチ状）の重ね合わせ配置へ復帰
 		var item_offset_y = -abs(item_offset_x) * 0.08
 		
 		var target_pos = center + Vector2(item_offset_x, item_offset_y) - card_sz / 2.0

@@ -226,6 +226,26 @@ static func create_subject_card_large(subject: int, weight: int) -> Control:
 		
 	hbox.add_child(create_label(subject_name(subject), 20, COLOR_INK, true))
 	
+	# 左上にミニバッジを追加（重ね合わされても見えるように）
+	var mini_badge = PanelContainer.new()
+	mini_badge.name = "MiniBadge"
+	mini_badge.custom_minimum_size = Vector2(40, 26)
+	var badge_style = StyleBoxFlat.new()
+	badge_style.bg_color = subj_col
+	badge_style.corner_radius_top_left = 6
+	badge_style.corner_radius_top_right = 6
+	badge_style.corner_radius_bottom_left = 6
+	badge_style.corner_radius_bottom_right = 6
+	mini_badge.add_theme_stylebox_override("panel", badge_style)
+	
+	var mini_lbl = create_label("%s%d" % [subject_name(subject).left(1), weight], 13, Color.WHITE, true)
+	mini_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mini_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	mini_badge.add_child(mini_lbl)
+	
+	container.add_child(mini_badge)
+	mini_badge.position = Vector2(12, 12)
+	
 	return container
 
 static func create_item_card_large(item_type: int) -> Control:
@@ -256,6 +276,27 @@ static func create_item_card_large(item_type: int) -> Control:
 	var name_str = "消しゴム" if item_type == 1 else "ペン" if item_type == 2 else "定規" if item_type == 3 else "睡魔(マイナス)"
 	var col = Color("ff8c8c") if item_type == 1 else Color("8cffd3") if item_type == 2 else Color("f0c040") if item_type == 3 else Color("5c5766")
 	vbox.add_child(create_label(name_str, 20, col, true))
+	
+	# 左上にミニバッジを追加（重ね合わされても見えるように）
+	var mini_badge = PanelContainer.new()
+	mini_badge.name = "MiniBadge"
+	mini_badge.custom_minimum_size = Vector2(30, 26)
+	var badge_style = StyleBoxFlat.new()
+	badge_style.bg_color = col
+	badge_style.corner_radius_top_left = 6
+	badge_style.corner_radius_top_right = 6
+	badge_style.corner_radius_bottom_left = 6
+	badge_style.corner_radius_bottom_right = 6
+	mini_badge.add_theme_stylebox_override("panel", badge_style)
+	
+	var it_char = "消" if item_type == 1 else "筆" if item_type == 2 else "定"
+	var mini_lbl = create_label(it_char, 13, Color.WHITE, true)
+	mini_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mini_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	mini_badge.add_child(mini_lbl)
+	
+	container.add_child(mini_badge)
+	mini_badge.position = Vector2(12, 12)
 	
 	return container
 
