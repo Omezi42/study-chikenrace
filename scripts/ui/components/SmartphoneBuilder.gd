@@ -227,8 +227,7 @@ static func build_standard_smartphone(ctx: RefCounted) -> VBoxContainer:
 		tab_btn.add_theme_stylebox_override("hover", b_hover)
 		var b_pressed = StyleBoxFlat.new()
 		b_pressed.bg_color = Color(0.85, 0.85, 0.88)
-		b_pressed.corner_radius_top_left = 8; b_pressed.corner_radius_top_right = 8
-		b_pressed.corner_radius_bottom_left = 8; b_pressed.corner_radius_bottom_right = 8
+		b_pressed.corner_radius_top_left = 8; b_pressed.corner_radius_bottom_left = 8
 		tab_btn.add_theme_stylebox_override("pressed", b_pressed)
 		tab_btn.pressed.connect(on_chikista_tab_pressed.bind(ctx, tab["idx"], app_scroll))
 		app_footer_h.add_child(tab_btn)
@@ -287,11 +286,34 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 	tips_banner.add_child(tips_v)
 	
 	tips_v.add_child(DeskTheme.create_label("[チキスタ運営事務局]", 14, Color("1da1f2"), true))
-	var tips_msg = DeskTheme.create_label("アイコンをタップで詳細プロフ！ライバルに【いいね】を送ってプレッシャーを与えましょう！嘘の報告を暴けば大ダメージ！", 12, DeskTheme.COLOR_INK)
+	var tips_msg = DeskTheme.create_label("アイコンをタップで詳細プロフ！ライバルに【👍】を突きつけてダウト(嘘告発)しましょう！嘘を暴けばボーナス、冤罪はペナルティ！", 12, DeskTheme.COLOR_INK)
 	tips_msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tips_v.add_child(tips_msg)
 	
+	# 💡 1日3回投票権のUI表示
+	var vote_count = ctx.backend_manager.get_daily_vote_count()
+	var vote_info_panel = PanelContainer.new()
+	var vi_style = StyleBoxFlat.new()
+	vi_style.bg_color = Color("fff9db") # 警告イエロー
+	vi_style.border_width_bottom = 2
+	vi_style.border_color = Color("ffe066")
+	vi_style.corner_radius_top_left = 8; vi_style.corner_radius_top_right = 8
+	vi_style.corner_radius_bottom_left = 8; vi_style.corner_radius_bottom_right = 8
+	vi_style.content_margin_left = 8; vi_style.content_margin_right = 8
+	vi_style.content_margin_top = 4; vi_style.content_margin_bottom = 4
+	vote_info_panel.add_theme_stylebox_override("panel", vi_style)
+	cards_v.add_child(vote_info_panel)
+	
+	var vote_info_hbox = HBoxContainer.new()
+	vote_info_panel.add_child(vote_info_hbox)
+	
+	var votes_left_lbl = DeskTheme.create_label("本日のダウト投票権 (👍): %d / 3" % (3 - vote_count), 13, Color("f59f00"), true)
+	vote_info_hbox.add_child(votes_left_lbl)
+	
+	var active_like_buttons = []
+	
 	if Global.play_count == 0:
+		vote_info_panel.hide() # 1日目は非表示
 		var guide_card = PanelContainer.new()
 		var card_style = StyleBoxFlat.new()
 		card_style.bg_color = Color("ffffff")
@@ -315,7 +337,7 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 			"1. ノートで計画を立てて付箋を貼る\n" + \
 			"2. ドローで限界まで勉強（チキンレース）\n" + \
 			"3. 結果を報告（実力以上の大ボラ報告も可能！）\n" + \
-			"4. 翌朝、報告に対するいいねや見破りが発生！\n\n" + \
+			"4. 翌朝、相手の嘘と思われる報告に【👍 (ダウト)】を押す！(1日最大3回まで)\n\n" + \
 			"※明日（2日目）の朝からライバルの学習記録がここにリアルタイムで表示されるようになります！本日はまず自分の学習計画を立てて勉強を始めましょう！"
 		
 		var body_lbl = DeskTheme.create_label(body, 12, DeskTheme.COLOR_INK)
@@ -446,6 +468,7 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 		
 		# 不自然さ警告チェック
 		var is_suspicious = false
+		var already_voted = ctx.backend_manager.has_voted_rival(rival_name, -1)
 		var past_days = ctx.backend_manager.get_all_player_daily_scores().get(rival_name, [])
 		var prev_total_sum = 0
 		var prev_days_count = 0
@@ -467,15 +490,17 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 			var warn_lbl = DeskTheme.create_label("⚠️ ", 14, DeskTheme.COLOR_BLUFF_RED, true)
 			warn_lbl.tooltip_text = "報告値が過去の平均よりも大幅に高いため、嘘の可能性があります！"
 			card_h.add_child(warn_lbl)
-
+		
 		# いいねボタン
 		var like_wrap = Control.new()
 		like_wrap.custom_minimum_size = Vector2(64, 32)
 		card_h.add_child(like_wrap)
 		
-		var already_voted = ctx.backend_manager.has_voted_rival(rival_name, -1)
-		var like_btn = DeskTheme.create_button("いいね", Vector2(64, 32), Color("3897f0") if not already_voted else Color("a0c0e0"), Color("1070c0") if not already_voted else Color("90b0d0"), false, 12)
-		like_btn.disabled = already_voted
+		var is_btn_active = not already_voted and vote_count < 3
+		var like_btn = DeskTheme.create_button("いいね", Vector2(64, 32), Color("3897f0") if is_btn_active else Color("a0c0e0"), Color("1070c0") if is_btn_active else Color("90b0d0"), false, 12)
+		like_btn.disabled = not is_btn_active
+		like_btn.set_meta("rival_name", rival_name)
+		active_like_buttons.append(like_btn)
 		like_wrap.add_child(like_btn)
 		
 		var stamp_container = Control.new()
@@ -494,7 +519,7 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 			stamp_style.content_margin_left = 6; stamp_style.content_margin_right = 6
 			stamp_style.content_margin_top = 2; stamp_style.content_margin_bottom = 2
 			stamp.add_theme_stylebox_override("panel", stamp_style)
-			var stamp_lbl = DeskTheme.create_label("👍 いいね", 10, Color.WHITE, true)
+			var stamp_lbl = DeskTheme.create_label("👍 ダウト", 10, Color.WHITE, true)
 			stamp.add_child(stamp_lbl)
 			stamp.position = Vector2(0, -15)
 			return stamp
@@ -506,6 +531,8 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 			
 		like_btn.pressed.connect(func():
 			if ctx.backend_manager.has_voted_rival(rival_name, -1): return
+			if ctx.backend_manager.get_daily_vote_count() >= 3: return
+			
 			ctx.backend_manager.vote_rival(rival_name, -1)
 			like_btn.disabled = true
 			var style_v = like_btn.get_theme_stylebox("normal").duplicate()
@@ -529,6 +556,18 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 			
 			if ctx.audio_manager:
 				ctx.audio_manager.play_se('place')
+				
+			# 投票バッジと他ボタンの無効化処理
+			var new_count = ctx.backend_manager.get_daily_vote_count()
+			votes_left_lbl.text = "本日のダウト投票権 (👍): %d / 3" % (3 - new_count)
+			
+			if new_count >= 3:
+				for btn in active_like_buttons:
+					if is_instance_valid(btn) and not btn.disabled:
+						btn.disabled = true
+						var style_d = btn.get_theme_stylebox("normal").duplicate()
+						style_d.bg_color = Color("a0c0e0")
+						btn.add_theme_stylebox_override("normal", style_d)
 		)
 
 static func _show_profile_view(ctx: RefCounted, rival_name: String, app_container: Control) -> void:

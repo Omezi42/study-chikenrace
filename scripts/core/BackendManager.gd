@@ -278,3 +278,7 @@ func get_all_player_daily_scores() -> Dictionary:
 	
 	return result
 
+func get_daily_vote_count() -> int:
+	return _voted_rivals.size()
+
+

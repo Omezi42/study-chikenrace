@@ -281,6 +281,7 @@ func _show_blackboard_progress():
 		welcome_v.add_child(welcome_desc)
 	else:
 		var state = {"liked": false}
+		var active_like_buttons = []
 		for s in range(5):
 			var top = tops[s]
 			var card = PanelContainer.new()
@@ -361,15 +362,18 @@ func _show_blackboard_progress():
 					c_h.add_child(warn_lbl)
 				
 				# いいねボタン (👍)
+				var vote_count = ctx.backend_manager.get_daily_vote_count()
+				var is_btn_active = not already_voted and vote_count < 3
+				
 				var like_btn = Button.new()
 				like_btn.custom_minimum_size = Vector2(32, 32)
 				like_btn.size = Vector2(32, 32)
 				
 				var lb_normal = StyleBoxFlat.new()
-				lb_normal.bg_color = Color("f0f4f8") if not already_voted else Color("dbe3eb")
+				lb_normal.bg_color = Color("f0f4f8") if is_btn_active else Color("dbe3eb")
 				lb_normal.border_width_left = 1.0; lb_normal.border_width_right = 1.0
 				lb_normal.border_width_top = 1.0; lb_normal.border_width_bottom = 1.0
-				lb_normal.border_color = Color("8fa4b8") if not already_voted else Color("a6b8c7")
+				lb_normal.border_color = Color("8fa4b8") if is_btn_active else Color("a6b8c7")
 				lb_normal.corner_radius_top_left = 16; lb_normal.corner_radius_top_right = 16
 				lb_normal.corner_radius_bottom_left = 16; lb_normal.corner_radius_bottom_right = 16
 				like_btn.add_theme_stylebox_override("normal", lb_normal)
@@ -386,17 +390,30 @@ func _show_blackboard_progress():
 				like_btn.add_theme_color_override("font_disabled_color", Color("748ffc"))
 				like_btn.add_theme_font_size_override("font_size", 12)
 				like_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-				like_btn.disabled = already_voted
+				like_btn.disabled = not is_btn_active
+				active_like_buttons.append(like_btn)
 				
 				like_btn.pressed.connect(func():
 					if state["liked"] or ctx.backend_manager.has_voted_rival(top["name"], s): return
+					if ctx.backend_manager.get_daily_vote_count() >= 3: return
+					
 					state["liked"] = true
 					ctx.backend_manager.vote_rival(top["name"], s)
 					
 					if ctx.audio_manager: ctx.audio_manager.play_se("place")
 					like_btn.disabled = true
 					
-					# 中立的で楽しげなトーストを表示
+					var style_v = lb_disabled.duplicate()
+					like_btn.add_theme_stylebox_override("normal", style_v)
+					
+					# 投票数が3に達したら、他のすべてのまだ押されていないボタンを無効化
+					var new_count = ctx.backend_manager.get_daily_vote_count()
+					if new_count >= 3:
+						for btn in active_like_buttons:
+							if is_instance_valid(btn) and not btn.disabled:
+								btn.disabled = true
+								btn.add_theme_stylebox_override("normal", lb_disabled)
+								
 					ToastOverlayScript.show_toast(ctx.ui_root, "%s の報告に『いいね』しました！\n（嘘を見破れたかは最終日の通知表で公開！）" % top["name"], DeskTheme.COLOR_SAFE)
 				)
 				c_h.add_child(like_btn)

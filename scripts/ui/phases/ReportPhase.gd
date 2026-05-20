@@ -148,6 +148,12 @@ func _show_report_screen():
 	list_v.add_theme_constant_override("separation", 16)
 	lm.add_child(list_v)
 	
+	var is_burst = true
+	for val in scores.values():
+		if val > 0:
+			is_burst = false
+			break
+
 	for s in range(5):
 		var actual_val = scores.get(s, 0)
 		reported_scores[s] = actual_val
@@ -188,11 +194,12 @@ func _show_report_screen():
 			tw.tween_property(minus_btn, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		)
 		
-		# 木製定規風スライダー (過少申告不可: min は実際のスコア)
+		# 木製定規風スライダー (過少申告不可: min は実際のスコア, maxは状況に応じた嘘上限)
 		var slider = HSlider.new()
 		slider.min_value = actual_val
-		slider.max_value = 20
+		slider.max_value = 10 if is_burst else min(20, actual_val + 10)
 		slider.value = actual_val
+
 		slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		
 		# 消しゴム風つまみのカスタムテーマ適用

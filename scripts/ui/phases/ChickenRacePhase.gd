@@ -4,6 +4,7 @@ extends RefCounted
 
 const NotebookBuilderScript = preload("res://scripts/ui/components/NotebookBuilder.gd")
 const SmartphoneBuilderScript = preload("res://scripts/ui/components/SmartphoneBuilder.gd")
+const ToastOverlayScript = preload("res://scripts/ui/components/ToastOverlay.gd")
 
 signal phase_completed(scores_data: Dictionary)
 
