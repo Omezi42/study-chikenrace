@@ -496,11 +496,11 @@ func _on_draw_pressed():
 	var card_sz = Vector2(190, 260) * card_scale_factor
 	
 	var view_size = ctx.screen_content.get_viewport_rect().size
-	var start_pos = Vector2(view_size.x / 2.0, view_size.y) - card_sz / 2.0
-	if is_instance_valid(button_box) and button_box.get_child_count() > 0:
-		var draw_btn = button_box.get_child(0) as Button
-		if is_instance_valid(draw_btn):
-			start_pos = draw_btn.global_position + draw_btn.size / 2.0 - card_sz / 2.0
+	var start_pos = Vector2(view_size.x * 0.85, view_size.y * 0.25)
+	if subject_gauges.has("deck_stack"):
+		var ds = subject_gauges["deck_stack"] as Control
+		if is_instance_valid(ds) and ds.is_inside_tree():
+			start_pos = ds.global_position + ds.size / 2.0 - card_sz / 2.0
 	
 	card_node.position = start_pos - card_container.global_position
 	card_node.rotation_degrees = -45.0
@@ -762,6 +762,7 @@ func _trigger_eraser_evasion_sequence(new_card_node: Control, _weight: int):
 	
 	_rearrange_drawn_cards(true)
 	_update_race_hud()
+	_set_action_buttons_enabled(true)
 
 func _trigger_burst_sequence():
 	if ctx.audio_manager: ctx.audio_manager.play_se("burst")
@@ -951,6 +952,7 @@ func _reset_for_new_hour():
 		vignette_node.modulate.a = 0.0
 		
 	_update_race_hud()
+	_set_action_buttons_enabled(true)
 
 func _are_buttons_enabled() -> bool:
 	if is_instance_valid(button_box) and button_box.get_child_count() > 0:

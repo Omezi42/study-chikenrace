@@ -157,14 +157,20 @@ func _show_report_screen():
 	for s in range(5):
 		var actual_val = scores.get(s, 0)
 		reported_scores[s] = actual_val
-		var s_row = HBoxContainer.new()
-		s_row.add_theme_constant_override("separation", 6)
-		list_v.add_child(s_row)
+		
+		var card_v = VBoxContainer.new()
+		card_v.add_theme_constant_override("separation", 6)
+		list_v.add_child(card_v)
+		
+		# 1. 上段情報行
+		var info_row = HBoxContainer.new()
+		info_row.add_theme_constant_override("separation", 8)
+		card_v.add_child(info_row)
 		
 		# 教科名
 		var name_lbl = DeskTheme.create_label(DeskTheme.subject_name(s), 16, DeskTheme.subject_color(s), true)
-		name_lbl.custom_minimum_size = Vector2(48, 0)
-		s_row.add_child(name_lbl)
+		name_lbl.custom_minimum_size = Vector2(56, 0)
+		info_row.add_child(name_lbl)
 		
 		# 実際スコア（グラフィカルな青いバッジ）
 		var actual_badge = PanelContainer.new()
@@ -179,21 +185,38 @@ func _show_report_screen():
 		ab_style.content_margin_top = 2
 		ab_style.content_margin_bottom = 2
 		actual_badge.add_theme_stylebox_override("panel", ab_style)
-		s_row.add_child(actual_badge)
+		info_row.add_child(actual_badge)
 		
-		var actual_lbl = DeskTheme.create_label("%d点" % actual_val, 13, Color.WHITE, true)
+		var actual_lbl = DeskTheme.create_label("実際:%d点" % actual_val, 13, Color.WHITE, true)
 		actual_badge.add_child(actual_lbl)
 		
-		# ➖➕付きスライダー
+		# 右側引き伸ばし用スペーサー
+		var spacer = Control.new()
+		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info_row.add_child(spacer)
+		
+		# 報告数値 (右寄せ)
+		var report_h = HBoxContainer.new()
+		report_h.alignment = BoxContainer.ALIGNMENT_CENTER
+		report_h.add_theme_constant_override("separation", 4)
+		info_row.add_child(report_h)
+		
+		var status_icon = DeskTheme.create_label("🟢", 14, Color.WHITE, true)
+		report_h.add_child(status_icon)
+		
+		var report_lbl = DeskTheme.create_label("%d点" % actual_val, 15, DeskTheme.COLOR_INK, true)
+		report_h.add_child(report_lbl)
+		
+		# 2. 下段スライダー行
 		var slider_h = HBoxContainer.new()
 		slider_h.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		slider_h.add_theme_constant_override("separation", 4)
-		s_row.add_child(slider_h)
+		slider_h.add_theme_constant_override("separation", 8)
+		card_v.add_child(slider_h)
 		
 		# -ボタン (クリックでボヨヨン ＆ ホバーぷっくり)
-		var minus_btn = DeskTheme.create_button("-", Vector2(32, 32), Color("e9edf2"), Color("b8c4d1"), true)
-		minus_btn.add_theme_font_size_override("font_size", 11)
-		minus_btn.pivot_offset = Vector2(16, 16)
+		var minus_btn = DeskTheme.create_button("-", Vector2(36, 36), Color("e9edf2"), Color("b8c4d1"), true)
+		minus_btn.add_theme_font_size_override("font_size", 14)
+		minus_btn.pivot_offset = Vector2(18, 18)
 		slider_h.add_child(minus_btn)
 		
 		minus_btn.mouse_entered.connect(func():
@@ -212,7 +235,6 @@ func _show_report_screen():
 		slider.min_value = actual_val
 		slider.max_value = 10 if is_burst else min(20, actual_val + 10)
 		slider.value = actual_val
-
 		slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		
 		# 消しゴム風つまみのカスタムテーマ適用
@@ -220,8 +242,8 @@ func _show_report_screen():
 		eraser_style.bg_color = DeskTheme.COLOR_BLUFF_RED # 消しゴムの赤
 		eraser_style.corner_radius_top_left = 5; eraser_style.corner_radius_top_right = 5
 		eraser_style.corner_radius_bottom_left = 5; eraser_style.corner_radius_bottom_right = 5
-		eraser_style.expand_margin_top = 6; eraser_style.expand_margin_bottom = 6
-		eraser_style.expand_margin_left = 9; eraser_style.expand_margin_right = 9
+		eraser_style.expand_margin_top = 8; eraser_style.expand_margin_bottom = 8
+		eraser_style.expand_margin_left = 10; eraser_style.expand_margin_right = 10
 		slider.add_theme_stylebox_override("grabber", eraser_style)
 		slider.add_theme_stylebox_override("grabber_highlight", eraser_style)
 		
@@ -229,14 +251,14 @@ func _show_report_screen():
 		ruler_bg.bg_color = Color("dfd5b8") # 木製定規の温かいベージュ
 		ruler_bg.corner_radius_top_left = 3; ruler_bg.corner_radius_top_right = 3
 		ruler_bg.corner_radius_bottom_left = 3; ruler_bg.corner_radius_bottom_right = 3
-		ruler_bg.expand_margin_top = 2; ruler_bg.expand_margin_bottom = 2
+		ruler_bg.expand_margin_top = 3; ruler_bg.expand_margin_bottom = 3
 		slider.add_theme_stylebox_override("slider", ruler_bg)
 		slider_h.add_child(slider)
 		
 		# +ボタン (クリックでボヨヨン ＆ ホバーぷっくり)
-		var plus_btn = DeskTheme.create_button("+", Vector2(32, 32), DeskTheme.COLOR_ACCENT_GOLD, Color("b38f30"))
-		plus_btn.add_theme_font_size_override("font_size", 11)
-		plus_btn.pivot_offset = Vector2(16, 16)
+		var plus_btn = DeskTheme.create_button("+", Vector2(36, 36), DeskTheme.COLOR_ACCENT_GOLD, Color("b38f30"))
+		plus_btn.add_theme_font_size_override("font_size", 14)
+		plus_btn.pivot_offset = Vector2(18, 18)
 		slider_h.add_child(plus_btn)
 		
 		plus_btn.mouse_entered.connect(func():
@@ -249,18 +271,6 @@ func _show_report_screen():
 			var tw = plus_btn.create_tween()
 			tw.tween_property(plus_btn, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		)
-		
-		var report_h = HBoxContainer.new()
-		report_h.custom_minimum_size = Vector2(85, 0)
-		report_h.alignment = BoxContainer.ALIGNMENT_CENTER
-		report_h.add_theme_constant_override("separation", 4)
-		s_row.add_child(report_h)
-		
-		var status_icon = DeskTheme.create_label("🟢", 14, Color.WHITE, true)
-		report_h.add_child(status_icon)
-		
-		var report_lbl = DeskTheme.create_label("%d点" % actual_val, 15, DeskTheme.COLOR_INK, true)
-		report_h.add_child(report_lbl)
 		
 		slider_labels[s] = {"hbox": report_h, "label": report_lbl, "icon": status_icon, "actual_val": actual_val}
 		

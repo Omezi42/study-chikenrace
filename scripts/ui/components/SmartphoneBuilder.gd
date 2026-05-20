@@ -294,20 +294,20 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 	var vote_count = ctx.backend_manager.get_daily_vote_count()
 	var vote_info_panel = PanelContainer.new()
 	var vi_style = StyleBoxFlat.new()
-	vi_style.bg_color = Color("fff9db") # 警告イエロー
-	vi_style.border_width_bottom = 2
-	vi_style.border_color = Color("ffe066")
-	vi_style.corner_radius_top_left = 8; vi_style.corner_radius_top_right = 8
-	vi_style.corner_radius_bottom_left = 8; vi_style.corner_radius_bottom_right = 8
-	vi_style.content_margin_left = 8; vi_style.content_margin_right = 8
-	vi_style.content_margin_top = 4; vi_style.content_margin_bottom = 4
+	vi_style.bg_color = Color("fff3bf")
+	vi_style.border_width_left = 3
+	vi_style.border_color = Color("f59f00")
+	vi_style.corner_radius_top_left = 4; vi_style.corner_radius_top_right = 8
+	vi_style.corner_radius_bottom_left = 4; vi_style.corner_radius_bottom_right = 8
+	vi_style.content_margin_left = 12; vi_style.content_margin_right = 12
+	vi_style.content_margin_top = 8; vi_style.content_margin_bottom = 8
 	vote_info_panel.add_theme_stylebox_override("panel", vi_style)
 	cards_v.add_child(vote_info_panel)
 	
 	var vote_info_hbox = HBoxContainer.new()
 	vote_info_panel.add_child(vote_info_hbox)
 	
-	var votes_left_lbl = DeskTheme.create_label("本日のダウト投票権 (👍): %d / 3" % (3 - vote_count), 13, Color("f59f00"), true)
+	var votes_left_lbl = DeskTheme.create_label("本日のダウト投票権 (👍): %d / 3" % (3 - vote_count), 14, Color("d9480f"), true)
 	vote_info_hbox.add_child(votes_left_lbl)
 	
 	var active_like_buttons = []
@@ -372,17 +372,17 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 		var card = PanelContainer.new()
 		var card_style = StyleBoxFlat.new()
 		card_style.bg_color = Color("ffffff")
-		card_style.corner_radius_top_left = 8; card_style.corner_radius_top_right = 8
-		card_style.corner_radius_bottom_left = 8; card_style.corner_radius_bottom_right = 8
-		card_style.content_margin_left = 8; card_style.content_margin_right = 8
-		card_style.content_margin_top = 8; card_style.content_margin_bottom = 8
-		card_style.shadow_color = Color(0,0,0, 0.05)
-		card_style.shadow_size = 2
+		card_style.corner_radius_top_left = 10; card_style.corner_radius_top_right = 10
+		card_style.corner_radius_bottom_left = 10; card_style.corner_radius_bottom_right = 10
+		card_style.content_margin_left = 12; card_style.content_margin_right = 12
+		card_style.content_margin_top = 10; card_style.content_margin_bottom = 10
+		card_style.shadow_color = Color(0,0,0, 0.08)
+		card_style.shadow_size = 4
 		card.add_theme_stylebox_override("panel", card_style)
 		cards_v.add_child(card)
 		
 		var card_h = HBoxContainer.new()
-		card_h.add_theme_constant_override("separation", 8)
+		card_h.add_theme_constant_override("separation", 10)
 		card_h.alignment = BoxContainer.ALIGNMENT_CENTER
 		card.add_child(card_h)
 		
@@ -392,8 +392,8 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 		elif rank_idx == 2: rank_color = Color("a0aab2")
 		elif rank_idx == 3: rank_color = Color("cd7f32")
 		var rank_str = "1位" if rank_idx == 1 else str(rank_idx)
-		var rank_lbl = DeskTheme.create_label(rank_str, 16, rank_color, true)
-		rank_lbl.custom_minimum_size = Vector2(30, 0)
+		var rank_lbl = DeskTheme.create_label(rank_str, 18, rank_color, true)
+		rank_lbl.custom_minimum_size = Vector2(34, 0)
 		rank_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		card_h.add_child(rank_lbl)
 		rank_idx += 1
@@ -491,14 +491,20 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 			warn_lbl.tooltip_text = "報告値が過去の平均よりも大幅に高いため、嘘の可能性があります！"
 			card_h.add_child(warn_lbl)
 		
-		# いいねボタン
+		# いいね（ダウト）ボタン
 		var like_wrap = Control.new()
-		like_wrap.custom_minimum_size = Vector2(64, 32)
+		like_wrap.custom_minimum_size = Vector2(80, 34)
 		card_h.add_child(like_wrap)
 		
 		var is_btn_active = not already_voted and vote_count < 3
-		var like_btn = DeskTheme.create_button("いいね", Vector2(64, 32), Color("3897f0") if is_btn_active else Color("a0c0e0"), Color("1070c0") if is_btn_active else Color("90b0d0"), false, 12)
+		var btn_text = "👍済" if already_voted else "👍ダウト"
+		var like_btn = DeskTheme.create_button(btn_text, Vector2(80, 34), Color("3897f0") if is_btn_active else Color("dbe4eb"), Color("1070c0") if is_btn_active else Color("a0b0c0"), false, 13)
 		like_btn.disabled = not is_btn_active
+		if not is_btn_active:
+			if already_voted:
+				like_btn.add_theme_color_override("font_disabled_color", Color("868e96"))
+			else:
+				like_btn.add_theme_color_override("font_disabled_color", Color("adb5bd"))
 		like_btn.set_meta("rival_name", rival_name)
 		active_like_buttons.append(like_btn)
 		like_wrap.add_child(like_btn)
@@ -695,7 +701,7 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 		v_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(v_lbl)
 		
-		var l_lbl = DeskTheme.create_label(cfg["lbl"], 10, DeskTheme.COLOR_MUTED)
+		var l_lbl = DeskTheme.create_label(cfg["lbl"], 12, DeskTheme.COLOR_MUTED)
 		l_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(l_lbl)
 		
@@ -729,7 +735,7 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 	bio_p.add_theme_stylebox_override("panel", bp_style)
 	bio_v.add_child(bio_p)
 	
-	var bio_lbl = DeskTheme.create_label(bio_text, 11, DeskTheme.COLOR_INK)
+	var bio_lbl = DeskTheme.create_label(bio_text, 13, DeskTheme.COLOR_INK)
 	bio_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bio_p.add_child(bio_lbl)
 	
@@ -755,7 +761,7 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 	bc_v.add_theme_constant_override("separation", 8)
 	bluff_card.add_child(bc_v)
 	
-	bc_v.add_child(DeskTheme.create_label("🧠 チキスタAI行動分析", 13, DeskTheme.COLOR_MUTED, true))
+	bc_v.add_child(DeskTheme.create_label("🧠 チキスタAI行動分析", 15, DeskTheme.COLOR_INK, true))
 	
 	var bluff_title = ""
 	var bluff_rate = 0.0
@@ -787,8 +793,8 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 	bh.add_theme_constant_override("separation", 10)
 	bc_v.add_child(bh)
 	
-	bh.add_child(DeskTheme.create_label("ブラフ傾向:", 11, DeskTheme.COLOR_INK))
-	bh.add_child(DeskTheme.create_label(bluff_title, 12, bluff_color, true))
+	bh.add_child(DeskTheme.create_label("ブラフ傾向:", 13, DeskTheme.COLOR_INK))
+	bh.add_child(DeskTheme.create_label(bluff_title, 14, bluff_color, true))
 	
 	var indicator_bg = PanelContainer.new()
 	indicator_bg.custom_minimum_size = Vector2(0, 16)
@@ -812,7 +818,7 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 	indicator_bg.add_child(indicator_val)
 	indicator_val.custom_minimum_size.x = max(16, 260.0 * bluff_rate)
 	
-	var desc_lbl = DeskTheme.create_label(bluff_desc, 10, DeskTheme.COLOR_MUTED)
+	var desc_lbl = DeskTheme.create_label(bluff_desc, 12, DeskTheme.COLOR_MUTED)
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bc_v.add_child(desc_lbl)
 	
@@ -836,7 +842,7 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 	chart_v.add_theme_constant_override("separation", 16)
 	chart_p.add_child(chart_v)
 	
-	chart_v.add_child(DeskTheme.create_label("📈 過去の学習スコア推移", 15, DeskTheme.COLOR_INK, true))
+	chart_v.add_child(DeskTheme.create_label("📈 過去の学習スコア推移", 16, DeskTheme.COLOR_INK, true))
 	
 	var bars_h = HBoxContainer.new()
 	bars_h.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -852,7 +858,7 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 		var score = h_data["score"]
 		var h_val = clamp(score, 0, 100) * 1.5
 		
-		var s_lbl = DeskTheme.create_label(str(score), 12, DeskTheme.COLOR_MUTED)
+		var s_lbl = DeskTheme.create_label(str(score), 13, DeskTheme.COLOR_MUTED)
 		s_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		day_v.add_child(s_lbl)
 		
@@ -872,7 +878,7 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 		val_bar.offset_top = -h_val
 		bar_wrap.add_child(val_bar)
 		
-		var d_lbl = DeskTheme.create_label("D"+str(h_data["day"]), 12, DeskTheme.COLOR_INK)
+		var d_lbl = DeskTheme.create_label("D"+str(h_data["day"]), 13, DeskTheme.COLOR_INK)
 		d_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		day_v.add_child(d_lbl)
 	
@@ -898,13 +904,13 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 	sc_v.add_theme_constant_override("separation", 8)
 	subj_card.add_child(sc_v)
 	
-	sc_v.add_child(DeskTheme.create_label("教科別スコア内訳", 14, DeskTheme.COLOR_INK, true))
+	sc_v.add_child(DeskTheme.create_label("教科別スコア内訳", 15, DeskTheme.COLOR_INK, true))
 	
 	var all_data = ctx.backend_manager.get_all_player_daily_scores()
 	var player_data = all_data.get(rival_name, [])
 	
 	# 美しいレーダーチャート
-	var radar_height = 140.0
+	var radar_height = 160.0
 	var radar_control = Control.new()
 	radar_control.custom_minimum_size = Vector2(0, radar_height)
 	radar_control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -920,7 +926,7 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 	
 	radar_control.draw.connect(func():
 		var center = Vector2(radar_control.size.x / 2.0, radar_height / 2.0)
-		var max_radius = 50.0
+		var max_radius = 60.0
 		var num_points = 5
 		
 		# 1. 五角形グリッド（同心円）
@@ -970,12 +976,12 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 		s_h.add_theme_constant_override("separation", 6)
 		sc_v.add_child(s_h)
 		
-		s_h.add_child(DeskTheme.create_label(DeskTheme.subject_name(s), 11, DeskTheme.subject_color(s), true))
-		s_h.add_child(DeskTheme.create_label("%d点" % subj_total, 11, DeskTheme.COLOR_INK))
+		s_h.add_child(DeskTheme.create_label(DeskTheme.subject_name(s), 13, DeskTheme.subject_color(s), true))
+		s_h.add_child(DeskTheme.create_label("%d点" % subj_total, 13, DeskTheme.COLOR_INK))
 		
 		# 1位バッジ
 		if tops[s]["name"] == rival_name and tops[s]["score"] > 0:
-			var crown_lbl = DeskTheme.create_label("[*]1位", 9, DeskTheme.COLOR_ACCENT_GOLD, true)
+			var crown_lbl = DeskTheme.create_label("[*]1位", 11, DeskTheme.COLOR_ACCENT_GOLD, true)
 			s_h.add_child(crown_lbl)
 		
 		var bar = DeskTheme.create_gauge_bar(subj_total, 140.0, DeskTheme.subject_color(s), Vector2(100, 6))
