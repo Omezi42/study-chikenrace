@@ -499,6 +499,15 @@ func _remove_weight_from_assignments(weight: int):
 				ctx.bag_assignments[s][i] = null
 
 func _update_bag_ui():
+	# UIノード群がすでに解放（フリー）されているか、存在しない場合は即座に無視する
+	if not ctx.bag_ui_elements.has("slots") or ctx.bag_ui_elements["slots"].is_empty():
+		return
+	for s in range(5):
+		for i in range(2):
+			var test_btn = ctx.bag_ui_elements["slots"][s][i]
+			if not is_instance_valid(test_btn):
+				return
+				
 	var placed = 0
 	var assigned_weights = []
 	
