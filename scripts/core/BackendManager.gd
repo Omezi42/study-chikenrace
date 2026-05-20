@@ -65,12 +65,13 @@ func _on_request_completed(_result, response_code, _headers, body):
 func _simulate_mock():
 	var mocks = []
 	var day = Global.play_count + 1 # 1〜7
+	var day_mult = 1.0 + 0.1 * (day - 1)
 	
 	# 1. 慎重な優等生 (毎日+10前後を堅実に稼ぐ)
 	var steady_subjs = {}
 	var steady_total = 0
 	for i in range(5):
-		var s_score = day * 10
+		var s_score = int(floor(float(day * 10) * day_mult))
 		steady_subjs[str(i)] = s_score
 		steady_total += s_score
 	mocks.append({"name": "慎重な優等生", "score": steady_total, "subjects": steady_subjs})
@@ -79,14 +80,19 @@ func _simulate_mock():
 	var gambler_subjs = {"1": 0, "2": 0}
 	var g_total = 0
 	for d in range(1, day + 1):
+		var d_mult = 1.0 + 0.1 * (d - 1)
 		# Day3, Day6はバーストしてその日の稼ぎが0になる想定
-		if d != 3: gambler_subjs["1"] += 30
-		if d != 6: gambler_subjs["2"] += 30
+		if d != 3: gambler_subjs["1"] += int(floor(30.0 * d_mult))
+		if d != 6: gambler_subjs["2"] += int(floor(30.0 * d_mult))
 	g_total = gambler_subjs["1"] + gambler_subjs["2"]
 	mocks.append({"name": "ギャンブラー", "score": g_total, "subjects": gambler_subjs})
 	
 	# 3. ブラフの達人 (3教科を少し強引に稼ぐ)
-	var bluffer_subjs = {"0": day * 15, "3": day * 20, "4": day * 5}
+	var bluffer_subjs = {
+		"0": int(floor(float(day * 15) * day_mult)),
+		"3": int(floor(float(day * 20) * day_mult)),
+		"4": int(floor(float(day * 5) * day_mult))
+	}
 	var b_total = bluffer_subjs["0"] + bluffer_subjs["3"] + bluffer_subjs["4"]
 	mocks.append({"name": "ブラフの達人", "score": b_total, "subjects": bluffer_subjs})
 	
@@ -126,12 +132,13 @@ func get_subject_top_scores() -> Dictionary:
 func get_timeline_feeds() -> Array:
 	var feeds = []
 	var day = Global.play_count + 1
+	var day_mult = 1.0 + 0.1 * (day - 1)
 	
 	# 1. 慎重な優等生 (正直に報告)
 	var steady_actuals = {}
 	var steady_reports = {}
 	for i in range(5):
-		var s_score = day * 10
+		var s_score = int(floor(float(day * 10) * day_mult))
 		steady_actuals[str(i)] = s_score
 		# 正直者なので、実際スコアと同じスコアを報告
 		steady_reports[str(i)] = s_score
@@ -145,18 +152,21 @@ func get_timeline_feeds() -> Array:
 	var gambler_actuals = {"1": 0, "2": 0}
 	var gambler_reports = {"1": 0, "2": 0}
 	for d in range(1, day + 1):
-		if d != 3: gambler_actuals["1"] += 30
-		if d != 6: gambler_actuals["2"] += 30
+		var d_mult = 1.0 + 0.1 * (d - 1)
+		if d != 3: gambler_actuals["1"] += int(floor(30.0 * d_mult))
+		if d != 6: gambler_actuals["2"] += int(floor(30.0 * d_mult))
 		
 	# 報告スコア：Day3, Day6などでバーストして本当は 0点 なのに 15〜20点 と盛って報告！
 	gambler_reports["1"] = gambler_actuals["1"]
 	gambler_reports["2"] = gambler_actuals["2"]
 	if day >= 3:
-		# Day3でバーストした「1」(数学) を18点と盛って嘘をつく！
-		gambler_reports["1"] = max(gambler_reports["1"], 18)
+		# Day3でバーストした「1」(数学) を18点と盛って嘘をつく！ (日付倍率でスケール)
+		var d3_mult = 1.0 + 0.1 * (3 - 1)
+		gambler_reports["1"] = max(gambler_reports["1"], int(floor(18.0 * d3_mult)))
 	if day >= 6:
-		# Day6でバーストした「2」(英語) を20点と盛って嘘をつく！
-		gambler_reports["2"] = max(gambler_reports["2"], 20)
+		# Day6でバーストした「2」(英語) を20点と盛って嘘をつく！ (日付倍率でスケール)
+		var d6_mult = 1.0 + 0.1 * (6 - 1)
+		gambler_reports["2"] = max(gambler_reports["2"], int(floor(20.0 * d6_mult)))
 		
 	# 他の教科（0, 3, 4）はCPU2は勉強していないので 0点
 	for i in ["0", "3", "4"]:
@@ -170,12 +180,16 @@ func get_timeline_feeds() -> Array:
 	})
 	
 	# 3. ブラフの達人 (常に嘘を盛るか、過少報告で裏をかく！)
-	var bluffer_actuals = {"0": day * 15, "3": day * 20, "4": day * 5}
+	var bluffer_actuals = {
+		"0": int(floor(float(day * 15) * day_mult)),
+		"3": int(floor(float(day * 20) * day_mult)),
+		"4": int(floor(float(day * 5) * day_mult))
+	}
 	var bluffer_reports = {}
 	for i in ["0", "3", "4"]:
 		var act = bluffer_actuals[i]
-		# ブラフの達人なので、スコアを盛る(20点上限)
-		bluffer_reports[i] = min(act + 5, 20)
+		# ブラフの達人なので、スコアを盛る(20点上限、日付倍率でスケール)
+		bluffer_reports[i] = min(act + int(floor(5.0 * day_mult)), int(floor(20.0 * day_mult)))
 	# 他の教科（1, 2）は 0点
 	for i in ["1", "2"]:
 		bluffer_actuals[i] = 0

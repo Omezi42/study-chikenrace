@@ -495,6 +495,11 @@ func _submit_final():
 	for s in reported_scores:
 		reported_total += reported_scores[s]
 	Global.total_score += reported_total
+	
+	# 5教科コンプボーナスの累積（翌日以降+0.1倍、最大1日+0.1倍）
+	if ctx.game_session and ctx.game_session.has_five_subj_comp_today:
+		Global.five_subj_bonus_multiplier += 0.1
+		
 	Global.play_count += 1
 	
 	# スコア履歴にスナップショットを記録（報告スコアベースで記録）

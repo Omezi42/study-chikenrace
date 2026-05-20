@@ -3,6 +3,7 @@ extends Node
 var player_name: String = ""
 var total_score: int = 0
 var play_count: int = 0
+var five_subj_bonus_multiplier: float = 1.0
 var has_seen_tutorial: bool = false
 var current_play_mode: int = 2 # 0: ROOM, 1: CPU, 2: GLOBAL
 
@@ -42,6 +43,7 @@ func save_data():
 		"player_name": player_name,
 		"total_score": total_score,
 		"play_count": play_count,
+		"five_subj_bonus_multiplier": five_subj_bonus_multiplier,
 		"has_seen_tutorial": has_seen_tutorial,
 		"daily_noises": daily_noises,
 		"high_score_cpu": high_score_cpu,
@@ -66,6 +68,7 @@ func load_data():
 			player_name = data.get("player_name", "")
 			total_score = data.get("total_score", 0)
 			play_count = data.get("play_count", 0)
+			five_subj_bonus_multiplier = data.get("five_subj_bonus_multiplier", 1.0)
 			has_seen_tutorial = data.get("has_seen_tutorial", false)
 			var noises = data.get("daily_noises", {})
 			for k in noises: daily_noises[int(k)] = noises[k]

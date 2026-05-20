@@ -9,14 +9,14 @@ static func create_mockup(ctx: RefCounted, is_centered: bool = true) -> VBoxCont
 	phone.custom_minimum_size = Vector2(400, 840)
 	phone.size = Vector2(400, 840)
 	
-	# アンカー競合を回避し、常に安定したピクセル座標で配置・Tweenする設計
+	# アンカー競合を回避し、常に安定したピクセル座標で配置・Tweenする設計 (左に寄せて配置)
 	phone.anchor_left = 0.0; phone.anchor_top = 0.0; phone.anchor_right = 0.0; phone.anchor_bottom = 0.0
 	if is_centered:
-		phone.position = Vector2(760, 120)
+		phone.position = Vector2(700, 120)
 		phone.rotation_degrees = 0.0
 		phone.scale = Vector2(1.4, 1.4)
 	else:
-		phone.position = Vector2(88, 300)
+		phone.position = Vector2(32, 300)
 		phone.rotation_degrees = -1.2
 		phone.scale = Vector2(0.8, 0.8)
 		
@@ -37,7 +37,7 @@ static func create_mockup(ctx: RefCounted, is_centered: bool = true) -> VBoxCont
 	if is_centered: pickup_overlay.hide()
 	
 	phone.set_meta("is_picked_up", is_centered)
-	var default_orig_pos = Vector2(88, 300) if not is_centered else Vector2(760, 120)
+	var default_orig_pos = Vector2(32, 300) if not is_centered else Vector2(700, 120)
 	var orig_pos = phone.get_meta("orig_pos", default_orig_pos)
 	var orig_rot = phone.rotation_degrees
 	
@@ -73,7 +73,7 @@ static func create_mockup(ctx: RefCounted, is_centered: bool = true) -> VBoxCont
 		
 		var tw = phone.create_tween().set_parallel(true)
 		var target_scale = 1.4
-		var target_pos = Vector2(760, 120)
+		var target_pos = Vector2(700, 120)
 		tw.tween_property(phone, "position", target_pos, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_property(phone, "rotation_degrees", 0.0, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_property(phone, "scale", Vector2(target_scale, target_scale), 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
@@ -117,11 +117,20 @@ static func create_mockup(ctx: RefCounted, is_centered: bool = true) -> VBoxCont
 	notch.add_theme_stylebox_override("panel", notch_style)
 	phone.add_child(notch)
 	
+	# スマホ画面全体の液晶エリア (重ね合わせ可能にして丸角内でクリッピングするため Control にする)
+	var screen_area = Control.new()
+	screen_area.name = "ScreenArea"
+	screen_area.clip_contents = true # 液晶領域の外側にはみ出さないようにクリッピング！
+	screen_area.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	phone.add_child(screen_area)
+	
 	# スマホ画面コンテンツ
 	var app_container = VBoxContainer.new()
+	app_container.name = "AppContainer"
 	app_container.add_theme_constant_override("separation", 0)
+	app_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT) # 液晶エリアいっぱいに広げる
 	DeskTheme.apply_font(app_container)
-	phone.add_child(app_container)
+	screen_area.add_child(app_container)
 	
 	# リアルなスマホステータスバー
 	var status_bar = PanelContainer.new()
@@ -577,13 +586,13 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 		)
 
 static func _show_profile_view(ctx: RefCounted, rival_name: String, app_container: Control) -> void:
-	var phone = app_container.get_parent()
+	var screen_area = app_container.get_parent()
 	var prof_panel = PanelContainer.new()
 	prof_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var bg_style = StyleBoxFlat.new()
 	bg_style.bg_color = Color("f5f5f5")
 	prof_panel.add_theme_stylebox_override("panel", bg_style)
-	phone.add_child(prof_panel)
+	screen_area.add_child(prof_panel)
 	
 	# 右からスライドイン
 	prof_panel.position.x = 400

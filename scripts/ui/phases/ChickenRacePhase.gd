@@ -22,6 +22,7 @@ var burst_warning_banner: Panel
 var next_burst_label: Label
 var button_box: HBoxContainer
 var drawn_card_nodes: Array = []
+var history_box: HBoxContainer
 var heartbeat_tween: Tween
 var camera_shake_offset: Vector2 = Vector2.ZERO
 var vignette_node: Control
@@ -176,6 +177,12 @@ func _show_race_screen():
 	card_info_h.add_theme_constant_override("separation", 24)
 	right_v.add_child(card_info_h)
 	
+	# 引いたカードの履歴コンテナ（ミニバッジ表示用）
+	history_box = HBoxContainer.new()
+	history_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	history_box.add_theme_constant_override("separation", 6)
+	right_v.add_child(history_box)
+	
 	var drawn_count_lbl = DeskTheme.create_label("引いたカード: 0枚", 14, DeskTheme.COLOR_INK, true)
 	card_info_h.add_child(drawn_count_lbl)
 	subject_gauges["drawn_count"] = drawn_count_lbl
@@ -315,6 +322,33 @@ func _update_race_hud():
 	if subject_gauges.has("remain_count"):
 		subject_gauges["remain_count"].text = "山札: %d枚" % deck.deck.size()
 		
+	# 引いたカードの履歴 (history_box) の描画更新
+	if is_instance_valid(history_box):
+		for child in history_box.get_children():
+			child.queue_free()
+		for card in deck.drawn_cards:
+			var badge = PanelContainer.new()
+			var bg = StyleBoxFlat.new()
+			bg.corner_radius_top_left = 6; bg.corner_radius_top_right = 6
+			bg.corner_radius_bottom_left = 6; bg.corner_radius_bottom_right = 6
+			bg.content_margin_left = 8; bg.content_margin_right = 8
+			bg.content_margin_top = 2; bg.content_margin_bottom = 2
+			
+			var label_text = ""
+			var label_color = Color.WHITE
+			if card.item_type == 0:
+				bg.bg_color = DeskTheme.subject_color(card.subject)
+				label_text = "%s%d" % [DeskTheme.subject_name(card.subject).left(1), card.weight]
+			else:
+				bg.bg_color = Color("495057") # 濃いグレー
+				var it_name = "消" if card.item_type == 1 else "筆" if card.item_type == 2 else "定"
+				label_text = it_name
+				
+			badge.add_theme_stylebox_override("panel", bg)
+			var lbl = DeskTheme.create_label(label_text, 12, label_color, true)
+			badge.add_child(lbl)
+			history_box.add_child(badge)
+		
 	_update_deck_stack_visual(deck.deck.size())
 	
 	var deck_cards = deck.deck
@@ -354,7 +388,7 @@ func _update_race_hud():
 		next_burst_label.add_theme_color_override("font_color", DeskTheme.COLOR_BLUFF_RED)
 		next_burst_label.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.95))
 		if subject_gauges.has("sleep_title"):
-			subject_gauges["sleep_title"].text = "睡魔度 (%d%%) - 限界!" % burst_prob
+			subject_gauges["sleep_title"].text = "睡魔度: 限界寸前！"
 		led_color = DeskTheme.COLOR_BLUFF_RED
 		led_pulse = true
 		led_pulse_speed = 0.15
@@ -365,7 +399,7 @@ func _update_race_hud():
 		next_burst_label.add_theme_color_override("font_color", Color("a87d00"))
 		next_burst_label.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.95))
 		if subject_gauges.has("sleep_title"):
-			subject_gauges["sleep_title"].text = "睡魔度 (%d%%) - 眠気" % burst_prob
+			subject_gauges["sleep_title"].text = "睡魔度: 眠気あり"
 		led_color = DeskTheme.COLOR_ACCENT_GOLD
 		led_pulse = true
 		led_pulse_speed = 0.40
@@ -376,7 +410,7 @@ func _update_race_hud():
 		next_burst_label.add_theme_color_override("font_color", DeskTheme.COLOR_SAFE)
 		next_burst_label.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.95))
 		if subject_gauges.has("sleep_title"):
-			subject_gauges["sleep_title"].text = "睡魔度 (%d%%)" % burst_prob
+			subject_gauges["sleep_title"].text = "睡魔度: 安全"
 		led_color = Color("8cff8c")
 		
 	# LEDビジュアルの更新
@@ -561,43 +595,8 @@ func _rearrange_drawn_cards(animate: bool = true):
 		var node = drawn_card_nodes[i]
 		if not is_instance_valid(node): continue
 		
-		# 重複バースト危険インジケーターの更新
-		if node.has_meta("card_data"):
-			var card_data = node.get_meta("card_data")
-			if card_data and card_data.item_type == 0:
-				var weight = card_data.weight
-				var remains_in_deck = false
-				for c in ctx.game_session.deck.deck:
-					if c.item_type == 0 and c.weight == weight:
-						remains_in_deck = true
-						break
-				
-				var badge = node.find_child("DangerBadge", true, false)
-				if remains_in_deck:
-					if not badge:
-						badge = PanelContainer.new()
-						badge.name = "DangerBadge"
-						badge.custom_minimum_size = Vector2(28, 28)
-						badge.size = Vector2(28, 28)
-						var b_style = StyleBoxFlat.new()
-						b_style.bg_color = DeskTheme.COLOR_BLUFF_RED
-						b_style.corner_radius_top_left = 14
-						b_style.corner_radius_top_right = 14
-						b_style.corner_radius_bottom_left = 14
-						b_style.corner_radius_bottom_right = 14
-						b_style.border_width_left = 2; b_style.border_width_right = 2
-						b_style.border_width_top = 2; b_style.border_width_bottom = 2
-						b_style.border_color = Color.WHITE
-						badge.add_theme_stylebox_override("panel", b_style)
-						
-						var lbl = DeskTheme.create_label("⚠️", 14, Color.WHITE, true)
-						lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-						badge.add_child(lbl)
-						node.add_child(badge)
-						badge.position = Vector2(190 - 24, -8)
-				else:
-					if badge:
-						badge.queue_free()
+		# 重複バースト危険インジケーターの更新 (廃止)
+		pass
 		
 		var item_offset_x = (i * card_spacing) - (card_spacing * float(num_cards - 1)) / 2.0
 		var item_offset_y = -abs(item_offset_x) * 0.08
