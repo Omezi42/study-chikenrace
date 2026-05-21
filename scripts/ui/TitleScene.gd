@@ -196,12 +196,10 @@ func _start_game():
 	Global.play_count = 0
 	Global.total_score = 0
 	Global.cpu_data = []
-	for s in Global.daily_noises.keys():
-		Global.daily_noises[s] = 0
-		Global.last_reported_scores[s] = 0
-		Global.last_actual_scores[s] = 0
-	Global.last_top_subjects.clear()
+	Global.last_reported_score = 0
+	Global.last_actual_score = 0
 	Global.score_history.clear()
+	Global.accumulated_votes.clear()
 	Global.save_data()
 	
 	var target = "res://Profile.tscn" if Global.player_name == "" else "res://Main.tscn"

@@ -21,6 +21,8 @@ static func create_mockup(ctx: RefCounted, is_centered: bool = true) -> VBoxCont
 		phone.scale = Vector2(0.8, 0.8)
 		
 	phone.pivot_offset = Vector2(200, 420)
+	if is_centered:
+		phone.z_index = 11
 	
 	var dim_overlay = ColorRect.new()
 	dim_overlay.color = Color(0, 0, 0, 0.65)
@@ -28,6 +30,8 @@ static func create_mockup(ctx: RefCounted, is_centered: bool = true) -> VBoxCont
 	dim_overlay.visible = is_centered
 	dim_overlay.modulate.a = 1.0 if is_centered else 0.0
 	dim_overlay.mouse_filter = Control.MOUSE_FILTER_STOP if is_centered else Control.MOUSE_FILTER_IGNORE
+	if is_centered:
+		dim_overlay.z_index = 10
 	
 	var pickup_overlay = Button.new()
 	pickup_overlay.name = "PickupOverlay"
@@ -52,6 +56,10 @@ static func create_mockup(ctx: RefCounted, is_centered: bool = true) -> VBoxCont
 		tw.tween_property(phone, "rotation_degrees", orig_rot, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.tween_property(phone, "scale", Vector2(1.4, 1.4) if is_centered else Vector2(0.8, 0.8), 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		
+		# z_index を 0 にリセット
+		dim_overlay.z_index = 0
+		phone.z_index = 0
+		
 		var tw_dim = dim_overlay.create_tween()
 		tw_dim.tween_property(dim_overlay, "modulate:a", 0.0, 0.2)
 		tw_dim.tween_callback(func():
@@ -64,6 +72,16 @@ static func create_mockup(ctx: RefCounted, is_centered: bool = true) -> VBoxCont
 		phone.set_meta("is_picked_up", true)
 		pickup_overlay.hide()
 		if ctx.audio_manager: ctx.audio_manager.play_se("draw")
+		
+		# 最前面にするため z_index を設定
+		dim_overlay.z_index = 10
+		phone.z_index = 11
+		
+		# レイヤーを最前面に移動してノート等に隠れないようにする
+		if dim_overlay.get_parent():
+			dim_overlay.get_parent().move_child(dim_overlay, -1)
+		if phone.get_parent():
+			phone.get_parent().move_child(phone, -1)
 		
 		dim_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 		dim_overlay.modulate.a = 0.0
@@ -354,29 +372,28 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 		guide_v.add_child(body_lbl)
 		return
 		
-	var timelines = ctx.backend_manager.get_timeline_feeds()
-	timelines.sort_custom(func(a, b):
-		var sum_a = 0
-		for s in a["scores"]: sum_a += a["scores"][s]
-		var sum_b = 0
-		for s in b["scores"]: sum_b += b["scores"][s]
-		return sum_a > sum_b
-	)
+	var timelines = []
+	if is_instance_valid(ctx.game_session) and ctx.game_session.ai_manager:
+		var ai_res = ctx.game_session.ai_manager.get_daily_results()
+		for r_name in ai_res:
+			var res = ai_res[r_name]
+			timelines.append({
+				"name": r_name,
+				"total_score": res["reported_score"],
+				"actual_score": res["actual_score"],
+				"is_bluffing": res["is_lying"]
+			})
+	
+	timelines.sort_custom(func(a, b): return a["total_score"] > b["total_score"])
+
 	if timelines.size() == 0:
 		cards_v.add_child(DeskTheme.create_label("タイムラインが空です。", 14, DeskTheme.COLOR_MUTED, true))
 	
 	var rank_idx = 1
 	for entry in timelines:
 		var rival_name = entry["name"]
-		var scores = entry["scores"]
-		var actuals = entry.get("actual_scores", {})
-		var total_score = 0
-		var is_bluffing = false
-		for s in range(5):
-			var r_val = scores.get(str(s), scores.get(s, 0))
-			total_score += r_val
-			var a_val = actuals.get(str(s), actuals.get(s, r_val))
-			if r_val > a_val: is_bluffing = true
+		var total_score = entry["total_score"]
+		var is_bluffing = entry["is_bluffing"]
 		
 		var card = PanelContainer.new()
 		var card_style = StyleBoxFlat.new()
@@ -457,39 +474,22 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 		var score_lbl = DeskTheme.create_label("%d点" % total_score, 14, DeskTheme.COLOR_INK, true)
 		card_h.add_child(score_lbl)
 		
-		# デイリー教科1位バッジ（そのプレイヤーがトップの教科数を表示）
-		var top_subj_count = 0
-		var tops = ctx.backend_manager.get_subject_top_scores()
-		for ts in range(5):
-			if tops[ts]["name"] == rival_name:
-				top_subj_count += 1
-		if top_subj_count > 0:
-			var badge = PanelContainer.new()
-			var badge_style = StyleBoxFlat.new()
-			badge_style.bg_color = DeskTheme.COLOR_ACCENT_GOLD
-			badge_style.corner_radius_top_left = 6; badge_style.corner_radius_top_right = 6
-			badge_style.corner_radius_bottom_left = 6; badge_style.corner_radius_bottom_right = 6
-			badge_style.content_margin_left = 4; badge_style.content_margin_right = 4
-			badge_style.content_margin_top = 1; badge_style.content_margin_bottom = 1
-			badge.add_theme_stylebox_override("panel", badge_style)
-			badge.add_child(DeskTheme.create_label("[*]x%d" % top_subj_count, 9, Color.WHITE, true))
-			card_h.add_child(badge)
+
 		
 		# 不自然さ警告チェック
 		var is_suspicious = false
 		var already_voted = ctx.backend_manager.has_voted_rival(rival_name, -1)
-		var past_days = ctx.backend_manager.get_all_player_daily_scores().get(rival_name, [])
 		var prev_total_sum = 0
 		var prev_days_count = 0
-		for d_entry in past_days:
-			var d_num = d_entry.get("day", 0)
-			if d_num < Global.play_count + 1:
-				var subjs = d_entry.get("subjects", {})
-				var day_sum = 0
-				for s in subjs:
-					day_sum += int(subjs[s])
-				prev_total_sum += day_sum
-				prev_days_count += 1
+		
+		if is_instance_valid(ctx.game_session) and ctx.game_session.ai_manager:
+			var state = ctx.game_session.ai_manager.get_rival_state(rival_name)
+			if state and state.has("score_history"):
+				var hist = state["score_history"]
+				for i in range(hist.size() - 1):
+					prev_total_sum += hist[i]["reported_score"]
+					prev_days_count += 1
+					
 		if prev_days_count > 0:
 			var avg_total = float(prev_total_sum) / float(prev_days_count)
 			if total_score >= avg_total + 20.0:
@@ -683,20 +683,24 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 	upper_h.add_child(stats_h)
 	
 	# 各種スタッツデータ計算
-	var hist_arr = ctx.backend_manager.get_rival_history(rival_name)
+	var hist_arr = []
+	if is_instance_valid(ctx.game_session) and ctx.game_session.ai_manager:
+		var state = ctx.game_session.ai_manager.get_rival_state(rival_name)
+		if state and state.has("score_history"):
+			hist_arr = state["score_history"]
+			
 	var total_sc = 0
-	for h in hist_arr: total_sc += h["score"]
+	for h in hist_arr: total_sc += h.get("actual_score", 0)
 	
-	var tops = ctx.backend_manager.get_subject_top_scores()
-	var first_places = 0
-	for s in range(5):
-		if tops[s]["name"] == rival_name and tops[s]["score"] > 0:
-			first_places += 1
+	var max_sc = 0
+	for h in hist_arr:
+		var sc = h.get("actual_score", 0)
+		if sc > max_sc: max_sc = sc
 			
 	var stats_configs = [
 		{"val": str(hist_arr.size()) + "日", "lbl": "継続"},
 		{"val": str(total_sc) + "点", "lbl": "累計スコア"},
-		{"val": str(first_places) + "教科", "lbl": "現在1位"}
+		{"val": str(max_sc) + "点", "lbl": "最高記録"}
 	]
 	
 	for cfg in stats_configs:
@@ -891,7 +895,7 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 		d_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		day_v.add_child(d_lbl)
 	
-	# 教科別累計スコアの内訳カード
+	# シンプルな累計スコアサマリーカード
 	var subj_card = PanelContainer.new()
 	var sc_style = StyleBoxFlat.new()
 	sc_style.bg_color = Color.WHITE
@@ -905,7 +909,7 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 	sc_m.add_theme_constant_override("margin_left", 16)
 	sc_m.add_theme_constant_override("margin_right", 16)
 	sc_m.add_theme_constant_override("margin_top", 0)
-	sc_m.add_theme_constant_override("margin_bottom", 24) # 最下部にマージンを持たせてスクロールに余裕を作る
+	sc_m.add_theme_constant_override("margin_bottom", 24)
 	sc_m.add_child(subj_card)
 	scroll_v.add_child(sc_m)
 	
@@ -913,88 +917,17 @@ static func _show_profile_view(ctx: RefCounted, rival_name: String, app_containe
 	sc_v.add_theme_constant_override("separation", 8)
 	subj_card.add_child(sc_v)
 	
-	sc_v.add_child(DeskTheme.create_label("教科別スコア内訳", 15, DeskTheme.COLOR_INK, true))
+	sc_v.add_child(DeskTheme.create_label("総獲得スコア", 15, DeskTheme.COLOR_INK, true))
 	
-	var all_data = ctx.backend_manager.get_all_player_daily_scores()
-	var player_data = all_data.get(rival_name, [])
+	var s_h = HBoxContainer.new()
+	s_h.add_theme_constant_override("separation", 6)
+	sc_v.add_child(s_h)
 	
-	# 美しいレーダーチャート
-	var radar_height = 160.0
-	var radar_control = Control.new()
-	radar_control.custom_minimum_size = Vector2(0, radar_height)
-	radar_control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sc_v.add_child(radar_control)
+	s_h.add_child(DeskTheme.create_label("総合", 13, DeskTheme.COLOR_SAFE, true))
+	s_h.add_child(DeskTheme.create_label("%d点" % total_sc, 13, DeskTheme.COLOR_INK))
 	
-	var subj_scores = []
-	for s in range(5):
-		var subj_total = 0
-		for d_entry in player_data:
-			var subjs = d_entry.get("subjects", {})
-			subj_total += int(subjs.get(s, subjs.get(str(s), 0)))
-		subj_scores.append(subj_total)
-	
-	radar_control.draw.connect(func():
-		var center = Vector2(radar_control.size.x / 2.0, radar_height / 2.0)
-		var max_radius = 60.0
-		var num_points = 5
-		
-		# 1. 五角形グリッド（同心円）
-		var grid_steps = 4
-		for step in range(1, grid_steps + 1):
-			var r = max_radius * (float(step) / float(grid_steps))
-			var grid_points = PackedVector2Array()
-			for i in range(num_points + 1):
-				var angle = i * 2.0 * PI / float(num_points) - PI / 2.0
-				grid_points.append(center + Vector2(cos(angle), sin(angle)) * r)
-			radar_control.draw_polyline(grid_points, Color("e0e0e0"), 1.0)
-			
-		# 2. 中心から頂点への放射線
-		for i in range(num_points):
-			var angle = i * 2.0 * PI / float(num_points) - PI / 2.0
-			var outer_point = center + Vector2(cos(angle), sin(angle)) * max_radius
-			radar_control.draw_line(center, outer_point, Color("e0e0e0"), 1.0)
-			
-		# 3. プレイヤーデータのプロットポリゴン
-		var plot_points = PackedVector2Array()
-		for i in range(num_points):
-			var score = subj_scores[i]
-			var ratio = clamp(float(score) / 140.0, 0.08, 1.0)
-			var r = max_radius * ratio
-			var angle = i * 2.0 * PI / float(num_points) - PI / 2.0
-			plot_points.append(center + Vector2(cos(angle), sin(angle)) * r)
-		
-		var fill_color = Color("1c7ed6", 0.35) if rival_name != Global.player_name else Color("2b8a3e", 0.35)
-		var line_color = Color("1c7ed6", 0.8) if rival_name != Global.player_name else Color("2b8a3e", 0.8)
-		
-		var closed_points = PackedVector2Array(plot_points)
-		closed_points.append(plot_points[0])
-		radar_control.draw_polygon(plot_points, PackedColorArray([fill_color]))
-		radar_control.draw_polyline(closed_points, line_color, 2.0)
-		
-		for pt in plot_points:
-			radar_control.draw_circle(pt, 3.5, line_color)
-	)
-	
-	for s in range(5):
-		var subj_total = 0
-		for d_entry in player_data:
-			var subjs = d_entry.get("subjects", {})
-			subj_total += int(subjs.get(s, subjs.get(str(s), 0)))
-		
-		var s_h = HBoxContainer.new()
-		s_h.add_theme_constant_override("separation", 6)
-		sc_v.add_child(s_h)
-		
-		s_h.add_child(DeskTheme.create_label(DeskTheme.subject_name(s), 13, DeskTheme.subject_color(s), true))
-		s_h.add_child(DeskTheme.create_label("%d点" % subj_total, 13, DeskTheme.COLOR_INK))
-		
-		# 1位バッジ
-		if tops[s]["name"] == rival_name and tops[s]["score"] > 0:
-			var crown_lbl = DeskTheme.create_label("[*]1位", 11, DeskTheme.COLOR_ACCENT_GOLD, true)
-			s_h.add_child(crown_lbl)
-		
-		var bar = DeskTheme.create_gauge_bar(subj_total, 140.0, DeskTheme.subject_color(s), Vector2(100, 6))
-		s_h.add_child(bar)
+	var bar = DeskTheme.create_gauge_bar(total_sc, 1000.0, DeskTheme.COLOR_SAFE, Vector2(100, 6))
+	s_h.add_child(bar)
 
 static func _build_analysis_tab(ctx: RefCounted, feed_v: VBoxContainer) -> void:
 	var margin_c = MarginContainer.new()
@@ -1010,155 +943,71 @@ static func _build_analysis_tab(ctx: RefCounted, feed_v: VBoxContainer) -> void:
 	
 	cv.add_child(DeskTheme.create_label("[ 全プレイヤー学習履歴 ]", 15, DeskTheme.COLOR_INK, true))
 	
-	# 教科選択タブ
-	var tab_state = {"active": 0}
-	var tab_h = HBoxContainer.new()
-	tab_h.alignment = BoxContainer.ALIGNMENT_CENTER
-	tab_h.add_theme_constant_override("separation", 4)
-	cv.add_child(tab_h)
-	
-	var content_scroll = ScrollContainer.new()
-	content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	content_scroll.custom_minimum_size = Vector2(0, 400)
-	cv.add_child(content_scroll)
-	
 	var content_v = VBoxContainer.new()
-	content_v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	content_v.add_theme_constant_override("separation", 8)
-	content_scroll.add_child(content_v)
+	content_v.add_theme_constant_override("separation", 10)
+	cv.add_child(content_v)
 	
-	var all_data = ctx.backend_manager.get_all_player_daily_scores()
+	var all_data = {}
+	if is_instance_valid(ctx) and ctx.backend_manager:
+		all_data = ctx.backend_manager.get_all_player_daily_scores()
 	
-	var build_subject_view = func(subj_idx: int):
-		for ch in content_v.get_children():
-			ch.queue_free()
+	for player_name in all_data:
+		var days = all_data[player_name]
+		var card = PanelContainer.new()
+		var card_style = StyleBoxFlat.new()
+		card_style.bg_color = Color("ffffff")
+		card_style.corner_radius_top_left = 10; card_style.corner_radius_top_right = 10
+		card_style.corner_radius_bottom_left = 10; card_style.corner_radius_bottom_right = 10
+		card_style.content_margin_left = 10; card_style.content_margin_right = 10
+		card_style.content_margin_top = 8; card_style.content_margin_bottom = 8
+		card_style.shadow_color = Color(0, 0, 0, 0.05)
+		card_style.shadow_size = 3
+		card.add_theme_stylebox_override("panel", card_style)
+		content_v.add_child(card)
 		
-		# 各プレイヤーごとのカード
-		for player_name in all_data:
-			var days = all_data[player_name]
-			
-			var card = PanelContainer.new()
-			var card_style = StyleBoxFlat.new()
-			card_style.bg_color = Color("ffffff")
-			card_style.corner_radius_top_left = 10; card_style.corner_radius_top_right = 10
-			card_style.corner_radius_bottom_left = 10; card_style.corner_radius_bottom_right = 10
-			card_style.content_margin_left = 10; card_style.content_margin_right = 10
-			card_style.content_margin_top = 8; card_style.content_margin_bottom = 8
-			card_style.shadow_color = Color(0, 0, 0, 0.05)
-			card_style.shadow_size = 3
-			card.add_theme_stylebox_override("panel", card_style)
-			content_v.add_child(card)
-			
-			var card_v = VBoxContainer.new()
-			card_v.add_theme_constant_override("separation", 6)
-			card.add_child(card_v)
-			
-			# プレイヤー名ヘッダー
-			var is_self = (player_name == Global.player_name)
-			var name_color = DeskTheme.COLOR_SAFE if is_self else DeskTheme.COLOR_INK
-			var name_suffix = " (あなた)" if is_self else ""
-			card_v.add_child(DeskTheme.create_label(player_name + name_suffix, 14, name_color, true))
-			
-			# 累計スコア
-			var cumulative = 0
-			for day_entry in days:
-				var subjs = day_entry.get("subjects", {})
-				cumulative += int(subjs.get(subj_idx, subjs.get(str(subj_idx), 0)))
-			
-			var cum_lbl = DeskTheme.create_label("累計: %d点" % cumulative, 12, DeskTheme.subject_color(subj_idx), true)
-			card_v.add_child(cum_lbl)
-			
-			# 日別スコア行
-			var days_h = HBoxContainer.new()
-			days_h.add_theme_constant_override("separation", 4)
-			days_h.alignment = BoxContainer.ALIGNMENT_CENTER
-			card_v.add_child(days_h)
-			
-			for day_entry in days:
-				var d = day_entry.get("day", 0)
-				var subjs = day_entry.get("subjects", {})
-				var score_val = int(subjs.get(subj_idx, subjs.get(str(subj_idx), 0)))
-				
-				var day_cell = VBoxContainer.new()
-				day_cell.add_theme_constant_override("separation", 1)
-				day_cell.alignment = BoxContainer.ALIGNMENT_CENTER
-				days_h.add_child(day_cell)
-				
-				# デイリー1位チェック
-				var is_daily_top = false
-				var best_score_that_day = 0
-				for pn in all_data:
-					for de in all_data[pn]:
-						if de.get("day", 0) == d:
-							var ps = de.get("subjects", {})
-							var pv = int(ps.get(subj_idx, ps.get(str(subj_idx), 0)))
-							if pv > best_score_that_day:
-								best_score_that_day = pv
-				if score_val > 0 and score_val >= best_score_that_day:
-					is_daily_top = true
-				
-				# 王冠マーク (デイリー1位)
-				if is_daily_top and score_val > 0:
-					var crown = DeskTheme.create_label("[*]", 9, DeskTheme.COLOR_ACCENT_GOLD, true)
-					crown.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-					day_cell.add_child(crown)
-				else:
-					var spacer = Control.new()
-					spacer.custom_minimum_size = Vector2(0, 12)
-					day_cell.add_child(spacer)
-				
-				# スコア値
-				var score_color = DeskTheme.subject_color(subj_idx) if score_val > 0 else DeskTheme.COLOR_MUTED
-				var s_lbl = DeskTheme.create_label(str(score_val), 11, score_color, score_val > 0)
-				s_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-				s_lbl.custom_minimum_size = Vector2(32, 0)
-				day_cell.add_child(s_lbl)
-				
-				# Day番号
-				var d_lbl = DeskTheme.create_label("D%d" % d, 9, DeskTheme.COLOR_MUTED)
-				d_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-				day_cell.add_child(d_lbl)
-			
-			# 累計バー
-			var bar = DeskTheme.create_gauge_bar(cumulative, 140.0, DeskTheme.subject_color(subj_idx), Vector2(260, 8))
-			card_v.add_child(bar)
-	
-	# 教科タブボタンを作成
-	for s in range(5):
-		var tab_btn = Button.new()
-		tab_btn.text = DeskTheme.subject_name(s).left(1)
-		tab_btn.custom_minimum_size = Vector2(52, 36)
-		tab_btn.add_theme_font_override("font", DeskTheme.DEFAULT_FONT)
-		tab_btn.add_theme_font_size_override("font_size", 13)
+		var card_v = VBoxContainer.new()
+		card_v.add_theme_constant_override("separation", 6)
+		card.add_child(card_v)
 		
-		var tb_style = StyleBoxFlat.new()
-		tb_style.bg_color = DeskTheme.subject_color(s).lightened(0.6) if s != 0 else DeskTheme.subject_color(s).lightened(0.3)
-		tb_style.corner_radius_top_left = 8; tb_style.corner_radius_top_right = 8
-		tb_style.corner_radius_bottom_left = 8; tb_style.corner_radius_bottom_right = 8
-		tab_btn.add_theme_stylebox_override("normal", tb_style)
+		var is_self = (player_name == Global.player_name)
+		var name_color = DeskTheme.COLOR_SAFE if is_self else DeskTheme.COLOR_INK
+		var name_suffix = " (あなた)" if is_self else ""
+		card_v.add_child(DeskTheme.create_label(player_name + name_suffix, 14, name_color, true))
 		
-		var tb_hover = tb_style.duplicate()
-		tb_hover.bg_color = DeskTheme.subject_color(s).lightened(0.3)
-		tab_btn.add_theme_stylebox_override("hover", tb_hover)
+		var cumulative = 0
+		for day_entry in days:
+			cumulative += day_entry.get("total", 0)
 		
-		tab_btn.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-		tab_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		var cum_lbl = DeskTheme.create_label("累計: %d点" % cumulative, 12, DeskTheme.COLOR_SAFE, true)
+		card_v.add_child(cum_lbl)
 		
-		tab_btn.pressed.connect(func():
-			tab_state["active"] = s
-			build_subject_view.call(s)
-			# タブのアクティブ状態を視覚更新
-			for i in range(tab_h.get_child_count()):
-				var btn = tab_h.get_child(i)
-				var st = btn.get_theme_stylebox("normal").duplicate()
-				st.bg_color = DeskTheme.subject_color(i).lightened(0.3 if i == s else 0.6)
-				btn.add_theme_stylebox_override("normal", st)
-		)
-		tab_h.add_child(tab_btn)
-	
-	# 初期表示: 教科0（国語）
-	build_subject_view.call(0)
+		var days_h = HBoxContainer.new()
+		days_h.add_theme_constant_override("separation", 4)
+		days_h.alignment = BoxContainer.ALIGNMENT_CENTER
+		card_v.add_child(days_h)
+		
+		for day_entry in days:
+			var d = day_entry.get("day", 0)
+			var score_val = day_entry.get("total", 0)
+			
+			var day_cell = VBoxContainer.new()
+			day_cell.add_theme_constant_override("separation", 1)
+			day_cell.alignment = BoxContainer.ALIGNMENT_CENTER
+			days_h.add_child(day_cell)
+			
+			var score_color = DeskTheme.COLOR_SAFE if score_val > 0 else DeskTheme.COLOR_MUTED
+			var s_lbl = DeskTheme.create_label(str(score_val), 11, score_color, score_val > 0)
+			s_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			s_lbl.custom_minimum_size = Vector2(32, 0)
+			day_cell.add_child(s_lbl)
+			
+			var d_lbl = DeskTheme.create_label("D%d" % d, 9, DeskTheme.COLOR_MUTED)
+			d_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			day_cell.add_child(d_lbl)
+		
+		var bar = DeskTheme.create_gauge_bar(cumulative, 1000.0, DeskTheme.COLOR_SAFE, Vector2(260, 8))
+		card_v.add_child(bar)
+
 
 static func _build_goals_tab(_ctx: RefCounted, feed_v: VBoxContainer) -> void:
 	var margin_c = MarginContainer.new()

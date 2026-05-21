@@ -5,6 +5,7 @@ extends RefCounted
 const NotebookBuilderScript = preload("res://scripts/ui/components/NotebookBuilder.gd")
 const SmartphoneBuilderScript = preload("res://scripts/ui/components/SmartphoneBuilder.gd")
 const ToastOverlayScript = preload("res://scripts/ui/components/ToastOverlay.gd")
+const DeskTheme = preload("res://scripts/ui/DeskTheme.gd")
 
 signal phase_completed(scores_data: Dictionary)
 
@@ -14,7 +15,7 @@ var ctx: RefCounted
 var active_notebook: Control
 var hud_notebook: Control
 var status_label: Label
-var subject_gauges: Dictionary = {}
+var hud_gauges: Dictionary = {}
 var item_count_labels: Dictionary = {}
 var play_desk: Control
 var card_container: Control
@@ -38,7 +39,6 @@ func start():
 	_show_race_screen()
 
 func _show_race_screen():
-	current_hour = 1
 	for child in ctx.screen_content.get_children():
 		child.queue_free()
 	drawn_card_nodes.clear()
@@ -65,99 +65,44 @@ func _show_race_screen():
 	hud_notebook = notebook.find_child("LeftContent", true, false) as MarginContainer
 	var hud_v = VBoxContainer.new()
 	hud_v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	hud_v.add_theme_constant_override("separation", 14)
+	hud_v.add_theme_constant_override("separation", 20)
 	DeskTheme.apply_font(hud_v)
 	hud_notebook.add_child(hud_v)
 	
-	hour_label = DeskTheme.create_floating_badge("1時間目", DeskTheme.COLOR_ACCENT_GOLD, 20)
+	var display_hour = 1
+	if is_instance_valid(ctx) and ctx.game_session:
+		display_hour = ctx.game_session.current_hour
+		
+	hour_label = DeskTheme.create_floating_badge("%d時間目" % display_hour, DeskTheme.COLOR_ACCENT_GOLD, 20)
 	hud_v.add_child(hour_label)
 	
 	hud_v.add_child(DeskTheme.create_label("[ 本日の学習ノート ]", 32, DeskTheme.COLOR_INK, true))
 	
-	var score_h = HBoxContainer.new()
-	score_h.alignment = BoxContainer.ALIGNMENT_CENTER
-	hud_v.add_child(score_h)
-	score_h.add_child(DeskTheme.create_label("合計点: ", 22, DeskTheme.COLOR_INK, true))
-	status_label = DeskTheme.create_label("0", 54, DeskTheme.COLOR_BLUFF_RED, true)
-	score_h.add_child(status_label)
+	var stance_lbl = DeskTheme.create_label("今日のスタンス: " + ctx.current_daily_stance, 16, DeskTheme.COLOR_SAFE, true)
+	hud_v.add_child(stance_lbl)
 	
-	subject_gauges.clear()
-	for s in range(5):
-		var s_row = HBoxContainer.new()
-		s_row.add_theme_constant_override("separation", 12)
-		hud_v.add_child(s_row)
-		
-		var mini_icon = DeskTheme.create_icon_rect(DeskTheme.subject_texture(s), Vector2(36, 36))
-		s_row.add_child(mini_icon)
-		
-		var name_lbl = DeskTheme.create_label(DeskTheme.subject_name(s), 18, DeskTheme.subject_color(s), true)
-		name_lbl.custom_minimum_size = Vector2(56, 0)
-		s_row.add_child(name_lbl)
-		
-		var bar = DeskTheme.create_gauge_bar(0.0, 20.0, DeskTheme.subject_color(s), Vector2(200, 22))
-		s_row.add_child(bar)
-		
-		var val_lbl = DeskTheme.create_label("0点", 18, DeskTheme.COLOR_INK, true)
-		s_row.add_child(val_lbl)
-		subject_gauges[s] = {"bar": bar, "label": val_lbl}
-		
-	var items_v = VBoxContainer.new()
-	items_v.add_theme_constant_override("separation", 12)
-	hud_v.add_child(items_v)
-	item_count_labels.clear()
-	for type in range(1, 4):
-		var item_h = HBoxContainer.new()
-		item_h.add_theme_constant_override("separation", 12)
-		items_v.add_child(item_h)
-		var item_tex = DeskTheme.item_texture(type)
-		if item_tex:
-			var icon = DeskTheme.create_icon_rect(item_tex, Vector2(32, 32))
-			item_h.add_child(icon)
-		var name_lbl = DeskTheme.create_label("消しゴム" if type == 1 else "ペン" if type == 2 else "定規", 18, DeskTheme.COLOR_INK, true)
-		item_h.add_child(name_lbl)
-		
-		# 丸ドットインジケーターの構築
-		var indicator_container = HBoxContainer.new()
-		indicator_container.add_theme_constant_override("separation", 6)
-		item_h.add_child(indicator_container)
-		
-		for idx in range(2):
-			var dot = Panel.new()
-			dot.custom_minimum_size = Vector2(14, 14)
-			var dot_style = StyleBoxFlat.new()
-			# 初期は点灯色
-			dot_style.bg_color = DeskTheme.COLOR_SAFE if type == 1 else Color("4a7de0") if type == 2 else DeskTheme.COLOR_ACCENT_GOLD
-			dot_style.corner_radius_top_left = 7
-			dot_style.corner_radius_top_right = 7
-			dot_style.corner_radius_bottom_left = 7
-			dot_style.corner_radius_bottom_right = 7
-			dot.add_theme_stylebox_override("panel", dot_style)
-			indicator_container.add_child(dot)
-			
-		item_count_labels[type] = indicator_container
-		
-	var hud_rival_note = DeskTheme.create_sticky_note(Color("f0f8ff"), Vector2(360, 180), -1.0)
-	hud_v.add_child(hud_rival_note)
-	var hr_v = VBoxContainer.new()
-	hr_v.add_theme_constant_override("separation", 8)
-	hud_rival_note.add_child(hr_v)
+	# 単一総合スコア表示
+	var score_v = VBoxContainer.new()
+	score_v.alignment = BoxContainer.ALIGNMENT_CENTER
+	hud_v.add_child(score_v)
 	
-	if Global.play_count == 0:
-		hr_v.add_child(DeskTheme.create_label("[ 1日目の目標 ]", 18, Color("2b5a9e"), true))
-		var msg = "まずは各教科を満遍なく勉強して、本日の学習報告（初投稿）を完了させよう！寝落ちに気をつけて！"
-		var lbl = DeskTheme.create_label(msg, 14, DeskTheme.COLOR_INK, true)
-		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		hr_v.add_child(lbl)
-	else:
-		hr_v.add_child(DeskTheme.create_label("[ ライバル暫定トップ ]", 18, Color("2b5a9e"), true))
-		var top_scores = ctx.backend_manager.get_subject_top_scores()
-		var top_str = ""
-		for s in range(5):
-			var top_info = top_scores[s]
-			top_str += "%s:%d点  " % [DeskTheme.subject_name(s), top_info["score"]]
-		var lbl = DeskTheme.create_label(top_str, 15, DeskTheme.COLOR_INK, true)
-		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		hr_v.add_child(lbl)
+	var score_title = DeskTheme.create_label("現在の獲得点数", 20, DeskTheme.COLOR_MUTED, true)
+	score_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	score_v.add_child(score_title)
+	
+	status_label = DeskTheme.create_label("0", 64, DeskTheme.COLOR_BLUFF_RED, true)
+	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	score_v.add_child(status_label)
+	
+	# 総合スコアバー
+	var score_bar = DeskTheme.create_gauge_bar(0.0, 100.0, DeskTheme.COLOR_ACCENT_GOLD, Vector2(300, 24))
+	score_v.add_child(score_bar)
+	hud_gauges["total_score_bar"] = score_bar
+	
+	var buff_label = DeskTheme.create_label("", 16, DeskTheme.COLOR_SAFE, true)
+	buff_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hud_v.add_child(buff_label)
+	hud_gauges["buff_label"] = buff_label
 	
 	var right_margin = notebook.find_child("RightContent", true, false) as MarginContainer
 	var right_v = VBoxContainer.new()
@@ -171,13 +116,11 @@ func _show_race_screen():
 	play_desk.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	right_v.add_child(play_desk)
 	
-	# カード情報バー（引いた枚数・残り山札）
 	var card_info_h = HBoxContainer.new()
 	card_info_h.alignment = BoxContainer.ALIGNMENT_CENTER
 	card_info_h.add_theme_constant_override("separation", 24)
 	right_v.add_child(card_info_h)
 	
-	# 引いたカードの履歴コンテナ（ミニバッジ表示用）
 	history_box = HBoxContainer.new()
 	history_box.alignment = BoxContainer.ALIGNMENT_CENTER
 	history_box.add_theme_constant_override("separation", 6)
@@ -185,7 +128,7 @@ func _show_race_screen():
 	
 	var drawn_count_lbl = DeskTheme.create_label("引いたカード: 0枚", 14, DeskTheme.COLOR_INK, true)
 	card_info_h.add_child(drawn_count_lbl)
-	subject_gauges["drawn_count"] = drawn_count_lbl
+	hud_gauges["drawn_count"] = drawn_count_lbl
 	
 	var deck_stack_container = HBoxContainer.new()
 	deck_stack_container.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -195,11 +138,11 @@ func _show_race_screen():
 	var deck_stack = Control.new()
 	deck_stack.custom_minimum_size = Vector2(40, 55)
 	deck_stack_container.add_child(deck_stack)
-	subject_gauges["deck_stack"] = deck_stack
+	hud_gauges["deck_stack"] = deck_stack
 	
 	var remain_lbl = DeskTheme.create_label("残り山札: --枚", 14, DeskTheme.COLOR_MUTED, true)
 	deck_stack_container.add_child(remain_lbl)
-	subject_gauges["remain_count"] = remain_lbl
+	hud_gauges["remain_count"] = remain_lbl
 	
 	card_container = Control.new()
 	card_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -232,27 +175,25 @@ func _show_race_screen():
 	var sleep_title = DeskTheme.create_label("睡魔度", 13, Color.WHITE, true)
 	banner_v.add_child(sleep_title)
 	
-	var sleep_gauge = DeskTheme.create_gauge_bar(0.0, 100.0, DeskTheme.COLOR_SAFE, Vector2(240, 10)) # 横幅を少し狭めてLED枠を確保
+	var sleep_gauge = DeskTheme.create_gauge_bar(0.0, 100.0, DeskTheme.COLOR_SAFE, Vector2(240, 10))
 	banner_v.add_child(sleep_gauge)
-	subject_gauges["sleep_gauge"] = sleep_gauge
-	subject_gauges["sleep_title"] = sleep_title
+	hud_gauges["sleep_gauge"] = sleep_gauge
+	hud_gauges["sleep_title"] = sleep_title
 	
 	var led_indicator = Panel.new()
 	led_indicator.custom_minimum_size = Vector2(16, 16)
 	led_indicator.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var led_style = StyleBoxFlat.new()
 	led_style.bg_color = Color("8cff8c")
-	led_style.corner_radius_top_left = 8
-	led_style.corner_radius_top_right = 8
-	led_style.corner_radius_bottom_left = 8
-	led_style.corner_radius_bottom_right = 8
+	led_style.corner_radius_top_left = 8; led_style.corner_radius_top_right = 8
+	led_style.corner_radius_bottom_left = 8; led_style.corner_radius_bottom_right = 8
 	led_indicator.add_theme_stylebox_override("panel", led_style)
 	banner_h.add_child(led_indicator)
-	subject_gauges["sleep_led"] = led_indicator
+	hud_gauges["sleep_led"] = led_indicator
 	
 	next_burst_label = DeskTheme.create_label("安全レベル: 脳内すっきり、まだ引ける！", 15, DeskTheme.COLOR_SAFE, true)
 	next_burst_label.add_theme_constant_override("outline_size", 4)
-	next_burst_label.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.95)) # 白いアウトライン
+	next_burst_label.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.95))
 	right_v.add_child(next_burst_label)
 	
 	button_box = HBoxContainer.new()
@@ -268,7 +209,6 @@ func _show_race_screen():
 	stop_btn.pressed.connect(_on_stop_pressed)
 	button_box.add_child(stop_btn)
 	
-	# Vignette (睡魔エフェクト) の追加
 	vignette_node = Panel.new()
 	vignette_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	vignette_node.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -289,44 +229,37 @@ func _show_race_screen():
 	_update_race_hud()
 
 func _update_race_hud():
-	var total_accum = 0
-	for s in range(5):
-		total_accum += ctx.game_session.accumulated_subject_scores[s]
-	status_label.text = str(total_accum + ctx.game_session.current_score)
+	var score = ctx.game_session.accumulated_score + ctx.game_session.current_score
+	status_label.text = str(score)
 	
-	for s in range(5):
-		var score = ctx.game_session.accumulated_subject_scores[s] + ctx.game_session.subject_scores[s]
-		var data = subject_gauges[s]
-		var ratio = clamp(float(score) / 20.0, 0.0, 1.0)
-		var fill = data["bar"].get_child(0)
+	if hud_gauges.has("total_score_bar"):
+		var data = hud_gauges["total_score_bar"]
+		var ratio = clamp(float(score) / 200.0, 0.0, 1.0) # 最大200点想定
+		var fill = data.get_child(0)
 		var tw = fill.create_tween()
-		tw.tween_property(fill, "offset_right", max(4.0, data["bar"].custom_minimum_size.x * ratio), 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		data["label"].text = "%d点" % score
+		tw.tween_property(fill, "offset_right", max(4.0, data.custom_minimum_size.x * ratio), 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		
 	var deck = ctx.game_session.deck
-	var num_erasers = deck.remaining_erasers
-	var num_pens = 2
-	var num_rulers = 2
-	for c in deck.drawn_cards:
-		if c.item_type == 2: num_pens -= 1
-		elif c.item_type == 3: num_rulers -= 1
-	# インジケーター表示の更新
-	_update_item_indicators(1, num_erasers)
-	_update_item_indicators(2, max(0, num_pens))
-	_update_item_indicators(3, max(0, num_rulers))
+	# 旧アイテムインジケーターは廃止し、バフ状態をラベル等で表示する
+	if hud_gauges.has("buff_label"):
+		var buff_text = ""
+		if deck.has_energy_drink_shield: buff_text += "[エナドリシールド] "
+		if deck.next_card_double_score: buff_text += "[次カード2倍] "
+		if deck.sticky_note_bonus_active: buff_text += "[付箋ボーナス予約] "
+		if deck.cheat_sheet_count > 0: buff_text += "[カンペ ×%d] " % deck.cheat_sheet_count
+		hud_gauges["buff_label"].text = buff_text
 	
-	# カード枚数＆残り山札の更新
 	var drawn_num = drawn_card_nodes.size()
-	if subject_gauges.has("drawn_count"):
-		subject_gauges["drawn_count"].text = "引いたカード: %d枚" % drawn_num
-	if subject_gauges.has("remain_count"):
-		subject_gauges["remain_count"].text = "山札: %d枚" % deck.deck.size()
+	if hud_gauges.has("drawn_count"):
+		hud_gauges["drawn_count"].text = "引いたカード: %d枚" % drawn_num
+	if hud_gauges.has("remain_count"):
+		hud_gauges["remain_count"].text = "山札: %d枚" % deck.deck.size()
 		
-	# 引いたカードの履歴 (history_box) の描画更新
 	if is_instance_valid(history_box):
 		for child in history_box.get_children():
 			child.queue_free()
 		for card in deck.drawn_cards:
+			if not card.is_active: continue
 			var badge = PanelContainer.new()
 			var bg = StyleBoxFlat.new()
 			bg.corner_radius_top_left = 6; bg.corner_radius_top_right = 6
@@ -336,13 +269,12 @@ func _update_race_hud():
 			
 			var label_text = ""
 			var label_color = Color.WHITE
-			if card.item_type == 0:
-				bg.bg_color = DeskTheme.subject_color(card.subject)
-				label_text = "%s%d" % [DeskTheme.subject_name(card.subject).left(1), card.weight]
+			if card.item_type == Enums.ItemType.NORMAL:
+				bg.bg_color = DeskTheme.COLOR_INK
+				label_text = "+%d" % card.number
 			else:
-				bg.bg_color = Color("495057") # 濃いグレー
-				var it_name = "消" if card.item_type == 1 else "筆" if card.item_type == 2 else "定"
-				label_text = it_name
+				bg.bg_color = Color("495057")
+				label_text = "ア(%d)" % card.number
 				
 			badge.add_theme_stylebox_override("panel", bg)
 			var lbl = DeskTheme.create_label(label_text, 12, label_color, true)
@@ -355,22 +287,19 @@ func _update_race_hud():
 	var conflict_count = 0
 	var total_deck = deck_cards.size()
 	for c in deck_cards:
-		if c.item_type == 0:
-			for dc in deck.drawn_cards:
-				if dc.item_type == 0 and dc.weight == c.weight:
-					conflict_count += 1
-					break
+		for dc in deck.drawn_cards:
+			if dc.is_active and dc.number == c.number:
+				conflict_count += 1
+				break
 	var burst_prob = 0
 	if total_deck > 0:
 		burst_prob = int((float(conflict_count) / float(total_deck)) * 100.0)
 		
-	# 睡魔ゲージのビジュアル更新
 	var style: StyleBoxFlat = burst_warning_banner.get_theme_stylebox("panel")
 	var gauge_color = DeskTheme.COLOR_SAFE
 	
-	# 既存のLED点滅アニメーションがあればクリーンアップ
-	if subject_gauges.has("sleep_led"):
-		var led = subject_gauges["sleep_led"] as Panel
+	if hud_gauges.has("sleep_led"):
+		var led = hud_gauges["sleep_led"] as Panel
 		if is_instance_valid(led):
 			if led.has_meta("led_tween"):
 				var lt = led.get_meta("led_tween") as Tween
@@ -386,9 +315,7 @@ func _update_race_hud():
 		gauge_color = DeskTheme.COLOR_BLUFF_RED
 		next_burst_label.text = "警告: 限界寸前！いつ寝落ちしてもおかしくない！"
 		next_burst_label.add_theme_color_override("font_color", DeskTheme.COLOR_BLUFF_RED)
-		next_burst_label.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.95))
-		if subject_gauges.has("sleep_title"):
-			subject_gauges["sleep_title"].text = "睡魔度: 限界寸前！"
+		if hud_gauges.has("sleep_title"): hud_gauges["sleep_title"].text = "睡魔度: 限界寸前！"
 		led_color = DeskTheme.COLOR_BLUFF_RED
 		led_pulse = true
 		led_pulse_speed = 0.15
@@ -397,9 +324,7 @@ func _update_race_hud():
 		gauge_color = DeskTheme.COLOR_ACCENT_GOLD
 		next_burst_label.text = "注意: 限界が近い... そろそろ引き際か？"
 		next_burst_label.add_theme_color_override("font_color", Color("a87d00"))
-		next_burst_label.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.95))
-		if subject_gauges.has("sleep_title"):
-			subject_gauges["sleep_title"].text = "睡魔度: 眠気あり"
+		if hud_gauges.has("sleep_title"): hud_gauges["sleep_title"].text = "睡魔度: 眠気あり"
 		led_color = DeskTheme.COLOR_ACCENT_GOLD
 		led_pulse = true
 		led_pulse_speed = 0.40
@@ -408,32 +333,25 @@ func _update_race_hud():
 		gauge_color = DeskTheme.COLOR_SAFE
 		next_burst_label.text = "安全レベル: まだ睡魔は感じない！"
 		next_burst_label.add_theme_color_override("font_color", DeskTheme.COLOR_SAFE)
-		next_burst_label.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.95))
-		if subject_gauges.has("sleep_title"):
-			subject_gauges["sleep_title"].text = "睡魔度: 安全"
+		if hud_gauges.has("sleep_title"): hud_gauges["sleep_title"].text = "睡魔度: 安全"
 		led_color = Color("8cff8c")
 		
-	# LEDビジュアルの更新
-	if subject_gauges.has("sleep_led"):
-		var led = subject_gauges["sleep_led"] as Panel
+	if hud_gauges.has("sleep_led"):
+		var led = hud_gauges["sleep_led"] as Panel
 		if is_instance_valid(led):
 			var led_style = StyleBoxFlat.new()
 			led_style.bg_color = led_color
-			led_style.corner_radius_top_left = 8
-			led_style.corner_radius_top_right = 8
-			led_style.corner_radius_bottom_left = 8
-			led_style.corner_radius_bottom_right = 8
+			led_style.corner_radius_top_left = 8; led_style.corner_radius_top_right = 8
+			led_style.corner_radius_bottom_left = 8; led_style.corner_radius_bottom_right = 8
 			led.add_theme_stylebox_override("panel", led_style)
-			
 			if led_pulse:
 				var lt = led.create_tween().set_loops()
 				lt.tween_property(led, "modulate:a", 0.15, led_pulse_speed).set_trans(Tween.TRANS_SINE)
 				lt.tween_property(led, "modulate:a", 1.0, led_pulse_speed).set_trans(Tween.TRANS_SINE)
 				led.set_meta("led_tween", lt)
 	
-	# 睡魔ゲージバーの塗りを更新
-	if subject_gauges.has("sleep_gauge"):
-		var sg = subject_gauges["sleep_gauge"]
+	if hud_gauges.has("sleep_gauge"):
+		var sg = hud_gauges["sleep_gauge"]
 		var sg_fill = sg.get_child(0)
 		var sg_ratio = clamp(float(burst_prob) / 100.0, 0.0, 1.0)
 		var sg_tw = sg_fill.create_tween()
@@ -445,7 +363,6 @@ func _update_race_hud():
 	if heartbeat_tween != null:
 		heartbeat_tween.kill()
 		heartbeat_tween = null
-		
 	if vignette_tween != null:
 		vignette_tween.kill()
 		vignette_tween = null
@@ -454,49 +371,33 @@ func _update_race_hud():
 		if is_instance_valid(active_notebook):
 			active_notebook.pivot_offset = active_notebook.size / 2.0
 			heartbeat_tween = active_notebook.create_tween().set_loops()
-			heartbeat_tween.tween_property(active_notebook, "scale", Vector2(1.02, 1.02), 0.07).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-			heartbeat_tween.tween_property(active_notebook, "scale", Vector2(1.0, 1.0), 0.08).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+			heartbeat_tween.tween_property(active_notebook, "scale", Vector2(1.02, 1.02), 0.07).set_trans(Tween.TRANS_CUBIC)
+			heartbeat_tween.tween_property(active_notebook, "scale", Vector2(1.0, 1.0), 0.08).set_trans(Tween.TRANS_CUBIC)
 			heartbeat_tween.tween_interval(0.06)
-			heartbeat_tween.tween_property(active_notebook, "scale", Vector2(1.015, 1.015), 0.07).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-			heartbeat_tween.tween_property(active_notebook, "scale", Vector2(1.0, 1.0), 0.08).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+			heartbeat_tween.tween_property(active_notebook, "scale", Vector2(1.015, 1.015), 0.07).set_trans(Tween.TRANS_CUBIC)
+			heartbeat_tween.tween_property(active_notebook, "scale", Vector2(1.0, 1.0), 0.08).set_trans(Tween.TRANS_CUBIC)
 			heartbeat_tween.tween_interval(0.70)
 			
 		if is_instance_valid(vignette_node):
 			vignette_node.modulate.a = 0.5
 			vignette_tween = vignette_node.create_tween().set_loops()
-			vignette_tween.tween_property(vignette_node, "modulate:a", 0.85, 0.07).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-			vignette_tween.tween_property(vignette_node, "modulate:a", 0.5, 0.08).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+			vignette_tween.tween_property(vignette_node, "modulate:a", 0.85, 0.07).set_trans(Tween.TRANS_CUBIC)
+			vignette_tween.tween_property(vignette_node, "modulate:a", 0.5, 0.08).set_trans(Tween.TRANS_CUBIC)
 			vignette_tween.tween_interval(0.06)
-			vignette_tween.tween_property(vignette_node, "modulate:a", 0.75, 0.07).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-			vignette_tween.tween_property(vignette_node, "modulate:a", 0.5, 0.08).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+			vignette_tween.tween_property(vignette_node, "modulate:a", 0.75, 0.07).set_trans(Tween.TRANS_CUBIC)
+			vignette_tween.tween_property(vignette_node, "modulate:a", 0.5, 0.08).set_trans(Tween.TRANS_CUBIC)
 			vignette_tween.tween_interval(0.70)
-			
-		next_burst_label.pivot_offset = next_burst_label.size / 2.0
-		var lbl_tw = next_burst_label.create_tween()
-		lbl_tw.tween_property(next_burst_label, "scale", Vector2(1.15, 1.15), 0.3).set_trans(Tween.TRANS_SINE)
-		lbl_tw.tween_property(next_burst_label, "scale", Vector2(1.0, 1.0), 0.3).set_trans(Tween.TRANS_SINE)
-		lbl_tw.set_loops()
 	else:
 		if is_instance_valid(active_notebook):
-			var tw_reset = active_notebook.create_tween()
-			tw_reset.tween_property(active_notebook, "scale", Vector2.ONE, 0.15)
-			
+			active_notebook.create_tween().tween_property(active_notebook, "scale", Vector2.ONE, 0.15)
 		if is_instance_valid(vignette_node):
-			vignette_tween = vignette_node.create_tween()
-			var target_alpha = 0.0
-			if burst_prob >= 50:
-				target_alpha = 0.4
-			elif burst_prob >= 25:
-				target_alpha = 0.15
-			vignette_tween.tween_property(vignette_node, "modulate:a", target_alpha, 0.25).set_trans(Tween.TRANS_SINE)
-			
+			vignette_node.create_tween().tween_property(vignette_node, "modulate:a", 0.0, 0.25)
 		next_burst_label.scale = Vector2.ONE
 
 func _set_action_buttons_enabled(enabled: bool):
 	if is_instance_valid(button_box):
 		for child in button_box.get_children():
-			if child is Button:
-				child.disabled = not enabled
+			if child is Button: child.disabled = not enabled
 
 func _on_draw_pressed():
 	_set_action_buttons_enabled(false)
@@ -508,10 +409,11 @@ func _on_draw_pressed():
 	if ctx.audio_manager: ctx.audio_manager.play_se("draw")
 	
 	var card_node: Control
-	if card.item_type == 0:
-		card_node = DeskTheme.create_subject_card_large(card.subject, card.weight)
+	if card.item_type == Enums.ItemType.NORMAL:
+		card_node = DeskTheme.create_subject_card_large(0, card.number)
 	else:
 		card_node = DeskTheme.create_item_card_large(card.item_type)
+		# TODO: アイテムカードの数字が見えるようにDeskThemeも後で修正する
 	card_node.set_meta("card_data", card)
 	
 	var back_tex = TextureRect.new()
@@ -531,10 +433,6 @@ func _on_draw_pressed():
 	
 	var view_size = ctx.screen_content.get_viewport_rect().size
 	var start_pos = Vector2(view_size.x * 0.85, view_size.y * 0.25)
-	if subject_gauges.has("deck_stack"):
-		var ds = subject_gauges["deck_stack"] as Control
-		if is_instance_valid(ds) and ds.is_inside_tree():
-			start_pos = ds.global_position + ds.size / 2.0 - card_sz / 2.0
 	
 	card_node.position = start_pos - card_container.global_position
 	card_node.rotation_degrees = -45.0
@@ -542,33 +440,42 @@ func _on_draw_pressed():
 	card_node.modulate.a = 0.0
 	card_node.pivot_offset = Vector2(190, 260) / 2.0
 	
-	# 場にあるすべてのカードを並び替えて整列させる
 	await _rearrange_drawn_cards(true)
 	if ctx.audio_manager: ctx.audio_manager.play_se("place")
 	
 	_update_race_hud()
 
-	if card.item_type == 3:
-		_trigger_ruler_effect(card_node)
-		return
-	
+	if card.item_type != Enums.ItemType.NORMAL:
+		ctx.game_session.apply_item_effect(card.item_type)
+		_update_race_hud()
+		
+		if card.item_type == Enums.ItemType.THICK_BOOK:
+			ToastOverlayScript.show_toast(ctx.ui_root, "分厚い参考書！追加で2枚引く！", Color("845ef7"))
+			await ctx.screen_content.get_tree().create_timer(0.6).timeout
+			_on_draw_pressed()
+			await ctx.screen_content.get_tree().create_timer(0.6).timeout
+			_on_draw_pressed()
+			return
+			
+		elif card.item_type == Enums.ItemType.ERASER:
+			ToastOverlayScript.show_toast(ctx.ui_root, "消しゴム！最新のカードを無効化", Color("adb5bd"))
+			_refresh_drawn_cards_visuals()
+			
 	if res["burst"]:
 		await _trigger_burst_sequence()
 		return
-	elif res["erased"]:
-		await _trigger_eraser_evasion_sequence(card_node, card.weight)
+	elif res["prevented"]:
+		ToastOverlayScript.show_toast(ctx.ui_root, "エナドリ効果！バーストを回避！", Color("fcc419"))
+		_update_race_hud()
 	
-	if not res["burst"] and not res["erased"]:
+	if not res["burst"] and not res["prevented"]:
 		var combo_num = drawn_card_nodes.size()
 		if combo_num >= 2:
-			var combo_badge = DeskTheme.create_floating_badge("%d COMBO!" % combo_num, DeskTheme.subject_color(card.subject) if card.item_type == 0 else DeskTheme.COLOR_SAFE, 20)
+			var combo_badge = DeskTheme.create_floating_badge("%d COMBO!" % combo_num, DeskTheme.COLOR_SAFE, 20)
 			combo_badge.global_position = card_node.global_position + Vector2(card_sz.x / 2.0 - combo_badge.size.x / 2.0, -35.0)
 			play_desk.add_child(combo_badge)
-			combo_badge.pivot_offset = combo_badge.size / 2.0
-			combo_badge.scale = Vector2(0.1, 0.1)
 			var b_tw = combo_badge.create_tween()
-			b_tw.tween_property(combo_badge, "scale", Vector2(1.3, 1.3), 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-			b_tw.parallel().tween_property(combo_badge, "rotation_degrees", randf_range(-12.0, 12.0), 0.12)
+			b_tw.tween_property(combo_badge, "scale", Vector2(1.3, 1.3), 0.12).set_trans(Tween.TRANS_CUBIC)
 			b_tw.tween_property(combo_badge, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_BACK)
 			b_tw.tween_interval(0.8)
 			b_tw.tween_property(combo_badge, "modulate:a", 0.0, 0.25)
@@ -576,17 +483,22 @@ func _on_draw_pressed():
 	_step_rival_simulation()
 	_set_action_buttons_enabled(true)
 
+func _refresh_drawn_cards_visuals():
+	for node in drawn_card_nodes:
+		if is_instance_valid(node):
+			var data = node.get_meta("card_data")
+			if data and not data.is_active:
+				node.modulate.a = 0.3 # 無効化されたカードをグレーアウト
+
 func _rearrange_drawn_cards(animate: bool = true):
 	var num_cards = drawn_card_nodes.size()
 	if num_cards == 0: return
 	
 	var desk_sz = play_desk.size
-	if desk_sz.x < 100 or desk_sz.y < 100:
-		desk_sz = Vector2(600, 460)
+	if desk_sz.x < 100 or desk_sz.y < 100: desk_sz = Vector2(600, 460)
 	var center = desk_sz / 2.0
 	center.x += 60.0
 	
-	# 重なりつつも左上の数字バッジ（幅40px）が見えるように間隔を調整
 	var card_spacing = 52.0 if num_cards <= 5 else max(38.0, 240.0 / float(num_cards))
 	var card_scale_factor = 1.0 if num_cards <= 5 else max(0.65, 1.0 - (num_cards - 5) * 0.05)
 	var card_sz = Vector2(190, 260) * card_scale_factor
@@ -595,14 +507,8 @@ func _rearrange_drawn_cards(animate: bool = true):
 	for i in range(num_cards):
 		var node = drawn_card_nodes[i]
 		if not is_instance_valid(node): continue
-		
-		# 重複バースト危険インジケーターの更新 (廃止)
-		pass
-		
 		var item_offset_x = (i * card_spacing) - (card_spacing * float(num_cards - 1)) / 2.0
-		# 扇状（アーチ状）の重ね合わせ配置へ復帰
 		var item_offset_y = -abs(item_offset_x) * 0.08
-		
 		var target_pos = center + Vector2(item_offset_x, item_offset_y) - card_sz / 2.0
 		var target_rot = (i - (num_cards - 1) / 2.0) * (20.0 / max(float(num_cards), 1.0))
 		target_rot = clamp(target_rot, -12.0, 12.0)
@@ -613,21 +519,17 @@ func _rearrange_drawn_cards(animate: bool = true):
 			var tw = node.create_tween().set_parallel(true)
 			last_tween = tw
 			var has_back = node.has_node("BackTex")
-			
 			if i == num_cards - 1 and has_back:
 				var back_node = node.get_node("BackTex")
-				tw.tween_property(node, "position", target_pos, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-				tw.tween_property(node, "rotation_degrees", target_rot, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+				tw.tween_property(node, "position", target_pos, 0.35).set_trans(Tween.TRANS_CUBIC)
+				tw.tween_property(node, "rotation_degrees", target_rot, 0.35).set_trans(Tween.TRANS_BACK)
 				tw.tween_property(node, "modulate:a", 1.0, 0.15)
-				
 				var flip_tw = node.create_tween()
-				flip_tw.tween_property(node, "scale", Vector2(0.0, card_scale_factor * 1.2), 0.18).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-				flip_tw.tween_callback(func():
-					if is_instance_valid(back_node): back_node.hide()
-				)
-				flip_tw.tween_property(node, "scale", Vector2(card_scale_factor, card_scale_factor), 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+				flip_tw.tween_property(node, "scale", Vector2(0.0, card_scale_factor * 1.2), 0.18).set_trans(Tween.TRANS_SINE)
+				flip_tw.tween_callback(func(): if is_instance_valid(back_node): back_node.hide())
+				flip_tw.tween_property(node, "scale", Vector2(card_scale_factor, card_scale_factor), 0.15).set_trans(Tween.TRANS_SINE)
 			else:
-				tw.tween_property(node, "position", target_pos, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+				tw.tween_property(node, "position", target_pos, 0.28).set_trans(Tween.TRANS_CUBIC)
 				tw.tween_property(node, "scale", Vector2(card_scale_factor, card_scale_factor), 0.28).set_trans(Tween.TRANS_CUBIC)
 				tw.tween_property(node, "rotation_degrees", target_rot, 0.28).set_trans(Tween.TRANS_CUBIC)
 		else:
@@ -638,333 +540,71 @@ func _rearrange_drawn_cards(animate: bool = true):
 	if last_tween and last_tween.is_valid():
 		await last_tween.finished
 
-func _trigger_ruler_effect(card_node: Control):
-	if ctx.audio_manager: ctx.audio_manager.play_se("combo")
-	var bounce = card_node.create_tween()
-	bounce.tween_property(card_node, "scale", Vector2(1.2, 1.2), 0.15).set_trans(Tween.TRANS_CUBIC)
-	bounce.tween_property(card_node, "scale", Vector2(1.0, 1.0), 0.2).set_trans(Tween.TRANS_BACK)
-	button_box.hide()
-	var overlay
-	overlay = DeskTheme.create_dialog_overlay(ctx.screen_content, "📏 定規でスコア補強！", func(vbox: VBoxContainer):
-		# 目盛りを視認性の良い明るい木目調に変更
-		var ticks_top = DeskTheme.create_label("| . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |", 12, Color("ebd4be"), true)
-		ticks_top.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		vbox.add_child(ticks_top)
-		vbox.move_child(ticks_top, 0)
-		
-		# 黒板上の説明テキストをチョークホワイトに変更
-		vbox.add_child(DeskTheme.create_label("好きな教科を1つ選んでスコアを「＋5点」補強できます。", 16, DeskTheme.COLOR_CHALK_WHITE, true))
-		
-		var grid = GridContainer.new()
-		grid.columns = 5
-		grid.add_theme_constant_override("h_separation", 12)
-		grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER # グリッドを中央寄せ！
-		vbox.add_child(grid)
-		
-		for s in range(5):
-			var btn = DeskTheme.create_button(DeskTheme.subject_name(s), Vector2(110, 56), DeskTheme.subject_color(s), DeskTheme.subject_color(s).darkened(0.1))
-			btn.pivot_offset = Vector2(55, 28)
-			btn.pressed.connect(func():
-				if ctx.audio_manager: ctx.audio_manager.play_se("place")
-				var btn_tw = btn.create_tween()
-				btn_tw.tween_property(btn, "scale", Vector2(0.85, 0.85), 0.08)
-				btn_tw.chain().tween_property(btn, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_BACK)
-				await btn_tw.finished
-				
-				# GameSessionの同期メソッドを使用！
-				ctx.game_session.apply_ruler_bonus(s)
-				_update_race_hud()
-				
-				var node = vbox
-				while node and not node is ColorRect: node = node.get_parent()
-				if node: node.queue_free()
-				button_box.show()
-				_set_action_buttons_enabled(true)
-			)
-			grid.add_child(btn)
-			
-		var ticks_bottom = DeskTheme.create_label("| . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . | . |", 12, Color("ebd4be"), true)
-		ticks_bottom.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		vbox.add_child(ticks_bottom)
-	)
-	
-	var ruler_panel = overlay.get_child(0) as PanelContainer
-	if is_instance_valid(ruler_panel):
-		var ruler_style = StyleBoxFlat.new()
-		ruler_style.bg_color = Color("dfd5b8")
-		ruler_style.border_width_left = 6; ruler_style.border_width_right = 6
-		ruler_style.border_width_top = 18; ruler_style.border_width_bottom = 18
-		ruler_style.border_color = Color("8c6d4f")
-		ruler_style.corner_radius_top_left = 8; ruler_style.corner_radius_top_right = 8
-		ruler_style.corner_radius_bottom_left = 8; ruler_style.corner_radius_bottom_right = 8
-		ruler_panel.add_theme_stylebox_override("panel", ruler_style)
-
 func _trigger_eraser_evasion_sequence(new_card_node: Control, _weight: int):
 	if ctx.audio_manager: ctx.audio_manager.play_se("combo")
-	
-	var eraser_img = TextureRect.new()
-	eraser_img.texture = DeskTheme.ITEM_ERASER
-	eraser_img.custom_minimum_size = Vector2(80, 80)
-	eraser_img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	eraser_img.position = new_card_node.position + new_card_node.size / 2.0 - Vector2(40, 40)
-	eraser_img.pivot_offset = Vector2(40, 40)
-	play_desk.add_child(eraser_img)
-	
-	var particle_count = 6
-	var particles = []
-	for p_i in range(particle_count):
-		var part = ColorRect.new()
-		part.color = Color("ffffff")
-		part.custom_minimum_size = Vector2(randf_range(4, 8), randf_range(2, 4))
-		part.position = new_card_node.position + new_card_node.size / 2.0 + Vector2(randf_range(-20, 20), randf_range(-20, 20))
-		part.pivot_offset = part.custom_minimum_size / 2.0
-		part.rotation_degrees = randf_range(0, 360)
-		part.modulate.a = 0.0
-		play_desk.add_child(part)
-		particles.append(part)
-	
-	var slide_tw = eraser_img.create_tween()
-	var part_tw = ctx.screen_content.create_tween().set_parallel(true)
-	var orig_x = eraser_img.position.x
-	
-	for w in range(3):
-		slide_tw.tween_property(eraser_img, "position:x", orig_x - 24, 0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		slide_tw.tween_property(eraser_img, "rotation_degrees", 12.0, 0.07)
-		slide_tw.tween_callback(func(): if ctx.audio_manager: ctx.audio_manager.play_se("click"))
-		
-		slide_tw.tween_property(eraser_img, "position:x", orig_x + 24, 0.07).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		slide_tw.tween_property(eraser_img, "rotation_degrees", -12.0, 0.07)
-		slide_tw.tween_callback(func(): if ctx.audio_manager: ctx.audio_manager.play_se("click"))
-		
-	slide_tw.set_parallel(true)
-	slide_tw.tween_property(new_card_node, "modulate:a", 0.3, 0.42)
-	
-	for p_idx in range(particle_count):
-		var part = particles[p_idx]
-		part_tw.tween_property(part, "modulate:a", 1.0, 0.1)
-		part_tw.tween_property(part, "position", part.position + Vector2(randf_range(-60, 60), randf_range(-30, 60)), 0.42).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		part_tw.tween_property(part, "rotation_degrees", part.rotation_degrees + randf_range(-90, 90), 0.42)
-		part_tw.tween_property(part, "scale", Vector2(0.1, 0.1), 0.42).set_delay(0.2)
-		
-	await slide_tw.finished
-	
-	for part in particles:
-		part.queue_free()
-		
-	var disappear = ctx.screen_content.create_tween().set_parallel(true)
-	disappear.tween_property(new_card_node, "modulate:a", 0.0, 0.2)
-	disappear.tween_property(new_card_node, "scale", Vector2(0.2, 0.2), 0.2)
-	disappear.tween_property(eraser_img, "modulate:a", 0.0, 0.15)
-	await disappear.finished
-	
 	drawn_card_nodes.erase(new_card_node)
 	new_card_node.queue_free()
-	eraser_img.queue_free()
-	
 	_rearrange_drawn_cards(true)
 	_update_race_hud()
 	_set_action_buttons_enabled(true)
 
 func _trigger_burst_sequence():
 	if ctx.audio_manager: ctx.audio_manager.play_se("burst")
-	if is_instance_valid(button_box):
-		button_box.hide()
+	if is_instance_valid(button_box): button_box.hide()
 	
-	var shake = ctx.screen_content.create_tween().set_loops(8)
-	shake.tween_callback(func(): camera_shake_offset = Vector2(randf_range(-14, 14), randf_range(-14, 14)))
-	shake.tween_interval(0.04)
-	
-	var has_cards = false
-	for node in drawn_card_nodes:
-		if is_instance_valid(node):
-			has_cards = true
-			break
-			
-	if is_instance_valid(hud_notebook) or has_cards:
-		var hop_tw = ctx.screen_content.create_tween().set_parallel(true)
-		if is_instance_valid(hud_notebook):
-			hud_notebook.pivot_offset = hud_notebook.size / 2.0
-			hop_tw.tween_property(hud_notebook, "position:y", hud_notebook.position.y - 25, 0.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-			hop_tw.tween_property(hud_notebook, "rotation_degrees", -2.0, 0.1)
-		for node in drawn_card_nodes:
-			if is_instance_valid(node):
-				node.pivot_offset = node.size / 2.0
-				hop_tw.tween_property(node, "position:y", node.position.y - 35, 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-				hop_tw.tween_property(node, "rotation_degrees", node.rotation_degrees + randf_range(-15, 15), 0.12)
-				
-		hop_tw.chain().set_parallel(true)
-		if is_instance_valid(hud_notebook):
-			hop_tw.tween_property(hud_notebook, "position:y", hud_notebook.position.y, 0.18).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-			hop_tw.tween_property(hud_notebook, "rotation_degrees", 0.0, 0.18)
-		for node in drawn_card_nodes:
-			if is_instance_valid(node):
-				var orig_y = node.position.y
-				hop_tw.tween_property(node, "position:y", orig_y, 0.22).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-			
-	if has_cards:
-		var fade_black = ctx.screen_content.create_tween().set_parallel(true)
-		for node in drawn_card_nodes:
-			if is_instance_valid(node):
-				fade_black.tween_property(node, "modulate", Color(0.25, 0.25, 0.45, 0.8), 0.4)
-			
 	var banner = DeskTheme.create_floating_badge("【 寝落ち（バースト）！】", DeskTheme.COLOR_BLUFF_RED, 28)
 	banner.anchor_left = 0.5; banner.anchor_top = 0.5; banner.anchor_right = 0.5; banner.anchor_bottom = 0.5
 	banner.offset_left = -300; banner.offset_top = -140; banner.offset_right = 300; banner.offset_bottom = -60
-	if is_instance_valid(play_desk):
-		play_desk.add_child(banner)
-	else:
-		ctx.screen_content.add_child(banner)
+	ctx.screen_content.add_child(banner)
 	banner.scale = Vector2(4.0, 4.0)
 	banner.modulate.a = 0.0
 	banner.pivot_offset = banner.size / 2.0
 	
-	var banner_tw = banner.create_tween()
-	banner_tw.set_parallel(true)
-	banner_tw.tween_property(banner, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	var banner_tw = banner.create_tween().set_parallel(true)
+	banner_tw.tween_property(banner, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_SINE)
 	banner_tw.tween_property(banner, "modulate:a", 1.0, 0.1)
-	banner_tw.tween_property(banner, "rotation_degrees", randf_range(-8.0, 8.0), 0.15)
 	
-	banner_tw.chain().tween_callback(func():
-		if ctx.audio_manager: ctx.audio_manager.play_se("place")
-	)
+	await ctx.screen_content.get_tree().create_timer(1.0).timeout
 	
-	await ctx.screen_content.get_tree().create_timer(0.45).timeout
-	camera_shake_offset = Vector2.ZERO
-	
-	# セッション側で当時間目のスコアを切り捨ててリセット
 	ctx.game_session.burst_period()
+	if is_instance_valid(banner): banner.queue_free()
 	
-	if is_instance_valid(banner):
-		banner.queue_free()
-	
-	var dialog = PanelContainer.new()
-	dialog.custom_minimum_size = Vector2(600, 280)
-	dialog.anchor_left = 0.5; dialog.anchor_top = 0.5; dialog.anchor_right = 0.5; dialog.anchor_bottom = 0.5
-	dialog.offset_left = -300; dialog.offset_top = -20; dialog.offset_right = 300; dialog.offset_bottom = 260
-	
-	var dialog_style = StyleBoxFlat.new()
-	dialog_style.bg_color = Color("1e1610")
-	dialog_style.border_width_left = 4; dialog_style.border_width_right = 4
-	dialog_style.border_width_top = 4; dialog_style.border_width_bottom = 6
-	dialog_style.border_color = DeskTheme.COLOR_BLUFF_RED
-	dialog_style.corner_radius_top_left = 16; dialog_style.corner_radius_top_right = 16
-	dialog_style.corner_radius_bottom_left = 16; dialog_style.corner_radius_bottom_right = 16
-	dialog_style.shadow_color = Color(0, 0, 0, 0.6)
-	dialog_style.shadow_size = 20
-	dialog.add_theme_stylebox_override("panel", dialog_style)
-	
-	if is_instance_valid(play_desk):
-		play_desk.add_child(dialog)
-	else:
-		ctx.screen_content.add_child(dialog)
-		
-	var dv = VBoxContainer.new()
-	dv.add_theme_constant_override("separation", 16)
-	dv.alignment = BoxContainer.ALIGNMENT_CENTER
-	dialog.add_child(dv)
-	
-	dv.add_child(DeskTheme.create_label("💤 %d時間目に寝落ちした！" % current_hour, 22, DeskTheme.COLOR_BLUFF_RED, true))
-	
-	var msg = DeskTheme.create_label("睡魔に敗れ、この時間目の勉強成果が消え去ってしまった...\n(この時間目の獲得スコアは「0点」になります)", 14, Color("dfd5cb"))
-	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	dv.add_child(msg)
-	
-	var next_btn_text = "【 🛏️ 目をこすって起きる (次の時間目へ) ➔ 】"
-	if current_hour >= 6:
-		next_btn_text = "【 🛏️ 目をこすって起きる (結果報告へ) ➔ 】"
-		
-	var wake_btn = DeskTheme.create_button(next_btn_text, Vector2(400, 56), DeskTheme.COLOR_ACCENT_GOLD, Color("b38f30"))
-	wake_btn.add_theme_font_size_override("font_size", 16)
-	dv.add_child(wake_btn)
-	
-	wake_btn.pivot_offset = Vector2(200, 28)
-	var pulse_tw = wake_btn.create_tween().set_loops()
-	pulse_tw.tween_property(wake_btn, "scale", Vector2(1.04, 1.04), 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	pulse_tw.tween_property(wake_btn, "scale", Vector2(1.0, 1.0), 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	
-	wake_btn.pressed.connect(func():
-		pulse_tw.kill()
-		if ctx.audio_manager: ctx.audio_manager.play_se("click")
-		dialog.queue_free()
-		
-		if current_hour < 6:
-			current_hour += 1
-			_reset_for_new_hour()
-		else:
-			var final_scores = ctx.game_session.stop_and_report()
-			phase_completed.emit(final_scores)
-	)
+	var final_score = ctx.game_session.stop_and_report()
+	phase_completed.emit({"score": final_score})
 
 func _on_stop_pressed():
 	if ctx.audio_manager: ctx.audio_manager.play_se("click")
-	var stamp = hud_notebook.create_tween()
-	stamp.tween_property(hud_notebook, "scale", Vector2(1.05, 1.05), 0.12).set_trans(Tween.TRANS_CUBIC)
-	stamp.tween_property(hud_notebook, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_BACK)
-	if ctx.audio_manager: ctx.audio_manager.play_se("combo")
-	await stamp.finished
-	
-	# 時間目終了とスコア確定
 	var gained = ctx.game_session.current_score
 	ctx.game_session.stop_period()
 	
-	ToastOverlayScript.show_toast(ctx.ui_root, "%d時間目の勉強を切り上げ、+%d点獲得！" % [current_hour, gained], Color("81c784"))
+	var display_hour = ctx.game_session.current_hour if ctx.game_session else 1
+	ToastOverlayScript.show_toast(ctx.ui_root, "%d時間目の勉強を切り上げ、+%d点獲得！" % [display_hour, gained], Color("81c784"))
 	
-	if current_hour < 6:
-		current_hour += 1
-		_reset_for_new_hour()
-	else:
-		var final_scores = ctx.game_session.stop_and_report()
-		phase_completed.emit(final_scores)
+	var final_score = ctx.game_session.stop_and_report()
+	phase_completed.emit({"score": final_score})
 
 func _reset_for_new_hour():
-	# ライバル状態のリセット
-	for r_name in rival_sim_states:
-		rival_sim_states[r_name]["score"] = 0
-		rival_sim_states[r_name]["cards"] = 0
-		rival_sim_states[r_name]["status"] = "active"
-		
-	# 場にあるカードノードの削除
 	for node in drawn_card_nodes:
-		if is_instance_valid(node):
-			node.queue_free()
+		if is_instance_valid(node): node.queue_free()
 	drawn_card_nodes.clear()
 	
-	# 時間目バッジのテキスト更新
 	if is_instance_valid(hour_label):
 		var badge_lbl = hour_label.find_child("BadgeLabel", true, false)
-		if badge_lbl:
-			badge_lbl.text = "%d時間目" % current_hour
-		else:
-			# find_childで取れなかった場合は直接最初の子ノードのテキストを更新
-			for child in hour_label.get_children():
-				if child is Label:
-					child.text = "%d時間目" % current_hour
-					break
+		if badge_lbl: badge_lbl.text = "%d時間目" % current_hour
 		
-	# トースト通知
 	ToastOverlayScript.show_toast(ctx.ui_root, "%d時間目の勉強が始まりました！" % current_hour, DeskTheme.COLOR_SAFE)
-	
-	# ボタンの再表示
-	if is_instance_valid(button_box):
-		button_box.show()
-		
-	# Vignette 明滅をリセット
-	if is_instance_valid(vignette_node):
-		vignette_node.modulate.a = 0.0
-		
+	if is_instance_valid(button_box): button_box.show()
 	_update_race_hud()
 	_set_action_buttons_enabled(true)
 
 func _are_buttons_enabled() -> bool:
 	if is_instance_valid(button_box) and button_box.get_child_count() > 0:
 		var btn = button_box.get_child(0) as Button
-		if is_instance_valid(btn):
-			return not btn.disabled
+		if is_instance_valid(btn): return not btn.disabled
 	return false
 
 func _input(event: InputEvent):
-	if not _are_buttons_enabled():
-		return
+	if not _are_buttons_enabled(): return
 	if event is InputEventKey and event.pressed and not event.is_echo():
 		if event.keycode == KEY_SPACE:
 			ctx.ui_root.get_viewport().set_input_as_handled()
@@ -974,72 +614,22 @@ func _input(event: InputEvent):
 			_on_stop_pressed()
 
 func _step_rival_simulation():
-	# 全員終了している場合は何も行わない
-	var all_done = true
-	for r_name in rival_sim_states:
-		if rival_sim_states[r_name]["status"] == "active":
-			all_done = false
-			break
-	if all_done:
+	if not is_instance_valid(ctx) or not ctx.game_session or not ctx.game_session.ai_manager:
 		return
-
-	var active_rivals = []
-	for r_name in rival_sim_states:
-		if rival_sim_states[r_name]["status"] == "active":
-			active_rivals.append(r_name)
-	
-	if active_rivals.is_empty(): return
-	
-	# シャッフルしてランダムな相手を選ぶ
-	active_rivals.shuffle()
-	
-	# 同時に行動するのは最大2人
-	var action_count = randi() % 2 + 1
-	action_count = min(action_count, active_rivals.size())
-	
-	for i in range(action_count):
-		var r_name = active_rivals[i]
-		var state = rival_sim_states[r_name]
-		var draw_prob = 0.8
-		var style = state["style"]
 		
-		# スタイルに応じた行動確率
-		if style == "safe":
-			if state["cards"] >= 3: draw_prob = 0.15
-			elif state["cards"] >= 2: draw_prob = 0.45
-		elif style == "gambler":
-			if state["cards"] >= 5: draw_prob = 0.2
-			elif state["cards"] >= 3: draw_prob = 0.75
-		else:
-			if state["cards"] >= 4: draw_prob = 0.1
-			elif state["cards"] >= 3: draw_prob = 0.35
-			elif state["cards"] >= 2: draw_prob = 0.65
-			
-		var r_val = randf()
-		if r_val < draw_prob:
-			# ドロー！
-			state["cards"] += 1
-			var add_score = randi_range(6, 12)
-			state["score"] += add_score
-			
-			# バースト確率チェック
-			var burst_prob = 0.0
-			if state["cards"] >= 5: burst_prob = 0.6
-			elif state["cards"] >= 4: burst_prob = 0.3
-			elif state["cards"] >= 3: burst_prob = 0.1
-			
-			if randf() < burst_prob:
-				state["status"] = "burst"
-				var burst_msg = "【ライバル】%s が寝落ちした！(バースト)" % r_name
-				ToastOverlayScript.show_toast(ctx.ui_root, burst_msg, DeskTheme.COLOR_BLUFF_RED)
-			else:
-				var draw_msg = "【ライバル】%s がカードを引いた！\n(計%d枚 / 予測%d点)" % [r_name, state["cards"], state["score"]]
-				ToastOverlayScript.show_toast(ctx.ui_root, draw_msg, Color("a5d6a7"))
-		else:
-			# ストップ
-			state["status"] = "stopped"
-			var stop_msg = "【ライバル】%s が勉強を切り上げた！\n(報告予測: %d点)" % [r_name, state["score"]]
-			ToastOverlayScript.show_toast(ctx.ui_root, stop_msg, Color("90caf9"))
+	# 演出としてたまにライバルの進捗をトーストで通知する
+	var daily_res = ctx.game_session.ai_manager.get_daily_results()
+	var names = daily_res.keys()
+	if names.is_empty(): return
+	
+	var r_name = names[randi() % names.size()]
+	var status = daily_res[r_name].get("status", "playing")
+	
+	if randf() < 0.15:
+		if status == "burst":
+			ToastOverlayScript.show_toast(ctx.ui_root, "%s から寝息が聞こえる..." % r_name, Color("ff8787"))
+		elif status == "stopped":
+			ToastOverlayScript.show_toast(ctx.ui_root, "%s はペンを置いたようだ。" % r_name, DeskTheme.COLOR_SAFE)
 
 func _update_item_indicators(item_type: int, remaining: int) -> void:
 	var container = item_count_labels.get(item_type) as HBoxContainer
@@ -1048,56 +638,27 @@ func _update_item_indicators(item_type: int, remaining: int) -> void:
 	for idx in range(dots.size()):
 		var dot = dots[idx] as Panel
 		if not is_instance_valid(dot): continue
-		
-		# 各インジケータードットに固有のスタイルを与える
 		var style: StyleBoxFlat = StyleBoxFlat.new()
-		style.corner_radius_top_left = 7
-		style.corner_radius_top_right = 7
-		style.corner_radius_bottom_left = 7
-		style.corner_radius_bottom_right = 7
-		
+		style.corner_radius_top_left = 7; style.corner_radius_top_right = 7
+		style.corner_radius_bottom_left = 7; style.corner_radius_bottom_right = 7
 		if idx < remaining:
-			# 点灯（アイテム残存）
 			style.bg_color = DeskTheme.COLOR_SAFE if item_type == 1 else Color("4a7de0") if item_type == 2 else DeskTheme.COLOR_ACCENT_GOLD
 		else:
-			# 消灯（アイテム使用済み）
 			style.bg_color = Color("c8c4bc", 0.35)
-		
 		dot.add_theme_stylebox_override("panel", style)
 
 func _update_deck_stack_visual(remaining: int) -> void:
-	var stack = subject_gauges.get("deck_stack") as Control
+	var stack = hud_gauges.get("deck_stack") as Control
 	if not is_instance_valid(stack): return
-	
-	# 子ノードをすべてクリア
-	for child in stack.get_children():
-		child.queue_free()
-		
-	if remaining <= 0:
-		# 空のカード枠（破線）を描画
-		var empty_box = Panel.new()
-		empty_box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		var style = StyleBoxFlat.new()
-		style.bg_color = Color.TRANSPARENT
-		style.border_width_left = 2; style.border_width_right = 2
-		style.border_width_top = 2; style.border_width_bottom = 2
-		style.border_color = Color("8a8279", 0.4)
-		style.corner_radius_top_left = 6; style.corner_radius_top_right = 6
-		style.corner_radius_bottom_left = 6; style.corner_radius_bottom_right = 6
-		empty_box.add_theme_stylebox_override("panel", style)
-		stack.add_child(empty_box)
-	else:
-		# 枚数に応じて重ねる枚数を決める
+	for child in stack.get_children(): child.queue_free()
+	if remaining > 0:
 		var layers = 1
 		if remaining >= 10: layers = 3
 		elif remaining >= 5: layers = 2
-		
 		for i in range(layers):
 			var card_img = TextureRect.new()
 			card_img.texture = DeskTheme.CARD_BACK
 			card_img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			card_img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			card_img.size = Vector2(40, 55)
-			# 重ねるためのズレを設定
 			card_img.position = Vector2(-i * 1.5, -i * 2.5)
 			stack.add_child(card_img)

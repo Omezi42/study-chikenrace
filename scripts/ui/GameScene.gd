@@ -64,7 +64,7 @@ func _ready():
 	game_context.bag_ui_elements = bag_ui_elements
 	
 	# バックエンドデータの初期ロード開始
-	backend_manager.load_scores()
+	backend_manager.load_daily_scores()
 	_show_loading()
 
 func _process(_delta):
@@ -88,7 +88,20 @@ func _show_loading():
 	tw.tween_property(loading_lbl, "position:y", loading_lbl.position.y, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
 func _on_scores_loaded(_scores = []):
-	# データロードが完了したらカバン構築フェーズを開始
+	# データロードが完了したら最初の1日を開始
+	_start_new_day_setup()
+
+func _start_new_day_setup():
+	# セッションがなければ新規作成
+	if not is_instance_valid(game_session):
+		game_session = GameSessionScript.new()
+		add_child(game_session)
+		game_context.game_session = game_session
+		game_session.setup_session()
+	else:
+		# 既存セッションを新しい日向けにリセット
+		game_session.start_new_day()
+		
 	_start_phase_bag_builder()
 
 func _clear_screen():
@@ -119,29 +132,6 @@ func _start_phase_bag_builder():
 	phase.start()
 
 func _on_bag_builder_completed():
-	_on_start_race_pressed()
-
-func _on_start_race_pressed():
-	if audio_manager: audio_manager.play_se("click")
-	var weights = {}
-	var placed_count = 0
-	for s in range(5):
-		weights[s] = []
-		for v in bag_assignments[s]:
-			if v != null:
-				weights[s].append(v)
-				placed_count += 1
-	if placed_count < 10:
-		_show_toast("すべてのポケットに付箋を入れてね！", DeskTheme.COLOR_BLUFF_RED)
-		return
-	# 古いセッションノードのメモリクリーンアップ
-	if is_instance_valid(game_session):
-		game_session.queue_free()
-	# セッション開始
-	game_session = GameSessionScript.new()
-	add_child(game_session)
-	game_session.setup_session(weights)
-	game_context.game_session = game_session
 	_animate_page_turn(_start_phase_chicken_race)
 
 func _animate_page_turn(callback: Callable):
@@ -195,7 +185,14 @@ func _start_phase_chicken_race():
 	phase.start()
 
 func _on_chicken_race_completed(_scores_data: Dictionary):
-	_show_report_screen(_scores_data)
+	if is_instance_valid(game_session) and game_session.current_hour < 6:
+		# 6時間目未満なら次の時間へ
+		game_session.current_hour += 1
+		# 次の時間の準備（アイテム選択）へループ
+		_animate_page_turn(_start_phase_bag_builder)
+	else:
+		# 6時間がすべて終了したら学習報告へ
+		_show_report_screen(_scores_data)
 
 func _show_report_screen(scores: Dictionary):
 	var phase = ReportPhaseScript.new(game_context)
@@ -213,7 +210,7 @@ func _show_day_transition():
 	phase.start()
 
 func _on_day_transition_completed():
-	_start_phase_bag_builder()
+	_start_new_day_setup()
 
 func _show_blackboard_progress():
 	var phase = BlackboardPhaseScript.new(game_context)

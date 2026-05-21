@@ -5,81 +5,121 @@ const StudyDeckScript = preload("res://scripts/core/StudyDeck.gd")
 
 var deck
 var current_score: int = 0
-var subject_scores: Dictionary = {}
-var accumulated_subject_scores: Dictionary = {}
-var ruler_bonuses: Dictionary = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0}
-var has_five_subj_comp_today: bool = false
+var accumulated_score: int = 0
+
+# ダウトなどの隠匿された得点を管理する変数
+var hidden_bonus_score: int = 0
+var current_hour: int = 1
+
+var ai_manager: RefCounted
 
 func _init():
 	deck = StudyDeckScript.new()
-	for s in range(5):
-		subject_scores[s] = 0
-		accumulated_subject_scores[s] = 0
+	ai_manager = load("res://scripts/core/AIManager.gd").new()
+	accumulated_score = 0
+	hidden_bonus_score = 0
+	current_hour = 1
 
-func setup_session(weights: Dictionary):
-	# ノイズシステム廃止につき、ノイズ数は常に0でデッキを構築
-	deck.build_deck(weights, 0)
-	has_five_subj_comp_today = false
-	for s in range(5):
-		subject_scores[s] = 0
-		accumulated_subject_scores[s] = 0
+func setup_session():
+	deck.build_initial_deck()
+	current_score = 0
+	accumulated_score = 0
+	hidden_bonus_score = 0
+
+func start_new_day():
+	# 日の初めに山札・手札・捨て札をすべてシャッフルし直す
+	deck.reset_for_next_day()
+	current_hour = 1
+	ai_manager.start_new_day()
+	ai_manager.simulate_daily_action()
 
 func draw_card() -> Dictionary:
 	var result = deck.draw()
 	sync_scores()
 	return result
 
-func apply_ruler_bonus(subject: int) -> void:
-	ruler_bonuses[subject] += 5
+func apply_item_effect(item_type: int) -> void:
+	if item_type == Enums.ItemType.ERASER:
+		# 最新の通常カードを1枚無効化する
+		for i in range(deck.drawn_cards.size() - 1, -1, -1):
+			var c = deck.drawn_cards[i]
+			if c.item_type == Enums.ItemType.NORMAL and c.is_active:
+				c.is_active = false
+				break
+	elif item_type == Enums.ItemType.ENERGY_DRINK:
+		deck.has_energy_drink_shield = true
+	elif item_type == Enums.ItemType.WORD_BOOK:
+		# 山札の上3枚を見て、バースト原因となるカードがあれば一番下へ送る簡易実装
+		_apply_word_book_effect()
+	elif item_type == Enums.ItemType.THICK_BOOK:
+		# 強制2枚ドローはフェーズ側で呼び出すためここではフラグ等の処理は不要
+		pass
+	elif item_type == Enums.ItemType.STICKY_NOTE:
+		deck.sticky_note_bonus_active = true
+	elif item_type == Enums.ItemType.CHEAT_SHEET:
+		deck.cheat_sheet_count += 1
+		
 	sync_scores()
+
+func _apply_word_book_effect() -> void:
+	var look_count = min(3, deck.deck.size())
+	if look_count <= 0: return
+	
+	var cards_to_check = []
+	for i in range(look_count):
+		cards_to_check.append(deck.deck.pop_back())
+	
+	var safe_cards = []
+	var danger_cards = []
+	
+	for c in cards_to_check:
+		var will_burst = false
+		for drawn in deck.drawn_cards:
+			if drawn.is_active and drawn.number == c.number:
+				will_burst = true
+				break
+		if will_burst:
+			danger_cards.append(c)
+		else:
+			safe_cards.append(c)
+			
+	# 安全なカードを上（末尾）に戻し、危険なカードを下（先頭）に送る
+	for dc in danger_cards:
+		deck.deck.push_front(dc)
+	for sc in safe_cards:
+		deck.deck.push_back(sc)
 
 func sync_scores() -> void:
 	var calc = deck.calculate_scores()
 	current_score = calc["total"]
-	var bonus_sum = 0
-	for s in range(5):
-		subject_scores[s] = calc["subjects"][s] + ruler_bonuses[s]
-		bonus_sum += ruler_bonuses[s]
-	# 定規分のスコアを全体スコアにも加算
-	current_score += bonus_sum
 
 func stop_period() -> void:
-	# その時間目の獲得点数を本日の累計に加算
-	sync_scores()
-	for s in range(5):
-		accumulated_subject_scores[s] += subject_scores[s]
+	# その時間目の獲得点数を本日の累計に加算（付箋ボーナスなどもここで）
+	var final_period_score = deck.finalize_score()
+	accumulated_score += final_period_score
+	current_score = 0
 	
-	# 5教科コンプリートチェック
-	var subjs = {}
-	for c in deck.drawn_cards:
-		if c.item_type == 0: # 教科カードのみ対象
-			subjs[c.subject] = true
-	if subjs.size() == 5:
-		has_five_subj_comp_today = true
+	# 次の時間目のためにリセット（手札を捨て札へ）
+	deck.used_cards.append_array(deck.drawn_cards)
+	deck.drawn_cards.clear()
+	deck.has_energy_drink_shield = false
+	deck.next_card_double_score = false
+	deck.sticky_note_bonus_active = false
+	# cheat_sheet_count は日の終わりまで持ち越すためリセットしない
 	
-	# 次の時間目のためにリセット
-	deck.reset_for_next_hour()
-	for s in range(5):
-		ruler_bonuses[s] = 0
 	sync_scores()
 
 func burst_period() -> void:
 	# その時間目の獲得点数は0として、次の時間目のためにリセット
-	deck.reset_for_next_hour()
-	for s in range(5):
-		ruler_bonuses[s] = 0
+	current_score = 0
+	deck.used_cards.append_array(deck.drawn_cards)
+	deck.drawn_cards.clear()
+	deck.has_energy_drink_shield = false
+	deck.next_card_double_score = false
+	deck.sticky_note_bonus_active = false
+	
 	sync_scores()
 
-func stop_and_report() -> Dictionary:
-	# 総合倍率 = 日付倍率（1.0 + 0.1 * play_count）+ 5教科コンプ倍率（five_subj_bonus_multiplier - 1.0）
-	var day_mult = 1.0 + 0.1 * Global.play_count
-	var comp_mult = Global.five_subj_bonus_multiplier - 1.0
-	var total_mult = day_mult + comp_mult
-	
-	# 各教科の獲得得点を倍率補正（切り捨て）して報告用データを作成
-	var final_scores = {}
-	for s in range(5):
-		var raw_score = accumulated_subject_scores[s]
-		final_scores[s] = int(floor(float(raw_score) * total_mult))
-	return final_scores
-
+func stop_and_report() -> int:
+	# 総合倍率などは廃止、純粋な累積スコアを返す
+	return accumulated_score

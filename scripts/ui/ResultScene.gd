@@ -179,42 +179,23 @@ func _start_showdown_reveal():
 		var player_box = row.find_child("PlayerBox", true, false)
 		
 		# ----------------------------------------------------
-		# 1. ライバルの暴露 (GDD準拠: 決定論的単日データ再現)
+		# 1. ライバルの暴露
 		# ----------------------------------------------------
-		var rival_names = ["慎重な優等生", "ギャンブラー", "ブラフの達人"]
-		for r_name in rival_names:
-			var r_reported = 0
-			var r_actual = 0
-			var is_lying = false
-			var total_lie = 0
+		var rivals = entry.get("rivals", [])
+		if rivals.is_empty():
+			# フォールバック
+			rivals = [
+				{"name": "慎重な優等生", "score": 50, "actual_score": 50, "is_lying": false},
+				{"name": "ギャンブラー", "score": 60, "actual_score": 60, "is_lying": false},
+				{"name": "ブラフの達人", "score": 50, "actual_score": 40, "is_lying": true}
+			]
 			
-			# CPU行動パターンの決定論的再現 (BackendManagerのget_timeline_feedsに完全に準拠)
-			if r_name == "慎重な優等生":
-				r_reported = 50
-				r_actual = 50
-				is_lying = false
-				total_lie = 0
-			elif r_name == "ギャンブラー":
-				if d == 3:
-					r_reported = 48 # 実際30 + 数学盛り18
-					r_actual = 30
-					is_lying = true
-					total_lie = 18
-				elif d == 6:
-					r_reported = 50 # 実際30 + 英語盛り20
-					r_actual = 30
-					is_lying = true
-					total_lie = 20
-				else:
-					r_reported = 60
-					r_actual = 60
-					is_lying = false
-					total_lie = 0
-			elif r_name == "ブラフの達人":
-				r_reported = 50 # 国語20, 理科20, 社会10
-				r_actual = 40   # 国語15, 理科20, 社会5
-				is_lying = true
-				total_lie = 10
+		for rival in rivals:
+			var r_name = rival.get("name", "Unknown")
+			var r_reported = rival.get("score", 0)
+			var r_actual = rival.get("actual_score", r_reported)
+			var is_lying = rival.get("is_lying", false)
+			var total_lie = r_reported - r_actual
 				
 			# プレイヤーがタイムラインでこのライバルに「いいね(ダウト)」を送っていたか
 			var voted = false
@@ -229,66 +210,28 @@ func _start_showdown_reveal():
 			var stamp_lbl: Control = null
 			var score_diff = 0
 			
-			if voted:
-				# プレイヤーがダウト(いいね)投票した場合
-				if is_lying:
-					# ダウト成功！ プレイヤー＋5点
-					stamp_lbl = DeskTheme.create_mini_stamp("ダウト成功！", Color("ff6b6b"), 13)
-					score_diff = 5
-					player_doubt_success += 1
-					if audio_manager: audio_manager.play_se("burst")
-				else:
-					# ダウト失敗(冤罪)！ プレイヤー－3点
-					stamp_lbl = DeskTheme.create_mini_stamp("冤罪ペナ！", Color("868e96"), 13)
-					score_diff = -3
-					player_doubt_failed += 1
-					if audio_manager: audio_manager.play_se("click")
+			if is_lying:
+				stamp_lbl = DeskTheme.create_mini_stamp("嘘つき", Color("ff8787"), 12)
 			else:
-				# プレイヤーがスルーした場合
-				if is_lying:
-					# 嘘つきをスルー ➔ プレイヤー加点なし。
-					# CPU2人がダウトするかを確率シミュレートして完全犯罪の成否を判定
-					var cpu_vote_count = 0
-					var rng = RandomNumberGenerator.new()
-					rng.seed = hash(r_name) + d + 888
-					var detect_prob = clamp(total_lie * 0.15, 0.1, 0.8)
-					for other_cpu in range(2):
-						if rng.randf() < detect_prob:
-							cpu_vote_count += 1
-							
-					if cpu_vote_count >= 2:
-						# 見破られ (プレイヤーはダウトしていないが、他CPUに暴かれた)
-						stamp_lbl = DeskTheme.create_mini_stamp("嘘バレ", Color("ff8787"), 12)
-					else:
-						# 完全犯罪成立 (ダウトが少なかった)
-						stamp_lbl = DeskTheme.create_mini_stamp("完全犯罪！", Color("fab005"), 12)
-				else:
-					# 正直者をスルー ➔ お互い平和。加点なし
-					stamp_lbl = DeskTheme.create_mini_stamp("信頼スルー", Color("40c057"), 12)
-					
+				stamp_lbl = DeskTheme.create_mini_stamp("正直者", Color("40c057"), 12)
+				
 			if stamp_lbl != null:
 				rivals_box.add_child(stamp_lbl)
 				await _animate_stamp(stamp_lbl)
-				
-			if score_diff != 0:
-				current_live_score = max(0, current_live_score + score_diff)
-				_update_live_score_ui(score_diff)
-				_trigger_mini_shake(abs(score_diff) * 1.5)
 				
 			if not is_skipped:
 				await get_tree().create_timer(0.2).timeout
 				
 		# ----------------------------------------------------
-		# 2. プレイヤー自身の暴露 (完全犯罪＆見破られ＆正直応援)
+		# 2. プレイヤー自身のダウト結果等の暴露
 		# ----------------------------------------------------
 		var player_lied = false
 		var total_lie = 0
-		for s in entry["subjects"]:
-			var rep = entry["subjects"][s]
-			var act = entry["actual_subjects"].get(s, rep)
-			if rep > act:
-				player_lied = true
-				total_lie += (rep - act)
+		var rep = entry.get("reported_score", 0)
+		var act = entry.get("actual_score", rep)
+		if rep > act:
+			player_lied = true
+			total_lie = rep - act
 				
 		var p_lbl_text = "あなた: 正直報告"
 		if player_lied:
@@ -299,63 +242,47 @@ func _start_showdown_reveal():
 		player_box.add_child(p_lbl)
 		
 		var p_stamp: Control = null
-		var p_score_diff = 0
+		var p_score_diff = entry.get("hidden_bonus", 0)
 		var is_perfect_crime = false
 		
 		if player_lied:
-			# プレイヤーが嘘をついていた日：ライバル3名がプレイヤーにダウト(いいね)を刺したかを確率計算
-			var p_seed = hash(Global.player_name) + d
+			# プレイヤーが嘘をついていた日：CPUによる見破り判定（簡易乱数）
 			var p_rng = RandomNumberGenerator.new()
-			p_rng.seed = p_seed
-			
-			var received_likes = 0
-			# 慎重な優等生 (見破り率高め)
-			if p_rng.randf() < clamp(total_lie * 0.18, 0.1, 0.85):
-				received_likes += 1
-			# ブラフの達人 (通常)
-			if p_rng.randf() < clamp(total_lie * 0.15, 0.1, 0.80):
-				received_likes += 1
-			# ギャンブラー (見破り率低め)
-			if p_rng.randf() < clamp(total_lie * 0.10, 0.05, 0.70):
-				received_likes += 1
-				
-			if received_likes >= 2:
-				# 2票以上で嘘見破られ確定！盛ったスコア没収 ＆ ペナルティ＝盛ったスコアの2倍
-				p_stamp = DeskTheme.create_mini_stamp("見破られた！", DeskTheme.COLOR_BLUFF_RED, 14)
-				p_score_diff = -(total_lie * 2)
+			p_rng.seed = hash(Global.player_name) + d
+			if p_rng.randf() < clamp(total_lie * 0.05, 0.1, 0.8):
+				# 見破られた！
+				p_stamp = DeskTheme.create_mini_stamp("嘘バレ！", DeskTheme.COLOR_BLUFF_RED, 14)
+				p_score_diff -= (total_lie + 20)
 				player_exposed_count += 1
 				if audio_manager: audio_manager.play_se("burst")
 				_trigger_mini_shake(12.0)
 			else:
-				# 1票以下で完全犯罪成立！嘘が通る
+				# 嘘が通った
 				p_stamp = DeskTheme.create_mini_stamp("完全犯罪！", Color("e8590c"), 14)
-				p_score_diff = 0
 				is_perfect_crime = true
 				player_perfect_crimes += 1
 				if audio_manager: audio_manager.play_se("combo")
 		else:
-			# 正直に報告していた日：ライバルからの誤ダウト(冤罪被弾)判定
-			var p_seed = hash(Global.player_name) + d + 999
-			var p_rng = RandomNumberGenerator.new()
-			p_rng.seed = p_seed
-			
-			var received_likes = 0
-			for i in range(3):
-				if p_rng.randf() < 0.15: # 各ライバル15%の確率で誤ダウト
-					received_likes += 1
-					
-			if received_likes > 0:
-				# 誤ダウトされた ➔ 冤罪ボーナス: 1票につき＋3点
-				p_stamp = DeskTheme.create_mini_stamp("正直証明＋%d" % (received_likes * 3), DeskTheme.COLOR_SAFE, 14)
-				p_score_diff = received_likes * 3
-				if audio_manager: audio_manager.play_se("combo")
-			else:
-				p_stamp = DeskTheme.create_mini_stamp("正直合格", Color("8fbf9f"), 14)
-				p_score_diff = 0
+			if p_score_diff == 0:
+				p_stamp = DeskTheme.create_mini_stamp("平和な一日", Color("8fbf9f"), 14)
 				if audio_manager: audio_manager.play_se("place")
 				
-		player_box.add_child(p_stamp)
-		await _animate_stamp(p_stamp)
+		# ダウト結果（hidden_bonus）がプラスならダウト成功ボーナス表示
+		var doubt_stamp: Control = null
+		if entry.get("hidden_bonus", 0) > 0:
+			doubt_stamp = DeskTheme.create_mini_stamp("ダウト成功＋%d" % entry.get("hidden_bonus", 0), DeskTheme.COLOR_SAFE, 13)
+			player_doubt_success += 1
+		elif entry.get("hidden_bonus", 0) < 0:
+			doubt_stamp = DeskTheme.create_mini_stamp("ダウト失敗ペナ", DeskTheme.COLOR_MUTED, 13)
+			player_doubt_failed += 1
+			
+		if p_stamp != null:
+			player_box.add_child(p_stamp)
+			await _animate_stamp(p_stamp)
+			
+		if doubt_stamp != null:
+			player_box.add_child(doubt_stamp)
+			await _animate_stamp(doubt_stamp)
 		
 		if is_perfect_crime:
 			_spawn_confetti(player_box.global_position + Vector2(250, 40))
@@ -511,84 +438,17 @@ func _show_final_report():
 	vbox.add_child(DeskTheme.create_label("学末最終通知表", 42, DeskTheme.COLOR_INK, true))
 	vbox.add_child(DeskTheme.create_label("名前: " + Global.player_name, 24, DeskTheme.COLOR_INK, true))
 	
-	# 5教科の勝敗表
+	# シーズン成績リスト
 	var table_h = HBoxContainer.new()
 	table_h.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	table_h.add_theme_constant_override("separation", 36)
+	table_h.alignment = BoxContainer.ALIGNMENT_CENTER
 	vbox.add_child(table_h)
 	
-	# 左列: 教科勝敗リスト (幅約500)
-	var win_list_v = VBoxContainer.new()
-	win_list_v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	win_list_v.alignment = BoxContainer.ALIGNMENT_CENTER
-	win_list_v.add_theme_constant_override("separation", 12)
-	table_h.add_child(win_list_v)
+	final_score = base_score
 	
-	win_list_v.add_child(DeskTheme.create_label("【教科別トップ争い結果】", 22, DeskTheme.COLOR_INK, true))
-	
-	var bonus_added_subjects = []
-	bonus_score = 0
-	
-	# デイリー教科1位ボーナスの教科別集計
-	var daily_bonus_per_subject = {}
-	for s in range(5):
-		daily_bonus_per_subject[s] = 0
-	for key in Global.daily_subject_top_bonus:
-		var parts = str(key).split("_")
-		if parts.size() >= 2:
-			var subj = int(parts[1])
-			if subj >= 0 and subj < 5:
-				daily_bonus_per_subject[subj] += Global.daily_subject_top_bonus[key]
-	
-	for s in range(5):
-		var row = VBoxContainer.new()
-		row.add_theme_constant_override("separation", 4)
-		win_list_v.add_child(row)
-		
-		var row_h = HBoxContainer.new()
-		row_h.add_theme_constant_override("separation", 12)
-		row.add_child(row_h)
-		
-		var icon = DeskTheme.create_icon_rect(DeskTheme.subject_texture(s), Vector2(34, 34))
-		row_h.add_child(icon)
-		
-		var name_lbl = DeskTheme.create_label(DeskTheme.subject_name(s), 18, DeskTheme.subject_color(s), true)
-		name_lbl.custom_minimum_size = Vector2(60, 0)
-		row_h.add_child(name_lbl)
-		
-		var top_player = backend_manager.get_top_player_for_subject(s)
-		var top_name = top_player["name"]
-		var top_sc = top_player["score"]
-		
-		var is_my_top = (top_name == Global.player_name)
-		
-		# シーズン教科トップボーナス (+20点)
-		var result_text = ""
-		var result_color = DeskTheme.COLOR_MUTED
-		if is_my_top:
-			result_text = "学年トップ! +20点"
-			result_color = DeskTheme.COLOR_BLUFF_RED
-			bonus_score += 20
-			bonus_added_subjects.append(s)
-		else:
-			result_text = "1位: %s (%d点)" % [top_name, top_sc]
-			result_color = DeskTheme.COLOR_INK
-			
-		var res_lbl = DeskTheme.create_label(result_text, 18, result_color, true)
-		row_h.add_child(res_lbl)
-		
-		# デイリーボーナス行
-		var d_bonus = daily_bonus_per_subject[s]
-		if d_bonus > 0:
-			var daily_count = d_bonus / 5
-			var d_lbl = DeskTheme.create_label("  デイリー1位 x%d日 = +%d点" % [daily_count, d_bonus], 16, DeskTheme.COLOR_ACCENT_GOLD, true)
-			row.add_child(d_lbl)
-			bonus_score += d_bonus
-	
-	final_score = base_score + bonus_score
-	
-	# 右列: 総合成績通知表 (幅約380)
-	var report_card = DeskTheme.create_sticky_note(Color("fffae6"), Vector2(380, 420), 1.0)
+	# 総合成績通知表 (幅広めに中央配置)
+	var report_card = DeskTheme.create_sticky_note(Color("fffae6"), Vector2(500, 420), 1.0)
 	report_card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	table_h.add_child(report_card)
 	
@@ -599,14 +459,10 @@ func _show_final_report():
 	
 	rc_v.add_child(DeskTheme.create_label("【成績分析】", 20, DeskTheme.COLOR_MUTED, true))
 	
-	var base_lbl = DeskTheme.create_label("素点合計: %d点" % base_score, 20, DeskTheme.COLOR_INK, true)
+	var base_lbl = DeskTheme.create_label("最終獲得スコア: %d点" % base_score, 24, DeskTheme.COLOR_INK, true)
 	rc_v.add_child(base_lbl)
 	
-	bonus_score_label = DeskTheme.create_label("トップボーナス: ＋0点", 20, DeskTheme.COLOR_INK, true)
-	rc_v.add_child(bonus_score_label)
-	
-	final_score_label = DeskTheme.create_label("総合評価点: %d点" % base_score, 24, DeskTheme.COLOR_INK, true)
-	rc_v.add_child(final_score_label)
+
 	
 	# ランク判定
 	rank_label = DeskTheme.create_label("判定: F", 38, DeskTheme.COLOR_MUTED, true)
@@ -661,57 +517,7 @@ func _show_final_report():
 	
 	DeskTheme.animate_entrance(page)
 	
-	# ゴールドスタンプ連打演出シーケンス (Tween)
-	_run_stamp_sequence(bonus_added_subjects)
-
-func _run_stamp_sequence(subjects: Array):
-	await create_tween().tween_interval(0.6).finished
-	
-	# 自分がトップを取った教科の数だけ王冠スタンプを押す
-	for s in subjects:
-		var stamp = TextureRect.new()
-		stamp.texture = DeskTheme.CROWN_TEXTURE
-		stamp.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		stamp.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		stamp.custom_minimum_size = Vector2(50, 50)
-		stamp.rotation_degrees = randf_range(-20, 20)
-		stamp.scale = Vector2(4.0, 4.0)
-		stamp.modulate.a = 0.0
-		stamp.pivot_offset = Vector2(25, 25)
-		
-		# 対応する教科の行の末尾にスタンプを落とす
-		var list_container = screen_content.get_child(0).get_node("Content/VBoxContainer/HBoxContainer/VBoxContainer")
-		var target_row = list_container.get_child(s + 1) # ヘッダー分+1
-		target_row.add_child(stamp)
-		
-		var tw = stamp.create_tween()
-		tw.set_parallel(true)
-		tw.tween_property(stamp, "scale", Vector2(1.0, 1.0), 0.25).set_trans(Tween.TRANS_BOUNCE)
-		tw.tween_property(stamp, "modulate:a", 1.0, 0.15)
-		
-		if audio_manager: audio_manager.play_se("combo")
-		
-		# 画面シェイク
-		var shake = create_tween().set_loops(3)
-		shake.tween_callback(func(): ui_root.position = Vector2(randf_range(-4, 4), randf_range(-4, 4)))
-		shake.tween_interval(0.04)
-		await shake.finished
-		ui_root.position = Vector2.ZERO
-		
-		await tw.finished
-		await create_tween().tween_interval(0.4).finished
-		
-	# ボーナススコア表示をインクリメントしていくジューシーなTween
-	if bonus_score > 0:
-		var score_tw = create_tween()
-		score_tw.tween_method(func(val):
-			bonus_score_label.text = "トップボーナス: ＋%d点" % val
-			bonus_score_label.add_theme_color_override("font_color", DeskTheme.COLOR_ACCENT_GOLD)
-			final_score_label.text = "総合評価点: %d点" % (base_score + val)
-			if audio_manager: audio_manager.play_se("place")
-		, 0, bonus_score, 0.6)
-		
-		await score_tw.finished
+	# スタンプ連打・ボーナス演出は削除したため即座にランク表示へ
 		
 	# 最終的なランク評価とS-Fスタンプ
 	var rank_char = "F"
@@ -788,11 +594,8 @@ func _on_title_pressed():
 	# シーズン終了時にゲームデータを初期化
 	Global.total_score = 0
 	Global.play_count = 0
-	for s in Global.daily_noises:
-		Global.daily_noises[s] = 0
 	Global.score_history.clear()
 	Global.accumulated_votes.clear()
-	Global.daily_subject_top_bonus.clear()
 	Global.save_data()
 	
 	SceneTransition.fade_to_scene("res://Title.tscn")
@@ -830,4 +633,3 @@ func _spawn_confetti(pos: Vector2) -> void:
 	
 	var timer = get_tree().create_timer(2.2)
 	timer.timeout.connect(particles.queue_free)
-

@@ -11,15 +11,16 @@ var game_session
 var audio_manager: AudioManager
 var backend_manager
 
+# カバン状態とUI要素
+var bag_assignments: Dictionary = {}
+var bag_ui_elements: Dictionary = {}
+
 # UIルートノード
 var ui_root: Control
 var screen_content: Control
 
-# カバン構築用の状態
-var bag_assignments: Dictionary = {}
-var bag_ui_elements: Dictionary = {}
-var selected_bag_subject: int = 8
-var selected_bag_slot: int = -1
+# スタンス（バフ）選択状態
+var current_daily_stance: String = "normal"
 
 # ビネット / UI状態
 var vignette_overlay: Panel
@@ -27,20 +28,12 @@ var chikista_active_tab: int = 0
 var active_notebook: PanelContainer
 var heartbeat_tween: Tween
 
-# ドラッグ＆ドロップ状態
-var is_dragging: bool = false
-var drag_data: Dictionary = {}
-var drag_preview: Control = null
-var hovered_slot_subject: int = -1
-var hovered_slot_idx: int = -1
-
 # チキンレース状態
 var play_desk: Control
 var card_container: Control
 var drawn_card_nodes: Array = []
 var status_label: Label
 var hud_notebook: Control
-var subject_gauges: Dictionary = {}
 var item_count_labels: Dictionary = {}
 var burst_warning_banner: Panel
 var next_burst_label: Label
@@ -67,8 +60,3 @@ func setup(scene: Control) -> void:
 		backend_manager = scene.backend_manager
 	else:
 		backend_manager = scene.get_node_or_null("/root/BackendManager")
-	
-	# カバンデータの初期化 (デフォルトが空なら初期化)
-	for s in range(5):
-		if not bag_assignments.has(s):
-			bag_assignments[s] = [null, null]

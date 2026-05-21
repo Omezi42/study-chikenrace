@@ -52,9 +52,7 @@ func _show_day_transition():
 	cal_v.add_child(day_lbl)
 	
 	# 前日スコアサマリー
-	var last_total = 0
-	for s in Global.last_reported_scores.keys():
-		last_total += Global.last_reported_scores[s]
+	var last_total = Global.last_reported_score
 	if last_total > 0:
 		cal_v.add_child(DeskTheme.create_label("本日の成果: %d点獲得！" % last_total, 14, DeskTheme.COLOR_SAFE, true))
 	else:

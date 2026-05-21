@@ -273,8 +273,26 @@ static func create_item_card_large(item_type: int) -> Control:
 		var icon = create_icon_rect(item_tex, Vector2(100, 100))
 		vbox.add_child(icon)
 		
-	var name_str = "消しゴム" if item_type == 1 else "ペン" if item_type == 2 else "定規" if item_type == 3 else "睡魔(マイナス)"
-	var col = Color("ff8c8c") if item_type == 1 else Color("8cffd3") if item_type == 2 else Color("f0c040") if item_type == 3 else Color("5c5766")
+	var name_str = ""
+	var col = Color("5c5766")
+	var it_char = "?"
+	
+	match item_type:
+		Enums.ItemType.ERASER:
+			name_str = "消しゴム"; col = Color("ff8c8c"); it_char = "消"
+		Enums.ItemType.ENERGY_DRINK:
+			name_str = "エナドリ"; col = Color("8cffd3"); it_char = "エ"
+		Enums.ItemType.WORD_BOOK:
+			name_str = "単語帳"; col = Color("f0c040"); it_char = "単"
+		Enums.ItemType.RED_SHEET:
+			name_str = "赤シート"; col = Color("ff4040"); it_char = "赤"
+		Enums.ItemType.THICK_BOOK:
+			name_str = "参考書"; col = Color("4040ff"); it_char = "参"
+		Enums.ItemType.STICKY_NOTE:
+			name_str = "付箋"; col = Color("f0f040"); it_char = "付"
+		Enums.ItemType.CHEAT_SHEET:
+			name_str = "カンペ"; col = Color("808080"); it_char = "カ"
+			
 	vbox.add_child(create_label(name_str, 20, col, true))
 	
 	# 左上にミニバッジを追加（重ね合わされても見えるように）
@@ -289,7 +307,6 @@ static func create_item_card_large(item_type: int) -> Control:
 	badge_style.corner_radius_bottom_right = 6
 	mini_badge.add_theme_stylebox_override("panel", badge_style)
 	
-	var it_char = "消" if item_type == 1 else "筆" if item_type == 2 else "定"
 	var mini_lbl = create_label(it_char, 13, Color.WHITE, true)
 	mini_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	mini_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -558,8 +575,8 @@ static func subject_name(subject: int) -> String:
 static func item_texture(item_type: int) -> Texture2D:
 	match item_type:
 		Enums.ItemType.ERASER: return ITEM_ERASER
-		Enums.ItemType.PEN: return ITEM_PEN
-		Enums.ItemType.RULER: return ITEM_RULER
+		Enums.ItemType.ENERGY_DRINK: return ITEM_PEN
+		Enums.ItemType.WORD_BOOK: return ITEM_RULER
 	return null
 
 static func subject_texture(subject: int) -> Texture2D:

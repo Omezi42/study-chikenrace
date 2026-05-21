@@ -5,102 +5,118 @@ const CardDataScript = preload("res://scripts/data/CardData.gd")
 
 var deck: Array = []
 var drawn_cards: Array = []
-var used_cards: Array = []
-var remaining_erasers: int = 0
-var ruler_bonuses: Dictionary = {}
+var used_cards: Array = [] # 捨て札。日をまたぐ際に山札に戻る。
 
-func _init():
-	for s in range(5): ruler_bonuses[s] = 0
+# アイテムによる状態バフ
+var has_energy_drink_shield: bool = false
+var next_card_double_score: bool = false
+var sticky_note_bonus_active: bool = false
+var cheat_sheet_count: int = 0
 
-func reset_for_next_hour() -> void:
-	used_cards.append_array(drawn_cards)
-	drawn_cards.clear()
-	remaining_erasers = 0
-	for s in ruler_bonuses.keys(): ruler_bonuses[s] = 0
-
-func build_deck(weights: Dictionary, noise_count: int = 0) -> void:
-	deck.clear()
+func reset_for_next_day() -> void:
+	# 新しい日（準備フェーズ直前）に呼ばれ、手札・捨て札すべてを山札に戻してシャッフルする
+	deck.append_array(drawn_cards)
+	deck.append_array(used_cards)
 	drawn_cards.clear()
 	used_cards.clear()
-	remaining_erasers = 0
-	for s in ruler_bonuses.keys(): ruler_bonuses[s] = 0
 	
-	for subj in weights.keys():
-		var w_list = weights[subj]
-		for w in w_list:
-			for i in range(w):
-				deck.append(CardDataScript.new(0, subj, w))
+	# バフ状態のリセット
+	has_energy_drink_shield = false
+	next_card_double_score = false
+	sticky_note_bonus_active = false
+	cheat_sheet_count = 0
 	
-	for i in range(2):
-		deck.append(CardDataScript.new(1)) # ERASER
-		deck.append(CardDataScript.new(2)) # PEN
-		deck.append(CardDataScript.new(3)) # RULER
-	
-	for i in range(noise_count):
-		deck.append(CardDataScript.new(4)) # NOISE
+	for c in deck:
+		c.is_active = true # 無効化状態をリセット
 	
 	deck.shuffle()
 
+func build_initial_deck() -> void:
+	deck.clear()
+	drawn_cards.clear()
+	used_cards.clear()
+	CardDataScript.next_id = 0
+	
+	has_energy_drink_shield = false
+	next_card_double_score = false
+	sticky_note_bonus_active = false
+	cheat_sheet_count = 0
+	
+	# 通常カード: 1〜10まで、その数字と同じ枚数だけ
+	for i in range(1, 11):
+		for _j in range(i):
+			deck.append(CardDataScript.new(Enums.ItemType.NORMAL, i))
+			
+	deck.shuffle()
 
+func add_item_card(item_type: int, number: int) -> void:
+	deck.append(CardDataScript.new(item_type, number))
+	deck.shuffle()
+
+# ドロー処理の戻り値は、引いたカードの情報やバースト状態を返す
 func draw() -> Dictionary:
 	if deck.is_empty():
 		if not used_cards.is_empty():
-			# 墓地から山札をリシャッフル（現在進行中の時間目の場にあるカードを除く）
+			# 捨て札を山札に戻してリシャッフル
 			deck = used_cards.duplicate()
 			used_cards.clear()
+			for c in deck:
+				c.is_active = true
 			deck.shuffle()
 		else:
-			return { "card": null, "burst": false, "erased": false }
+			return { "card": null, "burst": false, "prevented": false }
 			
 	var card = deck.pop_back()
 	
-	if card.item_type == 1: # ERASER
-		remaining_erasers += 1
-		drawn_cards.append(card)
-		return { "card": card, "burst": false, "erased": false }
-		
+	# バースト判定
 	var is_burst = _check_burst(card)
-	if is_burst and remaining_erasers > 0:
-		remaining_erasers -= 1
-		# _remove_conflicting_card(card.weight) は呼ばない（1枚目は残す）
-		return { "card": card, "burst": false, "erased": true }
-		
-	drawn_cards.append(card)
-	return { "card": card, "burst": is_burst, "erased": false }
+	var prevented = false
+	
+	if is_burst:
+		if has_energy_drink_shield:
+			has_energy_drink_shield = false
+			is_burst = false
+			prevented = true
+			drawn_cards.append(card)
+		else:
+			# 本当のバースト時は引いたカード自体は場に出す（バースト原因として表示）
+			drawn_cards.append(card)
+	else:
+		drawn_cards.append(card)
+	
+	return { "card": card, "burst": is_burst, "prevented": prevented }
 
 func _check_burst(card) -> bool:
-	if card.item_type != 0: return false # SUBJECT
+	# アイテム、通常カード問わず number が一致すればバースト
 	for c in drawn_cards:
-		if c.item_type == 0 and c.weight == card.weight: return true
+		if c.is_active and c.number == card.number:
+			return true
 	return false
 
-func _remove_conflicting_card(weight: int) -> void:
-	for i in range(drawn_cards.size() - 1, -1, -1):
-		var c = drawn_cards[i]
-		if c.item_type == 0 and c.weight == weight:
-			drawn_cards.remove_at(i)
-			break
-
+# その日の現在のスコアを計算
 func calculate_scores() -> Dictionary:
 	var total = 0
-	var subject_scores = { 0:0, 1:0, 2:0, 3:0, 4:0 }
-	var pen_count = 0
-	var noise_count = 0
+	var double_next = false
 	
 	for c in drawn_cards:
-		if c.item_type == 0:
-			subject_scores[c.subject] += c.weight
-			total += c.weight
-		elif c.item_type == 2: pen_count += 1 # PEN
-		elif c.item_type == 4: noise_count += 1 # NOISE
-	
-	if pen_count > 0: total += drawn_cards.size() * pen_count
-	total -= noise_count * 5 
-	return { "total": max(0, total), "subjects": subject_scores }
+		if not c.is_active:
+			continue
+			
+		if c.item_type == Enums.ItemType.NORMAL:
+			var score_to_add = c.number
+			if double_next:
+				score_to_add *= 2
+				double_next = false
+			total += score_to_add
+		elif c.item_type == Enums.ItemType.RED_SHEET:
+			double_next = true
+			
+	return { "total": total }
 
-func is_full_combo() -> bool:
-	var drawn_subjects = []
-	for c in drawn_cards:
-		if c.item_type == 0:
-			if not drawn_subjects.has(c.subject): drawn_subjects.append(c.subject)
-	return drawn_subjects.size() == 5
+# ストップ時の最終スコア計算（付箋ボーナス等の適用）
+func finalize_score() -> int:
+	var score_dict = calculate_scores()
+	var final_score = score_dict["total"]
+	if sticky_note_bonus_active:
+		final_score += 30
+	return final_score
