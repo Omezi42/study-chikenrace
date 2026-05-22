@@ -2,7 +2,11 @@ class_name AudioManager
 extends Node
 
 var bgm_player: AudioStreamPlayer
-var se_player: AudioStreamPlayer
+
+# Sprint 8: SE再生プール（複数SEの同時再生をサポート）
+var se_pool: Array[AudioStreamPlayer] = []
+var se_pool_size: int = 4
+var se_pool_index: int = 0
 
 var bgm_stream: AudioStream
 var se_draw: AudioStream
@@ -16,8 +20,11 @@ func _ready():
 	add_child(bgm_player)
 	bgm_player.volume_db = -10.0
 	
-	se_player = AudioStreamPlayer.new()
-	add_child(se_player)
+	# Sprint 8: SEプール初期化（4つのプレイヤーを用意して同時再生対応）
+	for i in range(se_pool_size):
+		var sp = AudioStreamPlayer.new()
+		add_child(sp)
+		se_pool.append(sp)
 	
 	if ResourceLoader.exists("res://assets/bgm_main.wav"):
 		bgm_stream = load("res://assets/bgm_main.wav")
@@ -55,7 +62,10 @@ func play_se(type: String):
 			pitch = randf_range(1.1, 1.3)
 	
 	if stream:
-		se_player.stream = stream
-		se_player.pitch_scale = pitch
-		se_player.volume_db = vol
-		se_player.play()
+		# Sprint 8: プールから空いてるプレイヤーを選ぶ（ラウンドロビン）
+		var player = se_pool[se_pool_index]
+		se_pool_index = (se_pool_index + 1) % se_pool_size
+		player.stream = stream
+		player.pitch_scale = pitch
+		player.volume_db = vol
+		player.play()

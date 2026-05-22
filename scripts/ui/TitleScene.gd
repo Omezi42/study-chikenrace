@@ -21,7 +21,7 @@ func _ready():
 	DeskTheme.apply_font(vbox)
 	add_child(vbox)
 
-	vbox.add_child(DeskTheme.create_floating_badge("放課後の机の上で駆け引きする7日間", DeskTheme.COLOR_MUTED, 18))
+	vbox.add_child(DeskTheme.create_floating_badge("放課後の机の上で駆け引きする5日間", DeskTheme.COLOR_MUTED, 18))
 	
 
 	
@@ -43,10 +43,42 @@ func _ready():
 	start_btn.pivot_offset = Vector2(160, 38)
 	vbox.add_child(start_btn)
 	
+	# Sprint 7: スタートボタンの下にクイックヒント
+	var hint_lbl = DeskTheme.create_label("✨ 嘘と覚悟のチキンレース！カードを引いて勉強し、嘘の報告でライバルを出し抜こう！", 14, DeskTheme.COLOR_MUTED)
+	hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hint_lbl.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	vbox.add_child(hint_lbl)
+	
 	# ぽよぽよTween
 	var tw = start_btn.create_tween().set_loops()
 	tw.tween_property(start_btn, "scale", Vector2(1.05, 1.05), 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tw.tween_property(start_btn, "scale", Vector2(1.0, 1.0), 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+	var sub_hbox = HBoxContainer.new()
+	sub_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	sub_hbox.add_theme_constant_override("separation", 20)
+	vbox.add_child(sub_hbox)
+
+	var loadout_btn = DeskTheme.create_button("デッキ編成", Vector2(200, 56), DeskTheme.COLOR_SAFE, Color("0e5057"), false, 18)
+	loadout_btn.pressed.connect(func():
+		if audio_manager: audio_manager.play_se("click")
+		SceneTransition.fade_to_scene("res://LoadoutScene.tscn")
+	)
+	sub_hbox.add_child(loadout_btn)
+
+	var zukan_btn = DeskTheme.create_button("アイテム図鑑", Vector2(200, 56), Color("4dabf7"), Color("228be6"), false, 18)
+	zukan_btn.pressed.connect(func():
+		if audio_manager: audio_manager.play_se("click")
+		SceneTransition.fade_to_scene("res://ZukanScene.tscn")
+	)
+	sub_hbox.add_child(zukan_btn)
+
+	var gacha_btn = DeskTheme.create_button("購買部 (ガチャ)", Vector2(200, 56), DeskTheme.COLOR_ACCENT_GOLD, Color("b38f30"), false, 18)
+	gacha_btn.pressed.connect(func():
+		if audio_manager: audio_manager.play_se("click")
+		SceneTransition.fade_to_scene("res://GachaScene.tscn")
+	)
+	sub_hbox.add_child(gacha_btn)
 
 	var help_btn = DeskTheme.create_button("遊び方を見る", Vector2(240, 56), Color("5f6f81"), Color("445261"), false, 18)
 	help_btn.pressed.connect(_show_tutorial)
@@ -115,6 +147,8 @@ func _create_id_card():
 		rank_str = "未プレイ"
 	var rank_color = DeskTheme.COLOR_ACCENT_GOLD if Global.best_rank_cpu in ["S", "A"] else DeskTheme.COLOR_INK
 	id_vbox.add_child(DeskTheme.create_label(rank_str, 18, rank_color, true))
+	
+	id_vbox.add_child(DeskTheme.create_label("所持コイン: %d枚" % Global.coins, 16, Color("e67700"), true))
 
 func _on_start_pressed():
 	if audio_manager: audio_manager.play_se("click")
@@ -123,7 +157,12 @@ func _on_start_pressed():
 	for c in get_children():
 		if c is VBoxContainer:
 			for cc in c.get_children():
-				if cc is Button: cc.disabled = true
+				if cc is Button:
+					cc.disabled = true
+				elif cc is HBoxContainer:
+					for ccc in cc.get_children():
+						if ccc is Button:
+							ccc.disabled = true
 	
 	if not Global.has_seen_tutorial:
 		_show_tutorial(true)
@@ -216,11 +255,11 @@ func _show_tutorial(start_after: bool = false):
 		return null
 	
 	var slides = [
-		{"img": get_slide_img.call("res://assets/tutorial/slide1.png"), "text": "1. まずは5つの教科に、手持ちの「学習付箋（1〜10）」を\n2枚ずつ計画ノートの『計画スロット』へ貼って学習計画を行います。"},
-		{"img": get_slide_img.call("res://assets/tutorial/slide2.png"), "text": "2. 本日の勉強は1時間目〜6時間目の【計6回】のチキンレースです。\nドローしたカードは1日中そのまま引き継がれます（カウンティング要素！）。"},
+		{"img": get_slide_img.call("res://assets/tutorial/slide1.png"), "text": "1. まずは5つの教科に、手持ちの「学習付箋（1〜10）」を\n計画ノートの『計画スロット』へ貼って学習計画を行います。"},
+		{"img": get_slide_img.call("res://assets/tutorial/slide2.png"), "text": "2. 本日の勉強は1時間目〜3時間目の【1日計3回】のチキンレースです。\nドローしたカードは1日中そのまま引き継がれます（カウンティング要素！）。"},
 		{"img": get_slide_img.call("res://assets/tutorial/slide3.png"), "text": "3. 進行中の時間目に場と同じ数字を引くと、その時間目は寝落ち（バースト）！\nバーストした時間目の獲得点数は0点になりますが、山札はそのまま引き継がれます。"},
 		{"img": get_slide_img.call("res://assets/tutorial/slide4.png"), "text": "4. 勉強後、チキスタ（スマホ）で「嘘の成績（盛った点数）」を\nスライダーで報告できます。嘘がバレなければそのまま高得点をキープ！"},
-		{"img": get_slide_img.call("res://assets/tutorial/slide5.png"), "text": "5. 翌朝、嘘をライバルに見破られると大ペナルティ（盛ったスコアの2倍がマイナス）！\n逆に正直者で応援スタンプを貰えると【＋5点】！極限の心理戦を勝ち抜きましょう！"},
+		{"img": get_slide_img.call("res://assets/tutorial/slide5.png"), "text": "5. 報告後、チキスタでライバルに【👍ダウト】！嘘を見破ると盛り分+15点、冤罪は−20点。\n自分の嘘がバレると盛り分+15点が減点。最終日まで隠し点として溜まる心理戦！"},
 		{"img": null, "text": "💡 必勝ワンポイントアドバイス！\nカードは1日を通じて引き継がれるため、すでに場に出たカード（カウンティング）を\n記憶しておけば、残りの時間目でバーストする確率を完璧に予測できます！"}
 	]
 	
@@ -270,6 +309,19 @@ func _show_tutorial(start_after: bool = false):
 		btn_hbox.add_child(prev_btn)
 		btn_hbox.add_child(next_btn)
 		
+		# Sprint 7: ページインジケータードット
+		var dots_hbox = HBoxContainer.new()
+		dots_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		dots_hbox.add_theme_constant_override("separation", 10)
+		vbox.add_child(dots_hbox)
+		var dot_nodes = []
+		for i in range(slides.size()):
+			var dot = ColorRect.new()
+			dot.custom_minimum_size = Vector2(10, 10)
+			dot.color = DeskTheme.COLOR_MUTED if i != 0 else DeskTheme.COLOR_SAFE
+			dots_hbox.add_child(dot)
+			dot_nodes.append(dot)
+		
 		var update_ui = func():
 			var page = state["page"]
 			var slide_img = slides[page]["img"]
@@ -284,6 +336,10 @@ func _show_tutorial(start_after: bool = false):
 			lbl.text = slides[page]["text"]
 			prev_btn.disabled = (page == 0)
 			next_btn.text = "次へ ＞" if page < slides.size() - 1 else ("ゲーム開始！" if start_after else "解説を閉じる")
+			
+			# Sprint 7: ページインジケーター更新
+			for i in range(dot_nodes.size()):
+				dot_nodes[i].color = DeskTheme.COLOR_SAFE if i == page else DeskTheme.COLOR_MUTED
 			
 		prev_btn.pressed.connect(func():
 			if audio_manager: audio_manager.play_se("click")

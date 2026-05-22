@@ -185,13 +185,13 @@ func _start_phase_chicken_race():
 	phase.start()
 
 func _on_chicken_race_completed(_scores_data: Dictionary):
-	if is_instance_valid(game_session) and game_session.current_hour < 6:
-		# 6時間目未満なら次の時間へ
+	if is_instance_valid(game_session) and game_session.current_hour < 3:
+		# 3時間目未満なら次の時間へ
 		game_session.current_hour += 1
 		# 次の時間の準備（アイテム選択）へループ
 		_animate_page_turn(_start_phase_bag_builder)
 	else:
-		# 6時間がすべて終了したら学習報告へ
+		# 3時間がすべて終了したら学習報告へ
 		_show_report_screen(_scores_data)
 
 func _show_report_screen(scores: Dictionary):

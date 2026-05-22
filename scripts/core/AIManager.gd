@@ -2,6 +2,7 @@ class_name AIManager
 extends RefCounted
 
 const StudyDeckScript = preload("res://scripts/core/StudyDeck.gd")
+const GameBalanceScript = preload("res://scripts/core/GameBalance.gd")
 
 var rivals = [
 	{"name": "慎重な優等生", "style": "safe"},
@@ -34,19 +35,10 @@ func start_new_day():
 		var state = rival_states[r_name]
 		state["deck"].reset_for_next_day()
 		
-		# AIのデッキビルド (ランダムにアイテムを1つ追加)
-		# 実際はプレイスタイルに合わせて選ぶとより良いが、ここでは簡易的にランダム
-		var items = [
-			{ "type": Enums.ItemType.ERASER, "number": 2 },
-			{ "type": Enums.ItemType.ENERGY_DRINK, "number": 7 },
-			{ "type": Enums.ItemType.WORD_BOOK, "number": 4 },
-			{ "type": Enums.ItemType.RED_SHEET, "number": 8 },
-			{ "type": Enums.ItemType.THICK_BOOK, "number": 10 },
-			{ "type": Enums.ItemType.STICKY_NOTE, "number": 1 },
-			{ "type": Enums.ItemType.CHEAT_SHEET, "number": 5 }
-		]
-		var chosen = items[randi() % items.size()]
-		state["deck"].add_item_card(chosen.type, chosen.number)
+		# AIのデッキビルド: プレイスタイルに応じたアイテム選択
+		var style = state["style"]
+		var chosen = _choose_item_for_style(style)
+		state["deck"].add_item_card(chosen.type)
 		
 		daily_results[r_name] = {
 			"actual_score": 0,
@@ -70,20 +62,42 @@ func simulate_daily_action() -> void:
 		var current_score = 0
 		var is_burst = false
 		
+		# その日の気分（日次モチベーション/リスク許容度のゆらぎ）
+		var mood = randf_range(-0.04, 0.04)
+		var current_day = Global.score_history.size() + 1
+		var is_trailing = state["total_score"] < Global.total_score
+		
+		# 負けている後半戦なら、リスク許容度が上昇（desperation）
+		var desperation = 0.0
+		if is_trailing and current_day >= 3:
+			desperation = 0.08
+		
 		# 簡易的なチキンレースシミュレーション（時間割ごとの区切りを無視して1日分のドローを行う）
 		var max_draws = 20
 		for i in range(max_draws):
 			# リスク評価
 			var burst_prob = _calculate_burst_probability(deck)
-			var threshold = 0.20
+			var base_threshold = 0.20
 			
 			if style == "safe":
-				threshold = 0.10
+				base_threshold = 0.10 + randf_range(-0.02, 0.02)
 			elif style == "gambler":
-				threshold = 0.35
+				base_threshold = 0.35 + randf_range(-0.06, 0.06)
 			elif style == "bluffer":
-				threshold = 0.25
+				base_threshold = 0.25 + randf_range(-0.04, 0.04)
 				
+			var threshold = base_threshold + mood + desperation
+			
+			# 精神的プレッシャー（カードを引けば引くほど安全マージンを取りたくなる）
+			threshold -= deck.drawn_cards.size() * 0.005
+			
+			# エナジードリンクがあるなら大幅に強気になる
+			if deck.has_energy_drink_shield:
+				threshold += 0.15
+				
+			# しきい値を適切な範囲にクランプ（0.02以下になると何も引かずにやめてしまうのを防ぐ）
+			threshold = clamp(threshold, 0.02, 0.85)
+			
 			if burst_prob > threshold:
 				# ストップ
 				break
@@ -101,10 +115,10 @@ func simulate_daily_action() -> void:
 				
 			# アイテム効果の適用（CPUは自動で効果を発動）
 			if card.item_type == Enums.ItemType.ERASER:
-				# 最新の通常カード無効化
+				# 最新のアクティブなカードを無効化（消しゴム自身は除く）
 				for j in range(deck.drawn_cards.size() - 1, -1, -1):
 					var c = deck.drawn_cards[j]
-					if c.item_type == Enums.ItemType.NORMAL and c.is_active:
+					if c.item_type != Enums.ItemType.ERASER and c.is_active:
 						c.is_active = false
 						break
 			elif card.item_type == Enums.ItemType.ENERGY_DRINK:
@@ -128,25 +142,34 @@ func simulate_daily_action() -> void:
 		var reported = final_score
 		var is_lying = false
 		var bluff_amount = 0
-		var max_bluff = 50 + (deck.cheat_sheet_count * 50)
+		var max_bluff = GameBalanceScript.max_bluff_cap(deck.cheat_sheet_count)
+		
+		# 心理戦・状況に応じたブラフ確率の補正
+		var lie_prob_modifier = 0.0
+		var bluff_amt_modifier = 1.0
+		
+		if is_trailing and current_day >= 3:
+			# 負けていて後半戦の場合、焦りからブラフ率がアップし、金額も大きくなる
+			lie_prob_modifier = 0.15
+			bluff_amt_modifier = 1.25
 		
 		if style == "safe":
-			# ほとんど嘘をつかない（10%の確率で少し盛る）
-			if randf() < 0.10:
-				bluff_amount = randi_range(5, 15)
+			# ほとんど嘘をつかない（10% + 補正の確率で少し盛る）
+			if randf() < (0.10 + lie_prob_modifier):
+				bluff_amount = randi_range(5, int(15 * bluff_amt_modifier))
 				is_lying = true
 		elif style == "gambler":
 			# バーストした時は高確率でMAXまで盛る
-			if is_burst and randf() < 0.70:
-				bluff_amount = randi_range(max_bluff / 2, max_bluff)
+			if is_burst and randf() < (0.70 + lie_prob_modifier):
+				bluff_amount = randi_range(int(max_bluff / 2), int(max_bluff * bluff_amt_modifier))
 				is_lying = true
-			elif randf() < 0.30:
-				bluff_amount = randi_range(10, 30)
+			elif randf() < (0.30 + lie_prob_modifier):
+				bluff_amount = randi_range(10, int(30 * bluff_amt_modifier))
 				is_lying = true
 		elif style == "bluffer":
 			# 頻繁に盛る
-			if randf() < 0.60:
-				bluff_amount = randi_range(10, max_bluff)
+			if randf() < (0.60 + lie_prob_modifier):
+				bluff_amount = randi_range(10, int(max_bluff * bluff_amt_modifier))
 				is_lying = true
 				
 		bluff_amount = min(bluff_amount, max_bluff)
@@ -175,6 +198,43 @@ func _calculate_burst_probability(deck: RefCounted) -> float:
 				break
 				
 	return float(conflict_count) / float(total_deck)
+
+# プレイスタイルに応じたアイテム選択
+# safe: 防御系アイテム（消しゴム、エナジードリンク、付箋）を優先
+# gambler: 攻撃系アイテム（分厚い参考書、定規、赤シート）を優先
+# bluffer: ブラフ支援アイテム（カンペ、コンパス、シャーペン）を優先
+# 全スタイルに20%の確率でランダム選択を混ぜて意外性を出す
+func _choose_item_for_style(style: String) -> Dictionary:
+	var pick_type: int
+	if randf() < 0.20:
+		var all_types = [
+			Enums.ItemType.ERASER, Enums.ItemType.ENERGY_DRINK, Enums.ItemType.WORD_BOOK,
+			Enums.ItemType.RED_SHEET, Enums.ItemType.THICK_BOOK, Enums.ItemType.STICKY_NOTE,
+			Enums.ItemType.CHEAT_SHEET, Enums.ItemType.COMPASS, Enums.ItemType.MECHANICAL_PENCIL,
+			Enums.ItemType.RULER
+		]
+		pick_type = all_types[randi() % all_types.size()]
+	elif style == "safe":
+		var preferred = [
+			Enums.ItemType.ERASER, Enums.ItemType.ENERGY_DRINK,
+			Enums.ItemType.STICKY_NOTE, Enums.ItemType.WORD_BOOK
+		]
+		pick_type = preferred[randi() % preferred.size()]
+	elif style == "gambler":
+		var preferred = [
+			Enums.ItemType.THICK_BOOK, Enums.ItemType.RULER,
+			Enums.ItemType.RED_SHEET, Enums.ItemType.ENERGY_DRINK
+		]
+		pick_type = preferred[randi() % preferred.size()]
+	elif style == "bluffer":
+		var preferred = [
+			Enums.ItemType.CHEAT_SHEET, Enums.ItemType.COMPASS,
+			Enums.ItemType.MECHANICAL_PENCIL, Enums.ItemType.RED_SHEET
+		]
+		pick_type = preferred[randi() % preferred.size()]
+	else:
+		pick_type = Enums.ItemType.ERASER if randf() < 0.5 else Enums.ItemType.RULER
+	return {"type": pick_type}
 
 func get_daily_results() -> Dictionary:
 	return daily_results

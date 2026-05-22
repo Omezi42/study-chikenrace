@@ -4,6 +4,7 @@ extends RefCounted
 const NotebookBuilderScript = preload("res://scripts/ui/components/NotebookBuilder.gd")
 const SmartphoneBuilderScript = preload("res://scripts/ui/components/SmartphoneBuilder.gd")
 const DeskTheme = preload("res://scripts/ui/DeskTheme.gd")
+const GameBalanceScript = preload("res://scripts/core/GameBalance.gd")
 
 signal phase_completed()
 
@@ -21,6 +22,8 @@ func start(today_score_dict: Dictionary):
 	# 以前はDictionaryだったが、これからは {"score": int} の形式で受け取る
 	self.actual_score = today_score_dict.get("score", 0)
 	self.reported_score = self.actual_score
+	if is_instance_valid(ctx) and ctx.backend_manager:
+		ctx.backend_manager.clear_daily_votes()
 	_show_report_screen()
 
 func _show_report_screen():
@@ -203,13 +206,14 @@ func _show_report_screen():
 		tw.tween_property(minus_btn, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	)
 	
-	var cheat_bonus = 0
+	var cheat_count = 0
 	if is_instance_valid(ctx) and ctx.game_session and ctx.game_session.deck:
-		cheat_bonus = ctx.game_session.deck.cheat_sheet_count * 50
+		cheat_count = ctx.game_session.deck.cheat_sheet_count
+	var bluff_cap = GameBalanceScript.max_bluff_cap(cheat_count)
 
 	var slider = HSlider.new()
 	slider.min_value = actual_score
-	slider.max_value = 50 + cheat_bonus if is_burst else actual_score + 50 + cheat_bonus
+	slider.max_value = bluff_cap if is_burst else actual_score + bluff_cap
 	slider.value = actual_score
 	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	
@@ -245,6 +249,11 @@ func _show_report_screen():
 		var tw = plus_btn.create_tween()
 		tw.tween_property(plus_btn, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	)
+	
+	var bluff_hint_text = "バーストでも盛れる上限: %d点まで" % bluff_cap if is_burst else "盛れる上限: 実スコア＋最大%d点まで" % bluff_cap
+	var bluff_hint = DeskTheme.create_label(bluff_hint_text, 12, DeskTheme.COLOR_MUTED, true)
+	bluff_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	card_v.add_child(bluff_hint)
 	
 	ui_elements["slider_data"] = {"hbox": report_h, "label": report_lbl, "icon": status_icon}
 	
@@ -381,7 +390,7 @@ func _update_report_warning():
 	var tw = card.create_tween().set_parallel(true)
 	
 	if diff > 0:
-		var penalty = diff + 20
+		var penalty = GameBalanceScript.player_lie_exposed_penalty(diff)
 		warning_title.text = "[ 嘘つきリスク警告！ ]"
 		warning_title.add_theme_color_override("font_color", DeskTheme.COLOR_BLUFF_RED)
 		warning_lbl.text = "報告に嘘(盛り)が混ざっています！\n見破られた場合の減点: −%d点！" % penalty
@@ -409,7 +418,7 @@ func _update_report_warning():
 	
 	var sum_lbl = ui_elements[summary_key] as Label
 	if diff > 0:
-		sum_lbl.text = "盛り分: +%d点  バレたら: −%d点" % [diff, diff + 20]
+		sum_lbl.text = "盛り分: +%d点  バレたら: −%d点" % [diff, GameBalanceScript.player_lie_exposed_penalty(diff)]
 		sum_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_BLUFF_RED)
 	else:
 		sum_lbl.text = "正直に報告中 ✔"
@@ -468,7 +477,7 @@ func _submit_final():
 	if ctx.backend_manager:
 		ctx.backend_manager.submit_score(Global.player_name, {"score": reported_score})
 	
-	if Global.play_count >= 7:
+	if Global.play_count >= 5:
 		SceneTransition.fade_to_scene("res://ResultScene.tscn")
 	else:
 		phase_completed.emit()

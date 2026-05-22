@@ -84,29 +84,32 @@ func get_current_rankings() -> Array:
 		rankings.append({"name": s["name"], "score": s["score"]})
 	return rankings
 
+func _vote_key_for_today(rival_name: String) -> String:
+	return "day_%d_%s" % [Global.play_count + 1, rival_name]
+
+
 func vote_rival(rival_name: String, _dummy: int = -1) -> void:
-	var key = "%s" % [rival_name]
+	var key = _vote_key_for_today(rival_name)
 	_voted_rivals[key] = true
-	print("Voted for rival: ", key)
-	
-	# Globalの永続化辞書にも保存 (Dayベース)
-	var g_key = "day_%d_%s" % [Global.play_count + 1, rival_name]
-	Global.accumulated_votes[g_key] = true
+	Global.accumulated_votes[key] = true
 	Global.save_data()
 
 func has_voted_rival(rival_name: String, _dummy: int = -1) -> bool:
-	var key = "%s" % [rival_name]
-	if _voted_rivals.get(key, false): return true
-	
-	var g_key = "day_%d_%s" % [Global.play_count + 1, rival_name]
-	return Global.accumulated_votes.get(g_key, false)
+	var key = _vote_key_for_today(rival_name)
+	if _voted_rivals.get(key, false):
+		return true
+	return Global.accumulated_votes.get(key, false)
 
 func clear_daily_votes() -> void:
 	_voted_rivals.clear()
-	print("Daily votes cleared.")
 
 func get_daily_vote_count() -> int:
-	return _voted_rivals.size()
+	var day_prefix = "day_%d_" % [Global.play_count + 1]
+	var count = 0
+	for key in _voted_rivals:
+		if str(key).begins_with(day_prefix):
+			count += 1
+	return count
 
 func get_all_player_daily_scores() -> Dictionary:
 	var result = {}

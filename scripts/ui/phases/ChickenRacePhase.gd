@@ -6,6 +6,7 @@ const NotebookBuilderScript = preload("res://scripts/ui/components/NotebookBuild
 const SmartphoneBuilderScript = preload("res://scripts/ui/components/SmartphoneBuilder.gd")
 const ToastOverlayScript = preload("res://scripts/ui/components/ToastOverlay.gd")
 const DeskTheme = preload("res://scripts/ui/DeskTheme.gd")
+const GameBalanceScript = preload("res://scripts/core/GameBalance.gd")
 
 signal phase_completed(scores_data: Dictionary)
 
@@ -247,7 +248,10 @@ func _update_race_hud():
 		if deck.next_card_double_score: buff_text += "[次カード2倍] "
 		if deck.sticky_note_bonus_active: buff_text += "[付箋ボーナス予約] "
 		if deck.cheat_sheet_count > 0: buff_text += "[カンペ ×%d] " % deck.cheat_sheet_count
+		if ctx.game_session.current_combo > 1: buff_text += "[同教科 %d連続!] " % ctx.game_session.current_combo
+		if ctx.game_session.is_five_subjects_complete: buff_text += "★ 5教科コンプリート!! ★ "
 		hud_gauges["buff_label"].text = buff_text
+
 	
 	var drawn_num = drawn_card_nodes.size()
 	if hud_gauges.has("drawn_count"):
@@ -269,12 +273,8 @@ func _update_race_hud():
 			
 			var label_text = ""
 			var label_color = Color.WHITE
-			if card.item_type == Enums.ItemType.NORMAL:
-				bg.bg_color = DeskTheme.COLOR_INK
-				label_text = "+%d" % card.number
-			else:
-				bg.bg_color = Color("495057")
-				label_text = "ア(%d)" % card.number
+			bg.bg_color = _get_item_color(card.item_type)
+			label_text = "+%d" % card.number
 				
 			badge.add_theme_stylebox_override("panel", bg)
 			var lbl = DeskTheme.create_label(label_text, 12, label_color, true)
@@ -409,11 +409,7 @@ func _on_draw_pressed():
 	if ctx.audio_manager: ctx.audio_manager.play_se("draw")
 	
 	var card_node: Control
-	if card.item_type == Enums.ItemType.NORMAL:
-		card_node = DeskTheme.create_subject_card_large(0, card.number)
-	else:
-		card_node = DeskTheme.create_item_card_large(card.item_type)
-		# TODO: アイテムカードの数字が見えるようにDeskThemeも後で修正する
+	card_node = DeskTheme.create_item_card_large(card.item_type)
 	card_node.set_meta("card_data", card)
 	
 	var back_tex = TextureRect.new()
@@ -445,22 +441,36 @@ func _on_draw_pressed():
 	
 	_update_race_hud()
 
-	if card.item_type != Enums.ItemType.NORMAL:
-		ctx.game_session.apply_item_effect(card.item_type)
-		_update_race_hud()
-		
-		if card.item_type == Enums.ItemType.THICK_BOOK:
-			ToastOverlayScript.show_toast(ctx.ui_root, "分厚い参考書！追加で2枚引く！", Color("845ef7"))
-			await ctx.screen_content.get_tree().create_timer(0.6).timeout
-			_on_draw_pressed()
-			await ctx.screen_content.get_tree().create_timer(0.6).timeout
-			_on_draw_pressed()
-			return
-			
-		elif card.item_type == Enums.ItemType.ERASER:
-			ToastOverlayScript.show_toast(ctx.ui_root, "消しゴム！最新のカードを無効化", Color("adb5bd"))
-			_refresh_drawn_cards_visuals()
-			
+	ctx.game_session.apply_item_effect(card.item_type)
+	_update_race_hud()
+	
+	if card.item_type == Enums.ItemType.THICK_BOOK:
+		ToastOverlayScript.show_toast(ctx.ui_root, "分厚い参考書！追加で2枚引く！", Color("845ef7"))
+		await ctx.screen_content.get_tree().create_timer(0.6).timeout
+		_on_draw_pressed()
+		await ctx.screen_content.get_tree().create_timer(0.6).timeout
+		_on_draw_pressed()
+		return
+	elif card.item_type == Enums.ItemType.ERASER:
+		ToastOverlayScript.show_toast(ctx.ui_root, "消しゴム！最新のカードを無効化", Color("adb5bd"))
+		_refresh_drawn_cards_visuals()
+	elif card.item_type == Enums.ItemType.RULER:
+		ToastOverlayScript.show_toast(ctx.ui_root, "定規！ストップ時ボーナス+10点！", Color("4dabf7"))
+	elif card.item_type == Enums.ItemType.COMPASS:
+		ToastOverlayScript.show_toast(ctx.ui_root, "コンパス！数字%dが得点に加算" % card.number, Color("748ffc"))
+	elif card.item_type == Enums.ItemType.MECHANICAL_PENCIL:
+		ToastOverlayScript.show_toast(ctx.ui_root, "シャーペン！数字%dが得点に加算" % card.number, Color("868e96"))
+	elif card.item_type == Enums.ItemType.STICKY_NOTE:
+		ToastOverlayScript.show_toast(ctx.ui_root, "付箋！ストップ時ボーナス+30点！", Color("ffd43b"))
+	elif card.item_type == Enums.ItemType.CHEAT_SHEET:
+		ToastOverlayScript.show_toast(ctx.ui_root, "ズルいカンペ！嘘の上限+%d点！" % GameBalanceScript.BLUFF_CAP_PER_CHEAT_SHEET, Color("94d82d"))
+	elif card.item_type == Enums.ItemType.ENERGY_DRINK:
+		ToastOverlayScript.show_toast(ctx.ui_root, "エナジードリンク！バーストシールド発動！", Color("fcc419"))
+	elif card.item_type == Enums.ItemType.WORD_BOOK:
+		ToastOverlayScript.show_toast(ctx.ui_root, "単語帳！山札の危険カードを回避！", Color("3bc9db"))
+	elif card.item_type == Enums.ItemType.RED_SHEET:
+		ToastOverlayScript.show_toast(ctx.ui_root, "赤シート！次のカード得点2倍！", Color("ff6b6b"))
+	
 	if res["burst"]:
 		await _trigger_burst_sequence()
 		return
@@ -469,7 +479,14 @@ func _on_draw_pressed():
 		_update_race_hud()
 	
 	if not res["burst"] and not res["prevented"]:
+		if ctx.game_session.is_five_subjects_complete:
+			ToastOverlayScript.show_toast(ctx.ui_root, "★ 5教科コンプリート達成！ ★\nバースト無効化＆ボーナス得点で強制クリア！", Color("ff6b6b"))
+			await ctx.screen_content.get_tree().create_timer(1.5).timeout
+			_on_stop_pressed()
+			return
+			
 		var combo_num = drawn_card_nodes.size()
+
 		if combo_num >= 2:
 			var combo_badge = DeskTheme.create_floating_badge("%d COMBO!" % combo_num, DeskTheme.COLOR_SAFE, 20)
 			combo_badge.global_position = card_node.global_position + Vector2(card_sz.x / 2.0 - combo_badge.size.x / 2.0, -35.0)
@@ -662,3 +679,28 @@ func _update_deck_stack_visual(remaining: int) -> void:
 			card_img.size = Vector2(40, 55)
 			card_img.position = Vector2(-i * 1.5, -i * 2.5)
 			stack.add_child(card_img)
+
+func _get_item_color(item_type: int) -> Color:
+	match item_type:
+		Enums.ItemType.STICKY_NOTE:
+			return Color("ffd43b")
+		Enums.ItemType.ERASER:
+			return Color("adb5bd")
+		Enums.ItemType.RULER:
+			return Color("4dabf7")
+		Enums.ItemType.WORD_BOOK:
+			return Color("3bc9db")
+		Enums.ItemType.CHEAT_SHEET:
+			return Color("94d82d")
+		Enums.ItemType.COMPASS:
+			return Color("748ffc")
+		Enums.ItemType.ENERGY_DRINK:
+			return Color("fcc419")
+		Enums.ItemType.RED_SHEET:
+			return Color("ff6b6b")
+		Enums.ItemType.MECHANICAL_PENCIL:
+			return Color("868e96")
+		Enums.ItemType.THICK_BOOK:
+			return Color("845ef7")
+		_:
+			return Color("495057")

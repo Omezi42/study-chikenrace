@@ -7,9 +7,14 @@ var deck
 var current_score: int = 0
 var accumulated_score: int = 0
 
+# 役・コンボ状態
+var current_combo: int = 0
+var is_five_subjects_complete: bool = false
+
 # ダウトなどの隠匿された得点を管理する変数
 var hidden_bonus_score: int = 0
 var current_hour: int = 1
+
 
 var ai_manager: RefCounted
 
@@ -35,15 +40,17 @@ func start_new_day():
 
 func draw_card() -> Dictionary:
 	var result = deck.draw()
+	if result["card"] != null:
+		Global.increment_item_usage(result["card"].item_type)
 	sync_scores()
 	return result
 
 func apply_item_effect(item_type: int) -> void:
 	if item_type == Enums.ItemType.ERASER:
-		# 最新の通常カードを1枚無効化する
+		# 最新のアクティブなカードを1枚無効化する（消しゴム自身は除く）
 		for i in range(deck.drawn_cards.size() - 1, -1, -1):
 			var c = deck.drawn_cards[i]
-			if c.item_type == Enums.ItemType.NORMAL and c.is_active:
+			if c.item_type != Enums.ItemType.ERASER and c.is_active:
 				c.is_active = false
 				break
 	elif item_type == Enums.ItemType.ENERGY_DRINK:
@@ -92,6 +99,8 @@ func _apply_word_book_effect() -> void:
 func sync_scores() -> void:
 	var calc = deck.calculate_scores()
 	current_score = calc["total"]
+	current_combo = calc["combo"]
+	is_five_subjects_complete = calc["five_subjects"]
 
 func stop_period() -> void:
 	# その時間目の獲得点数を本日の累計に加算（付箋ボーナスなどもここで）

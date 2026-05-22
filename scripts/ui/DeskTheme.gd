@@ -16,43 +16,48 @@ const COLOR_GLASS = Color(1, 1, 1, 0.12)
 const COLOR_CHALK_WHITE = Color(0.95, 0.95, 0.95, 0.9)
 const COLOR_CHALK_YELLOW = Color(1.0, 0.9, 0.4, 0.9)
 
-const DESK_TEXTURE = preload("res://assets/机の背景画像-ノート無し.png")
-const CARD_FRONT = preload("res://assets/カード背景画像.png")
-const CARD_BACK = preload("res://assets/カード裏面画像.png")
-const BAG_TEXTURE = preload("res://assets/カバン画像.png")
-const SCOREBOARD_TEXTURE = preload("res://assets/スコアボード.png")
-const CALENDAR_TEXTURE = preload("res://assets/日めくりカレンダー.png")
-const CROWN_TEXTURE = preload("res://assets/王冠.png")
-const HANAMARU_TEXTURE = preload("res://assets/はなまるスタンプ.png")
-const DEFAULT_FONT = preload("res://assets/hgrsmp.ttf")
-const BLACKBOARD_TEXTURE = preload("res://assets/黒板.png")
-const ITEM_ERASER = preload("res://assets/split/item_eraser.png")
-const ITEM_PEN = preload("res://assets/split/item_pen.png")
-const ITEM_RULER = preload("res://assets/split/item_ruler.png")
+static func _load_asset(path: String) -> Resource:
+	if not ResourceLoader.exists(path):
+		push_warning("DeskTheme: asset not found: %s" % path)
+		return null
+	var res = load(path)
+	if res == null:
+		push_warning("DeskTheme: failed to load: %s" % path)
+	return res
 
-const SUBJECT_JAPANESE = preload("res://assets/split/subject_japanese.png")
-const SUBJECT_MATH = preload("res://assets/split/subject_math.png")
-const SUBJECT_ENGLISH = preload("res://assets/split/subject_english.png")
-const SUBJECT_SCIENCE = preload("res://assets/split/subject_science.png")
-const SUBJECT_SOCIAL = preload("res://assets/split/subject_social.png")
+static var DESK_TEXTURE: Texture2D = _load_asset("res://assets/机の背景画像-ノート無し.png")
+static var CARD_FRONT: Texture2D = _load_asset("res://assets/カード背景画像.png")
+static var CARD_BACK: Texture2D = _load_asset("res://assets/カード裏面画像.png")
+static var HANAMARU_TEXTURE: Texture2D = _load_asset("res://assets/はなまるスタンプ.png")
+static var DEFAULT_FONT: Font = _load_asset("res://assets/hgrsmp.ttf")
+static var BLACKBOARD_TEXTURE: Texture2D = _load_asset("res://assets/黒板.png")
+static var ITEM_ERASER: Texture2D = _load_asset("res://assets/split/item_eraser.png")
+static var ITEM_PEN: Texture2D = _load_asset("res://assets/split/item_pen.png")
+static var ITEM_RULER: Texture2D = _load_asset("res://assets/split/item_ruler.png")
+
+static var SUBJECT_JAPANESE: Texture2D = _load_asset("res://assets/split/subject_japanese.png")
+static var SUBJECT_MATH: Texture2D = _load_asset("res://assets/split/subject_math.png")
+static var SUBJECT_ENGLISH: Texture2D = _load_asset("res://assets/split/subject_english.png")
+static var SUBJECT_SCIENCE: Texture2D = _load_asset("res://assets/split/subject_science.png")
+static var SUBJECT_SOCIAL: Texture2D = _load_asset("res://assets/split/subject_social.png")
 
 static func decorate_scene(root: Control, dim_alpha: float = 0.14) -> void:
 	root.anchor_right = 1.0
 	root.anchor_bottom = 1.0
-	var bg = TextureRect.new()
-	bg.texture = DESK_TEXTURE
-	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	bg.anchor_left = 0.0
-	bg.anchor_top = 0.0
-	bg.anchor_right = 1.0
-	bg.anchor_bottom = 1.0
-	bg.offset_left = 0
-	bg.offset_top = 0
-	bg.offset_right = 0
-	bg.offset_bottom = 0
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(bg)
+	if DESK_TEXTURE:
+		var bg = TextureRect.new()
+		bg.texture = DESK_TEXTURE
+		bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(bg)
+	else:
+		var fallback = ColorRect.new()
+		fallback.color = COLOR_DESK_WARM
+		fallback.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		fallback.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(fallback)
 	
 	var vignette = ColorRect.new()
 	vignette.color = Color(0.0, 0.0, 0.0, dim_alpha)
@@ -68,7 +73,7 @@ static func decorate_scene(root: Control, dim_alpha: float = 0.14) -> void:
 	root.add_child(vignette)
 
 static func apply_font(target: Control) -> void:
-	if target is Label or target is Button or target is LineEdit or target is TextEdit:
+	if DEFAULT_FONT and (target is Label or target is Button or target is LineEdit or target is TextEdit):
 		target.add_theme_font_override("font", DEFAULT_FONT)
 	for child in target.get_children():
 		if child is Control:
@@ -278,20 +283,28 @@ static func create_item_card_large(item_type: int) -> Control:
 	var it_char = "?"
 	
 	match item_type:
-		Enums.ItemType.ERASER:
-			name_str = "消しゴム"; col = Color("ff8c8c"); it_char = "消"
-		Enums.ItemType.ENERGY_DRINK:
-			name_str = "エナドリ"; col = Color("8cffd3"); it_char = "エ"
-		Enums.ItemType.WORD_BOOK:
-			name_str = "単語帳"; col = Color("f0c040"); it_char = "単"
-		Enums.ItemType.RED_SHEET:
-			name_str = "赤シート"; col = Color("ff4040"); it_char = "赤"
-		Enums.ItemType.THICK_BOOK:
-			name_str = "参考書"; col = Color("4040ff"); it_char = "参"
 		Enums.ItemType.STICKY_NOTE:
-			name_str = "付箋"; col = Color("f0f040"); it_char = "付"
+			name_str = "付箋"; col = Color("ffd43b"); it_char = "付"
+		Enums.ItemType.ERASER:
+			name_str = "消しゴム"; col = Color("adb5bd"); it_char = "消"
+		Enums.ItemType.RULER:
+			name_str = "定規"; col = Color("4dabf7"); it_char = "定"
+		Enums.ItemType.WORD_BOOK:
+			name_str = "単語帳"; col = Color("3bc9db"); it_char = "単"
 		Enums.ItemType.CHEAT_SHEET:
-			name_str = "カンペ"; col = Color("808080"); it_char = "カ"
+			name_str = "カンペ"; col = Color("94d82d"); it_char = "カ"
+		Enums.ItemType.COMPASS:
+			name_str = "コンパス"; col = Color("748ffc"); it_char = "コ"
+		Enums.ItemType.ENERGY_DRINK:
+			name_str = "エナドリ"; col = Color("fcc419"); it_char = "エ"
+		Enums.ItemType.RED_SHEET:
+			name_str = "赤シート"; col = Color("ff6b6b"); it_char = "赤"
+		Enums.ItemType.MECHANICAL_PENCIL:
+			name_str = "シャーペン"; col = Color("868e96"); it_char = "シ"
+		Enums.ItemType.THICK_BOOK:
+			name_str = "参考書"; col = Color("845ef7"); it_char = "参"
+		Enums.ItemType.DELETE_CARD:
+			name_str = "忘却ノート"; col = Color("495057"); it_char = "忘"
 			
 	vbox.add_child(create_label(name_str, 20, col, true))
 	
@@ -495,7 +508,8 @@ static func create_button(text: String, min_size: Vector2, fill: Color = COLOR_S
 	btn.text = text
 	btn.custom_minimum_size = min_size
 	btn.size = min_size
-	btn.add_theme_font_override("font", DEFAULT_FONT)
+	if DEFAULT_FONT:
+		btn.add_theme_font_override("font", DEFAULT_FONT)
 	btn.add_theme_font_size_override("font_size", font_size) # 文字サイズを適用！
 	var style = StyleBoxFlat.new()
 	style.bg_color = fill
@@ -517,7 +531,8 @@ static func create_button(text: String, min_size: Vector2, fill: Color = COLOR_S
 static func create_label(text: String, size: int, color: Color = COLOR_INK, centered: bool = false) -> Label:
 	var label = Label.new()
 	label.text = text
-	label.add_theme_font_override("font", DEFAULT_FONT)
+	if DEFAULT_FONT:
+		label.add_theme_font_override("font", DEFAULT_FONT)
 	label.add_theme_font_size_override("font_size", size)
 	label.add_theme_color_override("font_color", color)
 	if centered: label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -574,9 +589,16 @@ static func subject_name(subject: int) -> String:
 
 static func item_texture(item_type: int) -> Texture2D:
 	match item_type:
+		Enums.ItemType.STICKY_NOTE: return ITEM_PEN
 		Enums.ItemType.ERASER: return ITEM_ERASER
-		Enums.ItemType.ENERGY_DRINK: return ITEM_PEN
+		Enums.ItemType.RULER: return ITEM_RULER
 		Enums.ItemType.WORD_BOOK: return ITEM_RULER
+		Enums.ItemType.CHEAT_SHEET: return ITEM_PEN
+		Enums.ItemType.COMPASS: return ITEM_RULER
+		Enums.ItemType.ENERGY_DRINK: return ITEM_PEN
+		Enums.ItemType.RED_SHEET: return ITEM_RULER
+		Enums.ItemType.MECHANICAL_PENCIL: return ITEM_PEN
+		Enums.ItemType.THICK_BOOK: return ITEM_RULER
 	return null
 
 static func subject_texture(subject: int) -> Texture2D:

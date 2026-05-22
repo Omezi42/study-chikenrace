@@ -8,8 +8,11 @@ var is_active: bool = true # 消しゴム等で無効化されたか
 
 static var next_id: int = 0
 
-func _init(_item_type: int, _number: int = 0):
+func _init(_item_type: int, _number: int = -1):
 	item_type = _item_type
-	number = _number
+	if _number == -1:
+		number = int(_item_type)
+	else:
+		number = _number
 	id = next_id
 	CardData.next_id += 1

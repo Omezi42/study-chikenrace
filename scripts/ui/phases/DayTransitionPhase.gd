@@ -59,7 +59,7 @@ func _show_day_transition():
 		cal_v.add_child(DeskTheme.create_label("放課後のテスト勉強が終了しました...", 14, DeskTheme.COLOR_MUTED, true))
 	
 	# 残り日数
-	var remaining = 7 - Global.play_count
+	var remaining = 5 - Global.play_count
 	if remaining > 0:
 		var remain_color = DeskTheme.COLOR_BLUFF_RED if remaining <= 2 else DeskTheme.COLOR_ACCENT_GOLD if remaining <= 4 else DeskTheme.COLOR_MUTED
 		var remain_text = "あと%d日！" % remaining if remaining > 1 else "明日が最終日！"

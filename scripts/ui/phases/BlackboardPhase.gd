@@ -1,6 +1,8 @@
 # scripts/ui/phases/BlackboardPhase.gd
 class_name BlackboardPhase
 extends RefCounted
+
+const GameBalanceScript = preload("res://scripts/core/GameBalance.gd")
 const NotebookBuilderScript = preload("res://scripts/ui/components/NotebookBuilder.gd")
 const SmartphoneBuilderScript = preload("res://scripts/ui/components/SmartphoneBuilder.gd")
 const ToastOverlayScript = preload("res://scripts/ui/components/ToastOverlay.gd")
@@ -347,14 +349,13 @@ func _show_blackboard_progress():
 					
 					var r_actual = rival.get("actual_score", 0)
 					var r_reported = rival.get("score", 0)
-					if r_reported > r_actual:
-						# ダウト成功
-						var diff = r_reported - r_actual
-						ctx.game_session.hidden_bonus_score += diff + 20
-						ToastOverlayScript.show_toast(ctx.ui_root, "%s の嘘を見破った！ボーナス獲得！" % p_name, DeskTheme.COLOR_SAFE)
+					var doubt := GameBalanceScript.apply_doubt_vote(
+						ctx.game_session, r_reported, r_actual, r_reported > r_actual
+					)
+					if doubt.success:
+						ToastOverlayScript.show_toast(ctx.ui_root, "%s の嘘を見破り！ +%d点" % [p_name, doubt.delta], DeskTheme.COLOR_SAFE)
 					else:
-						# ダウト失敗
-						ctx.game_session.hidden_bonus_score -= 30
+						ToastOverlayScript.show_toast(ctx.ui_root, "冤罪… −%d点" % GameBalanceScript.DOUBT_FAIL_PENALTY, DeskTheme.COLOR_BLUFF_RED)
 						ToastOverlayScript.show_toast(ctx.ui_root, "%s は正直者だった！ペナルティ！" % p_name, DeskTheme.COLOR_BLUFF_RED)
 				)
 				c_h.add_child(doubt_btn)

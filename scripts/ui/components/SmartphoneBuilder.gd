@@ -3,6 +3,7 @@ extends RefCounted
 ## スマートフォンのUIモックアップおよび「チキスタ」アプリ画面を生成・管理するファクトリクラス。
 
 const ToastOverlayScript = preload("res://scripts/ui/components/ToastOverlay.gd")
+const GameBalanceScript = preload("res://scripts/core/GameBalance.gd")
 
 static func create_mockup(ctx: RefCounted, is_centered: bool = true) -> VBoxContainer:
 	var phone = PanelContainer.new()
@@ -393,6 +394,7 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 	for entry in timelines:
 		var rival_name = entry["name"]
 		var total_score = entry["total_score"]
+		var rival_actual = entry.get("actual_score", total_score)
 		var is_bluffing = entry["is_bluffing"]
 		
 		var card = PanelContainer.new()
@@ -549,25 +551,87 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 			if ctx.backend_manager.get_daily_vote_count() >= 3: return
 			
 			ctx.backend_manager.vote_rival(rival_name, -1)
+			if is_instance_valid(ctx.game_session):
+				var doubt := GameBalanceScript.apply_doubt_vote(
+					ctx.game_session, total_score, rival_actual, is_bluffing
+				)
+				if doubt.success:
+					ToastOverlayScript.show_toast(
+						ctx.ui_root,
+						"%s の嘘を見破り！ +%d点（明日の成績に反映）" % [rival_name, doubt.delta],
+						DeskTheme.COLOR_SAFE
+					)
+				else:
+					ToastOverlayScript.show_toast(
+						ctx.ui_root,
+						"冤罪… 正直者でした −%d点" % GameBalanceScript.DOUBT_FAIL_PENALTY,
+						DeskTheme.COLOR_BLUFF_RED
+					)
 			like_btn.disabled = true
 			var style_v = like_btn.get_theme_stylebox("normal").duplicate()
 			style_v.bg_color = Color("a0c0e0")
 			like_btn.add_theme_stylebox_override("normal", style_v)
 			
+			# ===== Sprint 5: 強化されたダウト投票演出 =====
+			# 1. ボタンのバウンスアニメーション（より大きく）
 			var btn_tw = like_btn.create_tween()
-			btn_tw.tween_property(like_btn, "scale", Vector2(1.1, 1.1), 0.06).set_trans(Tween.TRANS_CUBIC)
-			btn_tw.tween_property(like_btn, "scale", Vector2(1.0, 1.0), 0.08).set_trans(Tween.TRANS_BACK)
+			btn_tw.tween_property(like_btn, "scale", Vector2(1.35, 1.35), 0.06).set_trans(Tween.TRANS_CUBIC)
+			btn_tw.tween_property(like_btn, "scale", Vector2(0.9, 0.9), 0.05).set_trans(Tween.TRANS_CUBIC)
+			btn_tw.tween_property(like_btn, "scale", Vector2(1.0, 1.0), 0.1).set_trans(Tween.TRANS_BACK)
 			
+			# 2. フラッシュオーバーレイ効果
+			var flash = ColorRect.new()
+			flash.color = Color(0.2, 0.6, 1.0, 0.4)
+			flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+			flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			card.add_child(flash)
+			var flash_tw = flash.create_tween()
+			flash_tw.tween_property(flash, "color:a", 0.0, 0.35).set_trans(Tween.TRANS_CUBIC)
+			flash_tw.tween_callback(flash.queue_free)
+			
+			# 3. ドラマチックなスタンプ（巨大→叩きつけ）
 			var stamp = create_stamp.call()
 			stamp_container.add_child(stamp)
 			stamp.pivot_offset = Vector2(20, 10)
-			stamp.scale = Vector2(2.5, 2.5)
+			stamp.scale = Vector2(4.0, 4.0)
 			stamp.modulate.a = 0.0
-			stamp.rotation = randf_range(-0.15, 0.15)
+			stamp.rotation = randf_range(-0.2, 0.2)
 			
 			var stamp_tw = stamp.create_tween().set_parallel(true)
-			stamp_tw.tween_property(stamp, "scale", Vector2(1.0, 1.0), 0.2).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-			stamp_tw.tween_property(stamp, "modulate:a", 1.0, 0.1)
+			stamp_tw.tween_property(stamp, "scale", Vector2(1.0, 1.0), 0.18).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+			stamp_tw.tween_property(stamp, "modulate:a", 1.0, 0.06)
+			
+			# 4. カード全体の揺れ（インパクト感）
+			var card_orig_pos = card.position
+			var shake_tw = card.create_tween().set_loops(3)
+			shake_tw.tween_callback(func(): card.position = card_orig_pos + Vector2(randf_range(-4, 4), randf_range(-3, 3)))
+			shake_tw.tween_interval(0.04)
+			shake_tw.finished.connect(func(): card.position = card_orig_pos)
+			
+			# 5. 紙吹雪パーティクル
+			var particles = CPUParticles2D.new()
+			particles.position = like_btn.global_position + Vector2(40, 17)
+			particles.emitting = true
+			particles.one_shot = true
+			particles.amount = 30
+			particles.lifetime = 1.2
+			particles.explosiveness = 0.9
+			particles.direction = Vector2(0, -1)
+			particles.spread = 60.0
+			particles.gravity = Vector2(0, 200.0)
+			particles.initial_velocity_min = 100.0
+			particles.initial_velocity_max = 220.0
+			particles.scale_amount_min = 3.0
+			particles.scale_amount_max = 7.0
+			var grad = Gradient.new()
+			grad.set_offsets(PackedFloat32Array([0.0, 0.33, 0.66, 1.0]))
+			grad.set_colors(PackedColorArray([Color("74c0fc"), Color("3897f0"), Color("ffd43b"), Color("ff6b6b")]))
+			particles.color_ramp = grad
+			particles.angular_velocity_min = -120.0
+			particles.angular_velocity_max = 120.0
+			ctx.screen_content.add_child(particles)
+			var p_timer = ctx.screen_content.get_tree().create_timer(1.5)
+			p_timer.timeout.connect(particles.queue_free)
 			
 			if ctx.audio_manager:
 				ctx.audio_manager.play_se('place')

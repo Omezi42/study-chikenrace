@@ -1,6 +1,8 @@
 class_name ResultScene
 extends Control
 
+const GameBalanceScript = preload("res://scripts/core/GameBalance.gd")
+
 const DeskTheme = preload("res://scripts/ui/DeskTheme.gd")
 const ToastOverlayScript = preload("res://scripts/ui/components/ToastOverlay.gd")
 
@@ -114,11 +116,34 @@ func _start_showdown_reveal():
 	tray.add_theme_stylebox_override("panel", tray_style)
 	board_overlay.add_child(tray)
 	
+	# Sprint 6: トレイ上のチョーク粉装飾
+	var chalk_dots_tray = HBoxContainer.new()
+	chalk_dots_tray.anchor_left = 0.1; chalk_dots_tray.anchor_top = 0.965; chalk_dots_tray.anchor_right = 0.4; chalk_dots_tray.anchor_bottom = 0.975
+	chalk_dots_tray.add_theme_constant_override("separation", 8)
+	board_overlay.add_child(chalk_dots_tray)
+	for i in range(5):
+		var dot = ColorRect.new()
+		dot.custom_minimum_size = Vector2(randi_range(4, 10), randi_range(2, 5))
+		dot.color = [Color("e8e8e8", 0.5), Color("f5e642", 0.4), Color("ff9999", 0.4)][i % 3]
+		chalk_dots_tray.add_child(dot)
+	
 	var title_lbl = DeskTheme.create_label("【 学年最終答え合わせ - Showdown Reveal 】", 28, DeskTheme.COLOR_CHALK_WHITE, true)
 	title_lbl.anchor_left = 0.5; title_lbl.anchor_top = 0.04; title_lbl.anchor_right = 0.5
 	title_lbl.offset_left = -350; title_lbl.offset_right = 350
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	board_overlay.add_child(title_lbl)
+	
+	# Sprint 6: タイトル下のチョーク装飾ライン
+	var chalk_line = ColorRect.new()
+	chalk_line.color = Color("e8e8e8", 0.3)
+	chalk_line.anchor_left = 0.15; chalk_line.anchor_top = 0.085; chalk_line.anchor_right = 0.85; chalk_line.anchor_bottom = 0.085
+	chalk_line.offset_top = 0; chalk_line.offset_bottom = 2
+	board_overlay.add_child(chalk_line)
+	
+	# Sprint 6: タイトルのフェードインアニメーション
+	title_lbl.modulate.a = 0.0
+	var title_tw = title_lbl.create_tween()
+	title_tw.tween_property(title_lbl, "modulate:a", 1.0, 0.6).set_trans(Tween.TRANS_CUBIC)
 	
 	live_score_label = DeskTheme.create_label("現在の得点: %d点" % current_live_score, 24, DeskTheme.COLOR_CHALK_YELLOW, true)
 	live_score_label.anchor_left = 0.5; live_score_label.anchor_top = 0.10; live_score_label.anchor_right = 0.5
@@ -148,13 +173,15 @@ func _start_showdown_reveal():
 	)
 	board_overlay.add_child(skip_btn)
 	
-	# 7日分の枠組みを事前生成して表示
+	# 5日分の枠組みを事前生成して表示
 	var row_nodes = []
 	var total_days = Global.score_history.size()
 	for d in range(1, total_days + 1):
 		var row = _create_reveal_row(d)
 		vbox.add_child(row)
 		row_nodes.append(row)
+		# Sprint 6: 行を最初は透明にしておく
+		row.modulate.a = 0.3
 		
 	# 順次答え合わせアニメーション開始
 	if not is_skipped:
@@ -168,12 +195,18 @@ func _start_showdown_reveal():
 		if not is_skipped:
 			scroll.ensure_control_visible(row)
 			
+			# Sprint 6: 行のフェードイン＋ハイライト
+			var row_fade = row.create_tween()
+			row_fade.tween_property(row, "modulate:a", 1.0, 0.25).set_trans(Tween.TRANS_CUBIC)
+			
 			# 選択中行のやわらかい明滅Tween
 			var row_tw = row.create_tween()
-			row_tw.tween_property(row, "modulate", Color(1.2, 1.2, 1.2), 0.2)
+			row_tw.tween_property(row, "modulate", Color(1.3, 1.3, 1.3), 0.2)
 			row_tw.tween_property(row, "modulate", Color.WHITE, 0.2)
 			
 			await get_tree().create_timer(0.4).timeout
+		else:
+			row.modulate.a = 1.0
 			
 		var rivals_box = row.find_child("RivalsBox", true, false)
 		var player_box = row.find_child("PlayerBox", true, false)
@@ -212,6 +245,16 @@ func _start_showdown_reveal():
 			
 			if is_lying:
 				stamp_lbl = DeskTheme.create_mini_stamp("嘘つき", Color("ff8787"), 12)
+				# Sprint 5: 嘘つきライバルの行を赤くフラッシュ
+				if not is_skipped:
+					var lie_flash = ColorRect.new()
+					lie_flash.color = Color(1.0, 0.3, 0.3, 0.25)
+					lie_flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+					lie_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+					row.add_child(lie_flash)
+					var lf_tw = lie_flash.create_tween()
+					lf_tw.tween_property(lie_flash, "color:a", 0.0, 0.5)
+					lf_tw.tween_callback(lie_flash.queue_free)
 			else:
 				stamp_lbl = DeskTheme.create_mini_stamp("正直者", Color("40c057"), 12)
 				
@@ -252,16 +295,50 @@ func _start_showdown_reveal():
 			if p_rng.randf() < clamp(total_lie * 0.05, 0.1, 0.8):
 				# 見破られた！
 				p_stamp = DeskTheme.create_mini_stamp("嘘バレ！", DeskTheme.COLOR_BLUFF_RED, 14)
-				p_score_diff -= (total_lie + 20)
+				p_score_diff -= GameBalanceScript.player_lie_exposed_penalty(total_lie)
 				player_exposed_count += 1
 				if audio_manager: audio_manager.play_se("burst")
-				_trigger_mini_shake(12.0)
+				_trigger_mini_shake(16.0)  # Sprint 5: より強いシェイク
+				
+				# Sprint 5: 嘘バレ時の画面全体赤フラッシュ
+				if not is_skipped:
+					var red_flash = ColorRect.new()
+					red_flash.color = Color(1.0, 0.0, 0.0, 0.3)
+					red_flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+					red_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+					board_overlay.add_child(red_flash)
+					var rf_tw = red_flash.create_tween()
+					rf_tw.tween_property(red_flash, "color:a", 0.0, 0.6).set_trans(Tween.TRANS_CUBIC)
+					rf_tw.tween_callback(red_flash.queue_free)
+					
+					# 減点数値ラベルが落下する演出
+					var penalty_lbl = DeskTheme.create_label("−%d" % abs(p_score_diff), 36, DeskTheme.COLOR_BLUFF_RED, true)
+					penalty_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+					penalty_lbl.anchor_left = 0.5; penalty_lbl.anchor_right = 0.5
+					penalty_lbl.anchor_top = 0.4; penalty_lbl.offset_left = -60; penalty_lbl.offset_right = 60
+					penalty_lbl.modulate.a = 1.0
+					board_overlay.add_child(penalty_lbl)
+					var pl_tw = penalty_lbl.create_tween().set_parallel(true)
+					pl_tw.tween_property(penalty_lbl, "position:y", penalty_lbl.position.y + 80, 1.0).set_trans(Tween.TRANS_CUBIC)
+					pl_tw.tween_property(penalty_lbl, "modulate:a", 0.0, 1.0).set_trans(Tween.TRANS_CUBIC).set_delay(0.3)
+					pl_tw.chain().tween_callback(penalty_lbl.queue_free)
 			else:
 				# 嘘が通った
 				p_stamp = DeskTheme.create_mini_stamp("完全犯罪！", Color("e8590c"), 14)
 				is_perfect_crime = true
 				player_perfect_crimes += 1
 				if audio_manager: audio_manager.play_se("combo")
+				
+				# Sprint 5: 完全犯罪時の金色フラッシュ
+				if not is_skipped:
+					var gold_flash = ColorRect.new()
+					gold_flash.color = Color(1.0, 0.84, 0.0, 0.2)
+					gold_flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+					gold_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+					board_overlay.add_child(gold_flash)
+					var gf_tw = gold_flash.create_tween()
+					gf_tw.tween_property(gold_flash, "color:a", 0.0, 0.5)
+					gf_tw.tween_callback(gold_flash.queue_free)
 		else:
 			if p_score_diff == 0:
 				p_stamp = DeskTheme.create_mini_stamp("平和な一日", Color("8fbf9f"), 14)
@@ -286,6 +363,8 @@ func _start_showdown_reveal():
 		
 		if is_perfect_crime:
 			_spawn_confetti(player_box.global_position + Vector2(250, 40))
+			# Sprint 5: 完全犯罪時は2箇所から紙吹雪を爆発させる
+			_spawn_confetti(player_box.global_position + Vector2(100, 20))
 		
 		if p_score_diff != 0:
 			current_live_score = max(0, current_live_score + p_score_diff)
@@ -306,7 +385,25 @@ func _start_showdown_reveal():
 	next_btn.anchor_left = 0.5; next_btn.anchor_top = 0.91; next_btn.anchor_right = 0.5; next_btn.anchor_bottom = 0.91
 	next_btn.offset_left = -200; next_btn.offset_top = -32; next_btn.offset_right = 200; next_btn.offset_bottom = 32
 	next_btn.pressed.connect(_finish_showdown_reveal)
+	next_btn.modulate.a = 0.0
 	board_overlay.add_child(next_btn)
+	
+	# Sprint 6: 「答え合わせ完了」チョーク文字演出
+	var completion_lbl = DeskTheme.create_label("── 答え合わせ完了 ──", 22, DeskTheme.COLOR_CHALK_YELLOW, true)
+	completion_lbl.anchor_left = 0.5; completion_lbl.anchor_top = 0.86; completion_lbl.anchor_right = 0.5
+	completion_lbl.offset_left = -150; completion_lbl.offset_right = 150
+	completion_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	completion_lbl.modulate.a = 0.0
+	board_overlay.add_child(completion_lbl)
+	
+	var comp_tw = completion_lbl.create_tween()
+	comp_tw.tween_property(completion_lbl, "modulate:a", 1.0, 0.4).set_trans(Tween.TRANS_CUBIC)
+	if audio_manager: audio_manager.play_se("place")
+	
+	# Sprint 6: ボタンの出現アニメーション（少し遅延してから表示）
+	var btn_appear_tw = next_btn.create_tween()
+	btn_appear_tw.tween_interval(0.5)
+	btn_appear_tw.tween_property(next_btn, "modulate:a", 1.0, 0.3).set_trans(Tween.TRANS_CUBIC)
 	
 	# ボタンの脈動アニメーション
 	next_btn.pivot_offset = Vector2(200, 32)
@@ -467,6 +564,13 @@ func _show_final_report():
 	# ランク判定
 	rank_label = DeskTheme.create_label("判定: F", 38, DeskTheme.COLOR_MUTED, true)
 	rc_v.add_child(rank_label)
+	
+	var earned_coins = int(final_score / 10)
+	Global.coins += earned_coins
+	Global.save_data()
+	
+	var coins_lbl = DeskTheme.create_label("獲得コイン: %d枚 (合計: %d枚)" % [earned_coins, Global.coins], 20, Color("e67700"), true)
+	rc_v.add_child(coins_lbl)
 	
 	# 🏆 プレイスタイルに応じた称号判定
 	var title_style = "ただの凡人"
