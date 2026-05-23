@@ -428,7 +428,7 @@ func _on_draw_pressed():
 	if ctx.audio_manager: ctx.audio_manager.play_se("draw")
 	
 	var card_node: Control
-	card_node = DeskTheme.create_item_card_large(card.item_type)
+	card_node = DeskTheme.create_item_card_large(card.item_type, card.number)
 	card_node.set_meta("card_data", card)
 	
 	var back_tex = TextureRect.new()
@@ -442,9 +442,9 @@ func _on_draw_pressed():
 	card_container.add_child(card_node)
 	drawn_card_nodes.append(card_node)
 	
-	var num_cards = drawn_card_nodes.size()
-	var card_scale_factor = 1.0 if num_cards <= 5 else max(0.65, 1.0 - (num_cards - 5) * 0.05)
-	var card_sz = Vector2(190, 260) * card_scale_factor
+	var num_cards: int = drawn_card_nodes.size()
+	var card_scale_factor: float = 1.0 if num_cards <= 5 else max(0.65, 1.0 - (num_cards - 5) * 0.05)
+	var card_sz: Vector2 = Vector2(190, 260) * card_scale_factor
 	
 	var view_size = ctx.screen_content.get_viewport_rect().size
 	var start_pos = Vector2(view_size.x * 0.85, view_size.y * 0.25)
@@ -548,17 +548,17 @@ func _refresh_drawn_cards_visuals():
 				node.modulate.a = 0.3 # 無効化されたカードをグレーアウト
 
 func _rearrange_drawn_cards(animate: bool = true):
-	var num_cards = drawn_card_nodes.size()
+	var num_cards: int = drawn_card_nodes.size()
 	if num_cards == 0: return
 	
-	var desk_sz = play_desk.size
+	var desk_sz: Vector2 = play_desk.size
 	if desk_sz.x < 100 or desk_sz.y < 100: desk_sz = Vector2(600, 460)
-	var center = desk_sz / 2.0
+	var center: Vector2 = desk_sz / 2.0
 	center.x += 60.0
 	
-	var card_spacing = 52.0 if num_cards <= 5 else max(38.0, 240.0 / float(num_cards))
-	var card_scale_factor = 1.0 if num_cards <= 5 else max(0.65, 1.0 - (num_cards - 5) * 0.05)
-	var card_sz = Vector2(190, 260) * card_scale_factor
+	var card_spacing: float = 52.0 if num_cards <= 5 else max(38.0, 240.0 / float(num_cards))
+	var card_scale_factor: float = 1.0 if num_cards <= 5 else max(0.65, 1.0 - (num_cards - 5) * 0.05)
+	var card_sz: Vector2 = Vector2(190, 260) * card_scale_factor
 	
 	var last_tween: Tween = null
 	for i in range(num_cards):
@@ -567,7 +567,7 @@ func _rearrange_drawn_cards(animate: bool = true):
 		var item_offset_x = (i * card_spacing) - (card_spacing * float(num_cards - 1)) / 2.0
 		var item_offset_y = -abs(item_offset_x) * 0.08
 		var target_pos = center + Vector2(item_offset_x, item_offset_y) - card_sz / 2.0
-		var target_rot = (i - (num_cards - 1) / 2.0) * (20.0 / max(float(num_cards), 1.0))
+		var target_rot: float = (i - (num_cards - 1) / 2.0) * (20.0 / max(float(num_cards), 1.0))
 		target_rot = clamp(target_rot, -12.0, 12.0)
 		
 		node.pivot_offset = Vector2(190, 260) / 2.0

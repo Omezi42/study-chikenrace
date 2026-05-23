@@ -69,7 +69,7 @@ func _ready():
 	back_btn.pressed.connect(func():
 		if audio_manager:
 			audio_manager.play_se("click")
-		get_tree().change_scene_to_file("res://Title.tscn")
+		SceneTransition.fade_to_scene("res://Title.tscn")
 	)
 	left_page.add_child(back_btn)
 
@@ -145,35 +145,47 @@ func _select_item(item_data: Dictionary):
 	for child in detail_container.get_children():
 		child.queue_free()
 
-	var main_hbox = HBoxContainer.new()
+	var main_hbox: HBoxContainer = HBoxContainer.new()
 	main_hbox.add_theme_constant_override("separation", 35)
 	main_hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	detail_container.add_child(main_hbox)
 
-	var card_wrapper = Control.new()
+	var card_wrapper: Control = Control.new()
 	card_wrapper.custom_minimum_size = Vector2(200, 280)
 	card_wrapper.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	main_hbox.add_child(card_wrapper)
 
-	var card_node = DeskTheme.create_item_card_large(item_data.type)
+	var card_node: Control = DeskTheme.create_item_card_large(item_data.type, item_data.number)
+	card_node.pivot_offset = Vector2(190, 260) / 2.0
 	card_wrapper.add_child(card_node)
-	card_node.position = Vector2(5, 10)
+	
+	# Animate card sliding in and rotating
+	card_node.position = Vector2(45, 10)
+	card_node.rotation_degrees = 12.0
+	card_node.scale = Vector2(0.85, 0.85)
+	card_node.modulate.a = 0.0
+	
+	var tw: Tween = card_node.create_tween().set_parallel(true)
+	tw.tween_property(card_node, "position", Vector2(5, 10), 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(card_node, "rotation_degrees", 0.0, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(card_node, "scale", Vector2(1.0, 1.0), 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(card_node, "modulate:a", 1.0, 0.2)
 
-	var info_vbox = VBoxContainer.new()
+	var info_vbox: VBoxContainer = VBoxContainer.new()
 	info_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info_vbox.add_theme_constant_override("separation", 14)
 	main_hbox.add_child(info_vbox)
 
-	var name_hbox = HBoxContainer.new()
+	var name_hbox: HBoxContainer = HBoxContainer.new()
 	name_hbox.add_theme_constant_override("separation", 15)
 	info_vbox.add_child(name_hbox)
 	name_hbox.add_child(DeskTheme.create_label(item_data.name, 32, DeskTheme.COLOR_INK, true))
 
-	var subject_val = Enums.ITEM_SUBJECT_MAP.get(item_data.type, Enums.Subject.NONE)
+	var subject_val: int = Enums.ITEM_SUBJECT_MAP.get(item_data.type, Enums.Subject.NONE)
 	if subject_val != Enums.Subject.NONE:
 		name_hbox.add_child(DeskTheme.create_stat_chip(DeskTheme.subject_name(subject_val), DeskTheme.subject_color(subject_val), 16))
 
-	var is_unlocked = Global.unlocked_items.has(item_data.type)
+	var is_unlocked: bool = Global.unlocked_items.has(item_data.type)
 	if is_unlocked:
 		info_vbox.add_child(DeskTheme.create_stat_chip("解放済み", DeskTheme.COLOR_SAFE, 15))
 	else:
@@ -181,13 +193,18 @@ func _select_item(item_data: Dictionary):
 
 	info_vbox.add_child(DeskTheme.create_label("使用回数: %d" % Global.get_item_usage(item_data.type), 18, DeskTheme.COLOR_INK, false))
 
-	var divider = ColorRect.new()
+	# Fade in the info panel
+	info_vbox.modulate.a = 0.0
+	var tw_info: Tween = info_vbox.create_tween()
+	tw_info.tween_property(info_vbox, "modulate:a", 1.0, 0.24).set_trans(Tween.TRANS_CUBIC)
+
+	var divider: ColorRect = ColorRect.new()
 	divider.color = Color(0.8, 0.75, 0.65, 0.5)
 	divider.custom_minimum_size = Vector2(0, 2)
 	detail_container.add_child(divider)
 
-	var desc_panel = PanelContainer.new()
-	var desc_style = StyleBoxFlat.new()
+	var desc_panel: PanelContainer = PanelContainer.new()
+	var desc_style: StyleBoxFlat = StyleBoxFlat.new()
 	desc_style.bg_color = Color("fcfcf9")
 	desc_style.border_width_left = 6
 	desc_style.border_color = item_data.color
@@ -200,6 +217,11 @@ func _select_item(item_data: Dictionary):
 	desc_panel.add_theme_stylebox_override("panel", desc_style)
 	detail_container.add_child(desc_panel)
 
-	var desc_text = DeskTheme.create_label(item_data.desc, 18, DeskTheme.COLOR_INK, false)
+	var desc_text: Label = DeskTheme.create_label(item_data.desc, 18, DeskTheme.COLOR_INK, false)
 	desc_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_panel.add_child(desc_text)
+	
+	# Fade in description
+	desc_panel.modulate.a = 0.0
+	var tw_desc: Tween = desc_panel.create_tween()
+	tw_desc.tween_property(desc_panel, "modulate:a", 1.0, 0.28).set_trans(Tween.TRANS_CUBIC)

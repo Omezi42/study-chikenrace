@@ -161,16 +161,16 @@ func draw_best_of_two() -> Dictionary:
 
 
 func reserve_best_of_four() -> void:
-	var look_count := min(4, deck.size())
+	var look_count: int = mini(4, deck.size())
 	if look_count <= 1:
 		return
 	var candidates: Array = []
 	for _i in range(look_count):
 		candidates.append(deck.pop_back())
 
-	candidates.sort_custom(func(a, b):
-		var a_burst = _check_burst(a)
-		var b_burst = _check_burst(b)
+	candidates.sort_custom(func(a: CardData, b: CardData) -> bool:
+		var a_burst: bool = _check_burst(a)
+		var b_burst: bool = _check_burst(b)
 		if a_burst != b_burst:
 			return not a_burst and b_burst
 		return a.number > b.number
@@ -182,7 +182,7 @@ func reserve_best_of_four() -> void:
 		deck.push_front(c)
 
 
-func _check_burst(card) -> bool:
+func _check_burst(card: CardData) -> bool:
 	for c in drawn_cards:
 		if c.is_active and c.number == card.number:
 			return true

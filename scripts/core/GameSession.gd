@@ -27,6 +27,8 @@ func setup_session():
 	current_score = 0
 	accumulated_score = 0
 	hidden_bonus_score = 0
+	ai_manager.start_new_day()
+	ai_manager.simulate_daily_action()
 	sync_scores()
 
 
@@ -109,16 +111,16 @@ func _erase_latest_active_card() -> void:
 
 
 func _apply_word_book_effect() -> void:
-	var look_count = min(3, deck.deck.size())
+	var look_count: int = mini(3, deck.deck.size())
 	if look_count <= 0:
 		return
 
-	var cards_to_check = []
+	var cards_to_check: Array = []
 	for _i in range(look_count):
 		cards_to_check.append(deck.deck.pop_back())
 
-	var safe_cards = []
-	var danger_cards = []
+	var safe_cards: Array = []
+	var danger_cards: Array = []
 	for c in cards_to_check:
 		if deck._check_burst(c):
 			danger_cards.append(c)

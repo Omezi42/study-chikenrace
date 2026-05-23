@@ -169,8 +169,8 @@ func _apply_ai_item_effect(deck, item_type: int) -> void:
 
 
 func _ai_word_book(deck) -> void:
-	var look_count = min(3, deck.deck.size())
-	var cards = []
+	var look_count: int = mini(3, deck.deck.size())
+	var cards: Array = []
 	for _i in range(look_count):
 		cards.append(deck.deck.pop_back())
 	for c in cards:
@@ -261,46 +261,51 @@ func get_rival_state(name: String) -> Dictionary:
 
 
 func simulate_ai_votes(day: int) -> void:
-	var all_players = [Global.player_name]
+	var all_players: Array = [Global.player_name]
 	for r in rival_states:
 		all_players.append(r)
 		
 	for r_name in rival_states:
-		var voter_state = rival_states[r_name]
-		var style = voter_state["style"]
-		var res = daily_results[r_name]
-		var votes = []
+		if not daily_results.has(r_name):
+			continue
+		var voter_state: Dictionary = rival_states[r_name]
+		var style: String = voter_state.get("style", "safe")
+		var res: Dictionary = daily_results[r_name]
+		var votes: Array = []
 		
-		var targets = []
+		var targets: Array = []
 		for p in all_players:
 			if p != r_name:
 				targets.append(p)
 				
-		var targets_with_weight = []
+		var targets_with_weight: Array = []
 		for t in targets:
-			var weight = 1.0
+			var weight: float = 1.0
 			if t == Global.player_name:
-				var player_reported = Global.last_reported_score
-				var player_actual = Global.last_actual_score
-				var player_diff = player_reported - player_actual
+				var player_reported: int = Global.last_reported_score
+				var player_actual: int = Global.last_actual_score
+				var player_diff: int = player_reported - player_actual
 				weight += float(player_diff) * 0.05
 			else:
 				var t_res = daily_results.get(t)
 				if t_res:
-					var t_reported = t_res["reported_score"]
-					var t_actual = t_res["actual_score"]
-					var t_diff = t_reported - t_actual
+					var t_reported: int = t_res["reported_score"]
+					var t_actual: int = t_res["actual_score"]
+					var t_diff: int = t_reported - t_actual
 					weight += float(t_diff) * 0.05
 					
-					var t_state = rival_states[t]
-					if t_state["style"] == "bluffer":
-						weight += 0.2
-					elif t_state["style"] == "highroll":
-						weight += 0.1
+					var t_state = rival_states.get(t)
+					if t_state:
+						if t_state.get("style") == "bluffer":
+							weight += 0.2
+						elif t_state.get("style") == "highroll":
+							weight += 0.1
 						
 			targets_with_weight.append({"name": t, "weight": weight})
 			
-		targets_with_weight.sort_custom(func(a, b): return a["weight"] > b["weight"])
+		targets_with_weight.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+			return a["weight"] > b["weight"]
+		)
 		
 		var vote_prob = 0.5
 		match style:
@@ -326,4 +331,3 @@ func simulate_ai_votes(day: int) -> void:
 			if daily_results.has(r_name):
 				r_entry["votes"] = daily_results[r_name].get("votes", [])
 		Global.save_data()
-

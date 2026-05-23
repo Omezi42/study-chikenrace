@@ -302,7 +302,7 @@ static func create_subject_card_large(subject: int, weight: int) -> Control:
 	
 	return container
 
-static func create_item_card_large(item_type: int) -> Control:
+static func create_item_card_large(item_type: int, number: int = -1) -> Control:
 	var container = Control.new()
 	container.custom_minimum_size = Vector2(190, 260)
 	container.size = Vector2(190, 260)
@@ -370,7 +370,8 @@ static func create_item_card_large(item_type: int) -> Control:
 		Enums.ItemType.DELETE_CARD:
 			name_str = "忘却ノート"; col = Color("495057"); it_char = "忘"
 			
-	vbox.add_child(create_label(name_str, 20, col, true))
+	var name_display = "%s (%d)" % [name_str, number] if number > 0 else name_str
+	vbox.add_child(create_label(name_display, 20, col, true))
 	
 	# 左上にミニバッジを追加（重ね合わされても見えるように）
 	var mini_badge = PanelContainer.new()
@@ -391,6 +392,35 @@ static func create_item_card_large(item_type: int) -> Control:
 	
 	container.add_child(mini_badge)
 	mini_badge.position = Vector2(12, 12)
+
+	# 右上に数字バッジを追加（重ね合わされても数字がひと目で確認できるように）
+	if number > 0:
+		var num_badge = PanelContainer.new()
+		num_badge.name = "NumberBadge"
+		num_badge.custom_minimum_size = Vector2(34, 30)
+		var num_style = StyleBoxFlat.new()
+		if item_type == Enums.ItemType.CHEAT_SHEET or item_type == Enums.ItemType.ALL_NIGHTER or item_type == Enums.ItemType.ANSWER_KEY:
+			num_style.bg_color = Color("d94040")
+		elif item_type == Enums.ItemType.THICK_BOOK or item_type == Enums.ItemType.CRAM_SCHOOL:
+			num_style.bg_color = COLOR_ACCENT_GOLD
+		else:
+			num_style.bg_color = Color("1a2636")
+		num_style.corner_radius_top_left = 6
+		num_style.corner_radius_top_right = 6
+		num_style.corner_radius_bottom_left = 6
+		num_style.corner_radius_bottom_right = 6
+		num_style.border_width_left = 2; num_style.border_width_top = 2
+		num_style.border_width_right = 2; num_style.border_width_bottom = 2
+		num_style.border_color = Color.WHITE
+		num_badge.add_theme_stylebox_override("panel", num_style)
+		
+		var num_lbl = create_label(str(number), 14, Color.WHITE, true)
+		num_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		num_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		num_badge.add_child(num_lbl)
+		
+		container.add_child(num_badge)
+		num_badge.position = Vector2(190 - 34 - 12, 12)
 	
 	# ホバー・インタラクションエフェクトの追加 (Sprint 1)
 	container.mouse_filter = Control.MOUSE_FILTER_PASS
@@ -443,7 +473,7 @@ static func create_gauge_bar(value: float, max_val: float, fill_color: Color, ba
 	fill_style.corner_radius_bottom_left = 4; fill_style.corner_radius_bottom_right = 4
 	fill.add_theme_stylebox_override("panel", fill_style)
 	fill.anchor_bottom = 1.0
-	var ratio = clamp(value / max(max_val, 1.0), 0.0, 1.0)
+	var ratio: float = clamp(value / max(max_val, 1.0), 0.0, 1.0)
 	fill.offset_right = max(4.0, bar_size.x * ratio)
 	wrap_ctrl.add_child(fill)
 	return wrap_ctrl
