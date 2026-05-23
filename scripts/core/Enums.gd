@@ -10,20 +10,34 @@ enum Subject {
 }
 
 enum ItemType {
-	STICKY_NOTE = 1,   # 1: 付箋（ストップ時にボーナス+30）
-	ERASER = 2,        # 2: 消しゴム（場のカード1枚を無効化）
-	RULER = 3,         # 3: 定規（ストップ時にボーナス+10）
-	WORD_BOOK = 4,     # 4: 単語帳（山札上3枚見て戻す等）
-	CHEAT_SHEET = 5,   # 5: ズルいカンペ（嘘上限さらに+50追加）
-	COMPASS = 6,       # 6: コンパス（引いた瞬間にスコア+15）
-	ENERGY_DRINK = 7,  # 7: エナジードリンク（バーストシールド付与）
-	RED_SHEET = 8,     # 8: 赤シート（次カード得点2倍）
-	MECHANICAL_PENCIL = 9, # 9: シャーペン（引いた瞬間にスコア+5）
-	THICK_BOOK = 10,   # 10: 分厚い参考書（強制2枚ドロー）
-	DELETE_CARD = 99   # 忘却のノート（アイテム削除用特殊アイテム）
+	STICKY_NOTE = 1,
+	ERASER = 2,
+	RULER = 3,
+	WORD_BOOK = 4,
+	CHEAT_SHEET = 5,
+	COMPASS = 6,
+	ENERGY_DRINK = 7,
+	RED_SHEET = 8,
+	MECHANICAL_PENCIL = 9,
+	THICK_BOOK = 10,
+	FLASH_CARD = 11,
+	LUCKY_CHARM = 12,
+	ALL_NIGHTER = 13,
+	ANSWER_KEY = 14,
+	HIGHLIGHTER = 15,
+	TIMER = 16,
+	STUDY_GROUP_CHAT = 17,
+	PRACTICE_TEST = 18,
+	CAFE_LATTE = 19,
+	NOISE_CANCELING = 20,
+	SEAT_CUSHION = 21,
+	BLUE_PEN = 22,
+	CRAM_SCHOOL = 23,
+	MEMO_APP = 24,
+	DELETE_CARD = 99
 }
 
-const ITEM_SUBJECT_MAP = {
+const ITEM_SUBJECT_MAP := {
 	ItemType.STICKY_NOTE: Subject.JAPANESE,
 	ItemType.ERASER: Subject.NONE,
 	ItemType.RULER: Subject.MATH,
@@ -34,5 +48,19 @@ const ITEM_SUBJECT_MAP = {
 	ItemType.RED_SHEET: Subject.ENGLISH,
 	ItemType.MECHANICAL_PENCIL: Subject.JAPANESE,
 	ItemType.THICK_BOOK: Subject.SCIENCE,
+	ItemType.FLASH_CARD: Subject.ENGLISH,
+	ItemType.LUCKY_CHARM: Subject.NONE,
+	ItemType.ALL_NIGHTER: Subject.SCIENCE,
+	ItemType.ANSWER_KEY: Subject.SOCIAL_STUDIES,
+	ItemType.HIGHLIGHTER: Subject.JAPANESE,
+	ItemType.TIMER: Subject.MATH,
+	ItemType.STUDY_GROUP_CHAT: Subject.SOCIAL_STUDIES,
+	ItemType.PRACTICE_TEST: Subject.SCIENCE,
+	ItemType.CAFE_LATTE: Subject.NONE,
+	ItemType.NOISE_CANCELING: Subject.NONE,
+	ItemType.SEAT_CUSHION: Subject.NONE,
+	ItemType.BLUE_PEN: Subject.JAPANESE,
+	ItemType.CRAM_SCHOOL: Subject.SCIENCE,
+	ItemType.MEMO_APP: Subject.SOCIAL_STUDIES,
 	ItemType.DELETE_CARD: Subject.NONE
 }

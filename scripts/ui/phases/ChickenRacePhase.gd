@@ -77,7 +77,7 @@ func _show_race_screen():
 	hour_label = DeskTheme.create_floating_badge("%d時間目" % display_hour, DeskTheme.COLOR_ACCENT_GOLD, 20)
 	hud_v.add_child(hour_label)
 	
-	hud_v.add_child(DeskTheme.create_label("[ 本日の学習ノート ]", 32, DeskTheme.COLOR_INK, true))
+	hud_v.add_child(DeskTheme.create_label("[ 本日の勉強記録 ]", 32, DeskTheme.COLOR_INK, true))
 	
 	var stance_lbl = DeskTheme.create_label("今日のスタンス: " + ctx.current_daily_stance, 16, DeskTheme.COLOR_SAFE, true)
 	hud_v.add_child(stance_lbl)
@@ -87,7 +87,7 @@ func _show_race_screen():
 	score_v.alignment = BoxContainer.ALIGNMENT_CENTER
 	hud_v.add_child(score_v)
 	
-	var score_title = DeskTheme.create_label("現在の獲得点数", 20, DeskTheme.COLOR_MUTED, true)
+	var score_title = DeskTheme.create_label("現在の実点", 20, DeskTheme.COLOR_MUTED, true)
 	score_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	score_v.add_child(score_title)
 	
@@ -127,7 +127,7 @@ func _show_race_screen():
 	history_box.add_theme_constant_override("separation", 6)
 	right_v.add_child(history_box)
 	
-	var drawn_count_lbl = DeskTheme.create_label("引いたカード: 0枚", 14, DeskTheme.COLOR_INK, true)
+	var drawn_count_lbl = DeskTheme.create_label("引いた枚数: 0", 14, DeskTheme.COLOR_INK, true)
 	card_info_h.add_child(drawn_count_lbl)
 	hud_gauges["drawn_count"] = drawn_count_lbl
 	
@@ -141,7 +141,7 @@ func _show_race_screen():
 	deck_stack_container.add_child(deck_stack)
 	hud_gauges["deck_stack"] = deck_stack
 	
-	var remain_lbl = DeskTheme.create_label("残り山札: --枚", 14, DeskTheme.COLOR_MUTED, true)
+	var remain_lbl = DeskTheme.create_label("山札残り: --", 14, DeskTheme.COLOR_MUTED, true)
 	deck_stack_container.add_child(remain_lbl)
 	hud_gauges["remain_count"] = remain_lbl
 	
@@ -192,7 +192,7 @@ func _show_race_screen():
 	banner_h.add_child(led_indicator)
 	hud_gauges["sleep_led"] = led_indicator
 	
-	next_burst_label = DeskTheme.create_label("安全レベル: 脳内すっきり、まだ引ける！", 15, DeskTheme.COLOR_SAFE, true)
+	next_burst_label = DeskTheme.create_label("安全: まだ睡魔は感じない", 15, DeskTheme.COLOR_SAFE, true)
 	next_burst_label.add_theme_constant_override("outline_size", 4)
 	next_burst_label.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.95))
 	right_v.add_child(next_burst_label)
@@ -255,9 +255,9 @@ func _update_race_hud():
 	
 	var drawn_num = drawn_card_nodes.size()
 	if hud_gauges.has("drawn_count"):
-		hud_gauges["drawn_count"].text = "引いたカード: %d枚" % drawn_num
+		hud_gauges["drawn_count"].text = "引いた枚数: %d" % drawn_num
 	if hud_gauges.has("remain_count"):
-		hud_gauges["remain_count"].text = "山札: %d枚" % deck.deck.size()
+		hud_gauges["remain_count"].text = "山札残り: %d" % deck.deck.size()
 		
 	if is_instance_valid(history_box):
 		for child in history_box.get_children():
@@ -291,9 +291,19 @@ func _update_race_hud():
 			if dc.is_active and dc.number == c.number:
 				conflict_count += 1
 				break
+	var has_charm = false
+	for dc in deck.drawn_cards:
+		if dc.is_active and dc.item_type == Enums.ItemType.LUCKY_CHARM:
+			has_charm = true
+			break
+
 	var burst_prob = 0
 	if total_deck > 0:
-		burst_prob = int((float(conflict_count) / float(total_deck)) * 100.0)
+		var raw_prob = int((float(conflict_count) / float(total_deck)) * 100.0)
+		if has_charm:
+			burst_prob = max(0, raw_prob - 18)
+		else:
+			burst_prob = raw_prob
 		
 	var style: StyleBoxFlat = burst_warning_banner.get_theme_stylebox("panel")
 	var gauge_color = DeskTheme.COLOR_SAFE
@@ -313,7 +323,7 @@ func _update_race_hud():
 	if burst_prob >= 50:
 		style.bg_color = DeskTheme.COLOR_BLUFF_RED
 		gauge_color = DeskTheme.COLOR_BLUFF_RED
-		next_burst_label.text = "警告: 限界寸前！いつ寝落ちしてもおかしくない！"
+		next_burst_label.text = "限界！寝落ち寸前！"
 		next_burst_label.add_theme_color_override("font_color", DeskTheme.COLOR_BLUFF_RED)
 		if hud_gauges.has("sleep_title"): hud_gauges["sleep_title"].text = "睡魔度: 限界寸前！"
 		led_color = DeskTheme.COLOR_BLUFF_RED
@@ -322,7 +332,7 @@ func _update_race_hud():
 	elif burst_prob >= 25:
 		style.bg_color = DeskTheme.COLOR_ACCENT_GOLD
 		gauge_color = DeskTheme.COLOR_ACCENT_GOLD
-		next_burst_label.text = "注意: 限界が近い... そろそろ引き際か？"
+		next_burst_label.text = "注意: そろそろ引き際か…"
 		next_burst_label.add_theme_color_override("font_color", Color("a87d00"))
 		if hud_gauges.has("sleep_title"): hud_gauges["sleep_title"].text = "睡魔度: 眠気あり"
 		led_color = DeskTheme.COLOR_ACCENT_GOLD
@@ -331,7 +341,7 @@ func _update_race_hud():
 	else:
 		style.bg_color = DeskTheme.COLOR_SAFE
 		gauge_color = DeskTheme.COLOR_SAFE
-		next_burst_label.text = "安全レベル: まだ睡魔は感じない！"
+		next_burst_label.text = "安全: まだ余裕あり"
 		next_burst_label.add_theme_color_override("font_color", DeskTheme.COLOR_SAFE)
 		if hud_gauges.has("sleep_title"): hud_gauges["sleep_title"].text = "睡魔度: 安全"
 		led_color = Color("8cff8c")
@@ -461,15 +471,17 @@ func _on_draw_pressed():
 	elif card.item_type == Enums.ItemType.MECHANICAL_PENCIL:
 		ToastOverlayScript.show_toast(ctx.ui_root, "シャーペン！数字%dが得点に加算" % card.number, Color("868e96"))
 	elif card.item_type == Enums.ItemType.STICKY_NOTE:
-		ToastOverlayScript.show_toast(ctx.ui_root, "付箋！ストップ時ボーナス+30点！", Color("ffd43b"))
+		ToastOverlayScript.show_toast(ctx.ui_root, "付箋！ストップ時ボーナス+18点！", Color("ffd43b"))
 	elif card.item_type == Enums.ItemType.CHEAT_SHEET:
-		ToastOverlayScript.show_toast(ctx.ui_root, "ズルいカンペ！嘘の上限+%d点！" % GameBalanceScript.BLUFF_CAP_PER_CHEAT_SHEET, Color("94d82d"))
+		ToastOverlayScript.show_toast(ctx.ui_root, "カンペ！ブラフ上限+%d点！" % GameBalanceScript.BLUFF_CAP_PER_CHEAT_SHEET, Color("94d82d"))
 	elif card.item_type == Enums.ItemType.ENERGY_DRINK:
 		ToastOverlayScript.show_toast(ctx.ui_root, "エナジードリンク！バーストシールド発動！", Color("fcc419"))
 	elif card.item_type == Enums.ItemType.WORD_BOOK:
 		ToastOverlayScript.show_toast(ctx.ui_root, "単語帳！山札の危険カードを回避！", Color("3bc9db"))
 	elif card.item_type == Enums.ItemType.RED_SHEET:
 		ToastOverlayScript.show_toast(ctx.ui_root, "赤シート！次のカード得点2倍！", Color("ff6b6b"))
+	elif card.item_type == Enums.ItemType.LUCKY_CHARM:
+		ToastOverlayScript.show_toast(ctx.ui_root, "お守り！睡魔度の警告を和らげます", Color("74c0fc"))
 	
 	if res["burst"]:
 		await _trigger_burst_sequence()
@@ -480,12 +492,9 @@ func _on_draw_pressed():
 	
 	if not res["burst"] and not res["prevented"]:
 		if ctx.game_session.is_five_subjects_complete:
-			ToastOverlayScript.show_toast(ctx.ui_root, "★ 5教科コンプリート達成！ ★\nバースト無効化＆ボーナス得点で強制クリア！", Color("ff6b6b"))
-			await ctx.screen_content.get_tree().create_timer(1.5).timeout
-			_on_stop_pressed()
-			return
+			ToastOverlayScript.show_toast(ctx.ui_root, "★ 5教科コンプリート！ ボーナス獲得！", Color("ff6b6b"))
 			
-		var combo_num = drawn_card_nodes.size()
+		var combo_num = ctx.game_session.current_combo
 
 		if combo_num >= 2:
 			var combo_badge = DeskTheme.create_floating_badge("%d COMBO!" % combo_num, DeskTheme.COLOR_SAFE, 20)

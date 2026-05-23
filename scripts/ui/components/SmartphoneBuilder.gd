@@ -314,7 +314,7 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 	tips_banner.add_child(tips_v)
 	
 	tips_v.add_child(DeskTheme.create_label("[チキスタ運営事務局]", 14, Color("1da1f2"), true))
-	var tips_msg = DeskTheme.create_label("アイコンをタップで詳細プロフ！ライバルに【👍】を突きつけてダウト(嘘告発)しましょう！嘘を暴けばボーナス、冤罪はペナルティ！", 12, DeskTheme.COLOR_INK)
+	var tips_msg = DeskTheme.create_label("アイコンをタップで詳細プロフ！ライバルに【👍】を押して『いいね！』しましょう！怪しい報告をいいねで見破れば最終日にボーナス、冤罪はペナルティ！", 12, DeskTheme.COLOR_INK)
 	tips_msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tips_v.add_child(tips_msg)
 	
@@ -335,7 +335,7 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 	var vote_info_hbox = HBoxContainer.new()
 	vote_info_panel.add_child(vote_info_hbox)
 	
-	var votes_left_lbl = DeskTheme.create_label("本日のダウト投票権 (👍): %d / 3" % (3 - vote_count), 14, Color("d9480f"), true)
+	var votes_left_lbl = DeskTheme.create_label("本日のいいね投票権 (👍): %d / 3" % (3 - vote_count), 14, Color("d9480f"), true)
 	vote_info_hbox.add_child(votes_left_lbl)
 	
 	var active_like_buttons = []
@@ -365,8 +365,8 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 			"1. ノートで計画を立てて付箋を貼る\n" + \
 			"2. ドローで限界まで勉強（チキンレース）\n" + \
 			"3. 結果を報告（実力以上の大ボラ報告も可能！）\n" + \
-			"4. 翌朝、相手の嘘と思われる報告に【👍 (ダウト)】を押す！(1日最大3回まで)\n\n" + \
-			"※明日（2日目）の朝からライバルの学習記録がここにリアルタイムで表示されるようになります！本日はまず自分の学習計画を立てて勉強を始めましょう！"
+			"4. タイムラインで、相手の嘘と思われる報告に【👍いいね！】を押す！(1日最大3回まで)\n\n" + \
+			"※明日（2日目）の学習記録がここにリアルタイムで表示されるようになります！本日はまず自分の学習計画を立てて勉強を始めましょう！"
 		
 		var body_lbl = DeskTheme.create_label(body, 12, DeskTheme.COLOR_INK)
 		body_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -508,7 +508,7 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 		card_h.add_child(like_wrap)
 		
 		var is_btn_active = not already_voted and vote_count < 3
-		var btn_text = "👍済" if already_voted else "👍ダウト"
+		var btn_text = "👍済" if already_voted else "👍いいね！"
 		var like_btn = DeskTheme.create_button(btn_text, Vector2(80, 34), Color("3897f0") if is_btn_active else Color("dbe4eb"), Color("1070c0") if is_btn_active else Color("a0b0c0"), false, 13)
 		like_btn.disabled = not is_btn_active
 		if not is_btn_active:
@@ -536,7 +536,7 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 			stamp_style.content_margin_left = 6; stamp_style.content_margin_right = 6
 			stamp_style.content_margin_top = 2; stamp_style.content_margin_bottom = 2
 			stamp.add_theme_stylebox_override("panel", stamp_style)
-			var stamp_lbl = DeskTheme.create_label("👍 ダウト", 10, Color.WHITE, true)
+			var stamp_lbl = DeskTheme.create_label("👍 いいね！", 10, Color.WHITE, true)
 			stamp.add_child(stamp_lbl)
 			stamp.position = Vector2(0, -15)
 			return stamp
@@ -551,22 +551,11 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 			if ctx.backend_manager.get_daily_vote_count() >= 3: return
 			
 			ctx.backend_manager.vote_rival(rival_name, -1)
-			if is_instance_valid(ctx.game_session):
-				var doubt := GameBalanceScript.apply_doubt_vote(
-					ctx.game_session, total_score, rival_actual, is_bluffing
-				)
-				if doubt.success:
-					ToastOverlayScript.show_toast(
-						ctx.ui_root,
-						"%s の嘘を見破り！ +%d点（明日の成績に反映）" % [rival_name, doubt.delta],
-						DeskTheme.COLOR_SAFE
-					)
-				else:
-					ToastOverlayScript.show_toast(
-						ctx.ui_root,
-						"冤罪… 正直者でした −%d点" % GameBalanceScript.DOUBT_FAIL_PENALTY,
-						DeskTheme.COLOR_BLUFF_RED
-					)
+			ToastOverlayScript.show_toast(
+				ctx.ui_root,
+				"%s にいいね！しました" % rival_name,
+				DeskTheme.COLOR_SAFE
+			)
 			like_btn.disabled = true
 			var style_v = like_btn.get_theme_stylebox("normal").duplicate()
 			style_v.bg_color = Color("a0c0e0")
@@ -638,7 +627,7 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 				
 			# 投票バッジと他ボタンの無効化処理
 			var new_count = ctx.backend_manager.get_daily_vote_count()
-			votes_left_lbl.text = "本日のダウト投票権 (👍): %d / 3" % (3 - new_count)
+			votes_left_lbl.text = "本日のいいね投票権 (👍): %d / 3" % (3 - new_count)
 			
 			if new_count >= 3:
 				for btn in active_like_buttons:

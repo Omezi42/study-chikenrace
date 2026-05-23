@@ -1,10 +1,13 @@
 extends Node
 
+const ItemLibraryScript = preload("res://scripts/core/ItemLibrary.gd")
+
 var player_name: String = ""
 var total_score: int = 0
 var play_count: int = 0
 var has_seen_tutorial: bool = false
 var current_play_mode: int = 2 # 0: ROOM, 1: CPU, 2: GLOBAL
+var match_rival_count: int = 3 # マッチング人数 (ライバル数)
 
 # CPUモード用のステートとローカルハイスコア
 var cpu_data: Array = []
@@ -16,12 +19,7 @@ var last_reported_score: int = 0
 var last_actual_score: int = 0
 # メタ進行・ロードアウト用ステート
 var coins: int = 0
-var unlocked_items: Array = [
-	Enums.ItemType.STICKY_NOTE, Enums.ItemType.ERASER, Enums.ItemType.RULER,
-	Enums.ItemType.WORD_BOOK, Enums.ItemType.CHEAT_SHEET, Enums.ItemType.COMPASS,
-	Enums.ItemType.ENERGY_DRINK, Enums.ItemType.RED_SHEET, Enums.ItemType.MECHANICAL_PENCIL,
-	Enums.ItemType.THICK_BOOK
-]
+var unlocked_items: Array = ItemLibraryScript.default_unlocks()
 var item_levels: Dictionary = {}
 var current_loadout: Dictionary = {
 	1: Enums.ItemType.STICKY_NOTE,
@@ -70,6 +68,7 @@ func save_data():
 		"item_usage_counts": item_usage_counts,
 		"score_history": score_history,
 		"accumulated_votes": accumulated_votes,
+		"match_rival_count": match_rival_count,
 		"save_version": 2  # Sprint 9: セーブデータバージョン管理
 	}
 	
@@ -140,6 +139,7 @@ func _apply_loaded_data(data: Dictionary):
 	last_reported_score = _safe_int(data.get("last_reported_score", 0))
 	last_actual_score = _safe_int(data.get("last_actual_score", 0))
 	coins = max(0, _safe_int(data.get("coins", 0)))  # コインは負にならない
+	match_rival_count = _safe_int(data.get("match_rival_count", 3))
 	
 	if data.has("unlocked_items") and data["unlocked_items"] is Array:
 		unlocked_items = data["unlocked_items"]

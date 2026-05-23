@@ -11,7 +11,6 @@ const BagBuilderPhaseScript = preload("res://scripts/ui/phases/BagBuilderPhase.g
 const ChickenRacePhaseScript = preload("res://scripts/ui/phases/ChickenRacePhase.gd")
 const ReportPhaseScript = preload("res://scripts/ui/phases/ReportPhase.gd")
 const DayTransitionPhaseScript = preload("res://scripts/ui/phases/DayTransitionPhase.gd")
-const BlackboardPhaseScript = preload("res://scripts/ui/phases/BlackboardPhase.gd")
 const DailyLikesPhaseScript = preload("res://scripts/ui/phases/DailyLikesPhase.gd")
 
 var game_session
@@ -201,6 +200,15 @@ func _show_report_screen(scores: Dictionary):
 	phase.start(scores)
 
 func _on_report_completed():
+	_show_daily_likes()
+
+func _show_daily_likes():
+	var phase = DailyLikesPhaseScript.new(game_context)
+	current_phase = phase
+	phase.phase_completed.connect(_on_daily_likes_completed)
+	phase.start()
+
+func _on_daily_likes_completed():
 	_show_day_transition()
 
 func _show_day_transition():
@@ -211,13 +219,3 @@ func _show_day_transition():
 
 func _on_day_transition_completed():
 	_start_new_day_setup()
-
-func _show_blackboard_progress():
-	var phase = BlackboardPhaseScript.new(game_context)
-	current_phase = phase
-	phase.phase_completed.connect(_on_blackboard_completed)
-	phase.start()
-
-func _on_blackboard_completed():
-	backend_manager.load_daily_scores()
-	_show_loading()

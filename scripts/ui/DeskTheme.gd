@@ -11,6 +11,7 @@ const COLOR_MUTED = Color("8a8279")
 const COLOR_DESK_WARM = Color("c09f80")
 const COLOR_ACCENT_GOLD = Color("f0c040")
 const COLOR_BLUFF_RED = Color("d94040")
+const COLOR_BLUFF_MILD = Color("e89030") # マイルドなブラフ警告用（オレンジ・ゴールド系）
 const COLOR_SHADOW = Color(0.06, 0.04, 0.02, 0.30)
 const COLOR_GLASS = Color(1, 1, 1, 0.12)
 const COLOR_CHALK_WHITE = Color(0.95, 0.95, 0.95, 0.9)

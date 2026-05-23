@@ -4,6 +4,7 @@ const LOG_PATH := "res://debug-e62179.log"
 
 
 func _init() -> void:
+	print("--- SMOKE TEST STARTED ---")
 	var results: Array = []
 	_test_script("ZukanScene", "res://scripts/ui/ZukanScene.gd", results)
 	_test_scene("ZukanScene.tscn", "res://ZukanScene.tscn", results)
@@ -39,9 +40,20 @@ func _test_desk_texture(results: Array) -> void:
 
 func _test_vote_flow(results: Array) -> void:
 	var g = get_root().get_node_or_null("/root/Global")
+	var created_global := false
+	if g == null:
+		var global_script = load("res://scripts/core/Global.gd")
+		if global_script:
+			g = Node.new()
+			g.set_script(global_script)
+			g.name = "Global"
+			get_root().add_child(g)
+			created_global = true
+	
 	if g == null:
 		results.append(_entry("vote_flow", false, {"reason": "Global autoload missing"}))
 		return
+		
 	var bm_script = load("res://scripts/core/BackendManager.gd")
 	var bm = bm_script.new()
 	g.play_count = 0
@@ -55,6 +67,9 @@ func _test_vote_flow(results: Array) -> void:
 	var day2_ok: bool = bm.has_voted_rival("慎重な優等生")
 	results.append(_entry("vote_day1_key", day1_ok, {"key": k1}))
 	results.append(_entry("vote_day2_fresh", day2_ok, {"play_count": 1}))
+	
+	if created_global:
+		g.queue_free()
 
 
 func _entry(test_id: String, passed: bool, data: Dictionary) -> Dictionary:

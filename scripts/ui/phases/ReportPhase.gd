@@ -122,7 +122,7 @@ func _show_report_screen():
 	tm.add_child(title_v)
 	
 	title_v.add_child(DeskTheme.create_label("[ 本日の学習報告 ]", 18, DeskTheme.COLOR_INK, true))
-	title_v.add_child(DeskTheme.create_label("スライダーを動かして点数を盛ろう！\n(嘘がバレると盛った分の2倍減点！)", 13, DeskTheme.COLOR_MUTED, true))
+	title_v.add_child(DeskTheme.create_label("スライダーを動かして点数を盛ろう！\n(嘘がバレても自己減点なし。ただし見破ったライバルにボーナスが入ります)", 13, DeskTheme.COLOR_MUTED, true))
 	
 	var list_card = PanelContainer.new()
 	var lc_style = StyleBoxFlat.new()
@@ -337,12 +337,12 @@ func _show_report_screen():
 	warning_v.add_child(warning_title)
 	ui_elements["noise_warning_title"] = warning_title
 	
-	var warning_desc = DeskTheme.create_label("正直な報告です！\n(応援されたら＋10点！)", 16, DeskTheme.COLOR_INK, true)
+	var warning_desc = DeskTheme.create_label("正直な報告です！", 16, DeskTheme.COLOR_INK, true)
 	warning_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	warning_v.add_child(warning_desc)
 	ui_elements["noise_warning"] = warning_desc
 	
-	var warning_hint = DeskTheme.create_label("※嘘がバレると盛った差分の2倍減点！謙虚なら応援でボーナス！", 12, DeskTheme.COLOR_MUTED, true)
+	var warning_hint = DeskTheme.create_label("※嘘を盛ると露見率が上がります。他人にいいね！で見破られると、相手にボーナス点が入ります。", 12, DeskTheme.COLOR_MUTED, true)
 	warning_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	warning_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	warning_v.add_child(warning_hint)
@@ -390,10 +390,9 @@ func _update_report_warning():
 	var tw = card.create_tween().set_parallel(true)
 	
 	if diff > 0:
-		var penalty = GameBalanceScript.player_lie_exposed_penalty(diff)
-		warning_title.text = "[ 嘘つきリスク警告！ ]"
+		warning_title.text = "[ 盛り報告リスクあり ]"
 		warning_title.add_theme_color_override("font_color", DeskTheme.COLOR_BLUFF_RED)
-		warning_lbl.text = "報告に嘘(盛り)が混ざっています！\n見破られた場合の減点: −%d点！" % penalty
+		warning_lbl.text = "報告に嘘(盛り)が混ざっています！\nいいね！で見破られると、見破った側にボーナス +6点 が入ります！"
 		warning_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_BLUFF_RED)
 		tw.tween_property(wc_style, "bg_color", Color("fff5f5"), 0.15)
 		tw.tween_property(wc_style, "border_color", Color("ffd5d5"), 0.15)
@@ -403,7 +402,7 @@ func _update_report_warning():
 	else:
 		warning_title.text = "[ 報告ステータス: 正真 ]"
 		warning_title.add_theme_color_override("font_color", Color("2b5c8f"))
-		warning_lbl.text = "正直な報告です！\n(応援されたら＋10点！)"
+		warning_lbl.text = "正直な報告です！\n(嘘がないため見破られることはありません)"
 		warning_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		tw.tween_property(wc_style, "bg_color", Color("f1f8ff"), 0.15)
 		tw.tween_property(wc_style, "border_color", Color("d0e1fd"), 0.15)
@@ -418,7 +417,7 @@ func _update_report_warning():
 	
 	var sum_lbl = ui_elements[summary_key] as Label
 	if diff > 0:
-		sum_lbl.text = "盛り分: +%d点  バレたら: −%d点" % [diff, GameBalanceScript.player_lie_exposed_penalty(diff)]
+		sum_lbl.text = "盛り分: +%d点  バレても自己減点なし(相手にボーナス)" % diff
 		sum_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_BLUFF_RED)
 	else:
 		sum_lbl.text = "正直に報告中 ✔"
@@ -449,11 +448,25 @@ func _submit_final():
 		daily_hidden = ctx.game_session.hidden_bonus_score
 		ctx.game_session.hidden_bonus_score = 0
 
+	var player_cheat_sheets = 0
+	var player_answer_keys = 0
+	var player_group_chats = 0
+	var player_noise_cancelings = 0
+	if is_instance_valid(ctx) and ctx.game_session and ctx.game_session.deck:
+		player_cheat_sheets = ctx.game_session.deck.cheat_sheet_count
+		player_answer_keys = ctx.game_session.deck.answer_key_count
+		player_group_chats = ctx.game_session.deck.study_group_chat_count
+		player_noise_cancelings = ctx.game_session.deck.noise_canceling_count
+
 	var day_entry = {
 		"day": Global.play_count,
 		"total": Global.total_score,
 		"actual_score": actual_score,
 		"reported_score": reported_score,
+		"cheat_sheet_count": player_cheat_sheets,
+		"answer_key_count": player_answer_keys,
+		"study_group_chat_count": player_group_chats,
+		"noise_canceling_count": player_noise_cancelings,
 		"hidden_bonus": daily_hidden,
 		"rivals": []
 	}
@@ -465,7 +478,12 @@ func _submit_final():
 				"name": r_name,
 				"score": res["reported_score"],
 				"actual_score": res["actual_score"],
-				"is_lying": res["is_lying"]
+				"is_lying": res["is_lying"],
+				"cheat_sheet_count": res.get("cheat_sheet_count", 0),
+				"answer_key_count": res.get("answer_key_count", 0),
+				"study_group_chat_count": res.get("study_group_chat_count", 0),
+				"noise_canceling_count": res.get("noise_canceling_count", 0),
+				"votes": res.get("votes", [])
 			})
 	elif ctx.backend_manager and "current_scores" in ctx.backend_manager:
 		for rival in ctx.backend_manager.current_scores:

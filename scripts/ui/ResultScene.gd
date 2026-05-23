@@ -33,6 +33,12 @@ var player_perfect_crimes: int = 0
 var player_doubt_success: int = 0
 var player_doubt_failed: int = 0
 
+# 答え合わせ一括計算用データ
+var results_per_day: Array = []
+var participant_names: Array = []
+var final_scores: Dictionary = {}
+var initial_scores: Dictionary = {}
+
 func _ready():
 	audio_manager = AudioManager.new()
 	add_child(audio_manager)
@@ -75,10 +81,158 @@ func _show_loading():
 func _on_scores_loaded(_scores):
 	_start_showdown_reveal()
 
+func _calculate_all_results():
+	results_per_day.clear()
+	participant_names.clear()
+	final_scores.clear()
+	initial_scores.clear()
+	
+	# 参加者リストの取得
+	participant_names.append(Global.player_name)
+	initial_scores[Global.player_name] = 0
+	final_scores[Global.player_name] = 0
+	
+	var total_days = Global.score_history.size()
+	if total_days > 0:
+		var first_day = Global.score_history[0]
+		for rival in first_day.get("rivals", []):
+			var r_name = rival.get("name")
+			participant_names.append(r_name)
+			initial_scores[r_name] = 0
+			final_scores[r_name] = 0
+			
+	var rng = RandomNumberGenerator.new()
+	rng.seed = hash(Global.player_name) + 999
+	
+	for d in range(1, total_days + 1):
+		var entry = Global.score_history[d - 1]
+		var day_data = {}
+		
+		# プレイヤー
+		var p_rep = entry.get("reported_score", 0)
+		var p_act = entry.get("actual_score", p_rep)
+		var p_cheat = entry.get("cheat_sheet_count", 0)
+		var p_answer = entry.get("answer_key_count", 0)
+		var p_group_chat = entry.get("study_group_chat_count", 0)
+		var p_noise_canceling = entry.get("noise_canceling_count", 0)
+		var p_votes = []
+		for r_name in participant_names:
+			if r_name != Global.player_name:
+				var vote_key = "day_%d_%s" % [d, r_name]
+				if Global.accumulated_votes.get(vote_key, false):
+					p_votes.append(r_name)
+					
+		day_data[Global.player_name] = {
+			"reported": p_rep,
+			"actual": p_act,
+			"is_lying": p_rep > p_act,
+			"cheat_sheet_count": p_cheat,
+			"answer_key_count": p_answer,
+			"study_group_chat_count": p_group_chat,
+			"noise_canceling_count": p_noise_canceling,
+			"votes": p_votes,
+			"exposed": false,
+			"score_change": 0,
+			"reasons": [],
+			"vote_results": []
+		}
+		initial_scores[Global.player_name] += p_rep
+		
+		# ライバルたち
+		var rivals = entry.get("rivals", [])
+		for r in rivals:
+			var r_name = r.get("name")
+			var r_rep = r.get("score", 0)
+			var r_act = r.get("actual_score", r_rep)
+			var r_cheat = r.get("cheat_sheet_count", 0)
+			var r_answer = r.get("answer_key_count", 0)
+			var r_group_chat = r.get("study_group_chat_count", 0)
+			var r_noise_canceling = r.get("noise_canceling_count", 0)
+			var r_votes = r.get("votes", [])
+			
+			day_data[r_name] = {
+				"reported": r_rep,
+				"actual": r_act,
+				"is_lying": r_rep > r_act,
+				"cheat_sheet_count": r_cheat,
+				"answer_key_count": r_answer,
+				"study_group_chat_count": r_group_chat,
+				"noise_canceling_count": r_noise_canceling,
+				"votes": r_votes,
+				"exposed": false,
+				"score_change": 0,
+				"reasons": [],
+				"vote_results": []
+			}
+			initial_scores[r_name] += r_rep
+			
+		# フォールバック
+		for r_name in participant_names:
+			if not day_data.has(r_name):
+				day_data[r_name] = {
+					"reported": 0,
+					"actual": 0,
+					"is_lying": false,
+					"cheat_sheet_count": 0,
+					"answer_key_count": 0,
+					"votes": [],
+					"exposed": false,
+					"score_change": 0,
+					"reasons": [],
+					"vote_results": []
+				}
+				
+		# 露見判定
+		for name in participant_names:
+			var p_info = day_data[name]
+			if p_info["is_lying"]:
+				var lie_amount = p_info["reported"] - p_info["actual"]
+				var max_cap = GameBalanceScript.max_bluff_cap(p_info["cheat_sheet_count"])
+				var exp_rate = GameBalanceScript.calculate_exposure_rate(lie_amount, max_cap, p_info["cheat_sheet_count"], p_info["answer_key_count"])
+				var roll = rng.randf()
+				if roll < exp_rate:
+					p_info["exposed"] = true
+					
+		# 投票結果判定
+		for voter_name in participant_names:
+			var voter_info = day_data[voter_name]
+			var votes_cast = voter_info["votes"]
+			var v_results = []
+			
+			for target_name in votes_cast:
+				if not day_data.has(target_name):
+					continue
+				var target_info = day_data[target_name]
+				
+				if target_info["is_lying"] and target_info["exposed"]:
+					var lie_amount = target_info["reported"] - target_info["actual"]
+					var reward = GameBalanceScript.doubt_success_reward(lie_amount, voter_info.get("study_group_chat_count", 0))
+					voter_info["score_change"] += reward
+					voter_info["reasons"].append("いいね成功(+%d)➔%s" % [reward, target_name])
+					v_results.append({"name": target_name, "success": true, "delta": reward})
+				else:
+					var penalty = GameBalanceScript.doubt_fail_penalty(d, voter_info.get("noise_canceling_count", 0))
+					voter_info["score_change"] -= penalty
+					voter_info["reasons"].append("いいね失敗(-%d)➔%s" % [penalty, target_name])
+					v_results.append({"name": target_name, "success": false, "delta": -penalty})
+			voter_info["vote_results"] = v_results
+			
+		results_per_day.append(day_data)
+		
+	for name in participant_names:
+		var total = initial_scores[name]
+		for d_idx in range(total_days):
+			var day_data = results_per_day[d_idx]
+			total += day_data[name]["score_change"]
+		final_scores[name] = max(0, total)
+
+
 # ====================================================
 # 最終日「答え合わせ・Showdown Reveal」黒板演出
 # ====================================================
 func _start_showdown_reveal():
+	_calculate_all_results()
+	
 	for child in screen_content.get_children():
 		child.queue_free()
 		
@@ -169,7 +323,8 @@ func _start_showdown_reveal():
 	skip_btn.pressed.connect(func():
 		is_skipped = true
 		if audio_manager: audio_manager.play_se("click")
-		skip_btn.hide()
+		if skip_btn and is_instance_valid(skip_btn):
+			skip_btn.hide()
 	)
 	board_overlay.add_child(skip_btn)
 	
@@ -188,7 +343,7 @@ func _start_showdown_reveal():
 		await get_tree().create_timer(0.8).timeout
 	
 	for d in range(1, total_days + 1):
-		var entry = Global.score_history[d-1]
+		var day_data = results_per_day[d - 1]
 		var row = row_nodes[d-1]
 		
 		# スキップされていなければスクロールとハイライトを行う
@@ -214,47 +369,34 @@ func _start_showdown_reveal():
 		# ----------------------------------------------------
 		# 1. ライバルの暴露
 		# ----------------------------------------------------
-		var rivals = entry.get("rivals", [])
-		if rivals.is_empty():
-			# フォールバック
-			rivals = [
-				{"name": "慎重な優等生", "score": 50, "actual_score": 50, "is_lying": false},
-				{"name": "ギャンブラー", "score": 60, "actual_score": 60, "is_lying": false},
-				{"name": "ブラフの達人", "score": 50, "actual_score": 40, "is_lying": true}
-			]
-			
-		for rival in rivals:
-			var r_name = rival.get("name", "Unknown")
-			var r_reported = rival.get("score", 0)
-			var r_actual = rival.get("actual_score", r_reported)
-			var is_lying = rival.get("is_lying", false)
-			var total_lie = r_reported - r_actual
+		for r_name in participant_names:
+			if r_name == Global.player_name:
+				continue
 				
-			# プレイヤーがタイムラインでこのライバルに「いいね(ダウト)」を送っていたか
-			var voted = false
-			var vote_key = "day_%d_%s" % [d, r_name]
-			if Global.accumulated_votes.get(vote_key, false):
-				voted = true
+			var r_data = day_data[r_name]
+			var r_reported = r_data["reported"]
+			var r_actual = r_data["actual"]
+			var is_lying = r_data["is_lying"]
+			var exposed = r_data["exposed"]
 			
-			# ライバルUIの構築
 			var r_lbl = DeskTheme.create_label("%s: %d➔%d点" % [r_name.left(4), r_reported, r_actual], 15, DeskTheme.COLOR_CHALK_WHITE)
 			rivals_box.add_child(r_lbl)
 			
 			var stamp_lbl: Control = null
-			var score_diff = 0
-			
 			if is_lying:
-				stamp_lbl = DeskTheme.create_mini_stamp("嘘つき", Color("ff8787"), 12)
-				# Sprint 5: 嘘つきライバルの行を赤くフラッシュ
-				if not is_skipped:
-					var lie_flash = ColorRect.new()
-					lie_flash.color = Color(1.0, 0.3, 0.3, 0.25)
-					lie_flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-					lie_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
-					row.add_child(lie_flash)
-					var lf_tw = lie_flash.create_tween()
-					lf_tw.tween_property(lie_flash, "color:a", 0.0, 0.5)
-					lf_tw.tween_callback(lie_flash.queue_free)
+				if exposed:
+					stamp_lbl = DeskTheme.create_mini_stamp("嘘バレ！", DeskTheme.COLOR_BLUFF_RED, 12)
+					if not is_skipped:
+						var lie_flash = ColorRect.new()
+						lie_flash.color = Color(1.0, 0.3, 0.3, 0.25)
+						lie_flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+						lie_flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+						row.add_child(lie_flash)
+						var lf_tw = lie_flash.create_tween()
+						lf_tw.tween_property(lie_flash, "color:a", 0.0, 0.5)
+						lf_tw.tween_callback(lie_flash.queue_free)
+				else:
+					stamp_lbl = DeskTheme.create_mini_stamp("すり抜け", Color("ffd43b"), 12)
 			else:
 				stamp_lbl = DeskTheme.create_mini_stamp("正直者", Color("40c057"), 12)
 				
@@ -268,13 +410,9 @@ func _start_showdown_reveal():
 		# ----------------------------------------------------
 		# 2. プレイヤー自身のダウト結果等の暴露
 		# ----------------------------------------------------
-		var player_lied = false
-		var total_lie = 0
-		var rep = entry.get("reported_score", 0)
-		var act = entry.get("actual_score", rep)
-		if rep > act:
-			player_lied = true
-			total_lie = rep - act
+		var p_data = day_data[Global.player_name]
+		var player_lied = p_data["is_lying"]
+		var total_lie = p_data["reported"] - p_data["actual"]
 				
 		var p_lbl_text = "あなた: 正直報告"
 		if player_lied:
@@ -285,22 +423,13 @@ func _start_showdown_reveal():
 		player_box.add_child(p_lbl)
 		
 		var p_stamp: Control = null
-		var p_score_diff = entry.get("hidden_bonus", 0)
-		var is_perfect_crime = false
-		
 		if player_lied:
-			# プレイヤーが嘘をついていた日：CPUによる見破り判定（簡易乱数）
-			var p_rng = RandomNumberGenerator.new()
-			p_rng.seed = hash(Global.player_name) + d
-			if p_rng.randf() < clamp(total_lie * 0.05, 0.1, 0.8):
-				# 見破られた！
+			if p_data["exposed"]:
 				p_stamp = DeskTheme.create_mini_stamp("嘘バレ！", DeskTheme.COLOR_BLUFF_RED, 14)
-				p_score_diff -= GameBalanceScript.player_lie_exposed_penalty(total_lie)
 				player_exposed_count += 1
 				if audio_manager: audio_manager.play_se("burst")
-				_trigger_mini_shake(16.0)  # Sprint 5: より強いシェイク
+				_trigger_mini_shake(16.0)
 				
-				# Sprint 5: 嘘バレ時の画面全体赤フラッシュ
 				if not is_skipped:
 					var red_flash = ColorRect.new()
 					red_flash.color = Color(1.0, 0.0, 0.0, 0.3)
@@ -310,26 +439,11 @@ func _start_showdown_reveal():
 					var rf_tw = red_flash.create_tween()
 					rf_tw.tween_property(red_flash, "color:a", 0.0, 0.6).set_trans(Tween.TRANS_CUBIC)
 					rf_tw.tween_callback(red_flash.queue_free)
-					
-					# 減点数値ラベルが落下する演出
-					var penalty_lbl = DeskTheme.create_label("−%d" % abs(p_score_diff), 36, DeskTheme.COLOR_BLUFF_RED, true)
-					penalty_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-					penalty_lbl.anchor_left = 0.5; penalty_lbl.anchor_right = 0.5
-					penalty_lbl.anchor_top = 0.4; penalty_lbl.offset_left = -60; penalty_lbl.offset_right = 60
-					penalty_lbl.modulate.a = 1.0
-					board_overlay.add_child(penalty_lbl)
-					var pl_tw = penalty_lbl.create_tween().set_parallel(true)
-					pl_tw.tween_property(penalty_lbl, "position:y", penalty_lbl.position.y + 80, 1.0).set_trans(Tween.TRANS_CUBIC)
-					pl_tw.tween_property(penalty_lbl, "modulate:a", 0.0, 1.0).set_trans(Tween.TRANS_CUBIC).set_delay(0.3)
-					pl_tw.chain().tween_callback(penalty_lbl.queue_free)
 			else:
-				# 嘘が通った
 				p_stamp = DeskTheme.create_mini_stamp("完全犯罪！", Color("e8590c"), 14)
-				is_perfect_crime = true
 				player_perfect_crimes += 1
 				if audio_manager: audio_manager.play_se("combo")
 				
-				# Sprint 5: 完全犯罪時の金色フラッシュ
 				if not is_skipped:
 					var gold_flash = ColorRect.new()
 					gold_flash.color = Color(1.0, 0.84, 0.0, 0.2)
@@ -340,30 +454,33 @@ func _start_showdown_reveal():
 					gf_tw.tween_property(gold_flash, "color:a", 0.0, 0.5)
 					gf_tw.tween_callback(gold_flash.queue_free)
 		else:
-			if p_score_diff == 0:
-				p_stamp = DeskTheme.create_mini_stamp("平和な一日", Color("8fbf9f"), 14)
-				if audio_manager: audio_manager.play_se("place")
+			p_stamp = DeskTheme.create_mini_stamp("平和な一日", Color("8fbf9f"), 14)
+			if audio_manager: audio_manager.play_se("place")
 				
-		# ダウト結果（hidden_bonus）がプラスならダウト成功ボーナス表示
-		var doubt_stamp: Control = null
-		if entry.get("hidden_bonus", 0) > 0:
-			doubt_stamp = DeskTheme.create_mini_stamp("ダウト成功＋%d" % entry.get("hidden_bonus", 0), DeskTheme.COLOR_SAFE, 13)
-			player_doubt_success += 1
-		elif entry.get("hidden_bonus", 0) < 0:
-			doubt_stamp = DeskTheme.create_mini_stamp("ダウト失敗ペナ", DeskTheme.COLOR_MUTED, 13)
-			player_doubt_failed += 1
-			
 		if p_stamp != null:
 			player_box.add_child(p_stamp)
 			await _animate_stamp(p_stamp)
 			
-		if doubt_stamp != null:
-			player_box.add_child(doubt_stamp)
-			await _animate_stamp(doubt_stamp)
+		var vote_results = p_data.get("vote_results", [])
+		var p_score_diff = p_data["score_change"]
 		
-		if is_perfect_crime:
+		for vote_res in vote_results:
+			var doubt_stamp: Control = null
+			var v_name = vote_res["name"]
+			var delta = vote_res["delta"]
+			if vote_res["success"]:
+				doubt_stamp = DeskTheme.create_mini_stamp("👍%s見破り(+%d)" % [v_name.left(3), delta], DeskTheme.COLOR_SAFE, 13)
+				player_doubt_success += 1
+			else:
+				doubt_stamp = DeskTheme.create_mini_stamp("👍%s失敗(%d)" % [v_name.left(3), delta], DeskTheme.COLOR_MUTED, 13)
+				player_doubt_failed += 1
+				
+			if doubt_stamp != null:
+				player_box.add_child(doubt_stamp)
+				await _animate_stamp(doubt_stamp)
+		
+		if player_lied and not p_data["exposed"]:
 			_spawn_confetti(player_box.global_position + Vector2(250, 40))
-			# Sprint 5: 完全犯罪時は2箇所から紙吹雪を爆発させる
 			_spawn_confetti(player_box.global_position + Vector2(100, 20))
 		
 		if p_score_diff != 0:
@@ -542,12 +659,73 @@ func _show_final_report():
 	table_h.alignment = BoxContainer.ALIGNMENT_CENTER
 	vbox.add_child(table_h)
 	
-	final_score = base_score
+	final_score = final_scores.get(Global.player_name, base_score)
 	
 	# 総合成績通知表 (幅広めに中央配置)
-	var report_card = DeskTheme.create_sticky_note(Color("fffae6"), Vector2(500, 420), 1.0)
+	var report_card = DeskTheme.create_sticky_note(Color("fffae6"), Vector2(460, 420), 1.0)
 	report_card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	table_h.add_child(report_card)
+	
+	# 最終順位ランキングボード
+	var leaderboard = DeskTheme.create_sticky_note(Color("e8f4fd"), Vector2(400, 420), -1.0)
+	leaderboard.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	table_h.add_child(leaderboard)
+	
+	var lb_v = VBoxContainer.new()
+	lb_v.alignment = BoxContainer.ALIGNMENT_CENTER
+	lb_v.add_theme_constant_override("separation", 10)
+	leaderboard.add_child(lb_v)
+	
+	lb_v.add_child(DeskTheme.create_label("【 最終順位 】", 20, DeskTheme.COLOR_MUTED, true))
+	
+	# スコア順にソート
+	var rank_list = []
+	for name in final_scores.keys():
+		rank_list.append({"name": name, "score": final_scores[name]})
+	rank_list.sort_custom(func(a, b): return a["score"] > b["score"])
+	
+	var r_num = 1
+	for r_item in rank_list:
+		var r_name = r_item["name"]
+		var r_score = r_item["score"]
+		
+		var entry_h = HBoxContainer.new()
+		entry_h.alignment = BoxContainer.ALIGNMENT_CENTER
+		entry_h.add_theme_constant_override("separation", 16)
+		lb_v.add_child(entry_h)
+		
+		var c_color = DeskTheme.COLOR_INK
+		var r_prefix = "%d." % r_num
+		if r_num == 1:
+			c_color = DeskTheme.COLOR_ACCENT_GOLD
+			r_prefix = "🥇"
+		elif r_num == 2:
+			c_color = Color("a0aab2")
+			r_prefix = "🥈"
+		elif r_num == 3:
+			c_color = Color("cd7f32")
+			r_prefix = "🥉"
+		
+		var rank_lbl = DeskTheme.create_label(r_prefix, 18, c_color, true)
+		rank_lbl.custom_minimum_size = Vector2(30, 0)
+		rank_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		entry_h.add_child(rank_lbl)
+		
+		var display_name = r_name
+		if r_name == Global.player_name:
+			display_name = "★あなた★"
+		
+		var name_lbl = DeskTheme.create_label(display_name, 15, c_color, r_name == Global.player_name)
+		name_lbl.custom_minimum_size = Vector2(160, 0)
+		name_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+		entry_h.add_child(name_lbl)
+		
+		var score_lbl = DeskTheme.create_label("%d点" % r_score, 15, c_color, true)
+		score_lbl.custom_minimum_size = Vector2(80, 0)
+		score_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		entry_h.add_child(score_lbl)
+		
+		r_num += 1
 	
 	var rc_v = VBoxContainer.new()
 	rc_v.alignment = BoxContainer.ALIGNMENT_CENTER
