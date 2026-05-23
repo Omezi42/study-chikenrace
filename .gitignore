@@ -3,6 +3,6 @@
 /android/
 
 # Build and export ignores
-/dist/
+# /dist/
 *.tmp
 *.log
