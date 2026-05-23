@@ -66,10 +66,33 @@ func _ready():
 	backend_manager.load_daily_scores()
 	_show_loading()
 
-func _process(_delta):
-	# カメラシェイクの適用
-	if ui_root:
-		ui_root.position = camera_shake_offset
+func _process(delta):
+	# 1. 視差効果（Parallax Drift - Sprint 3）の算出とカメラシェイクの適用
+	var viewport = get_viewport()
+	var shake_offset = Vector2.ZERO
+	if is_instance_valid(game_context):
+		shake_offset = game_context.camera_shake_offset
+		
+	if viewport:
+		var mouse_pos = viewport.get_mouse_position()
+		var screen_size = viewport.get_visible_rect().size
+		if screen_size.x > 0 and screen_size.y > 0:
+			# 画面中心からのマウス位置比率 (-0.5 〜 0.5)
+			var ratio_x = (mouse_pos.x / screen_size.x) - 0.5
+			var ratio_y = (mouse_pos.y / screen_size.y) - 0.5
+			# 最大移動幅は15ピクセルで、高級感のある緩やかな動きに設定
+			var target_parallax = Vector2(-ratio_x * 15.0, -ratio_y * 15.0)
+			# 慣性スムーズ移動 (Lerp)
+			var cur_p = get_meta("current_parallax", Vector2.ZERO)
+			cur_p = cur_p.lerp(target_parallax, clamp(4.5 * delta, 0.0, 1.0))
+			set_meta("current_parallax", cur_p)
+			
+			# 視差効果とシェイクを合成
+			ui_root.position = cur_p + shake_offset
+		else:
+			ui_root.position = shake_offset
+	else:
+		ui_root.position = shake_offset
 
 func _input(event):
 	if current_phase and current_phase.has_method("_input"):

@@ -210,15 +210,15 @@ func _show_delete_card_dialog():
 		btn.add_theme_stylebox_override("normal", btn_style)
 		btn.text = "%s [%d]" % [ItemLibrary.name(c_type), c_num]
 		btn.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-		btn.pressed.connect(func():
+		btn.pressed.connect(func(t: int, n: int):
 			if ctx.audio_manager:
 				ctx.audio_manager.play_se("click")
 			if is_instance_valid(ctx) and ctx.game_session and ctx.game_session.deck:
-				ctx.game_session.deck.remove_target_card(c_type, c_num)
+				ctx.game_session.deck.remove_target_card(t, n)
 			overlay.queue_free()
-			ToastOverlayScript.show_toast(ctx.ui_root, "数字%dのカードを削除" % c_num, DeskTheme.COLOR_SAFE)
+			ToastOverlayScript.show_toast(ctx.ui_root, "数字%dのカードを削除" % n, DeskTheme.COLOR_SAFE)
 			phase_completed.emit()
-		)
+		.bind(c_type, c_num))
 		grid.add_child(btn)
 
 	var cancel_btn = DeskTheme.create_button("やめる", Vector2(160, 44), Color("868e96"), Color("495057"))

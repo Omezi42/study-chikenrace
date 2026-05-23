@@ -354,6 +354,9 @@ func _start_showdown_reveal():
 			var row_fade = row.create_tween()
 			row_fade.tween_property(row, "modulate:a", 1.0, 0.25).set_trans(Tween.TRANS_CUBIC)
 			
+			# チョーク粉の噴射 (Sprint 2)
+			_spawn_chalk_particles(row.global_position + Vector2(row.size.x * 0.1, row.size.y / 2.0))
+			
 			# 選択中行のやわらかい明滅Tween
 			var row_tw = row.create_tween()
 			row_tw.tween_property(row, "modulate", Color(1.3, 1.3, 1.3), 0.2)
@@ -386,6 +389,7 @@ func _start_showdown_reveal():
 			if is_lying:
 				if exposed:
 					stamp_lbl = DeskTheme.create_mini_stamp("嘘バレ！", DeskTheme.COLOR_BLUFF_RED, 12)
+					_draw_chalk_cross(r_lbl)
 					if not is_skipped:
 						var lie_flash = ColorRect.new()
 						lie_flash.color = Color(1.0, 0.3, 0.3, 0.25)
@@ -426,6 +430,7 @@ func _start_showdown_reveal():
 		if player_lied:
 			if p_data["exposed"]:
 				p_stamp = DeskTheme.create_mini_stamp("嘘バレ！", DeskTheme.COLOR_BLUFF_RED, 14)
+				_draw_chalk_cross(p_lbl)
 				player_exposed_count += 1
 				if audio_manager: audio_manager.play_se("burst")
 				_trigger_mini_shake(16.0)
@@ -543,6 +548,41 @@ func _animate_stamp(stamp: Control) -> void:
 		stw.tween_property(stamp, "modulate:a", 1.0, 0.08)
 		stw.tween_property(stamp, "rotation_degrees", rot, 0.18)
 		await stw.finished
+		
+		# スタンプ着地時の衝撃を表現する縦揺れ (Sprint 2)
+		_trigger_board_shake(9.0)
+
+func _trigger_board_shake(intensity: float):
+	if is_skipped: return
+	if not is_instance_valid(board_overlay): return
+	var shake = create_tween().set_loops(4)
+	shake.tween_callback(func(): board_overlay.position = Vector2(0.0, randf_range(-intensity, intensity)))
+	shake.tween_interval(0.04)
+	await shake.finished
+	board_overlay.position = Vector2.ZERO
+
+func _spawn_chalk_particles(pos: Vector2) -> void:
+	if is_skipped: return
+	var particles = CPUParticles2D.new()
+	particles.position = pos
+	particles.emitting = true
+	particles.one_shot = true
+	particles.amount = 35
+	particles.lifetime = 0.95
+	particles.explosiveness = 0.72
+	particles.direction = Vector2(1, 0)
+	particles.spread = 45.0
+	particles.gravity = Vector2(0, 120.0)
+	particles.initial_velocity_min = 120.0
+	particles.initial_velocity_max = 240.0
+	particles.scale_amount_min = 2.0
+	particles.scale_amount_max = 6.0
+	particles.color = Color("ffffff", 0.5)
+	
+	add_child(particles)
+	
+	var timer = get_tree().create_timer(1.2)
+	timer.timeout.connect(particles.queue_free)
 
 func _create_reveal_row(d: int) -> PanelContainer:
 	var row = PanelContainer.new()
@@ -662,14 +702,29 @@ func _show_final_report():
 	final_score = final_scores.get(Global.player_name, base_score)
 	
 	# 総合成績通知表 (幅広めに中央配置)
-	var report_card = DeskTheme.create_sticky_note(Color("fffae6"), Vector2(460, 420), 1.0)
+	var report_card = DeskTheme.create_sticky_note(Color("fffae6"), Vector2(460, 420), 15.0)
 	report_card.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	table_h.add_child(report_card)
 	
 	# 最終順位ランキングボード
-	var leaderboard = DeskTheme.create_sticky_note(Color("e8f4fd"), Vector2(400, 420), -1.0)
+	var leaderboard = DeskTheme.create_sticky_note(Color("e8f4fd"), Vector2(400, 420), -20.0)
 	leaderboard.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	table_h.add_child(leaderboard)
+	
+	# 付箋が上からヒラヒラと落ちてピタッと貼り付くスイング＆バウンス演出 (Sprint 2)
+	report_card.modulate.a = 0.0
+	report_card.scale = Vector2(0.75, 0.75)
+	var rc_tw = report_card.create_tween().set_parallel(true)
+	rc_tw.tween_property(report_card, "modulate:a", 1.0, 0.52).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	rc_tw.tween_property(report_card, "scale", Vector2(1.0, 1.0), 0.52).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	rc_tw.tween_property(report_card, "rotation_degrees", 1.0, 0.60).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	
+	leaderboard.modulate.a = 0.0
+	leaderboard.scale = Vector2(0.75, 0.75)
+	var lb_tw = leaderboard.create_tween().set_parallel(true)
+	lb_tw.tween_property(leaderboard, "modulate:a", 1.0, 0.56).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT).set_delay(0.18)
+	lb_tw.tween_property(leaderboard, "scale", Vector2(1.0, 1.0), 0.56).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(0.18)
+	lb_tw.tween_property(leaderboard, "rotation_degrees", -1.0, 0.64).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(0.18)
 	
 	var lb_v = VBoxContainer.new()
 	lb_v.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -915,3 +970,37 @@ func _spawn_confetti(pos: Vector2) -> void:
 	
 	var timer = get_tree().create_timer(2.2)
 	timer.timeout.connect(particles.queue_free)
+
+func _draw_chalk_cross(label: Control) -> void:
+	if is_skipped: return
+	var cross = Control.new()
+	cross.name = "ChalkCross"
+	cross.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cross.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	label.add_child(cross)
+	
+	# 微小な遅延でサイズ確定後に描画
+	var draw_call = func():
+		var sz = label.size
+		if sz.x < 10: sz = Vector2(80, 24) # フォールバック
+		var line1 = Line2D.new()
+		line1.width = 4.0
+		line1.default_color = Color("ff6b6b") # 赤チョーク風ピンク
+		line1.add_point(Vector2.ZERO)
+		line1.add_point(Vector2.ZERO)
+		cross.add_child(line1)
+		
+		var line2 = Line2D.new()
+		line2.width = 4.0
+		line2.default_color = Color("ff6b6b")
+		line2.add_point(Vector2(sz.x, 0))
+		line2.add_point(Vector2(sz.x, 0))
+		cross.add_child(line2)
+		
+		var tw = cross.create_tween()
+		tw.tween_property(line1, "points", [Vector2.ZERO, sz], 0.12).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(line2, "points", [Vector2(sz.x, 0), Vector2(0, sz.y)], 0.12).set_trans(Tween.TRANS_SINE)
+		
+		_spawn_chalk_particles(label.global_position + sz / 2.0)
+		
+	label.get_tree().create_timer(0.02).timeout.connect(draw_call)

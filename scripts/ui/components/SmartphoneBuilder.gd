@@ -561,7 +561,7 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 			style_v.bg_color = Color("a0c0e0")
 			like_btn.add_theme_stylebox_override("normal", style_v)
 			
-			# ===== Sprint 5: 強化されたダウト投票演出 =====
+			# ===== Sprint 5: 強化されたダウト投票演出 (Sprint 1 Polish) =====
 			# 1. ボタンのバウンスアニメーション（より大きく）
 			var btn_tw = like_btn.create_tween()
 			btn_tw.tween_property(like_btn, "scale", Vector2(1.35, 1.35), 0.06).set_trans(Tween.TRANS_CUBIC)
@@ -596,6 +596,15 @@ static func _build_timeline_feed(ctx: RefCounted, feed_v: VBoxContainer) -> void
 			shake_tw.tween_callback(func(): card.position = card_orig_pos + Vector2(randf_range(-4, 4), randf_range(-3, 3)))
 			shake_tw.tween_interval(0.04)
 			shake_tw.finished.connect(func(): card.position = card_orig_pos)
+			
+			# 5. スマホ全体の物理バイブ振動 (Sprint 1)
+			var phone = ctx.bag_ui_elements.get("report_page") as Control
+			if is_instance_valid(phone):
+				var phone_orig_pos = phone.position
+				var phone_shake = phone.create_tween().set_loops(4)
+				phone_shake.tween_callback(func(): phone.position = phone_orig_pos + Vector2(randf_range(-6, 6), randf_range(-5, 5)))
+				phone_shake.tween_interval(0.04)
+				phone_shake.finished.connect(func(): phone.position = phone_orig_pos)
 			
 			# 5. 紙吹雪パーティクル
 			var particles = CPUParticles2D.new()

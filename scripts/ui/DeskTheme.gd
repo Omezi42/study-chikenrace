@@ -200,6 +200,21 @@ static func create_subject_card_large(subject: int, weight: int) -> Control:
 	container.custom_minimum_size = Vector2(190, 260)
 	container.size = Vector2(190, 260)
 	
+	# 立体的なドロップシャドウ (Sprint 1)
+	var shadow_rect = Panel.new()
+	shadow_rect.name = "DropShadow"
+	shadow_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shadow_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var shadow_style = StyleBoxFlat.new()
+	shadow_style.bg_color = Color.TRANSPARENT
+	shadow_style.shadow_color = Color(0, 0, 0, 0.28)
+	shadow_style.shadow_size = 5
+	shadow_style.shadow_offset = Vector2(4, 6)
+	shadow_style.corner_radius_top_left = 14; shadow_style.corner_radius_top_right = 14
+	shadow_style.corner_radius_bottom_left = 14; shadow_style.corner_radius_bottom_right = 14
+	shadow_rect.add_theme_stylebox_override("panel", shadow_style)
+	container.add_child(shadow_rect)
+	
 	var bg = TextureRect.new()
 	bg.texture = CARD_FRONT
 	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -252,12 +267,60 @@ static func create_subject_card_large(subject: int, weight: int) -> Control:
 	container.add_child(mini_badge)
 	mini_badge.position = Vector2(12, 12)
 	
+	# ホバー・インタラクションエフェクトの追加 (Sprint 1)
+	container.mouse_filter = Control.MOUSE_FILTER_PASS
+	container.pivot_offset = Vector2(190, 260) / 2.0
+	
+	container.mouse_entered.connect(func():
+		var tw = container.create_tween().set_parallel(true)
+		tw.tween_property(container, "scale", Vector2(1.08, 1.08), 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(container, "rotation_degrees", randf_range(-2.5, 2.5), 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		
+		# 影の浮遊Tween (Sprint 1)
+		tw.tween_property(shadow_rect, "position", Vector2(8, 12), 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		var style_dup = shadow_style.duplicate() as StyleBoxFlat
+		style_dup.shadow_size = 14
+		shadow_rect.add_theme_stylebox_override("panel", style_dup)
+		
+		var tw_shadow = container.create_tween()
+		tw_shadow.tween_property(bg, "self_modulate", Color(1.04, 1.04, 1.08), 0.12)
+	)
+	container.mouse_exited.connect(func():
+		var tw = container.create_tween().set_parallel(true)
+		tw.tween_property(container, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(container, "rotation_degrees", 0.0, 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		
+		# 影の復元 (Sprint 1)
+		tw.tween_property(shadow_rect, "position", Vector2.ZERO, 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		var style_dup = shadow_style.duplicate() as StyleBoxFlat
+		style_dup.shadow_size = 5
+		shadow_rect.add_theme_stylebox_override("panel", style_dup)
+		
+		var tw_shadow = container.create_tween()
+		tw_shadow.tween_property(bg, "self_modulate", Color.WHITE, 0.15)
+	)
+	
 	return container
 
 static func create_item_card_large(item_type: int) -> Control:
 	var container = Control.new()
 	container.custom_minimum_size = Vector2(190, 260)
 	container.size = Vector2(190, 260)
+	
+	# 立体的なドロップシャドウ (Sprint 1)
+	var shadow_rect = Panel.new()
+	shadow_rect.name = "DropShadow"
+	shadow_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shadow_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var shadow_style = StyleBoxFlat.new()
+	shadow_style.bg_color = Color.TRANSPARENT
+	shadow_style.shadow_color = Color(0, 0, 0, 0.28)
+	shadow_style.shadow_size = 5
+	shadow_style.shadow_offset = Vector2(4, 6)
+	shadow_style.corner_radius_top_left = 14; shadow_style.corner_radius_top_right = 14
+	shadow_style.corner_radius_bottom_left = 14; shadow_style.corner_radius_bottom_right = 14
+	shadow_rect.add_theme_stylebox_override("panel", shadow_style)
+	container.add_child(shadow_rect)
 	
 	var bg = TextureRect.new()
 	bg.texture = CARD_FRONT
@@ -329,6 +392,39 @@ static func create_item_card_large(item_type: int) -> Control:
 	container.add_child(mini_badge)
 	mini_badge.position = Vector2(12, 12)
 	
+	# ホバー・インタラクションエフェクトの追加 (Sprint 1)
+	container.mouse_filter = Control.MOUSE_FILTER_PASS
+	container.pivot_offset = Vector2(190, 260) / 2.0
+	
+	container.mouse_entered.connect(func():
+		var tw = container.create_tween().set_parallel(true)
+		tw.tween_property(container, "scale", Vector2(1.08, 1.08), 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(container, "rotation_degrees", randf_range(-2.5, 2.5), 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		
+		# 影の浮遊Tween (Sprint 1)
+		tw.tween_property(shadow_rect, "position", Vector2(8, 12), 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		var style_dup = shadow_style.duplicate() as StyleBoxFlat
+		style_dup.shadow_size = 14
+		shadow_rect.add_theme_stylebox_override("panel", style_dup)
+		
+		var tw_shadow = container.create_tween()
+		tw_shadow.tween_property(bg, "self_modulate", Color(1.04, 1.04, 1.08), 0.12)
+	)
+	container.mouse_exited.connect(func():
+		var tw = container.create_tween().set_parallel(true)
+		tw.tween_property(container, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(container, "rotation_degrees", 0.0, 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		
+		# 影の復元 (Sprint 1)
+		tw.tween_property(shadow_rect, "position", Vector2.ZERO, 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		var style_dup = shadow_style.duplicate() as StyleBoxFlat
+		style_dup.shadow_size = 5
+		shadow_rect.add_theme_stylebox_override("panel", style_dup)
+		
+		var tw_shadow = container.create_tween()
+		tw_shadow.tween_property(bg, "self_modulate", Color.WHITE, 0.15)
+	)
+	
 	return container
 
 static func create_gauge_bar(value: float, max_val: float, fill_color: Color, bar_size: Vector2 = Vector2(200, 18)) -> Control:
@@ -373,6 +469,18 @@ static func create_dialog_overlay(root: Control, title_text: String, build_conte
 	
 	# チョークイエローでタイトルを大きく描写
 	vbox.add_child(create_label(title_text, 38, COLOR_CHALK_YELLOW, true))
+	
+	# チョークで引いたような手描き風の白い下線ディバイダー (Sprint 2)
+	var divider = Panel.new()
+	divider.custom_minimum_size = Vector2(0, 4)
+	var div_style = StyleBoxFlat.new()
+	div_style.bg_color = COLOR_CHALK_WHITE
+	div_style.corner_radius_top_left = 2; div_style.corner_radius_top_right = 2
+	div_style.corner_radius_bottom_left = 2; div_style.corner_radius_bottom_right = 2
+	div_style.shadow_color = Color(1.0, 1.0, 1.0, 0.15)
+	div_style.shadow_size = 2
+	divider.add_theme_stylebox_override("panel", div_style)
+	vbox.add_child(divider)
 	
 	# スペーサー
 	var spacer = Control.new()

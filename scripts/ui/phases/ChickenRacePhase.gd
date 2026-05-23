@@ -320,28 +320,37 @@ func _update_race_hud():
 	var led_pulse = false
 	var led_pulse_speed = 0.25
 	
-	if burst_prob >= 50:
+	if burst_prob >= 80:
 		style.bg_color = DeskTheme.COLOR_BLUFF_RED
 		gauge_color = DeskTheme.COLOR_BLUFF_RED
-		next_burst_label.text = "限界！寝落ち寸前！"
+		next_burst_label.text = "🚨 極限！寝落ち寸前！すぐ切り上げろ！"
 		next_burst_label.add_theme_color_override("font_color", DeskTheme.COLOR_BLUFF_RED)
-		if hud_gauges.has("sleep_title"): hud_gauges["sleep_title"].text = "睡魔度: 限界寸前！"
+		if hud_gauges.has("sleep_title"): hud_gauges["sleep_title"].text = "睡魔度: 気絶限界！"
 		led_color = DeskTheme.COLOR_BLUFF_RED
 		led_pulse = true
-		led_pulse_speed = 0.15
-	elif burst_prob >= 25:
+		led_pulse_speed = 0.07 # 超激しい点滅
+	elif burst_prob >= 45:
+		style.bg_color = DeskTheme.COLOR_BLUFF_MILD
+		gauge_color = DeskTheme.COLOR_BLUFF_MILD
+		next_burst_label.text = "⚠️ 警告: かなり眠気が強い！"
+		next_burst_label.add_theme_color_override("font_color", DeskTheme.COLOR_BLUFF_MILD)
+		if hud_gauges.has("sleep_title"): hud_gauges["sleep_title"].text = "睡魔度: 眠気強し"
+		led_color = DeskTheme.COLOR_BLUFF_MILD
+		led_pulse = true
+		led_pulse_speed = 0.16
+	elif burst_prob >= 20:
 		style.bg_color = DeskTheme.COLOR_ACCENT_GOLD
 		gauge_color = DeskTheme.COLOR_ACCENT_GOLD
-		next_burst_label.text = "注意: そろそろ引き際か…"
+		next_burst_label.text = "注意: うとうとしてきた…"
 		next_burst_label.add_theme_color_override("font_color", Color("a87d00"))
 		if hud_gauges.has("sleep_title"): hud_gauges["sleep_title"].text = "睡魔度: 眠気あり"
 		led_color = DeskTheme.COLOR_ACCENT_GOLD
 		led_pulse = true
-		led_pulse_speed = 0.40
+		led_pulse_speed = 0.38
 	else:
 		style.bg_color = DeskTheme.COLOR_SAFE
 		gauge_color = DeskTheme.COLOR_SAFE
-		next_burst_label.text = "安全: まだ余裕あり"
+		next_burst_label.text = "安全: まだまだ冴えている"
 		next_burst_label.add_theme_color_override("font_color", DeskTheme.COLOR_SAFE)
 		if hud_gauges.has("sleep_title"): hud_gauges["sleep_title"].text = "睡魔度: 安全"
 		led_color = Color("8cff8c")
@@ -497,12 +506,34 @@ func _on_draw_pressed():
 		var combo_num = ctx.game_session.current_combo
 
 		if combo_num >= 2:
+			# 蛍光ペンマーカーエフェクト (Sprint 2)
+			var marker = ColorRect.new()
+			marker.name = "Highlighter"
+			marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			marker.color = Color("ffe66d") # 蛍光イエロー/ゴールド
+			marker.color.a = 0.55
+			marker.custom_minimum_size = Vector2(0, 32)
+			marker.size = Vector2(0, 32)
+			card_node.add_child(marker)
+			# ドロップシャドウと背景画像（bg）の間に挿入
+			card_node.move_child(marker, 1)
+			
+			marker.anchor_top = 0.5; marker.anchor_bottom = 0.5
+			marker.anchor_left = 0.0; marker.anchor_right = 1.0
+			marker.offset_top = -16; marker.offset_bottom = 16
+			marker.offset_left = 6; marker.offset_right = -card_sz.x + 6 # 最初は幅0
+			
+			# カードの端から端まで蛍光マーカーを走らせるアニメーション
+			var marker_tw = marker.create_tween()
+			marker_tw.tween_property(marker, "offset_right", -6.0, 0.22).set_trans(Tween.TRANS_SINE)
+			if ctx.audio_manager: ctx.audio_manager.play_se("combo")
+
 			var combo_badge = DeskTheme.create_floating_badge("%d COMBO!" % combo_num, DeskTheme.COLOR_SAFE, 20)
 			combo_badge.global_position = card_node.global_position + Vector2(card_sz.x / 2.0 - combo_badge.size.x / 2.0, -35.0)
 			play_desk.add_child(combo_badge)
 			var b_tw = combo_badge.create_tween()
-			b_tw.tween_property(combo_badge, "scale", Vector2(1.3, 1.3), 0.12).set_trans(Tween.TRANS_CUBIC)
-			b_tw.tween_property(combo_badge, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_BACK)
+			b_tw.tween_property(combo_badge, "scale", Vector2(1.3, 1.3), 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			b_tw.tween_property(combo_badge, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			b_tw.tween_interval(0.8)
 			b_tw.tween_property(combo_badge, "modulate:a", 0.0, 0.25)
 			b_tw.tween_callback(combo_badge.queue_free)
@@ -574,9 +605,43 @@ func _trigger_eraser_evasion_sequence(new_card_node: Control, _weight: int):
 	_update_race_hud()
 	_set_action_buttons_enabled(true)
 
+func _trigger_camera_shake(intensity: float, duration: float) -> void:
+	if not is_instance_valid(ctx): return
+	var shake_tw = ctx.screen_content.create_tween().set_loops(int(duration / 0.04))
+	shake_tw.tween_callback(func():
+		ctx.camera_shake_offset = Vector2(randf_range(-intensity, intensity), randf_range(-intensity, intensity))
+	)
+	shake_tw.tween_interval(0.04)
+	
+	# 終了時クリーンアップ
+	var cleanup_tw = ctx.screen_content.create_tween()
+	cleanup_tw.tween_interval(duration)
+	cleanup_tw.tween_callback(func():
+		shake_tw.kill()
+		ctx.camera_shake_offset = Vector2.ZERO
+	)
+
 func _trigger_burst_sequence():
 	if ctx.audio_manager: ctx.audio_manager.play_se("burst")
 	if is_instance_valid(button_box): button_box.hide()
+	
+	# Sprint 1: バースト時の激しい画面シェイクと明滅フラッシュ
+	_trigger_camera_shake(24.0, 1.4)
+	
+	var flash = ColorRect.new()
+	flash.color = Color(1.0, 0.0, 0.0, 0.45)
+	flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ctx.screen_content.add_child(flash)
+	
+	var flash_tw = flash.create_tween().set_loops(4)
+	flash_tw.tween_property(flash, "modulate:a", 0.08, 0.15).set_trans(Tween.TRANS_SINE)
+	flash_tw.tween_property(flash, "modulate:a", 0.70, 0.15).set_trans(Tween.TRANS_SINE)
+	
+	var cleanup_flash_tw = flash.create_tween()
+	cleanup_flash_tw.tween_interval(1.2)
+	cleanup_flash_tw.tween_property(flash, "modulate:a", 0.0, 0.25)
+	cleanup_flash_tw.tween_callback(flash.queue_free)
 	
 	var banner = DeskTheme.create_floating_badge("【 寝落ち（バースト）！】", DeskTheme.COLOR_BLUFF_RED, 28)
 	banner.anchor_left = 0.5; banner.anchor_top = 0.5; banner.anchor_right = 0.5; banner.anchor_bottom = 0.5
@@ -590,7 +655,7 @@ func _trigger_burst_sequence():
 	banner_tw.tween_property(banner, "scale", Vector2(1.0, 1.0), 0.15).set_trans(Tween.TRANS_SINE)
 	banner_tw.tween_property(banner, "modulate:a", 1.0, 0.1)
 	
-	await ctx.screen_content.get_tree().create_timer(1.0).timeout
+	await ctx.screen_content.get_tree().create_timer(1.4).timeout
 	
 	ctx.game_session.burst_period()
 	if is_instance_valid(banner): banner.queue_free()

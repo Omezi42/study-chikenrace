@@ -119,36 +119,78 @@ func _add_scattered_decorations():
 
 func _create_id_card():
 	var id_panel = PanelContainer.new()
-	id_panel.custom_minimum_size = Vector2(280, 140)
+	id_panel.custom_minimum_size = Vector2(360, 180) # 横幅と高さを程よく調整
 	var id_style = StyleBoxFlat.new()
-	id_style.bg_color = Color("fdfdfd")
-	id_style.border_width_left = 6; id_style.border_color = DeskTheme.COLOR_SAFE
-	id_style.corner_radius_top_right = 12; id_style.corner_radius_bottom_right = 12
-	id_style.content_margin_left = 16; id_style.content_margin_top = 16
-	id_style.shadow_color = DeskTheme.COLOR_SHADOW; id_style.shadow_size = 8
+	id_style.bg_color = Color("fcf9f2") # 温かみのある高級クラフト証明書ベージュ
+	id_style.border_width_left = 12 # スクールネイビーの背表紙
+	id_style.border_color = Color("1b2a4a")
+	id_style.corner_radius_top_right = 10; id_style.corner_radius_bottom_right = 10
+	id_style.content_margin_left = 16; id_style.content_margin_top = 12
+	id_style.content_margin_right = 16; id_style.content_margin_bottom = 12
+	id_style.shadow_color = DeskTheme.COLOR_SHADOW; id_style.shadow_size = 12
+	id_style.shadow_offset = Vector2(4, 7)
 	id_panel.add_theme_stylebox_override("panel", id_style)
 	
 	id_panel.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	# 1280x720想定の右下マージン
-	id_panel.offset_left = -320; id_panel.offset_top = -180
-	id_panel.offset_right = -40; id_panel.offset_bottom = -40
+	id_panel.offset_left = -390; id_panel.offset_top = -210
+	id_panel.offset_right = -30; id_panel.offset_bottom = -30
 	add_child(id_panel)
 	
-	var id_vbox = VBoxContainer.new()
-	id_vbox.add_theme_constant_override("separation", 8)
-	id_panel.add_child(id_vbox)
+	var id_hbox = HBoxContainer.new()
+	id_hbox.add_theme_constant_override("separation", 16)
+	id_panel.add_child(id_hbox)
 	
-	id_vbox.add_child(DeskTheme.create_label("【生徒手帳】", 14, DeskTheme.COLOR_MUTED, true))
-	id_vbox.add_child(DeskTheme.create_label(Global.player_name, 22, DeskTheme.COLOR_INK, true))
-	id_vbox.add_child(DeskTheme.create_label("CPU戦 自己ベスト:", 14, DeskTheme.COLOR_MUTED))
+	# 左側：写真貼付欄 ＆ スクールスタンプ
+	var left_vbox = VBoxContainer.new()
+	left_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	left_vbox.add_theme_constant_override("separation", 8)
+	id_hbox.add_child(left_vbox)
+	
+	var photo_frame = Panel.new()
+	photo_frame.custom_minimum_size = Vector2(76, 96)
+	var photo_style = StyleBoxFlat.new()
+	photo_style.bg_color = Color("e0dbd1")
+	photo_style.border_width_left = 2; photo_style.border_width_right = 2
+	photo_style.border_width_top = 2; photo_style.border_width_bottom = 2
+	photo_style.border_color = Color("b2a899")
+	photo_style.corner_radius_top_left = 2; photo_style.corner_radius_top_right = 2
+	photo_style.corner_radius_bottom_left = 2; photo_style.corner_radius_bottom_right = 2
+	photo_frame.add_theme_stylebox_override("panel", photo_style)
+	left_vbox.add_child(photo_frame)
+	
+	var photo_lbl = DeskTheme.create_label("写真貼付", 12, Color("7d7468"), true)
+	photo_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	photo_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	photo_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	photo_frame.add_child(photo_lbl)
+	
+	# 右側：手帳テキスト情報
+	var id_vbox = VBoxContainer.new()
+	id_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	id_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	id_vbox.add_theme_constant_override("separation", 4)
+	id_hbox.add_child(id_vbox)
+	
+	var header_hbox = HBoxContainer.new()
+	header_hbox.add_theme_constant_override("separation", 10)
+	id_vbox.add_child(header_hbox)
+	
+	header_hbox.add_child(DeskTheme.create_label("【生徒手帳】", 14, DeskTheme.COLOR_MUTED))
+	
+	var stamp = DeskTheme.create_mini_stamp("チキン高", Color("d94040"), 10)
+	stamp.rotation_degrees = -6.0
+	header_hbox.add_child(stamp)
+	
+	id_vbox.add_child(DeskTheme.create_label(Global.player_name, 22, DeskTheme.COLOR_INK))
+	id_vbox.add_child(DeskTheme.create_label("CPU戦 自己ベスト:", 12, DeskTheme.COLOR_MUTED))
 	
 	var rank_str = "%s 級 (%d点)" % [Global.best_rank_cpu, Global.high_score_cpu]
 	if Global.best_rank_cpu == "未プレイ":
 		rank_str = "未プレイ"
 	var rank_color = DeskTheme.COLOR_ACCENT_GOLD if Global.best_rank_cpu in ["S", "A"] else DeskTheme.COLOR_INK
-	id_vbox.add_child(DeskTheme.create_label(rank_str, 18, rank_color, true))
+	id_vbox.add_child(DeskTheme.create_label(rank_str, 16, rank_color))
 	
-	id_vbox.add_child(DeskTheme.create_label("所持コイン: %d枚" % Global.coins, 16, Color("e67700"), true))
+	id_vbox.add_child(DeskTheme.create_label("所持コイン: %d枚" % Global.coins, 14, Color("e67700")))
 
 func _on_start_pressed():
 	if audio_manager: audio_manager.play_se("click")
