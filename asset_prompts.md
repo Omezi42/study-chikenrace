@@ -96,6 +96,30 @@ Flat 2D top-down view of a Japanese school report card document lying flat. Thic
 Flat 2D cartoon icon of a cute, bright neon-blue and silver energy drink can with a lightning bolt symbol. Polished anime webcomic style, thick bold clean dark outlines, bright flat vibrant colors, minimal clean cell-shading, isolated on a solid clean white background
 ```
 
+### ⑫ 時間割ノート風のタイムライン詳細背景 (Timeline Schedule Note Background)
+スマホ画面や詳細ログの背景として使用する、手書きの時間割表が印刷された、少しインク染みのあるノート風の背景です。
+```text
+Flat 2D top-down view of a page from a Japanese student's schedule notebook. Soft grid lines, handwritten Japanese text columns for classroom periods (e.g., "1時限目", "2時限目"), clean pencil borders, and light margins. Polished anime webcomic style, soft beige cream paper texture, thick uniform outlines, isolated on a solid clean white background
+```
+
+### ⑬ ミニ文房具/役割スタンプアイコンセット (Miniature Stationery & Role Badges)
+タイムライン詳細でドロー数や役割を表すための、極小サイズのゴムスタンプ風のイラストアイコン集です。
+```text
+A set of six miniature hand-drawn style ink stamps for school stationery: a small green pencil stub, a tiny red heart mark, a tiny blue gear, a small green shield symbol, a tiny orange fire flame, and a small purple speech bubble. Flat 2D vector style, thick bold outlines, bright flat colors, isolated on a solid clean white background
+```
+
+### ⑭ ダウト/セーフの赤・黄インクスタンプ (Doubted / Safe Ink Stamps)
+答え合わせ黒板やタイムラインで結果を確定させる際に押される、インクかすれのあるゴム印調スタンプです。
+```text
+Flat 2D vector graphic of rubber ink stamps: one red stamp saying "ダウト" (Doubt) in Japanese gothic font inside a thick rectangle, and one yellow stamp saying "セーフ" (Safe) in Japanese font inside a round circle. Organic stamp texture, slight ink bleed, bold outlines, isolated on a solid clean white background
+```
+
+### ⑮ チョーク調の手書き点数カード (Chalkboard Chalk Score Cards)
+答え合わせ黒板の上で各プレイヤーのスコアを表示するための、粉っぽさのあるチョーク風手書きカードです。
+```text
+Flat 2D vector design of a small dark green chalkboard card with chalk-written Japanese numbers and names. Powdered white and yellow chalk handwriting style, rough border outlines, polished school cartoon style, isolated on a solid clean white background
+```
+
 ---
 
 ## 💡 生成と適用のコツ（統一感を出すための設定）
@@ -103,3 +127,136 @@ Flat 2D cartoon icon of a cute, bright neon-blue and silver energy drink can wit
    背景画像以外のすべてのアセットプロンプトにこの一文を入れています。これにより、白い背景部分をPhotoshopや透過ツールで一瞬できれいに透過（アルファチャンネル化）させ、Godot内で自在に配置することが可能になります。
 2. **太い黒い縁取り（Thick bold clean dark outlines）の威力**:
    DALL-E 3 等に生成させる際、このフレーズが入っていることで、絵全体がぼやけず、パキッとした「ゲームのイラスト」として最高に機能するようになります。お使いの背景画像のタッチと100%合致するため、画面の一体感が飛躍的に向上します。
+
+---
+
+## 🎒 5. 全25アイテムの画像生成プロンプト個別一覧
+
+すべてのプロンプトには、統一スタイルを維持するための以下のキーワードが組み込まれています。
+`Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background`
+
+### ① 付箋 (Sticky Note - item_sticky_note)
+```text
+Flat 2D vector icon of a single bright neon-yellow paper sticky note, slightly curled on the bottom edge. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ② 消しゴム (Eraser - item_eraser)
+```text
+Flat 2D vector icon of a classic blue and white cardboard sleeve block school eraser. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ③ 定規 (Ruler - item_ruler)
+```text
+Flat 2D vector icon of a transparent plastic 15cm school ruler with black scale markings. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ④ 単語帳 (Wordbook - item_wordbook)
+```text
+Flat 2D vector icon of a colorful student ring-bound wordbook (flash cards). Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ⑤ シャーペン (Mechanical Pencil - item_mech_pencil)
+```text
+Flat 2D vector icon of a sleek yellow mechanical pencil with silver metallic accents. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ⑥ 暗記カード (Memo Cards - item_memo_cards)
+```text
+Flat 2D vector icon of a small stack of white study index cards bound together by a silver binder ring. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ⑦ 蛍光ペン (Highlighter - item_highlighter)
+```text
+Flat 2D vector icon of a bright pink highlighter pen, cap off, revealing the chisel tip. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ⑧ 青ペン (Blue Pen - item_blue_pen)
+```text
+Flat 2D vector icon of a blue ballpoint ink pen with a clear plastic body. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ⑨ 座布団 (Cushion - item_cushion)
+```text
+Flat 2D vector icon of a soft green fabric school chair cushion with neat stitch patterns. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ⑩ メモアプリ (Memo App - item_memo_app)
+```text
+Flat 2D vector icon of a smartphone screen showing a cute yellow memo notepad application with checkmarks. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ⑪ ズルいカンペ (Cheat Sheet - item_cheat_sheet)
+```text
+Flat 2D vector icon of a tiny folded white scrap of paper with microscopic handwritten math formulas. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ⑫ コンパス (Compass - item_compass)
+```text
+Flat 2D vector icon of a silver metal school drawing compass holding a small graphite pencil. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ⑬ エナジードリンク (Energy Drink - item_energy_drink)
+```text
+Flat 2D vector icon of a neon blue energy drink can with a yellow lightning bolt logo. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ⑭ 赤シート (Red Sheet - item_red_sheet)
+```text
+Flat 2D vector icon of a translucent red plastic sheet used for hiding answer text during studying. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ⑮ 分厚い参考書 (Thick Reference Book - item_thick_book)
+```text
+Flat 2D vector icon of a thick, heavy student reference book with a dark blue cover and orange spine. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ⑯ お守り (Amulet - item_amulet)
+```text
+Flat 2D vector icon of a traditional Japanese fabric amulet (Omamori) in red silk with gold embroidered strings. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ⑰ 徹夜ノート (All-Nighter Notebook - item_night_note)
+```text
+Flat 2D vector icon of a dark purple notebook titled 'ALL NIGHT' with a small crescent moon sticker. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ⑱ 解答写し (Copy Answer - item_copy_answer)
+```text
+Flat 2D vector icon of a cheat sheet pamphlet showing identical copied exam answers in red circle marks. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ⑲ タイマー (Timer - item_timer)
+```text
+Flat 2D vector icon of a round white digital kitchen timer displaying a percentage numbers '03:00'. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ⑳ 勉強会チャット (Study Chat - item_study_chat)
+```text
+Flat 2D vector icon of a tablet screen displaying a cute school study group chat room with text bubbles. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ㉑ 予想問題集 (Expected Questions - item_expected_questions)
+```text
+Flat 2D vector icon of a printed student exam sheet titled 'EXPECTED QUESTIONS' in bold hand-lettering. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ㉒ カフェラテ (Cafe Latte - item_cafe_latte)
+```text
+Flat 2D vector icon of a takeout paper coffee cup of hot café latte with a white lid and brown sleeve. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ㉓ 耳栓 (Earplugs - item_earplugs)
+```text
+Flat 2D vector icon of a pair of orange soft foam earplugs connected by a thin yellow cord. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ㉔ 塾プリント (Cram School Print - item_cram_school_print)
+```text
+Flat 2D vector icon of a student cram school printed worksheet with a large red Hanamaru stamp. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
+### ㉕ 忘却のノート (Forget Notebook - item_forget_notebook)
+```text
+Flat 2D vector icon of a worn-out gray pocket notebook, cover slightly creased and torn. Flat 2D vector art style, thick bold clean dark outlines, bright flat colors, minimal clean cell-shading, polished anime webcomic look, isolated on a solid clean white background
+```
+
