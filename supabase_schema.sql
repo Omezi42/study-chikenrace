@@ -108,5 +108,5 @@ CREATE POLICY "Allow authenticated users to read moves"
 CREATE POLICY "Allow authenticated users to submit/update moves"
     ON public.friend_room_moves FOR ALL
     TO authenticated
-    USING (true)
-    WITH CHECK (true);
+    USING (auth.uid()::text = user_id OR user_id LIKE 'cpu_%')
+    WITH CHECK (auth.uid()::text = user_id OR user_id LIKE 'cpu_%');

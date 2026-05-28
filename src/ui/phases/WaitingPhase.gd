@@ -11,6 +11,9 @@ var loading_rect: ColorRect
 var poll_timer: Timer
 var target_day: int = 1
 var is_final_reveal_wait: bool = false # True if waiting for final day 5 showdown doubts
+var current_poll_interval: float = 3.0
+var max_poll_interval: float = 12.0
+var last_submitted_count: int = 0
 
 func _on_setup(setup_data: Dictionary) -> void:
 	custom_minimum_size = Vector2(1500, 850)
@@ -135,8 +138,8 @@ func _on_setup(setup_data: Dictionary) -> void:
 		
 	# Setup polling timer
 	poll_timer = Timer.new()
-	poll_timer.wait_time = 3.0
-	poll_timer.autostart = true
+	poll_timer.wait_time = current_poll_interval
+	poll_timer.one_shot = true
 	poll_timer.timeout.connect(_on_poll_timeout)
 	add_child(poll_timer)
 	
@@ -162,11 +165,25 @@ func _on_poll_timeout() -> void:
 		var pulse = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		pulse.tween_property(loading_rect, "modulate:a", 0.4, 0.25)
 		pulse.tween_property(loading_rect, "modulate:a", 1.0, 0.25)
+		
+		# 指数的バックオフ: インターバルを1.5倍に増やし、タイマーを再起動
+		current_poll_interval = min(current_poll_interval * 1.5, max_poll_interval)
+		poll_timer.wait_time = current_poll_interval
+		poll_timer.start()
 
 func _on_day_moves_polled(success: bool, moves: Array) -> void:
 	if not success:
 		return
 		
+	# 提出状況が変化（提出した他プレイヤーが増加）していた場合、ポーリング間隔を3.0秒に即時リセット
+	var current_submits = moves.size()
+	if current_submits > last_submitted_count:
+		current_poll_interval = 3.0
+		poll_timer.stop()
+		poll_timer.wait_time = current_poll_interval
+		poll_timer.start()
+		
+	last_submitted_count = current_submits
 	update_members_ui(moves)
 	
 	# Determine my active ID

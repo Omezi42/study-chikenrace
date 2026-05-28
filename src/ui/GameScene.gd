@@ -82,6 +82,13 @@ func change_phase(phase_type: String, setup_data: Dictionary = {}) -> void:
 		DeskTheme.animate_page_flip(old_node, active_phase_node, 0.45)
 
 func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
+	# 動的な状態遷移指定（ステートマシン化）
+	if result_data.has("next_phase") and result_data["next_phase"] != "":
+		var next_p = result_data["next_phase"]
+		# result_data自体をセットアップデータとして次のフェーズに持ち越す
+		change_phase(next_p, result_data)
+		return
+		
 	match phase_type:
 		PHASE_BAG_BUILDER:
 			change_phase(PHASE_CHICKEN_RACE)

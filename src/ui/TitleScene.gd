@@ -20,6 +20,7 @@ var tutorial_back_btn: Button
 var tutorial_next_btn: Button
 var tutorial_desc_lbl: Label
 var current_tutorial_page: int = 1
+var bgm_started: bool = false
 
 const NATIONAL_NAMES = [
 	"東大理三志望", "早慶合格マシーン", "徹夜明けの浪人生", "定期テストの神", 
@@ -340,9 +341,8 @@ func _ready() -> void:
 			_update_id_card_display()
 		)
 	
-	# Start loop BGM
-	if has_node("/root/AudioManager"):
-		get_node("/root/AudioManager").play_bgm(AudioManager.BGM_MAIN)
+	# BGM will be deferred until first user interaction (WebGL Audio Autoplay Policy safety)
+	# The _input callback will automatically resume AudioContext and trigger BGM play.
 		
 	# ⚙️ Option Settings floating button on top right of the desk
 	var opt_btn = Button.new()
@@ -356,6 +356,18 @@ func _ready() -> void:
 		DeskTheme.show_settings(self)
 	)
 	add_child(opt_btn)
+
+func _input(event: InputEvent) -> void:
+	if not bgm_started and (event is InputEventMouseButton or event is InputEventKey):
+		if event.pressed:
+			start_bgm()
+
+func start_bgm() -> void:
+	if bgm_started:
+		return
+	bgm_started = true
+	if has_node("/root/AudioManager"):
+		get_node("/root/AudioManager").play_bgm(AudioManager.BGM_MAIN)
 
 func _on_start_pressed() -> void:
 	DeskTheme.animate_click(start_btn, Vector2.ONE, 0.08)

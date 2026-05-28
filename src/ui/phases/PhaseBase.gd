@@ -15,7 +15,9 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	pass
 
 # Helper to emit phase finished signal
-func finish_phase(result_data: Dictionary = {}) -> void:
+func finish_phase(result_data: Dictionary = {}, next_phase: String = "") -> void:
+	if next_phase != "":
+		result_data["next_phase"] = next_phase
 	phase_finished.emit(result_data)
 
 func show_tutorial_dialog(text: String, pos: Vector2 = Vector2(700, 50), next_callback: Callable = Callable()) -> PanelContainer:
