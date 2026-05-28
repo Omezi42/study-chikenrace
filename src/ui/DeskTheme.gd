@@ -21,6 +21,7 @@ const COLOR_ROLE_PREP = Color("2979ff")     # Blue (仕込み)
 # Font File Paths
 const FONT_HANDWRITING = "res://assets/hgrsmp.ttf"
 
+
 # Static Tween Animation Helper Functions
 
 # 1. Hover Bounce & Random Angle Rotation

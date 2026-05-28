@@ -10,11 +10,32 @@ var select_grid: GridContainer
 var active_slot_idx: int = -1
 
 func _ready() -> void:
-	# Mahogany background
-	var bg_color = ColorRect.new()
-	bg_color.color = DeskTheme.COLOR_MAHOGANY
-	bg_color.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(bg_color)
+	var cork_panel = Panel.new()
+	cork_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(cork_panel)
+	
+	var cork_style = StyleBoxTexture.new()
+	var noise = FastNoiseLite.new()
+	noise.noise_type = FastNoiseLite.TYPE_CELLULAR
+	noise.frequency = 0.15
+	noise.cellular_jitter = 1.0
+	noise.cellular_return_type = FastNoiseLite.RETURN_CELL_VALUE
+	
+	var tex = NoiseTexture2D.new()
+	tex.noise = noise
+	tex.width = 512
+	tex.height = 512
+	tex.seamless = true
+	
+	var grad = Gradient.new()
+	grad.offsets = PackedFloat32Array([0.0, 0.4, 1.0])
+	grad.colors = PackedColorArray([Color("7a5632"), Color("9e754a"), Color("b48b59")])
+	tex.color_ramp = grad
+	
+	cork_style.texture = tex
+	cork_style.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
+	cork_style.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
+	cork_panel.add_theme_stylebox_override("panel", cork_style)
 	
 	# Center container for VBox
 	var center_container = CenterContainer.new()

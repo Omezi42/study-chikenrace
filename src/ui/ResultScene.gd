@@ -10,6 +10,7 @@ var report_left_page: VBoxContainer
 var report_right_page: VBoxContainer
 var share_btn: Button
 var restart_btn: Button
+var skip_btn: Button
 
 # Score details from session
 var showdown_data: Dictionary
@@ -128,16 +129,37 @@ func _ready() -> void:
 	report_right_page.add_theme_constant_override("separation", 20)
 	right_p.add_child(report_right_page)
 	
+	# Skip button at bottom right
+	skip_btn = Button.new()
+	skip_btn.text = "結果へスキップ ⏭"
+	skip_btn.custom_minimum_size = Vector2(240, 60)
+	skip_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	skip_btn.add_theme_font_size_override("font_size", 22)
+	skip_btn.pressed.connect(_on_skip_pressed)
+	
+	var skip_style = StyleBoxFlat.new()
+	skip_style.bg_color = Color(DeskTheme.COLOR_MAHOGANY, 0.8)
+	skip_style.corner_radius_top_left = 6
+	skip_style.corner_radius_top_right = 6
+	skip_style.corner_radius_bottom_left = 6
+	skip_style.corner_radius_bottom_right = 6
+	skip_btn.add_theme_stylebox_override("normal", skip_style)
+	skip_btn.add_theme_stylebox_override("hover", skip_style)
+	
+	add_child(skip_btn)
+	skip_btn.position = Vector2(1620, 980)
+	
 	# Start daily reveal animation loop
 	is_revealing = true
 	current_step_day = 1
 	reveal_next_day_showdown()
 
 func reveal_next_day_showdown() -> void:
-	if current_step_day > 5:
+	if current_step_day > showdown_data.get("daily_records", {}).size():
 		# Reveal complete! Trigger report card overlay
-		is_revealing = false
-		trigger_report_card()
+		if is_revealing:
+			is_revealing = false
+			trigger_report_card()
 		return
 		
 	# Clear older elements so we only show the current day's reveal
@@ -336,11 +358,25 @@ func reveal_next_day_showdown() -> void:
 	# Go to next day after delay
 	var timer = get_tree().create_timer(1.8)
 	timer.timeout.connect(func():
-		current_step_day += 1
-		reveal_next_day_showdown()
+		if is_revealing:
+			current_step_day += 1
+			reveal_next_day_showdown()
+	)
+
+func _on_skip_pressed() -> void:
+	if not is_revealing:
+		return
+	is_revealing = false
+	DeskTheme.animate_click(skip_btn, Vector2.ONE, 0.08)
+	var timer = get_tree().create_timer(0.1)
+	timer.timeout.connect(func():
+		trigger_report_card()
 	)
 
 func trigger_report_card() -> void:
+	if is_instance_valid(skip_btn):
+		skip_btn.queue_free()
+	
 	blackboard_panel.visible = false
 	report_notebook.visible = true
 	

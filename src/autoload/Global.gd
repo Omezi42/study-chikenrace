@@ -32,6 +32,7 @@ var daily_last_played_date: String = ""
 var daily_opponent_ghosts: Dictionary = {}  # DayIndex -> Array of ghosts
 var daily_my_records: Dictionary = {}       # DayIndex -> My record dict
 var daily_fixed_deck: Dictionary = {}       # Generated fixed deck (1-10 -> ItemId)
+var current_season: int = 1                 # 1シーズン=2週間
 
 # Deviation Values (偏差値)
 var deviation_value: float = 50.0
@@ -101,6 +102,11 @@ func _ready() -> void:
 		bm.load_completed.connect(_on_cloud_load_completed)
 	if logged_in_user_id != "" and logged_in_password != "":
 		call_deferred("_auto_login")
+		
+	# Calculate current season (1 season = 2 weeks = 14 days = 1,209,600 seconds)
+	# Using an arbitrary epoch (e.g., May 1 2026 roughly)
+	var unix_time = Time.get_unix_time_from_system()
+	current_season = int(unix_time / (14 * 24 * 60 * 60)) + 1
 
 # Save Game state to local storage JSON
 func save_game() -> void:
@@ -430,7 +436,6 @@ func generate_daily_fixed_deck(date_str: String) -> Dictionary:
 		var inst = card_data_script.new()
 		if inst and "ITEMS" in inst:
 			all_items = inst.ITEMS.keys().duplicate()
-		inst.queue_free()
 	
 	if all_items.size() < 10:
 		all_items = unlocked_items.duplicate()

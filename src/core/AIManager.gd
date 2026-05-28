@@ -173,8 +173,13 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 		TYPE_BLUFFER: risk_tolerance = 0.24
 		TYPE_HIGHROLLER: risk_tolerance = 0.48
 		
-	# Apply ±15% fluctuation to risk tolerance
-	risk_tolerance *= randf_range(0.85, 1.15)
+	var deviation = 50.0
+	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("deviation"):
+		deviation = Global.opponent_profiles[cpu_id]["deviation"]
+	var dev_factor = clamp(deviation / 50.0, 0.7, 1.3)
+	
+	# Apply ±15% fluctuation to risk tolerance, adjusted by deviation
+	risk_tolerance *= randf_range(0.85, 1.15) * dev_factor
 		
 	var hours_result = []
 	var total_actual_score = 0
@@ -316,8 +321,13 @@ static func calculate_cpu_bluff(cpu_id: String, actual_score: int) -> int:
 		
 	var bluff_amount = 0
 	
-	# Apply ±15% fluctuation to bluff probability and base limits
-	var bluff_chance_mod = randf_range(0.85, 1.15)
+	var deviation = 50.0
+	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("deviation"):
+		deviation = Global.opponent_profiles[cpu_id]["deviation"]
+	var dev_bluff_mod = clamp(50.0 / deviation, 0.5, 1.5) # High dev = smaller, smarter bluffs
+	
+	# Apply ±15% fluctuation to bluff probability and base limits, adjusted by deviation
+	var bluff_chance_mod = randf_range(0.85, 1.15) * dev_bluff_mod
 	match cpu_type:
 		TYPE_CAUTIOUS:
 			# Rarely bluffs (15% chance to bluff small, 1 to 6 points)
@@ -353,16 +363,20 @@ static func make_cpu_doubts(cpu_id: String, participants: Array) -> Array[String
 	var cpu_type = cpu_info["type"]
 	var doubts: Array[String] = []
 	
-	# Cautious AI doubts easily, Bluffer rarely doubts
+	var deviation = 50.0
+	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("deviation"):
+		deviation = Global.opponent_profiles[cpu_id]["deviation"]
+	var dev_doubt_mod = clamp(deviation / 50.0, 0.5, 1.5) # High dev = more accurate doubts
+	
 	var threshold = 0.7 # Suspect threshold (0.0 to 1.0)
 	match cpu_type:
 		TYPE_CAUTIOUS: threshold = 0.58
 		TYPE_AGGRESSIVE: threshold = 0.72
 		TYPE_BLUFFER: threshold = 0.82
-		TYPE_HIGHROLLER: threshold = 0.50 # Chaotic
+		TYPE_HIGHROLLER: threshold = 0.50
 		
 	# Apply ±15% fluctuation to suspect threshold (clamped)
-	threshold = clamp(threshold * randf_range(0.85, 1.15), 0.1, 0.95)
+	threshold = clamp(threshold * randf_range(0.85, 1.15) / dev_doubt_mod, 0.1, 0.95)
 		
 	# Sort participants by suspiciousness
 	var suspect_list = []

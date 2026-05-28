@@ -1,5 +1,5 @@
 class_name CardData
-extends Node
+extends RefCounted
 
 # Subjects (教科)
 const SUBJECT_MATH = "math"

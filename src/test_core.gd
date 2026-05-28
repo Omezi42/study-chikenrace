@@ -112,6 +112,7 @@ func test_combos_and_wildcards() -> bool:
 # Test 3: AI Simulation functions
 func test_ai_simulation() -> bool:
 	print("\n--- Test 3: AI Day Simulation & Bluff Decision ---")
+	Global.opponent_profiles.clear()
 	var sim = AIManager.simulate_cpu_day("cpu_sato", 1)
 	var pass_sim = assert_true(
 		sim.has("actual_score") and sim.has("hours") and sim["hours"].size() >= 3,
@@ -130,7 +131,11 @@ func test_ai_simulation() -> bool:
 func test_session_showdown() -> bool:
 	print("\n--- Test 4: Game Session Showdown Logic ---")
 	Global.game_mode = "cpu"
-	Global.validate_opponent_profiles()
+	Global.opponent_profiles = {
+		"cpu_sato": {"id": "cpu_sato", "name": "佐藤くん"},
+		"cpu_suzuki": {"id": "cpu_suzuki", "name": "鈴木さん"},
+		"cpu_takahashi": {"id": "cpu_takahashi", "name": "高橋くん"}
+	}
 	
 	var session = GameSession.new()
 	var mock_deck_config = {

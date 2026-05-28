@@ -33,8 +33,9 @@ func start_session(deck_config: Dictionary) -> void:
 	player_deck = StudyDeck.new()
 	player_deck.initialize_deck(deck_config)
 	
-	if Global.game_mode == "daily":
+	if Global.game_mode == "cram":
 		current_day = Global.daily_current_day
+		max_hours_today = 1 # 一夜漬けモードは1時限のみ
 		
 		# Restore match_history from Global.daily_my_records and daily_opponent_ghosts
 		for d in range(1, current_day + 1):
@@ -173,8 +174,8 @@ func end_day() -> void:
 		for item in hour["used_items"]:
 			Global.add_item_usage(item, 1)
 			
-	# Save daily progression in Global if daily mode
-	if Global.game_mode == "daily":
+	# Save daily progression in Global if cram mode
+	if Global.game_mode == "cram":
 		Global.daily_my_records[str(current_day)] = day_data["player"].duplicate()
 		Global.daily_current_day = current_day + 1
 		Global.daily_last_played_date = Time.get_date_string_from_system()
@@ -218,14 +219,18 @@ func end_day() -> void:
 		
 	# Check if Night Note (徹夜ノート) is slotted in player deck for max hours
 	max_hours_today = 3
+	if Global.game_mode == "cram":
+		max_hours_today = 1
+		
 	for slot in Global.current_deck.keys():
 		if Global.current_deck[slot] == "item_night_note":
-			max_hours_today = 4
+			max_hours_today += 1
 			break
 			
+	var max_days_total = 3 if Global.game_mode == "cram" else 5
 	# Pre-simulate cpus if game continues
-	if current_day <= 5:
-		if Global.game_mode == "daily":
+	if current_day <= max_days_total:
+		if Global.game_mode == "cram":
 			# Pre-populate simulated ghosts for next day if they aren't generated yet (just in case)
 			var next_day_str = str(current_day)
 			if not Global.daily_opponent_ghosts.has(next_day_str):
@@ -287,7 +292,9 @@ func calculate_final_showdown() -> Dictionary:
 			if p_id == "player":
 				deck_config = Global.current_deck
 			else:
-				var opp_id = Global.opponent_profiles[p_id]["id"]
+				var opp_id = p_id
+				if Global.opponent_profiles.has(p_id):
+					opp_id = Global.opponent_profiles[p_id].get("id", p_id)
 				if AIManager.CPU_OPPONENTS.has(opp_id):
 					deck_config = AIManager.CPU_OPPONENTS[opp_id]["deck"]
 				else:
@@ -468,16 +475,49 @@ func calculate_final_showdown() -> Dictionary:
 		
 	Global.play_count += 1
 	
-	# Determine title
+	# Determine title (Top-down priority)
+	var bursts = total_bursts["player"]
+	var score = final_scores["player"]
+	var is_cram = Global.game_mode == "cram"
+	var max_days = 3 if is_cram else 5
 	var title = "ただの凡人"
-	if player_lies_count >= 2 and player_caught_lies_count == 0 and final_scores["player"] >= 180:
-		title = "完全犯罪のカリスマ"
-	elif player_lies_count >= 2 and player_caught_lies_count == player_lies_count:
-		title = "ガラスのハート"
-	elif player_lies_count == 0 and final_scores["player"] >= 150:
-		title = "清廉潔白なガリ勉"
+	
+	if Global.deviation_value >= 70.0:
+		title = "偏差値70の神"
+	elif is_cram and score >= 150 and my_rank == 1:
+		title = "一夜漬けの天才"
+	elif bursts == 0 and my_rank == 1:
+		title = "石橋を叩いて渡る覇者"
+	elif bursts >= 3:
+		title = "暴風警報発令中"
+	elif player_lies_count == 0 and doubt_success_count >= 2:
+		title = "沈黙のスナイパー"
+	elif player_lies_count >= max_days and player_caught_lies_count == 0:
+		title = "完璧なるポーカーフェイス"
+	elif Global.unlocked_items.size() >= 24:
+		title = "文房具マスター"
+	elif player_caught_lies_count >= 3:
+		title = "オオカミ少年"
 	elif doubt_success_count >= 3:
 		title = "人間嘘発見器"
+	elif player_lies_count >= 2 and player_caught_lies_count == 0 and score >= (150 if is_cram else 200):
+		title = "完全犯罪のカリスマ"
+	elif score >= (200 if is_cram else 300):
+		title = "東大レベル"
+	elif score <= 50:
+		title = "赤点回避失敗"
+	elif bursts == 0:
+		title = "安全第一"
+	elif doubt_success_count == 0 and player_caught_lies_count > 0:
+		title = "お人好しなカモ"
+	elif player_lies_count == 0 and score >= (120 if is_cram else 180):
+		title = "清廉潔白なガリ勉"
+	elif player_lies_count >= 2 and player_caught_lies_count == player_lies_count:
+		title = "ガラスのハート"
+	elif my_rank == 1:
+		title = "クラスの優等生"
+	elif my_rank == 4:
+		title = "クラスの落ちこぼれ"
 		
 	if not title in Global.unlocked_titles:
 		Global.unlocked_titles.append(title)
@@ -570,6 +610,10 @@ func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 				
 	Global.friend_match_history = match_history.duplicate(true)
 	Global.save_game()
+
+func is_game_over() -> bool:
+	var max_days = 3 if Global.game_mode == "cram" else 5
+	return current_day > max_days
 
 func advance_friend_day() -> void:
 	current_day += 1

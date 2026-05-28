@@ -109,13 +109,16 @@ func _on_setup(setup_data: Dictionary) -> void:
 	draw_history_container.add_theme_constant_override("separation", 12)
 	left_inner_vbox.add_child(draw_history_container)
 	
-	# Card details panel in notebook
+	# Card details panel as floating tooltip
 	card_detail_box = PanelContainer.new()
-	card_detail_box.custom_minimum_size = Vector2(590, 160)
+	card_detail_box.custom_minimum_size = Vector2(400, 140)
+	card_detail_box.z_index = 100 # Ensure it draws on top
+	card_detail_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card_detail_box.visible = false
 	
 	var detail_style = StyleBoxFlat.new()
-	detail_style.bg_color = Color(DeskTheme.COLOR_MAHOGANY, 0.05) # Light shadow background
-	detail_style.border_color = Color(DeskTheme.COLOR_INK, 0.25)
+	detail_style.bg_color = DeskTheme.COLOR_CRAFT # Use craft color for tooltip
+	detail_style.border_color = Color(DeskTheme.COLOR_INK, 0.5)
 	detail_style.border_width_left = 2
 	detail_style.border_width_right = 2
 	detail_style.border_width_top = 2
@@ -128,8 +131,13 @@ func _on_setup(setup_data: Dictionary) -> void:
 	detail_style.content_margin_right = 15
 	detail_style.content_margin_top = 10
 	detail_style.content_margin_bottom = 10
+	detail_style.shadow_color = Color(0, 0, 0, 0.2)
+	detail_style.shadow_size = 4
+	detail_style.shadow_offset = Vector2(2, 2)
 	card_detail_box.add_theme_stylebox_override("panel", detail_style)
-	left_inner_vbox.add_child(card_detail_box)
+	
+	# Add to self instead of left_inner_vbox
+	add_child(card_detail_box)
 	
 	var detail_vbox = VBoxContainer.new()
 	detail_vbox.add_theme_constant_override("separation", 6)
@@ -157,9 +165,9 @@ func _on_setup(setup_data: Dictionary) -> void:
 	detail_desc_label.text = "カードをクリックすると効果の説明が表示されます。"
 	detail_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail_desc_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	detail_desc_label.add_theme_font_size_override("font_size", 16)
+	detail_desc_label.add_theme_font_size_override("font_size", 14)
 	detail_desc_label.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
-	detail_desc_label.custom_minimum_size = Vector2(560, 60)
+	detail_desc_label.custom_minimum_size = Vector2(360, 50)
 	detail_vbox.add_child(detail_desc_label)
 	
 	# RIGHT PAGE (Desk Self-study Area)
@@ -742,7 +750,9 @@ func activate_item_effect(card: Dictionary) -> void:
 			
 		"item_energy_drink":
 			deck.energy_drink_active = true
-			if randf() < 0.25:
+			var draw_count = deck.hand.size()
+			var burst_chance = max(0.0, float(draw_count - 3) * 0.10)
+			if burst_chance > 0 and randf() < burst_chance:
 				DeskTheme.show_toast(self, "エナジードリンクの副作用！睡魔に耐えきれず寝落ちした！")
 				trigger_burst_sequence()
 			else:
@@ -1017,6 +1027,18 @@ func show_card_detail(card: Dictionary) -> void:
 		detail_title_label.text = "カード説明"
 		detail_role_label.text = ""
 		detail_desc_label.text = "カードをクリックすると効果の説明が表示されます。"
+		
+	# Show tooltip
+	card_detail_box.visible = true
+	
+func _process(delta: float) -> void:
+	if card_detail_box and card_detail_box.visible:
+		var mouse_pos = get_global_mouse_position()
+		# Offset slightly so the mouse cursor doesn't block the tooltip
+		card_detail_box.position = mouse_pos + Vector2(20, -100)
+		# Clamp to screen to avoid going offscreen
+		card_detail_box.position.x = clamp(card_detail_box.position.x, 0, 1920 - card_detail_box.size.x)
+		card_detail_box.position.y = clamp(card_detail_box.position.y, 0, 1080 - card_detail_box.size.y)
 
 func set_mouse_filter_recursive(node: Node, filter: int) -> void:
 	if node is Control:
@@ -1335,7 +1357,8 @@ func _on_card_ui_pressed(card: Dictionary, card_ui: Button) -> void:
 		show_card_detail(card)
 
 func _on_card_ui_mouse_entered(card: Dictionary, card_ui: Button) -> void:
-	show_card_detail(card)
+	if not is_selecting_card:
+		show_card_detail(card)
 	
 	# Set high z_index to draw on top of other cards without altering tree order
 	card_ui.z_index = 10
@@ -1351,6 +1374,9 @@ func _on_card_ui_mouse_entered(card: Dictionary, card_ui: Button) -> void:
 		card_ui.modulate = Color(1.2, 1.2, 1.2, 1.0) # slightly brighter highlight
 
 func _on_card_ui_mouse_exited(card_ui: Button) -> void:
+	if card_detail_box:
+		card_detail_box.visible = false
+		
 	# Restore z_index
 	card_ui.z_index = 0
 	

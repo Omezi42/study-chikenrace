@@ -227,8 +227,12 @@ func calculate_hand_score() -> Dictionary:
 		var item_id = hand[i]["item_id"]
 		
 		if i > 0:
-			# Wildcard matches anything to keep combo alive
-			if item_id == "item_cram_school_print" or last_subject == "" or subject == last_subject:
+			# Wildcard only matches the previous subject to keep combo alive
+			if item_id == "item_cram_school_print":
+				current_combo_streak += 1
+				# Do NOT update last_subject, so it acts as the previous subject
+				continue
+			elif last_subject == "" or subject == last_subject:
 				current_combo_streak += 1
 			else:
 				# Resolve previous streak

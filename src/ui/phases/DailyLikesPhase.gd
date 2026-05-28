@@ -20,7 +20,8 @@ var local_doubts_count: int = 3 # 3 doubt votes per day max
 
 func _on_setup(_setup_data: Dictionary) -> void:
 	custom_minimum_size = Vector2(1500, 850)
-	local_doubts_count = 3 - session.player_doubts_made_today.size()
+	var max_doubts = 1 if Global.game_mode == "cram" else 3
+	local_doubts_count = max_doubts - session.player_doubts_made_today.size()
 	
 	# Layout setup: Left is Phone, Right is controls & inspection
 	var main_hbox = HBoxContainer.new()
@@ -290,7 +291,7 @@ func populate_timeline() -> void:
 		# Doubt Button (only visible for CPU rivals, not player itself)
 		if p["id"] != "player":
 			var doubt_btn = Button.new()
-			doubt_btn.text = "🚨 ダウト"
+			doubt_btn.text = "ダウト!"
 			doubt_btn.add_theme_font_size_override("font_size", 14)
 			doubt_btn.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
 			
@@ -303,7 +304,8 @@ func populate_timeline() -> void:
 			act_hbox.add_child(doubt_btn)
 
 func update_remaining_votes() -> void:
-	remaining_doubts_label.text = "今日のダウト投票可能数：" + str(local_doubts_count) + "回"
+	var max_doubts = 1 if Global.game_mode == "cram" else 3
+	remaining_doubts_label.text = "残りダウト可能回数: " + str(local_doubts_count) + "回 (最大" + str(max_doubts) + "回)"
 
 func _on_inspect_pressed(p: Dictionary) -> void:
 	# Populate detail modal title
@@ -497,7 +499,7 @@ func show_tutorial_finish_modal() -> void:
 	margin.add_child(vbox)
 	
 	var title = Label.new()
-	title.text = "🎉 チュートリアル完了！"
+	title.text = "チュートリアル完了！"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 	title.add_theme_font_size_override("font_size", 32)

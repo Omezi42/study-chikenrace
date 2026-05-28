@@ -34,9 +34,9 @@ func _ready() -> void:
 	bg_texture = TextureRect.new()
 	bg_texture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	bg_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	if FileAccess.file_exists("res://assets/机の背景画像-ノート無し.png"):
+	if ResourceLoader.exists("res://assets/机の背景画像-ノート無し.png"):
 		bg_texture.texture = load("res://assets/机の背景画像-ノート無し.png")
-	elif FileAccess.file_exists("res://assets/机の背景画像.png"):
+	elif ResourceLoader.exists("res://assets/机の背景画像.png"):
 		bg_texture.texture = load("res://assets/机の背景画像.png")
 	bg_texture.modulate = Color.WHITE
 	add_child(bg_texture)

@@ -1,7 +1,22 @@
 extends Node
 
-const SUPABASE_URL = "https://lhzxandvkgnafshdtrov.supabase.co"
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoenhhbmR2a2duYWZzaGR0cm92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NzEzMzMsImV4cCI6MjA5NDI0NzMzM30.dof6q-gDq9qJE32MxWfTD76PBvdgAr6X3EQ1do291sk"
+var _supabase_url: String = ""
+var _supabase_key: String = ""
+
+func _init() -> void:
+	_supabase_url = OS.get_environment("SUPABASE_URL")
+	if _supabase_url == "":
+		_supabase_url = ProjectSettings.get_setting("backend/supabase_url", "https://lhzxandvkgnafshdtrov.supabase.co")
+		
+	_supabase_key = OS.get_environment("SUPABASE_KEY")
+	if _supabase_key == "":
+		_supabase_key = ProjectSettings.get_setting("backend/supabase_key", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoenhhbmR2a2duYWZzaGR0cm92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NzEzMzMsImV4cCI6MjA5NDI0NzMzM30.dof6q-gDq9qJE32MxWfTD76PBvdgAr6X3EQ1do291sk")
+
+func _get_supabase_url() -> String:
+	return _supabase_url
+
+func _get_supabase_key() -> String:
+	return _supabase_key
 
 signal auth_completed(success: bool, error_message: String)
 signal save_completed(success: bool)
@@ -27,13 +42,13 @@ var mock_moves: Dictionary = {} # DayIdx -> Array of moves
 # API Headers
 func _get_headers(auth_required: bool = false) -> Array[String]:
 	var headers: Array[String] = [
-		"apikey: " + SUPABASE_KEY,
+		"apikey: " + _get_supabase_key(),
 		"Content-Type: application/json"
 	]
 	if auth_required and auth_token != "":
 		headers.append("Authorization: Bearer " + auth_token)
 	else:
-		headers.append("Authorization: Bearer " + SUPABASE_KEY)
+		headers.append("Authorization: Bearer " + _get_supabase_key())
 	return headers
 
 # Helper to create and perform HTTP request
@@ -53,9 +68,10 @@ func _send_request(url: String, method: HTTPClient.Method, body_str: String, aut
 
 # 1. Sign Up (ユーザー登録)
 func signup_user(user_id: String, password: String) -> void:
-	var url = SUPABASE_URL + "/auth/v1/signup"
+	var safe_email = user_id.to_utf8_buffer().hex_encode() + "@chikenrace.com"
+	var url = _get_supabase_url() + "/auth/v1/signup"
 	var body = {
-		"email": user_id + "@chikenrace.internal",
+		"email": safe_email,
 		"password": password
 	}
 	
@@ -94,9 +110,10 @@ func signup_user(user_id: String, password: String) -> void:
 
 # 2. Login (ログイン)
 func login_user(user_id: String, password: String) -> void:
-	var url = SUPABASE_URL + "/auth/v1/token?grant_type=password"
+	var safe_email = user_id.to_utf8_buffer().hex_encode() + "@chikenrace.com"
+	var url = _get_supabase_url() + "/auth/v1/token?grant_type=password"
 	var body = {
-		"email": user_id + "@chikenrace.internal",
+		"email": safe_email,
 		"password": password
 	}
 	
@@ -138,7 +155,7 @@ func save_cloud_data(data_dict: Dictionary) -> void:
 		return
 		
 	# We UPSERT to the 'saves' table
-	var url = SUPABASE_URL + "/rest/v1/saves"
+	var url = _get_supabase_url() + "/rest/v1/saves"
 	var body = {
 		"user_id": logged_in_uuid,
 		"data": data_dict
@@ -167,7 +184,7 @@ func load_cloud_data() -> void:
 		load_completed.emit(false, {})
 		return
 		
-	var url = SUPABASE_URL + "/rest/v1/saves?user_id=eq." + logged_in_uuid + "&select=data"
+	var url = _get_supabase_url() + "/rest/v1/saves?user_id=eq." + logged_in_uuid + "&select=data"
 	
 	_send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
@@ -189,13 +206,14 @@ func upload_daily_record(day_idx: int, score: int, record: Dictionary) -> void:
 	if auth_token == "" or logged_in_uuid == "":
 		return
 		
-	var url = SUPABASE_URL + "/rest/v1/daily_scores"
+	var url = _get_supabase_url() + "/rest/v1/daily_scores"
 	var body = {
 		"user_id": logged_in_uuid,
 		"username": Global.player_name,
 		"day_idx": day_idx,
 		"score": score,
-		"record": record
+		"record": record,
+		"season": Global.current_season
 	}
 	
 	# Send to database
@@ -205,8 +223,8 @@ func upload_daily_record(day_idx: int, score: int, record: Dictionary) -> void:
 
 # 6. Fetch Daily Scores & Ghost Records (for current day)
 func fetch_daily_records(day_idx: int) -> void:
-	# Select columns, filter by day index, exclude the player themselves, sort by score descending, limit to 5
-	var url = SUPABASE_URL + "/rest/v1/daily_scores?day_idx=eq." + str(day_idx) + "&select=username,score,record&order=score.desc&limit=6"
+	# Select columns, filter by day index and season, exclude the player themselves, sort by score descending, limit to 5
+	var url = _get_supabase_url() + "/rest/v1/daily_scores?day_idx=eq." + str(day_idx) + "&season=eq." + str(Global.current_season) + "&select=username,score,record&order=score.desc&limit=6"
 	if logged_in_uuid != "":
 		url += "&user_id=neq." + logged_in_uuid
 		
@@ -289,7 +307,7 @@ func create_friend_room() -> void:
 		room_created.emit(true, code)
 		return
 		
-	var url = SUPABASE_URL + "/rest/v1/friend_rooms"
+	var url = _get_supabase_url() + "/rest/v1/friend_rooms"
 	var body = {
 		"room_code": code,
 		"status": "waiting",
@@ -333,7 +351,7 @@ func join_friend_room(room_code: String) -> void:
 		return
 		
 	# First get the room participants
-	var url = SUPABASE_URL + "/rest/v1/friend_rooms?room_code=eq." + room_code
+	var url = _get_supabase_url() + "/rest/v1/friend_rooms?room_code=eq." + room_code
 	_send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
 			var json = JSON.new()
@@ -353,7 +371,7 @@ func join_friend_room(room_code: String) -> void:
 						parts.append({"user_id": logged_in_uuid, "username": user_name})
 						
 					# Update room
-					var patch_url = SUPABASE_URL + "/rest/v1/friend_rooms?room_code=eq." + room_code
+					var patch_url = _get_supabase_url() + "/rest/v1/friend_rooms?room_code=eq." + room_code
 					var patch_body = {"participants": parts}
 					_send_request(patch_url, HTTPClient.METHOD_PATCH, JSON.stringify(patch_body), true, func(r_res, r_code, r_headers, r_body):
 						if r_res == HTTPRequest.RESULT_SUCCESS and (r_code == 200 or r_code == 204):
@@ -389,7 +407,7 @@ func start_friend_game(room_code: String) -> void:
 			mock_participants.append({"user_id": "cpu_takahashi", "username": "高橋くん (CPU)"})
 		return
 		
-	var url = SUPABASE_URL + "/rest/v1/friend_rooms?room_code=eq." + room_code
+	var url = _get_supabase_url() + "/rest/v1/friend_rooms?room_code=eq." + room_code
 	
 	# Determine CPU fill names
 	var current_parts = []
@@ -525,7 +543,7 @@ func upload_friend_move(room_code: String, day_idx: int, move_data: Dictionary) 
 				m["doubts_submitted"] = true
 		return
 		
-	var url = SUPABASE_URL + "/rest/v1/friend_room_moves"
+	var url = _get_supabase_url() + "/rest/v1/friend_room_moves"
 	var body = {
 		"room_code": room_code,
 		"user_id": logged_in_uuid,
@@ -555,7 +573,7 @@ func poll_room_status(room_code: String) -> void:
 		room_polled.emit(mock_room_status, mock_current_day, mock_participants)
 		return
 		
-	var url = SUPABASE_URL + "/rest/v1/friend_rooms?room_code=eq." + room_code
+	var url = _get_supabase_url() + "/rest/v1/friend_rooms?room_code=eq." + room_code
 	_send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
 			var json = JSON.new()
@@ -587,7 +605,7 @@ func poll_day_moves(room_code: String, day_idx: int) -> void:
 		day_moves_polled.emit(true, day_data)
 		return
 		
-	var url = SUPABASE_URL + "/rest/v1/friend_room_moves?room_code=eq." + room_code + "&day_idx=eq." + str(day_idx)
+	var url = _get_supabase_url() + "/rest/v1/friend_room_moves?room_code=eq." + room_code + "&day_idx=eq." + str(day_idx)
 	_send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
 			var json = JSON.new()
@@ -609,7 +627,7 @@ func advance_friend_room_day(room_code: String, next_day: int) -> void:
 		mock_current_day = next_day
 		return
 		
-	var url = SUPABASE_URL + "/rest/v1/friend_rooms?room_code=eq." + room_code
+	var url = _get_supabase_url() + "/rest/v1/friend_rooms?room_code=eq." + room_code
 	var body = {"current_day": next_day}
 	_send_request(url, HTTPClient.METHOD_PATCH, JSON.stringify(body), true, func(result, response_code, headers, body_data):
 		pass # Day index updated successfully
