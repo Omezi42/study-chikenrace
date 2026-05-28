@@ -215,6 +215,10 @@ func _on_day_moves_polled(success: bool, moves: Array) -> void:
 			var bm = get_node("/root/BackendManager")
 			if bm.day_moves_polled.is_connected(_on_day_moves_polled):
 				bm.day_moves_polled.disconnect(_on_day_moves_polled)
+			
+			# If I am host, advance the database day state for this room (except for final reveal)
+			if Global.friend_is_host and not is_final_reveal_wait:
+				bm.advance_friend_room_day(Global.friend_room_code, target_day + 1)
 				
 			if target_day > 1 and not is_final_reveal_wait:
 				var temp_callable = func(success_prev: bool, prev_moves: Array):
