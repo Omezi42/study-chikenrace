@@ -21,6 +21,21 @@ func _ready() -> void:
 	bg_color.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg_color)
 	
+	# Load desk background if exists
+	var bg_tex = TextureRect.new()
+	bg_tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	if ResourceLoader.exists("res://assets/机の背景画像-ノート無し.png"):
+		bg_tex.texture = load("res://assets/机の背景画像-ノート無し.png")
+	bg_tex.modulate = Color.WHITE
+	add_child(bg_tex)
+	
+	# 見やすさのため薄いオーバーレイを敷く
+	var dimmer = ColorRect.new()
+	dimmer.color = Color(0, 0, 0, 0.2)
+	dimmer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(dimmer)
+	
 	var center_container = CenterContainer.new()
 	center_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center_container)
@@ -148,6 +163,7 @@ func _ready() -> void:
 	back_btn.custom_minimum_size = Vector2(320, 70)
 	back_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 	back_btn.add_theme_font_size_override("font_size", 26)
+	Global.apply_white_button_style(back_btn)
 	back_btn.pressed.connect(_on_back_pressed)
 	right_inner.add_child(back_btn)
 	

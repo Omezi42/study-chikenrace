@@ -33,7 +33,7 @@ func start_session(deck_config: Dictionary) -> void:
 	player_deck = StudyDeck.new()
 	player_deck.initialize_deck(deck_config)
 	
-	if Global.game_mode == "cram":
+	if Global.game_mode == Constants.MODE_CRAM:
 		current_day = Global.daily_current_day
 		max_hours_today = 1 # 一夜漬けモードは1時限のみ
 		
@@ -75,7 +75,7 @@ func start_session(deck_config: Dictionary) -> void:
 						"is_doubt_exposed": bool(rec.get("is_doubt_exposed", false)),
 						"auto_exposed": bool(rec.get("auto_exposed", false))
 					}
-	elif Global.game_mode == "friend":
+	elif Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
 		current_day = Global.friend_current_day
 		match_history = Global.friend_match_history.duplicate(true)
 		if not match_history.has(current_day):
@@ -98,7 +98,7 @@ func simulate_cpus_for_day(day_idx: int) -> void:
 		
 		day_data[cpu_id] = {
 			"id": cpu_id,
-			"name": Global.opponent_profiles[cpu_id]["name"],
+			"name": Global.opponent_profiles[cpu_id].get("name", "ライバル"),
 			"actual_score": sim["actual_score"],
 			"declared_score": decl,
 			"hours": sim["hours"],
@@ -129,6 +129,12 @@ func add_player_doubt(target_id: String) -> void:
 
 # Process AI doubts and package the day results
 func end_day() -> void:
+	_finalize_day_data()
+	_save_and_upload_day()
+	_advance_to_next_day()
+
+# --- end_day() helper 1: Package player data + process AI doubts ---
+func _finalize_day_data() -> void:
 	var day_data = match_history[current_day]
 	
 	# Package player data
@@ -154,15 +160,17 @@ func end_day() -> void:
 			"hours": p["hours"]
 		})
 		
-	# Execute AI doubts
-	for cpu_id in Global.opponent_profiles.keys():
-		var cpu_doubts = AIManager.make_cpu_doubts(cpu_id, participants)
-		day_data[cpu_id]["doubts_made"] = cpu_doubts
-		
-		# Record doubts received
-		for target_id in cpu_doubts:
-			if day_data.has(target_id):
-				day_data[target_id]["doubts_received"].append(cpu_id)
+	# Execute AI doubts (Only applicable in CPU and Cram modes where opponents are AI)
+	if Global.game_mode not in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
+		for cpu_id in Global.opponent_profiles.keys():
+			if day_data.has(cpu_id):
+				var cpu_doubts = AIManager.make_cpu_doubts(cpu_id, participants)
+				day_data[cpu_id]["doubts_made"] = cpu_doubts
+				
+				# Record doubts received
+				for target_id in cpu_doubts:
+					if day_data.has(target_id):
+						day_data[target_id]["doubts_received"].append(cpu_id)
 				
 	# Record doubts player received
 	for target_id in player_doubts_made_today:
@@ -173,32 +181,28 @@ func end_day() -> void:
 	for hour in player_hours_history_today:
 		for item in hour["used_items"]:
 			Global.add_item_usage(item, 1)
-			
-	# Save daily progression in Global if cram mode
-	if Global.game_mode == "cram":
+
+# --- end_day() helper 2: Mode-specific save & upload ---
+func _save_and_upload_day() -> void:
+	var day_data = match_history[current_day]
+	
+	if Global.game_mode == Constants.MODE_CRAM:
 		Global.daily_my_records[str(current_day)] = day_data["player"].duplicate()
-		Global.daily_current_day = current_day + 1
 		Global.daily_last_played_date = Time.get_date_string_from_system()
 		
 		# Async upload
-		var bm = null
-		var main_loop = Engine.get_main_loop()
-		if main_loop is SceneTree:
-			bm = main_loop.root.get_node_or_null("BackendManager")
+		var bm = _get_backend_manager()
 		if bm and Global.logged_in_user_id != "":
 			bm.upload_daily_record(current_day, day_data["player"]["actual_score"], day_data["player"])
 			
 		Global.save_game()
-	elif Global.game_mode == "friend":
+	elif Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
 		# Save this day's my record locally in match_history
 		Global.friend_match_history = match_history.duplicate(true)
 		Global.save_game()
 		
 		# Upload move to server
-		var bm = null
-		var main_loop = Engine.get_main_loop()
-		if main_loop is SceneTree:
-			bm = main_loop.root.get_node_or_null("BackendManager")
+		var bm = _get_backend_manager()
 		if bm:
 			var my_move = {
 				"actual_score": player_actual_score_today,
@@ -208,7 +212,15 @@ func end_day() -> void:
 				"doubts_submitted": true
 			}
 			bm.upload_friend_move(Global.friend_room_code, current_day, my_move)
-			
+
+# --- end_day() helper 3: Advance day, reset state, prepare next day ---
+func _advance_to_next_day() -> void:
+	_reset_daily_variables()
+	_calculate_max_hours()
+	if current_day <= Constants.MAX_DAYS:
+		_prepare_opponents_for_day(current_day)
+
+func _reset_daily_variables() -> void:
 	# Advance to next day and reset today's active variables
 	current_day += 1
 	current_hour = 1
@@ -216,324 +228,58 @@ func end_day() -> void:
 	player_declared_score_today = 0
 	player_hours_history_today.clear()
 	player_doubts_made_today.clear()
-		
+	
+	# Synchronize current day changes to Global singleton state dynamically based on mode
+	if Global.game_mode == Constants.MODE_CRAM:
+		Global.daily_current_day = current_day
+	elif Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
+		Global.friend_current_day = current_day
+	Global.save_game()
+
+func _calculate_max_hours() -> void:
 	# Check if Night Note (徹夜ノート) is slotted in player deck for max hours
 	max_hours_today = 3
-	if Global.game_mode == "cram":
+	if Global.game_mode == Constants.MODE_CRAM:
 		max_hours_today = 1
 		
 	for slot in Global.current_deck.keys():
 		if Global.current_deck[slot] == "item_night_note":
 			max_hours_today += 1
 			break
-			
-	var max_days_total = 3 if Global.game_mode == "cram" else 5
-	# Pre-simulate cpus if game continues
-	if current_day <= max_days_total:
-		if Global.game_mode == "cram":
-			# Pre-populate simulated ghosts for next day if they aren't generated yet (just in case)
-			var next_day_str = str(current_day)
-			if not Global.daily_opponent_ghosts.has(next_day_str):
-				var bm = null
-				var main_loop = Engine.get_main_loop()
-				if main_loop is SceneTree:
-					bm = main_loop.root.get_node_or_null("BackendManager")
-				var dummy_ghosts = []
-				if bm:
-					dummy_ghosts = bm.generate_simulated_ghosts(current_day)
-				else:
-					dummy_ghosts = [
-						{"username": "佐藤くん", "score": 40, "record": {"actual_score": 40, "declared_score": 45, "hours": []}},
-						{"username": "鈴木さん", "score": 48, "record": {"actual_score": 48, "declared_score": 48, "hours": []}},
-						{"username": "高橋くん", "score": 38, "record": {"actual_score": 38, "declared_score": 45, "hours": []}}
-					]
-				Global.daily_opponent_ghosts[next_day_str] = dummy_ghosts
-				Global.save_game()
-		elif Global.game_mode == "friend":
-			pass # Skip CPU simulation, they are loaded asynchronously from friend room moves.
-		else:
-			simulate_cpus_for_day(current_day)
+
+func _prepare_opponents_for_day(day_idx: int) -> void:
+	if Global.game_mode == Constants.MODE_CRAM:
+		# Pre-populate simulated ghosts for next day if they aren't generated yet (just in case)
+		var next_day_str = str(day_idx)
+		if not Global.daily_opponent_ghosts.has(next_day_str):
+			var bm = _get_backend_manager()
+			var dummy_ghosts = []
+			if bm:
+				dummy_ghosts = bm.generate_simulated_ghosts(day_idx)
+			else:
+				dummy_ghosts = [
+					{"username": "佐藤くん", "score": 40, "record": {"actual_score": 40, "declared_score": 45, "hours": []}},
+					{"username": "鈴木さん", "score": 48, "record": {"actual_score": 48, "declared_score": 48, "hours": []}},
+					{"username": "高橋くん", "score": 38, "record": {"actual_score": 38, "declared_score": 45, "hours": []}}
+				]
+			Global.daily_opponent_ghosts[next_day_str] = dummy_ghosts
+			Global.save_game()
+	elif Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
+		pass # Skip CPU simulation, they are loaded asynchronously from friend room moves.
+	else:
+		simulate_cpus_for_day(day_idx)
+
+# Helper to safely get BackendManager node from the scene tree
+func _get_backend_manager():
+	var main_loop = Engine.get_main_loop()
+	if main_loop is SceneTree:
+		return main_loop.root.get_node_or_null("BackendManager")
+	return null
 
 # Final calculation at the end of Day 5 (Showdown)
+# ロジックは ScoreEvaluator に委譲し、GameSession は肥大化しない（SRP遵守）
 func calculate_final_showdown() -> Dictionary:
-	var final_scores = {
-		"player": 0,
-		"cpu_sato": 0,
-		"cpu_suzuki": 0,
-		"cpu_takahashi": 0
-	}
-	
-	# Tracks details of adjustments for visual display on the chalkboard
-	var showdown_details = {} # DayIdx -> {PlayerId -> Details}
-	
-	# Detailed track of total bursts per player (for tie-breaker: fewer bursts is better)
-	var total_bursts = {
-		"player": 0,
-		"cpu_sato": 0,
-		"cpu_suzuki": 0,
-		"cpu_takahashi": 0
-	}
-	
-	var doubt_success_count = 0 # Player's successful doubts
-	var player_lies_count = 0
-	var player_caught_lies_count = 0
-	
-	for day_idx in range(1, 6):
-		var day_data = match_history[day_idx]
-		showdown_details[day_idx] = {}
-		
-		for p_id in final_scores.keys():
-			var p = day_data[p_id]
-			var actual = p["actual_score"]
-			var declared = p["declared_score"]
-			var is_liar = declared > actual
-			var deck_config = {}
-			
-			if p_id == "player":
-				deck_config = Global.current_deck
-			else:
-				var opp_id = p_id
-				if Global.opponent_profiles.has(p_id):
-					opp_id = Global.opponent_profiles[p_id].get("id", p_id)
-				if AIManager.CPU_OPPONENTS.has(opp_id):
-					deck_config = AIManager.CPU_OPPONENTS[opp_id]["deck"]
-				else:
-					deck_config = {}
-				
-			# Count bursts
-			for h in p["hours"]:
-				if h["bursted"]:
-					total_bursts[p_id] += 1
-					
-			var base_score = declared
-			var adjustment = 0
-			var doubts_on_me = p["doubts_received"]
-			var exposed_by_doubt = doubts_on_me.size() > 0 and is_liar
-			
-			var auto_exposed = false
-			# If they lied but nobody doubted, apply system auto-exposure curve
-			if is_liar and not exposed_by_doubt:
-				var bluff_amount = declared - actual
-				# Exponential exposure chance: pow(bluff / 40.0, 2.0)
-				var exposure_chance = pow(float(bluff_amount) / 40.0, 2.0)
-				if randf() < exposure_chance:
-					auto_exposed = true
-					
-			var final_exposed = exposed_by_doubt or auto_exposed
-			
-			if is_liar:
-				if p_id == "player":
-					player_lies_count += 1
-					if final_exposed:
-						player_caught_lies_count += 1
-						
-				if final_exposed:
-					# Caught! Declared score is reduced to actual score
-					var penalty = declared - actual
-					
-					# Double penalty if they used Copy Answer (解答写し)
-					var has_copy_answer = false
-					for slot in deck_config.keys():
-						if deck_config[slot] == "item_copy_answer":
-							has_copy_answer = true
-							break
-							
-					if has_copy_answer:
-						adjustment -= penalty * 2
-					else:
-						adjustment -= penalty
-						
-					p["is_doubt_exposed"] = true
-					p["auto_exposed"] = auto_exposed
-					
-			showdown_details[day_idx][p_id] = {
-				"base": base_score,
-				"adjustment": adjustment,
-				"doubts_received": doubts_on_me.duplicate(),
-				"auto_exposed": auto_exposed,
-				"is_doubt_exposed": final_exposed,
-				"actual": actual,
-				"declared": declared,
-				"bluff_amount": declared - actual if is_liar else 0
-			}
-			
-			final_scores[p_id] += base_score + adjustment
-
-	# Now process Doubter bonuses and penalties
-	for day_idx in range(1, 6):
-		var day_data = match_history[day_idx]
-		
-		# Doubt failure penalties by day index: Day 1: 10, Day 2: 12, ..., Day 5: 18
-		var base_fail_penalty = 10 + (day_idx - 1) * 2
-		
-		for p_id in final_scores.keys():
-			var p = day_data[p_id]
-			var deck_config = {}
-			
-			if p_id == "player":
-				deck_config = Global.current_deck
-			else:
-				deck_config = AIManager.CPU_OPPONENTS[Global.opponent_profiles[p_id]["id"]]["deck"]
-				
-			# Items that mitigate doubt failure
-			var cushion_active = false
-			var earplug_reduction = 0
-			var chat_bonus = 0
-			
-			for slot in deck_config.keys():
-				var item = deck_config[slot]
-				if item == "item_cushion":
-					cushion_active = true
-				elif item == "item_earplugs":
-					earplug_reduction = 10
-				elif item == "item_study_chat":
-					chat_bonus = 6
-					
-			for target_id in p["doubts_made"]:
-				var target = day_data[target_id]
-				var target_actual = target["actual_score"]
-				var target_declared = target["declared_score"]
-				var target_lied = target_declared > target_actual
-				
-				var doubter_adj = 0
-				
-				if target_lied:
-					# Success! Get bluff amount + 6
-					var bluff = target_declared - target_actual
-					doubter_adj += bluff + 6 + chat_bonus
-					
-					if p_id == "player":
-						doubt_success_count += 1
-				else:
-					# Failure! Deduct points
-					var penalty = base_fail_penalty
-					if cushion_active:
-						penalty = int(round(penalty * 0.5))
-					penalty = max(penalty - earplug_reduction, 0)
-					
-					doubter_adj -= penalty
-					
-				final_scores[p_id] += doubter_adj
-				
-				# Log doubter adjustments in showdown details
-				if not showdown_details[day_idx].has(p_id):
-					showdown_details[day_idx][p_id] = {"base": p["declared_score"], "adjustment": 0, "doubts_received": [], "is_doubt_exposed": false, "auto_exposed": false, "actual": p["actual_score"], "declared": p["declared_score"], "bluff_amount": 0}
-				showdown_details[day_idx][p_id]["adjustment"] += doubter_adj
-
-	# Add level bonus points to player final score
-	var level_bonus = Global.get_total_level_bonus()
-	final_scores["player"] += level_bonus
-
-	# Rank participants
-	var rank_list = []
-	for p_id in final_scores.keys():
-		var name = "あなた"
-		if p_id == "player" and Global.player_name != "":
-			name = Global.player_name
-		elif p_id != "player":
-			name = Global.opponent_profiles[p_id]["name"]
-			
-		rank_list.append({
-			"id": p_id,
-			"name": name,
-			"score": final_scores[p_id],
-			"bursts": total_bursts[p_id]
-		})
-		
-	# Sorting with tie-breaker: score descending, then bursts ascending (fewer bursts is better)
-	rank_list.sort_custom(func(a, b):
-		if a["score"] != b["score"]:
-			return a["score"] > b["score"]
-		return a["bursts"] < b["bursts"]
-	)
-	
-	# Determine rank details
-	var my_rank = 1
-	for idx in range(rank_list.size()):
-		if rank_list[idx]["id"] == "player":
-			my_rank = idx + 1
-			break
-			
-	# Coins awarded based on ranking
-	var coins_earned = 0
-	match my_rank:
-		1: coins_earned = 100
-		2: coins_earned = 50
-		3: coins_earned = 20
-		4: coins_earned = 10
-		
-	# Earn coins bonus if perfect game
-	var perfect_bonus = 0
-	if player_lies_count > 0 and player_caught_lies_count == 0:
-		perfect_bonus = 50 # Complete crime bonus
-		
-	Global.coins += coins_earned + perfect_bonus
-	
-	# Update best score
-	if final_scores["player"] > Global.best_score:
-		Global.best_score = final_scores["player"]
-		
-	Global.play_count += 1
-	
-	# Determine title (Top-down priority)
-	var bursts = total_bursts["player"]
-	var score = final_scores["player"]
-	var is_cram = Global.game_mode == "cram"
-	var max_days = 3 if is_cram else 5
-	var title = "ただの凡人"
-	
-	if Global.deviation_value >= 70.0:
-		title = "偏差値70の神"
-	elif is_cram and score >= 150 and my_rank == 1:
-		title = "一夜漬けの天才"
-	elif bursts == 0 and my_rank == 1:
-		title = "石橋を叩いて渡る覇者"
-	elif bursts >= 3:
-		title = "暴風警報発令中"
-	elif player_lies_count == 0 and doubt_success_count >= 2:
-		title = "沈黙のスナイパー"
-	elif player_lies_count >= max_days and player_caught_lies_count == 0:
-		title = "完璧なるポーカーフェイス"
-	elif Global.unlocked_items.size() >= 24:
-		title = "文房具マスター"
-	elif player_caught_lies_count >= 3:
-		title = "オオカミ少年"
-	elif doubt_success_count >= 3:
-		title = "人間嘘発見器"
-	elif player_lies_count >= 2 and player_caught_lies_count == 0 and score >= (150 if is_cram else 200):
-		title = "完全犯罪のカリスマ"
-	elif score >= (200 if is_cram else 300):
-		title = "東大レベル"
-	elif score <= 50:
-		title = "赤点回避失敗"
-	elif bursts == 0:
-		title = "安全第一"
-	elif doubt_success_count == 0 and player_caught_lies_count > 0:
-		title = "お人好しなカモ"
-	elif player_lies_count == 0 and score >= (120 if is_cram else 180):
-		title = "清廉潔白なガリ勉"
-	elif player_lies_count >= 2 and player_caught_lies_count == player_lies_count:
-		title = "ガラスのハート"
-	elif my_rank == 1:
-		title = "クラスの優等生"
-	elif my_rank == 4:
-		title = "クラスの落ちこぼれ"
-		
-	if not title in Global.unlocked_titles:
-		Global.unlocked_titles.append(title)
-		
-	Global.save_game()
-	
-	return {
-		"final_scores": final_scores,
-		"rankings": rank_list,
-		"my_rank": my_rank,
-		"coins_earned": coins_earned,
-		"perfect_bonus": perfect_bonus,
-		"level_bonus": level_bonus,
-		"title": title,
-		"details": showdown_details
-	}
+	return ScoreEvaluator.calculate_final_showdown(self)
 
 func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 	if not match_history.has(day_idx):
@@ -560,7 +306,7 @@ func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 			
 		var slot_name = ""
 		for s in Global.opponent_profiles.keys():
-			if Global.opponent_profiles[s]["id"] == uid:
+			if Global.opponent_profiles[s].get("id", s) == uid:
 				slot_name = s
 				break
 				
@@ -612,16 +358,8 @@ func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 	Global.save_game()
 
 func is_game_over() -> bool:
-	var max_days = 3 if Global.game_mode == "cram" else 5
-	return current_day > max_days
+	return current_day > Constants.MAX_DAYS
 
 func advance_friend_day() -> void:
-	current_day += 1
-	current_hour = 1
-	player_actual_score_today = 0
-	player_declared_score_today = 0
-	player_hours_history_today.clear()
-	player_doubts_made_today.clear()
-	
-	Global.friend_current_day = current_day
-	Global.save_game()
+	# Share common day-advancing reset logic and synchronization
+	_reset_daily_variables()

@@ -1,7 +1,7 @@
 class_name BagBuilderPhase
 extends PhaseBase
 
-var card_options: Array[Dictionary] = []
+var card_options: Array = []
 var selected_option_idx: int = -1
 
 # Programmatic UI elements
@@ -14,16 +14,34 @@ var desc_body: Label
 var desc_role_label: Label
 
 func _on_setup(setup_data: Dictionary) -> void:
-	custom_minimum_size = Vector2(1400, 800)
-	size = Vector2(1400, 800)
+	custom_minimum_size = Vector2.ZERO
+	size = get_viewport_rect().size
 	
 	notebook = PanelContainer.new()
 	notebook.custom_minimum_size = Vector2(1400, 800)
 	notebook.size = Vector2(1400, 800)
-	notebook.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
-	add_child(notebook)
 	
-	DeskTheme.add_ruled_lines(notebook)
+	# クラフトパネルを取得し、コルクボード上で際立つように影を強く・大きくする
+	var board_style = StyleBoxFlat.new()
+	board_style.bg_color = Color("1e3d2f")
+	board_style.border_color = Color("8d6e63")
+	board_style.border_width_left = 10
+	board_style.border_width_right = 10
+	board_style.border_width_top = 10
+	board_style.border_width_bottom = 10
+	board_style.corner_radius_top_left = 6
+	board_style.corner_radius_top_right = 6
+	board_style.corner_radius_bottom_left = 6
+	board_style.corner_radius_bottom_right = 6
+	board_style.shadow_color = Color(0, 0, 0, 0.3)
+	board_style.shadow_size = 12
+	board_style.shadow_offset = Vector2(5, 5)
+	board_style.content_margin_left = 26
+	board_style.content_margin_right = 26
+	board_style.content_margin_top = 20
+	board_style.content_margin_bottom = 20
+	notebook.add_theme_stylebox_override("panel", board_style)
+	add_child(notebook)
 	
 	var main_vbox = VBoxContainer.new()
 	main_vbox.custom_minimum_size = Vector2(1400, 800)
@@ -37,14 +55,37 @@ func _on_setup(setup_data: Dictionary) -> void:
 	top_spacer.custom_minimum_size = Vector2(0, 80)
 	main_vbox.add_child(top_spacer)
 	
-	# Title
+	# Title Box (付箋風・画用紙風の不透明な背景に変更してアナログ感を出す)
+	var title_panel = PanelContainer.new()
+	title_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var title_style = StyleBoxFlat.new()
+	title_style.bg_color = Color("#fdfbf7") # わずかにクリーム色・紙の色
+	title_style.border_width_left = 3
+	title_style.border_width_right = 3
+	title_style.border_width_top = 3
+	title_style.border_width_bottom = 3
+	title_style.border_color = DeskTheme.COLOR_INK
+	title_style.corner_radius_top_left = 2
+	title_style.corner_radius_top_right = 6
+	title_style.corner_radius_bottom_left = 6
+	title_style.corner_radius_bottom_right = 2
+	title_style.shadow_color = Color(0, 0, 0, 0.15)
+	title_style.shadow_size = 4
+	title_style.shadow_offset = Vector2(3, 3)
+	title_style.content_margin_left = 24
+	title_style.content_margin_right = 24
+	title_style.content_margin_top = 12
+	title_style.content_margin_bottom = 12
+	title_panel.add_theme_stylebox_override("panel", title_style)
+	main_vbox.add_child(title_panel)
+	
 	title_label = Label.new()
 	title_label.text = "%d時限目のカバン整理：追加するアイテムを1つ選んでください" % session.current_hour
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 	title_label.add_theme_font_size_override("font_size", 36)
 	title_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	main_vbox.add_child(title_label)
+	title_panel.add_child(title_label)
 	
 	# HBox for 3 Cards
 	cards_container = HBoxContainer.new()
@@ -57,8 +98,8 @@ func _on_setup(setup_data: Dictionary) -> void:
 	description_box.custom_minimum_size = Vector2(850, 240)
 	description_box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	
-	var craft_style = DeskTheme.create_craft_panel()
-	description_box.add_theme_stylebox_override("panel", craft_style)
+	var description_style = DeskTheme.create_craft_panel()
+	description_box.add_theme_stylebox_override("panel", description_style)
 	main_vbox.add_child(description_box)
 	
 	# Margin Container inside description box
@@ -102,9 +143,11 @@ func _on_setup(setup_data: Dictionary) -> void:
 	# Generate 3 card choices from Gacha/Unlocked pool
 	generate_choices()
 	populate_cards_ui()
+	fit_control_to_viewport(notebook, Vector2(1400, 800), Vector2(48, 48), 0.72, true)
 	
 	# Slide in transition on the notebook panel instead of the parent Phase control
-	DeskTheme.animate_entrance(notebook, Vector2.ZERO, Vector2(0, 300), 0.5)
+	var target_pos = notebook.position
+	DeskTheme.animate_entrance(notebook, target_pos, Vector2(0, 300), 0.5)
 	
 	if Global.is_tutorial_mode and session.current_day == 1 and session.current_hour == 1:
 		show_tutorial_dialog("カバン整理フェーズへようこそ！\nここでは自習ノート（山札）に追加するアイテムを1つ選びます。追加されたアイテムは自習中に引くことができ、様々な強力な効果を発揮します。\n\nどれでも好きなカードを1つクリックして選んでみましょう！", Vector2(440, 20))

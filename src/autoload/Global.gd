@@ -13,7 +13,7 @@ var se_volume: float = 0.5
 var is_muted: bool = false
 
 # Active Game Mode ("cpu", "national", "daily", or "friend")
-var game_mode: String = "cpu"
+var game_mode: String = Constants.MODE_NATIONAL
 
 # Friend Match Room State
 var friend_room_code: String = ""
@@ -109,37 +109,28 @@ func _ready() -> void:
 	current_season = int(unix_time / (14 * 24 * 60 * 60)) + 1
 
 # Save Game state to local storage JSON
+# 永続化する単純なデータ型の変数のリスト
+const SIMPLE_SAVE_FIELDS = [
+	"player_name", "coins", "best_score", "play_count", 
+	"unlocked_items", "item_usage_counts", "unlocked_titles", 
+	"deviation_value", "max_deviation_value", "game_mode", 
+	"opponent_profiles", "bgm_volume", "se_volume", "is_muted",
+	"logged_in_user_id", "logged_in_password", "daily_current_day",
+	"daily_last_played_date", "daily_opponent_ghosts", "daily_my_records",
+	"friend_room_code", "friend_is_host", "friend_member_list",
+	"friend_current_day", "friend_match_history"
+]
+
+# Save Game state to local storage JSON
 func save_game() -> void:
-	var save_dict = {
-		"player_name": player_name,
-		"coins": coins,
-		"best_score": best_score,
-		"play_count": play_count,
-		"unlocked_items": unlocked_items,
-		"item_usage_counts": item_usage_counts,
-		"unlocked_titles": unlocked_titles,
-		"deviation_value": deviation_value,
-		"max_deviation_value": max_deviation_value,
-		"game_mode": game_mode,
-		"opponent_profiles": opponent_profiles,
-		"bgm_volume": bgm_volume,
-		"se_volume": se_volume,
-		"is_muted": is_muted,
-		# Save deck as string keys because JSON dictionary keys are always strings
-		"current_deck": get_deck_as_string_keys(),
-		"logged_in_user_id": logged_in_user_id,
-		"logged_in_password": logged_in_password,
-		"daily_current_day": daily_current_day,
-		"daily_last_played_date": daily_last_played_date,
-		"daily_opponent_ghosts": daily_opponent_ghosts,
-		"daily_my_records": daily_my_records,
-		"daily_fixed_deck": get_daily_fixed_deck_as_string_keys(),
-		"friend_room_code": friend_room_code,
-		"friend_is_host": friend_is_host,
-		"friend_member_list": friend_member_list,
-		"friend_current_day": friend_current_day,
-		"friend_match_history": friend_match_history
-	}
+	var save_dict = {}
+	for field in SIMPLE_SAVE_FIELDS:
+		save_dict[field] = get(field)
+		
+	# Save deck as string keys because JSON dictionary keys are always strings
+	save_dict["current_deck"] = get_deck_as_string_keys()
+	save_dict["daily_fixed_deck"] = get_daily_fixed_deck_as_string_keys()
+	save_dict["save_version"] = Constants.SAVE_VERSION
 	
 	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file:
@@ -169,55 +160,33 @@ func load_game() -> void:
 		if parse_result == OK:
 			var data = json.get_data()
 			if data is Dictionary:
-				if "player_name" in data: player_name = data["player_name"]
-				if "coins" in data: coins = int(data["coins"])
-				if "best_score" in data: best_score = int(data["best_score"])
-				if "play_count" in data: play_count = int(data["play_count"])
-				if "deviation_value" in data: deviation_value = float(data["deviation_value"])
-				if "max_deviation_value" in data: max_deviation_value = float(data["max_deviation_value"])
-				if "game_mode" in data: game_mode = str(data["game_mode"])
-				if "opponent_profiles" in data: opponent_profiles = data["opponent_profiles"]
-				
-				if "unlocked_items" in data:
-					unlocked_items.clear()
-					for item in data["unlocked_items"]:
-						unlocked_items.append(str(item))
-						
-				if "item_usage_counts" in data:
-					item_usage_counts = data["item_usage_counts"]
+				var from_version = int(data.get("save_version", 0))
+				if from_version < Constants.SAVE_VERSION:
+					_migrate_save_data(data, from_version)
 					
-				if "unlocked_titles" in data:
-					unlocked_titles.clear()
-					for title in data["unlocked_titles"]:
-						unlocked_titles.append(str(title))
-						
+				for field in SIMPLE_SAVE_FIELDS:
+					if field in data:
+						var val = data[field]
+						var current_val = get(field)
+						if current_val is int:
+							set(field, int(val))
+						elif current_val is float:
+							set(field, float(val))
+						elif current_val is bool:
+							set(field, bool(val))
+						else:
+							set(field, val)
+							
 				if "current_deck" in data:
 					var deck_data = data["current_deck"]
 					for key in deck_data.keys():
 						current_deck[int(key)] = str(deck_data[key])
 						
-				if "bgm_volume" in data: bgm_volume = float(data["bgm_volume"])
-				if "se_volume" in data: se_volume = float(data["se_volume"])
-				if "is_muted" in data: is_muted = bool(data["is_muted"])
-				
-				# Load Cloud & Daily data
-				if "logged_in_user_id" in data: logged_in_user_id = str(data["logged_in_user_id"])
-				if "logged_in_password" in data: logged_in_password = str(data["logged_in_password"])
-				if "daily_current_day" in data: daily_current_day = int(data["daily_current_day"])
-				if "daily_last_played_date" in data: daily_last_played_date = str(data["daily_last_played_date"])
-				if "daily_opponent_ghosts" in data: daily_opponent_ghosts = data["daily_opponent_ghosts"]
-				if "daily_my_records" in data: daily_my_records = data["daily_my_records"]
 				if "daily_fixed_deck" in data:
 					var fd_data = data["daily_fixed_deck"]
 					daily_fixed_deck.clear()
 					for k in fd_data.keys():
 						daily_fixed_deck[int(k)] = str(fd_data[k])
-						
-				if "friend_room_code" in data: friend_room_code = str(data["friend_room_code"])
-				if "friend_is_host" in data: friend_is_host = bool(data["friend_is_host"])
-				if "friend_member_list" in data: friend_member_list = data["friend_member_list"]
-				if "friend_current_day" in data: friend_current_day = int(data["friend_current_day"])
-				if "friend_match_history" in data: friend_match_history = data["friend_match_history"]
 						
 		# Ensure all 10 slots are populated in case of load anomalies
 		validate_current_deck()
@@ -229,6 +198,7 @@ func load_game() -> void:
 			audio.bgm_volume = bgm_volume
 			audio.se_volume = se_volume
 			audio.is_muted = is_muted
+
 
 func get_deck_as_string_keys() -> Dictionary:
 	var string_deck = {}
@@ -346,6 +316,30 @@ func get_total_level_bonus() -> int:
 	var total_stars = get_total_stars()
 	return int(floor(total_stars * 0.1))
 
+# アイテム単体の星レベルによる得点倍率ボーナスを返す（1.0 = ボーナスなし）
+# ★2以上のアイテムはそのアイテム使用時の効果値が微増する。
+# リプレイ性（アイテムを育てたくなる動機）を向上させる。
+func get_item_star_bonus_multiplier(item_id: String) -> float:
+	var stars = get_item_stars(item_id)
+	match stars:
+		0, 1: return 1.0    # ボーナスなし
+		2:    return 1.05   # +5%
+		3:    return 1.10   # +10%
+		4:    return 1.18   # +18%
+		5:    return 1.30   # +30% (マスターレベル)
+	return 1.0
+
+# 星レベルの表示テキスト（UI向け）
+func get_item_star_bonus_text(item_id: String) -> String:
+	var stars = get_item_stars(item_id)
+	match stars:
+		0, 1: return ""
+		2:    return "★2: 効果値 +5%"
+		3:    return "★3: 効果値 +10%"
+		4:    return "★4: 効果値 +18%"
+		5:    return "★5: 効果値 +30% 【マスター】"
+	return ""
+
 # Global helper to perform smooth scene changes with a paper fade overlay
 func change_scene_with_fade(tree: SceneTree, target_scene_path: String, duration: float = 0.35) -> void:
 	# Create CanvasLayer to overlay transition
@@ -454,3 +448,64 @@ func generate_daily_fixed_deck(date_str: String) -> Dictionary:
 		deck[i] = shuffled[i - 1]
 		
 	return deck
+
+func apply_white_button_style(btn: Button) -> void:
+	if not btn:
+		return
+	
+	var desk_theme = preload("res://src/ui/DeskTheme.gd")
+	
+	# Normal stylebox (white background, ink border)
+	var style_normal = StyleBoxFlat.new()
+	style_normal.bg_color = Color.WHITE
+	style_normal.border_color = desk_theme.COLOR_INK
+	style_normal.border_width_left = 3
+	style_normal.border_width_right = 3
+	style_normal.border_width_top = 3
+	style_normal.border_width_bottom = 3
+	style_normal.corner_radius_top_left = 6
+	style_normal.corner_radius_top_right = 6
+	style_normal.corner_radius_bottom_left = 6
+	style_normal.corner_radius_bottom_right = 6
+	style_normal.shadow_color = Color(0.12, 0.08, 0.05, 0.15)
+	style_normal.shadow_size = 4
+	style_normal.shadow_offset = Vector2(2, 2)
+	
+	# Hover stylebox (very light cream tint)
+	var style_hover = style_normal.duplicate() as StyleBoxFlat
+	style_hover.bg_color = Color("fffde7")
+	style_hover.border_width_left = 4
+	style_hover.border_width_right = 4
+	style_hover.border_width_top = 4
+	style_hover.border_width_bottom = 4
+	style_hover.shadow_size = 6
+	style_hover.shadow_offset = Vector2(3, 3)
+	
+	# Pressed stylebox (slightly darker grey)
+	var style_pressed = style_normal.duplicate() as StyleBoxFlat
+	style_pressed.bg_color = Color("e0e0e0")
+	style_pressed.shadow_size = 1
+	style_pressed.shadow_offset = Vector2(1, 1)
+
+	var style_focus = StyleBoxEmpty.new()
+	
+	btn.add_theme_stylebox_override("normal", style_normal)
+	btn.add_theme_stylebox_override("hover", style_hover)
+	btn.add_theme_stylebox_override("pressed", style_pressed)
+	btn.add_theme_stylebox_override("focus", style_focus)
+	
+	# Text colors
+	btn.add_theme_color_override("font_color", desk_theme.COLOR_INK)
+	btn.add_theme_color_override("font_hover_color", desk_theme.COLOR_INK)
+	btn.add_theme_color_override("font_pressed_color", desk_theme.COLOR_INK)
+	btn.add_theme_color_override("font_focus_color", desk_theme.COLOR_INK)
+	btn.add_theme_color_override("font_hover_pressed_color", desk_theme.COLOR_INK)
+	
+	# Check children for labels
+	for child in btn.get_children():
+		if child is Label:
+			child.add_theme_color_override("font_color", desk_theme.COLOR_INK)
+
+func _migrate_save_data(data: Dictionary, from_version: int) -> void:
+	# Future migration logic goes here
+	pass

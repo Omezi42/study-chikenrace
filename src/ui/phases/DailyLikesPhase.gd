@@ -20,7 +20,7 @@ var local_doubts_count: int = 3 # 3 doubt votes per day max
 
 func _on_setup(_setup_data: Dictionary) -> void:
 	custom_minimum_size = Vector2(1500, 850)
-	var max_doubts = 1 if Global.game_mode == "cram" else 3
+	var max_doubts = 3
 	local_doubts_count = max_doubts - session.player_doubts_made_today.size()
 	
 	# Layout setup: Left is Phone, Right is controls & inspection
@@ -28,6 +28,7 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	main_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	main_hbox.add_theme_constant_override("separation", 60)
 	add_child(main_hbox)
+	fit_control_to_viewport(main_hbox, Vector2(1500, 850), Vector2(72, 72), 0.72, true)
 	
 	# SMARTPHONE CONTAINER (Phone UI Frame)
 	phone_panel = PanelContainer.new()
@@ -140,7 +141,7 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	update_remaining_votes()
 	
 	# Entrance slide in on main_hbox instead of self
-	DeskTheme.animate_entrance(main_hbox, Vector2.ZERO, Vector2(0, 300), 0.5)
+	DeskTheme.animate_entrance(main_hbox, main_hbox.position, Vector2(0, 300), 0.5)
 	
 	if Global.is_tutorial_mode and session.current_day == 1:
 		next_day_btn.text = "チュートリアルを完了する"
@@ -304,7 +305,7 @@ func populate_timeline() -> void:
 			act_hbox.add_child(doubt_btn)
 
 func update_remaining_votes() -> void:
-	var max_doubts = 1 if Global.game_mode == "cram" else 3
+	var max_doubts = 3
 	remaining_doubts_label.text = "残りダウト可能回数: " + str(local_doubts_count) + "回 (最大" + str(max_doubts) + "回)"
 
 func _on_inspect_pressed(p: Dictionary) -> void:
@@ -465,6 +466,7 @@ func _on_next_day_pressed() -> void:
 func show_tutorial_finish_modal() -> void:
 	var modal = PanelContainer.new()
 	modal.custom_minimum_size = Vector2(650, 400)
+	modal.size = Vector2(650, 400)
 	modal.pivot_offset = Vector2(325, 200)
 	
 	var style = StyleBoxFlat.new()
@@ -484,7 +486,8 @@ func show_tutorial_finish_modal() -> void:
 	modal.add_theme_stylebox_override("panel", style)
 	
 	add_child(modal)
-	modal.position = Vector2((1500 - 650) / 2.0, (850 - 400) / 2.0)
+	var viewport_size = get_viewport_rect().size
+	modal.position = viewport_size * 0.5 - modal.pivot_offset
 	
 	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 30)

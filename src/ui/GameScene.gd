@@ -8,12 +8,7 @@ const DailyLikesPhaseClass = preload("res://src/ui/phases/DailyLikesPhase.gd")
 const DayTransitionPhaseClass = preload("res://src/ui/phases/DayTransitionPhase.gd")
 const WaitingPhaseClass = preload("res://src/ui/phases/WaitingPhase.gd")
 
-const PHASE_BAG_BUILDER = "bag_builder"
-const PHASE_CHICKEN_RACE = "chicken_race"
-const PHASE_REPORT = "report"
-const PHASE_DAILY_LIKES = "daily_likes"
-const PHASE_DAY_TRANSITION = "day_transition"
-const PHASE_WAITING = "waiting"
+
 
 var session: GameSession
 var active_phase_node: PhaseBase
@@ -21,7 +16,7 @@ var active_phase_node: PhaseBase
 # Desk background
 var bg_color_rect: ColorRect
 var bg_texture: TextureRect
-var center_container: CenterContainer
+var phase_layer: Control
 
 func _ready() -> void:
 	# Add Desk background mahogany wood tone
@@ -41,16 +36,16 @@ func _ready() -> void:
 	bg_texture.modulate = Color.WHITE
 	add_child(bg_texture)
 	
-	# Center container for phase nodes
-	center_container = CenterContainer.new()
-	center_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(center_container)
+	# Phase layer fills the screen; individual phases manage their own internal layout.
+	phase_layer = Control.new()
+	phase_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(phase_layer)
 	
 	session = GameSession.new()
 	session.start_session(Global.current_deck)
 	
 	# Start loop with BagBuilderPhase
-	change_phase(PHASE_BAG_BUILDER)
+	change_phase(Constants.PHASE_BAG_BUILDER)
 
 func change_phase(phase_type: String, setup_data: Dictionary = {}) -> void:
 	var old_node = active_phase_node
@@ -58,28 +53,37 @@ func change_phase(phase_type: String, setup_data: Dictionary = {}) -> void:
 	
 	# Instantiate correct class
 	match phase_type:
-		PHASE_BAG_BUILDER:
+		Constants.PHASE_BAG_BUILDER:
 			active_phase_node = BagBuilderPhaseClass.new()
-		PHASE_CHICKEN_RACE:
+		Constants.PHASE_CHICKEN_RACE:
 			active_phase_node = ChickenRacePhaseClass.new()
-		PHASE_REPORT:
+		Constants.PHASE_REPORT:
 			active_phase_node = ReportPhaseClass.new()
-		PHASE_DAILY_LIKES:
+		Constants.PHASE_DAILY_LIKES:
 			active_phase_node = DailyLikesPhaseClass.new()
-		PHASE_DAY_TRANSITION:
+		Constants.PHASE_DAY_TRANSITION:
 			active_phase_node = DayTransitionPhaseClass.new()
-		PHASE_WAITING:
+		Constants.PHASE_WAITING:
 			active_phase_node = WaitingPhaseClass.new()
 			
 	if active_phase_node:
 		active_phase_node.phase_finished.connect(_on_phase_finished.bind(phase_type))
-		center_container.add_child(active_phase_node)
+		phase_layer.add_child(active_phase_node)
+		active_phase_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		
 		# Initialize
 		active_phase_node.setup(session, setup_data)
 		
-		# Trigger page flip animation
-		DeskTheme.animate_page_flip(old_node, active_phase_node, 0.45)
+		# Use a softer paper-like transition for bag building / chicken race swaps.
+		if old_node and old_node.is_inside_tree():
+			if (old_node is BagBuilderPhaseClass and active_phase_node is ChickenRacePhaseClass):
+				DeskTheme.animate_soft_phase_transition(old_node, active_phase_node, 0.42, false)
+			elif (old_node is ChickenRacePhaseClass and active_phase_node is BagBuilderPhaseClass):
+				DeskTheme.animate_soft_phase_transition(old_node, active_phase_node, 0.42, true)
+			else:
+				DeskTheme.animate_page_flip(old_node, active_phase_node, 0.45)
+		else:
+			DeskTheme.animate_page_flip(old_node, active_phase_node, 0.45)
 
 func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 	# 動的な状態遷移指定（ステートマシン化）
@@ -90,16 +94,16 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 		return
 		
 	match phase_type:
-		PHASE_BAG_BUILDER:
-			change_phase(PHASE_CHICKEN_RACE)
-		PHASE_CHICKEN_RACE:
+		Constants.PHASE_BAG_BUILDER:
+			change_phase(Constants.PHASE_CHICKEN_RACE)
+		Constants.PHASE_CHICKEN_RACE:
 			if session.player_hours_history_today.size() >= session.max_hours_today:
-				change_phase(PHASE_REPORT, {"actual_score": result_data.get("actual_score", 0)})
+				change_phase(Constants.PHASE_REPORT, {"actual_score": result_data.get("actual_score", 0)})
 			else:
 				session.current_hour += 1
-				change_phase(PHASE_BAG_BUILDER)
-		PHASE_REPORT:
-			if Global.game_mode == "friend":
+				change_phase(Constants.PHASE_BAG_BUILDER)
+		Constants.PHASE_REPORT:
+			if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
 				# Upload mid-day moves (scores, actual, hours) to server before waiting
 				var bm = null
 				var main_loop = Engine.get_main_loop()
@@ -114,15 +118,15 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 						"doubts_submitted": false
 					}
 					bm.upload_friend_move(Global.friend_room_code, session.current_day, mid_move)
-				change_phase(PHASE_WAITING, {"day": session.current_day, "final_wait": false})
+				change_phase(Constants.PHASE_WAITING, {"day": session.current_day, "final_wait": false})
 			else:
-				change_phase(PHASE_DAILY_LIKES)
+				change_phase(Constants.PHASE_DAILY_LIKES)
 				
-		PHASE_DAILY_LIKES:
+		Constants.PHASE_DAILY_LIKES:
 			# Day ends. Compute AIs and compile doubts.
 			session.end_day()
 			
-			if Global.game_mode == "daily":
+			if Global.game_mode == Constants.MODE_DAILY:
 				Global.daily_current_day = session.current_day
 				Global.save_game()
 				
@@ -137,14 +141,14 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 					Global.change_scene_with_fade(get_tree(), "res://ResultScene.tscn")
 				else:
 					show_daily_finished_modal()
-			elif Global.game_mode == "friend":
+			elif Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
 				# In friend match, current_day was advanced in end_day() (e.g. from 5 to 6)
 				if session.current_day > 5:
 					# Day 5 doubts submitted. Now wait for everyone to finish Day 5 doubts before final reveal
-					change_phase(PHASE_WAITING, {"day": 5, "final_wait": true})
+					change_phase(Constants.PHASE_WAITING, {"day": 5, "final_wait": true})
 				else:
 					# For Day 1-4, we can advance immediately without waiting for other's doubts
-					change_phase(PHASE_DAY_TRANSITION)
+					change_phase(Constants.PHASE_DAY_TRANSITION)
 			else:
 				# Check if 5-day cycle is complete (for normal CPU game)
 				if session.current_day > 5:
@@ -153,9 +157,9 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 					# Route to Result Scene
 					Global.change_scene_with_fade(get_tree(), "res://ResultScene.tscn")
 				else:
-					change_phase(PHASE_DAY_TRANSITION)
+					change_phase(Constants.PHASE_DAY_TRANSITION)
 					
-		PHASE_WAITING:
+		Constants.PHASE_WAITING:
 			var moves = result_data.get("moves", [])
 			var prev_moves = result_data.get("prev_moves", [])
 			var is_final = result_data.get("final_wait", false)
@@ -180,14 +184,15 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 				session.evaluate_friend_day_moves(target_day, moves)
 				
 				# Proceed to DailyLikesPhase (timeline and doubt choosing)
-				change_phase(PHASE_DAILY_LIKES)
+				change_phase(Constants.PHASE_DAILY_LIKES)
 
-		PHASE_DAY_TRANSITION:
-			change_phase(PHASE_BAG_BUILDER)
+		Constants.PHASE_DAY_TRANSITION:
+			change_phase(Constants.PHASE_BAG_BUILDER)
 
 func show_daily_finished_modal() -> void:
 	var modal = PanelContainer.new()
 	modal.custom_minimum_size = Vector2(600, 300)
+	modal.size = Vector2(600, 300)
 	modal.pivot_offset = Vector2(300, 150)
 	
 	var style = StyleBoxFlat.new()
@@ -207,7 +212,8 @@ func show_daily_finished_modal() -> void:
 	modal.add_theme_stylebox_override("panel", style)
 	
 	add_child(modal)
-	modal.position = Vector2((1920 - 600) / 2.0, (1080 - 300) / 2.0)
+	var viewport_size = get_viewport_rect().size
+	modal.position = viewport_size * 0.5 - modal.pivot_offset
 	
 	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 30)

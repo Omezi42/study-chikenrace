@@ -110,3 +110,96 @@ CREATE POLICY "Allow authenticated users to submit/update moves"
     TO authenticated
     USING (auth.uid()::text = user_id OR user_id LIKE 'cpu_%')
     WITH CHECK (auth.uid()::text = user_id OR user_id LIKE 'cpu_%');
+
+---------------------------------------------------------
+-- 5. Performance Indexes
+---------------------------------------------------------
+-- インデックスにより、ルームコードによるポーリングクエリを高速化する
+CREATE INDEX IF NOT EXISTS idx_friend_room_moves_room_day
+    ON public.friend_room_moves (room_code, day_idx);
+
+CREATE INDEX IF NOT EXISTS idx_daily_scores_season_day
+    ON public.daily_scores (season, day_idx, score DESC);
+
+-- savesテーブルのupdated_atを自動更新するトリガー
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = timezone('utc'::text, now());
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER update_saves_updated_at
+    BEFORE UPDATE ON public.saves
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+---------------------------------------------------------
+-- 6. RPC: アトミックなルーム参加（レースコンディション対策）
+---------------------------------------------------------
+-- 複数のユーザーが同時に参加しようとしても、
+-- サーバー側でアトミックにJSONB配列を更新するため、
+-- クライアント側でのGET→PATCHパターンによるデータ消失を防ぐ。
+CREATE OR REPLACE FUNCTION join_friend_room_safe(
+    p_room_code TEXT,
+    p_user_id TEXT,
+    p_username TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_participants JSONB;
+    v_new_participant JSONB;
+    v_is_in_room BOOLEAN;
+BEGIN
+    -- 最新のparticipantsを排他ロック付きで取得
+    SELECT participants INTO v_participants
+    FROM public.friend_rooms
+    WHERE room_code = p_room_code
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('error', 'room_not_found');
+    END IF;
+
+    -- 既に参加しているか確認
+    SELECT EXISTS(
+        SELECT 1 FROM jsonb_array_elements(v_participants) AS elem
+        WHERE elem->>'user_id' = p_user_id
+    ) INTO v_is_in_room;
+
+    IF v_is_in_room THEN
+        -- 既参加の場合はそのまま現在のリストを返す
+        RETURN jsonb_build_object('participants', v_participants, 'already_joined', true);
+    END IF;
+
+    -- 参加人数チェック（最大4人）
+    IF jsonb_array_length(v_participants) >= 4 THEN
+        RETURN jsonb_build_object('error', 'room_full');
+    END IF;
+
+    -- 新しい参加者を配列にアトミックに追加
+    v_new_participant := jsonb_build_object('user_id', p_user_id, 'username', p_username);
+    v_participants := v_participants || jsonb_build_array(v_new_participant);
+
+    UPDATE public.friend_rooms
+    SET participants = v_participants
+    WHERE room_code = p_room_code;
+
+    RETURN jsonb_build_object('participants', v_participants, 'already_joined', false);
+END;
+$$;
+
+---------------------------------------------------------
+-- 7. CHECK制約: チート対策スコア上限バリデーション
+---------------------------------------------------------
+-- クライアントから異常なスコアが送信されても、
+-- DBレベルで弾くことでデータの信頼性を保証する。
+ALTER TABLE public.daily_scores
+    ADD CONSTRAINT chk_score_reasonable CHECK (score >= 0 AND score <= 9999);
+
+ALTER TABLE public.friend_room_moves
+    ADD CONSTRAINT chk_actual_score_range CHECK (actual_score >= 0 AND actual_score <= 9999),
+    ADD CONSTRAINT chk_declared_score_range CHECK (declared_score >= 0 AND declared_score <= 9999);

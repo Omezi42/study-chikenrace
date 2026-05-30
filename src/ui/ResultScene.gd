@@ -11,6 +11,12 @@ var report_right_page: VBoxContainer
 var share_btn: Button
 var restart_btn: Button
 var skip_btn: Button
+var root_layer: Control
+var board_frame: ColorRect
+var board_inner: ColorRect
+var graph_area: VBoxContainer
+var day_chart_area: VBoxContainer
+var day_bar_rows: Dictionary = {}
 
 # Score details from session
 var showdown_data: Dictionary
@@ -21,42 +27,37 @@ var is_revealing: bool = true
 var participants: Array = []
 
 func _ready() -> void:
-	# Blackboard background
-	var bg_color = ColorRect.new()
-	bg_color.color = Color("1e3d2f") # Blackboard Green
-	bg_color.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(bg_color)
-	
-	# Load blackboard texture if exists
-	var bg_tex = TextureRect.new()
-	bg_tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bg_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	if FileAccess.file_exists("res://assets/黒板.png"):
-		bg_tex.texture = load("res://assets/黒板.png")
-	add_child(bg_tex)
+	# Root layer for all result UI.
+	root_layer = Control.new()
+	root_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(root_layer)
+	_build_scripted_background()
+
 	
 	# Main layout: Blackboard at center top, report card overlay later
 	blackboard_panel = PanelContainer.new()
-	blackboard_panel.custom_minimum_size = Vector2(1600, 850)
+	blackboard_panel.custom_minimum_size = Vector2(1480, 760)
 	
 	var board_style = StyleBoxFlat.new()
-	board_style.bg_color = Color(0.08, 0.22, 0.15, 0.9)
-	board_style.border_color = Color("5d4037") # Wooden blackboard frame
-	board_style.border_width_left = 16
-	board_style.border_width_right = 16
-	board_style.border_width_top = 16
-	board_style.border_width_bottom = 16
-	board_style.corner_radius_top_left = 6
-	board_style.corner_radius_top_right = 6
-	board_style.corner_radius_bottom_left = 6
-	board_style.corner_radius_bottom_right = 6
+	board_style.bg_color = Color("f7f2e8")
+	board_style.border_color = Color("b59d7a")
+	board_style.border_width_left = 5
+	board_style.border_width_right = 5
+	board_style.border_width_top = 5
+	board_style.border_width_bottom = 5
+	board_style.corner_radius_top_left = 14
+	board_style.corner_radius_top_right = 14
+	board_style.corner_radius_bottom_left = 14
+	board_style.corner_radius_bottom_right = 14
+	board_style.shadow_color = Color(0, 0, 0, 0.18)
+	board_style.shadow_size = 16
+	board_style.shadow_offset = Vector2(6, 8)
 	blackboard_panel.add_theme_stylebox_override("panel", board_style)
-	add_child(blackboard_panel)
-	blackboard_panel.position = Vector2((1920 - 1600) / 2.0, (1080 - 850) / 2.0)
+	root_layer.add_child(blackboard_panel)
+	blackboard_panel.pivot_offset = blackboard_panel.custom_minimum_size * 0.5
+	blackboard_panel.position = get_viewport_rect().size * 0.5 - blackboard_panel.custom_minimum_size * 0.5
 	
 	var board_margin = MarginContainer.new()
-	board_margin.add_theme_constant_override("margin_left", 30)
-	board_margin.add_theme_constant_override("margin_right", 30)
 	board_margin.add_theme_constant_override("margin_top", 30)
 	board_margin.add_theme_constant_override("margin_bottom", 30)
 	blackboard_panel.add_child(board_margin)
@@ -65,14 +66,19 @@ func _ready() -> void:
 	blackboard_vbox.add_theme_constant_override("separation", 20)
 	board_margin.add_child(blackboard_vbox)
 	
-	# Blackboard Header
+	# Result Header
 	scorecard_label = Label.new()
-	scorecard_label.text = "学末テスト 答え合わせ黒板"
+	scorecard_label.text = "学末最終成績通知表"
 	scorecard_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	scorecard_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	scorecard_label.add_theme_font_size_override("font_size", 48)
-	scorecard_label.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_YELLOW)
+	scorecard_label.add_theme_font_size_override("font_size", 40)
+	scorecard_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	blackboard_vbox.add_child(scorecard_label)
+
+	day_chart_area = VBoxContainer.new()
+	day_chart_area.add_theme_constant_override("separation", 10)
+	blackboard_vbox.add_child(day_chart_area)
+	_build_day_chart_shell()
 	
 	# Instantiate dummy session data or retrieve from active session
 	var raw_results = Global.get("active_showdown_results")
@@ -94,8 +100,9 @@ func _ready() -> void:
 	report_notebook = PanelContainer.new()
 	report_notebook.custom_minimum_size = Vector2(1450, 780)
 	report_notebook.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
-	add_child(report_notebook)
-	report_notebook.position = Vector2((1920 - 1450) / 2.0, (1080 - 780) / 2.0)
+	root_layer.add_child(report_notebook)
+	report_notebook.pivot_offset = report_notebook.custom_minimum_size * 0.5
+	report_notebook.position = get_viewport_rect().size * 0.5 - report_notebook.custom_minimum_size * 0.5
 	report_notebook.visible = false
 	
 	var note_hbox = HBoxContainer.new()
@@ -145,17 +152,60 @@ func _ready() -> void:
 	skip_style.corner_radius_bottom_right = 6
 	skip_btn.add_theme_stylebox_override("normal", skip_style)
 	skip_btn.add_theme_stylebox_override("hover", skip_style)
+	skip_btn.add_theme_stylebox_override("pressed", skip_style)
 	
-	add_child(skip_btn)
-	skip_btn.position = Vector2(1620, 980)
+	root_layer.add_child(skip_btn)
+	_reflow_layout()
 	
 	# Start daily reveal animation loop
 	is_revealing = true
 	current_step_day = 1
 	reveal_next_day_showdown()
 
+func _build_scripted_background() -> void:
+	var bg = ColorRect.new()
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.color = Color("214b3b")
+	root_layer.add_child(bg)
+
+	board_frame = ColorRect.new()
+	board_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	board_frame.color = Color("7a5633")
+	board_frame.modulate.a = 0.95
+	root_layer.add_child(board_frame)
+
+	board_inner = ColorRect.new()
+	board_inner.color = Color("1f4d3a")
+	board_inner.modulate.a = 0.98
+	root_layer.add_child(board_inner)
+
+	var grain = ColorRect.new()
+	grain.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	grain.color = Color(0.95, 0.85, 0.65, 0.06)
+	root_layer.add_child(grain)
+
+	var vignette = ColorRect.new()
+	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	vignette.color = Color(0.03, 0.02, 0.01, 0.22)
+	root_layer.add_child(vignette)
+
+
+func _reflow_layout() -> void:
+	if not is_inside_tree():
+		return
+	var vp_size = get_viewport_rect().size
+	if is_instance_valid(blackboard_panel):
+		blackboard_panel.position = vp_size * 0.5 - blackboard_panel.custom_minimum_size * 0.5
+	if is_instance_valid(report_notebook):
+		report_notebook.position = vp_size * 0.5 - report_notebook.custom_minimum_size * 0.5
+	if is_instance_valid(skip_btn):
+		skip_btn.position = vp_size - skip_btn.custom_minimum_size - Vector2(24, 24)
+	if is_instance_valid(board_inner):
+		board_inner.position = Vector2(42, 42)
+		board_inner.size = vp_size - Vector2(84, 84)
+
 func reveal_next_day_showdown() -> void:
-	if current_step_day > showdown_data.get("daily_records", {}).size():
+	if current_step_day > showdown_data.get("details", {}).size():
 		# Reveal complete! Trigger report card overlay
 		if is_revealing:
 			is_revealing = false
@@ -167,13 +217,14 @@ func reveal_next_day_showdown() -> void:
 		if child != scorecard_label:
 			child.queue_free()
 			
+	_update_day_chart(current_step_day)
 	# Day Title
 	var day_lbl = Label.new()
-	day_lbl.text = "【 第 %d 日目：申告点 ➔ 実点 答え合わせ 】" % current_step_day
+	day_lbl.text = "? %d ????" % current_step_day
 	day_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	day_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	day_lbl.add_theme_font_size_override("font_size", 28)
-	day_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_YELLOW)
+	day_lbl.add_theme_font_size_override("font_size", 26)
+	day_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	blackboard_vbox.add_child(day_lbl)
 	
 	# Cards HBox Container
@@ -191,12 +242,12 @@ func reveal_next_day_showdown() -> void:
 		var is_exposed = info["is_doubt_exposed"]
 		var actual = info["actual"]
 		var declared = info["declared"]
-		var name_str = "あなた"
+		var name_str = "???"
 		if p_id != "player":
 			if Global.opponent_profiles.has(p_id):
-				name_str = Global.opponent_profiles[p_id]["name"]
+				name_str = Global.opponent_profiles[p_id].get("name", "ライバル")
 			elif AIManager.CPU_OPPONENTS.has(p_id):
-				name_str = AIManager.CPU_OPPONENTS[p_id]["name"]
+				name_str = AIManager.CPU_OPPONENTS[p_id].get("name", "ライバル")
 			else:
 				name_str = "ライバル"
 			
@@ -206,9 +257,9 @@ func reveal_next_day_showdown() -> void:
 		card.pivot_offset = Vector2(160, 130)
 		cards_hbox.add_child(card)
 		
-		# Base chalk card style (semi-transparent dark green, like chalk writing)
+		# Base card style (light paper card)
 		var style = StyleBoxFlat.new()
-		style.bg_color = Color(0.08, 0.22, 0.15, 0.85)
+		style.bg_color = Color("fffdf8")
 		style.border_width_left = 3
 		style.border_width_right = 3
 		style.border_width_top = 3
@@ -217,16 +268,19 @@ func reveal_next_day_showdown() -> void:
 		style.corner_radius_top_right = 8
 		style.corner_radius_bottom_left = 8
 		style.corner_radius_bottom_right = 8
+		style.shadow_color = Color(0, 0, 0, 0.12)
+		style.shadow_size = 8
+		style.shadow_offset = Vector2(3, 4)
 		
 		# Set card border colors based on honesty
 		if declared > actual:
 			if is_exposed:
-				style.border_color = Color("ff6b6b", 0.8) # Sakura/red chalk
+				style.border_color = Color("ff6b6b")
 				any_exposed = true
 			else:
-				style.border_color = Color("ffe066", 0.8) # Yellow chalk
+				style.border_color = Color("e0b84c")
 		else:
-			style.border_color = Color("80e680", 0.8) # Green chalk
+			style.border_color = Color("6bbf59")
 			
 		card.add_theme_stylebox_override("panel", style)
 		
@@ -287,7 +341,7 @@ func reveal_next_day_showdown() -> void:
 		stamp_lbl.add_theme_font_size_override("font_size", 18)
 		
 		var stamp_style = StyleBoxFlat.new()
-		stamp_style.bg_color = Color(0.08, 0.22, 0.15, 0.0) # Transparent bg
+		stamp_style.bg_color = Color(1, 1, 1, 0.0) # Transparent bg
 		stamp_style.border_width_left = 2
 		stamp_style.border_width_right = 2
 		stamp_style.border_width_top = 2
@@ -308,12 +362,12 @@ func reveal_next_day_showdown() -> void:
 				stamp_style.border_color = Color("ff6b6b")
 			else:
 				stamp_lbl.text = " セーフ "
-				stamp_lbl.add_theme_color_override("font_color", Color("ffe066"))
-				stamp_style.border_color = Color("ffe066")
+				stamp_lbl.add_theme_color_override("font_color", Color("e0b84c"))
+				stamp_style.border_color = Color("e0b84c")
 		else:
 			stamp_lbl.text = " 正直 "
-			stamp_lbl.add_theme_color_override("font_color", Color("80e680"))
-			stamp_style.border_color = Color("80e680")
+			stamp_lbl.add_theme_color_override("font_color", Color("6bbf59"))
+			stamp_style.border_color = Color("6bbf59")
 			
 		stamp_lbl.add_theme_stylebox_override("normal", stamp_style)
 		stamp_container.add_child(stamp_lbl)
@@ -350,10 +404,10 @@ func reveal_next_day_showdown() -> void:
 	if any_exposed:
 		var shake_timer = get_tree().create_timer(0.4)
 		shake_timer.timeout.connect(func():
-			DeskTheme.shake_control(blackboard_panel, 12.0, 0.35)
+			DeskTheme.shake_control(blackboard_panel, 8.0, 0.25)
 		)
 	else:
-		DeskTheme.shake_control(blackboard_panel, 4.0, 0.2)
+		DeskTheme.shake_control(blackboard_panel, 2.5, 0.15)
 		
 	# Go to next day after delay
 	var timer = get_tree().create_timer(1.8)
@@ -362,6 +416,89 @@ func reveal_next_day_showdown() -> void:
 			current_step_day += 1
 			reveal_next_day_showdown()
 	)
+
+func _build_day_chart_shell() -> void:
+	for child in day_chart_area.get_children():
+		child.queue_free()
+	day_bar_rows.clear()
+	
+	var title = Label.new()
+	title.text = "???????"
+	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	title.add_theme_font_size_override("font_size", 20)
+	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	day_chart_area.add_child(title)
+	
+	for p_id in ["player", "cpu_sato", "cpu_suzuki", "cpu_takahashi"]:
+		var row = VBoxContainer.new()
+		row.add_theme_constant_override("separation", 4)
+		day_chart_area.add_child(row)
+		day_bar_rows[p_id] = row
+		
+		var name_lbl = Label.new()
+		name_lbl.text = _get_participant_name(p_id)
+		name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		name_lbl.add_theme_font_size_override("font_size", 16)
+		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+		row.add_child(name_lbl)
+		
+		var bar_wrap = PanelContainer.new()
+		bar_wrap.custom_minimum_size = Vector2(1320, 22)
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color("efe7d8")
+		style.border_color = Color("b59d7a")
+		style.border_width_left = 2
+		style.border_width_right = 2
+		style.border_width_top = 2
+		style.border_width_bottom = 2
+		style.corner_radius_top_left = 8
+		style.corner_radius_top_right = 8
+		style.corner_radius_bottom_left = 8
+		style.corner_radius_bottom_right = 8
+		bar_wrap.add_theme_stylebox_override("panel", style)
+		row.add_child(bar_wrap)
+		
+		var fill = ColorRect.new()
+		fill.name = "fill"
+		fill.color = Color("6bbf59") if p_id == "player" else Color("3f51b5")
+		fill.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+		fill.size = Vector2(1, 22)
+		bar_wrap.add_child(fill)
+
+func _update_day_chart(day_idx: int) -> void:
+	if not showdown_data.has("details"):
+		return
+	var max_score := 1
+	var cumulative := {}
+	for p_id in ["player", "cpu_sato", "cpu_suzuki", "cpu_takahashi"]:
+		cumulative[p_id] = 0
+	for d in range(1, day_idx + 1):
+		if not showdown_data["details"].has(d):
+			continue
+		var day_data: Dictionary = showdown_data["details"][d]
+		for p_id in cumulative.keys():
+			if day_data.has(p_id):
+				cumulative[p_id] += int(day_data[p_id].get("base", 0)) + int(day_data[p_id].get("adjustment", 0))
+	for p_id in cumulative.keys():
+		max_score = max(max_score, cumulative[p_id])
+	for p_id in cumulative.keys():
+		var row: VBoxContainer = day_bar_rows.get(p_id)
+		if not row:
+			continue
+		var bar_wrap: PanelContainer = row.get_child(1)
+		var fill: ColorRect = bar_wrap.get_node("fill")
+		var target = int(1320.0 * float(cumulative[p_id]) / float(max_score))
+		var tween = create_tween().bind_node(fill).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.tween_property(fill, "size:x", max(8, target), 0.35)
+
+func _get_participant_name(p_id: String) -> String:
+	if p_id == "player":
+		return "?????"
+	if Global.opponent_profiles.has(p_id):
+		return Global.opponent_profiles[p_id].get("name", p_id)
+	if AIManager.CPU_OPPONENTS.has(p_id):
+		return AIManager.CPU_OPPONENTS[p_id].get("name", p_id)
+	return p_id
 
 func _on_skip_pressed() -> void:
 	if not is_revealing:
@@ -400,8 +537,8 @@ func trigger_report_card() -> void:
 	score_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	report_left_page.add_child(score_lbl)
 	
-	# Calculate Deviation Value if playing national mode
-	if Global.game_mode == "national":
+	# Calculate Deviation Value if playing random match
+	if Global.game_mode == Constants.MODE_RANDOM:
 		var change = 0.0
 		var my_rank = showdown_data["my_rank"]
 		if my_rank == 1:
@@ -422,7 +559,7 @@ func trigger_report_card() -> void:
 		Global.save_game()
 		
 		var deviation_change_lbl = Label.new()
-		deviation_change_lbl.text = "全国統一模試 偏差値: %.1f (前回: %.1f)\n" % [Global.deviation_value, old_deviation]
+		deviation_change_lbl.text = "全国ランダムマッチ 偏差値: %.1f (前回: %.1f)\n" % [Global.deviation_value, old_deviation]
 		if change >= 0:
 			deviation_change_lbl.text += "➔ 偏差値が %.1f アップしました！ 📈" % change
 			deviation_change_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_BONUS)
@@ -435,7 +572,11 @@ func trigger_report_card() -> void:
 	
 	# Breakdown stats
 	var breakdown = Label.new()
-	breakdown.text = "・レベルボーナス：+" + str(showdown_data["level_bonus"]) + "点\n" + \
+	var star_bonus_val = showdown_data.get("star_bonus", 0)
+	var star_text = ""
+	if star_bonus_val > 0:
+		star_text = "\n・★アイテム育成ボーナス：+" + str(star_bonus_val) + "点"
+	breakdown.text = "・レベルボーナス：+" + str(showdown_data["level_bonus"]) + "点" + star_text + "\n" + \
 					"・獲得したコイン：+" + str(showdown_data["coins_earned"]) + "枚\n" + \
 					"・完全犯罪ボーナス：+" + str(showdown_data["perfect_bonus"]) + "枚"
 	breakdown.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
@@ -474,8 +615,23 @@ func trigger_report_card() -> void:
 	lead_title.add_theme_font_size_override("font_size", 32)
 	lead_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	report_right_page.add_child(lead_title)
-	
+
+	var player_name_lbl = Label.new()
+	var display_name = Global.player_name if Global.player_name != "" else "あなた"
+	player_name_lbl.text = "プレイヤー: %s" % display_name
+	player_name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	player_name_lbl.add_theme_font_size_override("font_size", 20)
+	player_name_lbl.add_theme_color_override("font_color", Color("3f51b5"))
+	report_right_page.add_child(player_name_lbl)
+
+	graph_area = VBoxContainer.new()
+	graph_area.add_theme_constant_override("separation", 12)
+	report_right_page.add_child(graph_area)
+
 	var ranks = showdown_data["rankings"]
+	var max_score = 1
+	for rr in ranks:
+		max_score = max(max_score, int(rr["score"]))
 	for r_idx in range(ranks.size()):
 		var r = ranks[r_idx]
 		
@@ -487,7 +643,7 @@ func trigger_report_card() -> void:
 			_: medal = "   4位: "
 			
 		var r_lbl = Label.new()
-		r_lbl.text = medal + r["name"] + " (" + str(r["score"]) + "点, 寝落ち " + str(r["bursts"]) + "回)"
+		r_lbl.text = medal + r["name"] + " (" + str(r["score"]) + "点, バースト " + str(r["bursts"]) + "回)"
 		r_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 		r_lbl.add_theme_font_size_override("font_size", 22)
 		
@@ -495,9 +651,51 @@ func trigger_report_card() -> void:
 			r_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 		else:
 			r_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-			
-		report_right_page.add_child(r_lbl)
 		
+		report_right_page.add_child(r_lbl)
+
+		var bar_row = VBoxContainer.new()
+		bar_row.add_theme_constant_override("separation", 4)
+		graph_area.add_child(bar_row)
+
+		var bar_name = Label.new()
+		bar_name.text = "%s" % r["name"]
+		bar_name.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		bar_name.add_theme_font_size_override("font_size", 16)
+		bar_name.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.9))
+		bar_row.add_child(bar_name)
+
+		var bar_back = PanelContainer.new()
+		bar_back.custom_minimum_size = Vector2(520, 22)
+		var bar_back_style = StyleBoxFlat.new()
+		bar_back_style.bg_color = Color("efe7d8")
+		bar_back_style.border_color = Color("b59d7a")
+		bar_back_style.border_width_left = 2
+		bar_back_style.border_width_right = 2
+		bar_back_style.border_width_top = 2
+		bar_back_style.border_width_bottom = 2
+		bar_back_style.corner_radius_top_left = 8
+		bar_back_style.corner_radius_top_right = 8
+		bar_back_style.corner_radius_bottom_left = 8
+		bar_back_style.corner_radius_bottom_right = 8
+		bar_back.add_theme_stylebox_override("panel", bar_back_style)
+		bar_row.add_child(bar_back)
+
+		var bar_fill = ColorRect.new()
+		bar_fill.color = Color("6bbf59") if r["id"] == "player" else Color("3f51b5")
+		bar_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		bar_fill.size = Vector2(1, 22)
+		bar_back.add_child(bar_fill)
+
+		var score_ratio = float(r["score"]) / float(max_score)
+		var target_width = int(520 * score_ratio)
+		var bar_tween = create_tween().bind_node(bar_fill).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		bar_tween.tween_property(bar_fill, "size:x", max(8, target_width), 0.7 + 0.08 * r_idx)
+		bar_tween.tween_callback(func():
+			if r["id"] == "player":
+				DeskTheme.shake_control(report_notebook, 6.0, 0.12)
+		)
+
 	# Actions HBox
 	var act_hbox = HBoxContainer.new()
 	act_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -505,18 +703,20 @@ func trigger_report_card() -> void:
 	report_right_page.add_child(act_hbox)
 	
 	share_btn = Button.new()
-	share_btn.text = "𝕏 で結果を自慢"
+	share_btn.text = "X??????"
 	share_btn.custom_minimum_size = Vector2(260, 65)
 	share_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 	share_btn.add_theme_font_size_override("font_size", 22)
+	Global.apply_white_button_style(share_btn)
 	share_btn.pressed.connect(_on_share_pressed)
 	act_hbox.add_child(share_btn)
 	
 	restart_btn = Button.new()
-	restart_btn.text = "タイトルに戻る"
+	restart_btn.text = "???????"
 	restart_btn.custom_minimum_size = Vector2(260, 65)
 	restart_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 	restart_btn.add_theme_font_size_override("font_size", 22)
+	Global.apply_white_button_style(restart_btn)
 	restart_btn.pressed.connect(_on_restart_pressed)
 	act_hbox.add_child(restart_btn)
 
@@ -537,3 +737,5 @@ func _on_restart_pressed() -> void:
 	timer.timeout.connect(func():
 		Global.change_scene_with_fade(get_tree(), "res://Title.tscn")
 	)
+	
+

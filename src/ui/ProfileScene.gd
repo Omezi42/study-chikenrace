@@ -66,7 +66,7 @@ func _ready() -> void:
 	vbox.add_child(confirm_btn)
 	
 	# Entrance slide in from bottom
-	var target_pos = Vector2((1920 - 800) / 2.0, (1080 - 500) / 2.0)
+	var target_pos = get_viewport_rect().size * 0.5
 	DeskTheme.animate_entrance(notebook_panel, target_pos, Vector2(0, 300), 0.5)
 
 func _on_confirm_pressed() -> void:

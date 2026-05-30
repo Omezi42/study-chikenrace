@@ -324,5 +324,3 @@ static func get_item_short_effect(item_id: String) -> String:
 		"item_cram_school_print": return "5教科コンボのワイルド札"
 		"item_forget_notebook": return "低得点札をデッキから削除"
 	return ""
-
-

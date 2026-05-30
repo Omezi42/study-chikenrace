@@ -47,6 +47,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	phone_style.corner_radius_bottom_right = 28
 	phone_panel.add_theme_stylebox_override("panel", phone_style)
 	add_child(phone_panel)
+	fit_control_to_viewport(phone_panel, Vector2(550, 780), Vector2(72, 72), 0.76, true)
 	
 	# Inside Phone VBox
 	var phone_vbox = VBoxContainer.new()
@@ -217,12 +218,11 @@ func _on_setup(setup_data: Dictionary) -> void:
 	app_vbox.add_child(submit_btn)
 	
 	# Entrance slide-in on phone_panel
-	DeskTheme.animate_entrance(phone_panel, Vector2.ZERO, Vector2(0, 300), 0.5)
+	DeskTheme.animate_entrance(phone_panel, phone_panel.position, Vector2(0, 300), 0.5)
 	
 	if Global.is_tutorial_mode and session.current_day == 1:
 		show_tutorial_dialog(
 			"チキスタ投稿フェーズです！\n\n一日の終わりに勉強成果を勉強SNS『チキスタ』に投稿します。実際より高い点数を申告してブラフ（嘘）をつくこともできます！\n\nスライダーを少し右に動かして、実点（%d点）より高い点数を申告してみましょう！" % actual_score,
-			Vector2(580, 240)
 		)
 
 func _on_slider_changed(val: float) -> void:

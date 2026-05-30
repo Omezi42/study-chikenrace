@@ -6,6 +6,7 @@ var phone_panel: PanelContainer
 var status_lbl: Label
 var members_vbox: VBoxContainer
 var loading_rect: ColorRect
+var app_vbox: VBoxContainer
 
 # Polling configuration
 var poll_timer: Timer
@@ -14,6 +15,7 @@ var is_final_reveal_wait: bool = false # True if waiting for final day 5 showdow
 var current_poll_interval: float = 3.0
 var max_poll_interval: float = 12.0
 var last_submitted_count: int = 0
+var total_poll_time: float = 0.0
 
 func _on_setup(setup_data: Dictionary) -> void:
 	custom_minimum_size = Vector2(1500, 850)
@@ -26,6 +28,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	var main_hbox = HBoxContainer.new()
 	main_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	add_child(main_hbox)
+	fit_control_to_viewport(main_hbox, Vector2(1500, 850), Vector2(72, 72), 0.72, true)
 	
 	# SMARTPHONE PANEL
 	phone_panel = PanelContainer.new()
@@ -77,7 +80,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	app_margin.add_theme_constant_override("margin_bottom", 30)
 	app_card.add_child(app_margin)
 	
-	var app_vbox = VBoxContainer.new()
+	app_vbox = VBoxContainer.new()
 	app_vbox.add_theme_constant_override("separation", 28)
 	app_margin.add_child(app_vbox)
 	
@@ -144,7 +147,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	add_child(poll_timer)
 	
 	# Visual entrance slide in
-	DeskTheme.animate_entrance(phone_panel, Vector2.ZERO, Vector2(0, 300), 0.5)
+	DeskTheme.animate_entrance(phone_panel, phone_panel.position, Vector2(0, 300), 0.5)
 	
 	# Initial poll immediately
 	_on_poll_timeout()
@@ -166,7 +169,15 @@ func _on_poll_timeout() -> void:
 		pulse.tween_property(loading_rect, "modulate:a", 0.4, 0.25)
 		pulse.tween_property(loading_rect, "modulate:a", 1.0, 0.25)
 		
-		# 指数的バックオフ: インターバルを1.5倍に増やし、タイマーを再起動
+		total_poll_time += current_poll_interval
+		if total_poll_time >= 90.0:
+			poll_timer.stop()
+			status_lbl.text = "通信タイムアウト\n同期に失敗しました。"
+			status_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+			_show_timeout_fallback_button()
+			return
+		
+		# 指数のバックオフ: インターバルを1.5倍に増やし、タイマーを再起動
 		current_poll_interval = min(current_poll_interval * 1.5, max_poll_interval)
 		poll_timer.wait_time = current_poll_interval
 		poll_timer.start()
@@ -186,20 +197,11 @@ func _on_day_moves_polled(success: bool, moves: Array) -> void:
 	last_submitted_count = current_submits
 	update_members_ui(moves)
 	
-	# Determine my active ID
-	var my_id = "player"
-	if has_node("/root/BackendManager"):
-		var bm = get_node("/root/BackendManager")
-		if bm.logged_in_uuid != "":
-			my_id = bm.logged_in_uuid
-			
 	# Gather all user IDs that have submitted moves
 	var submitted_user_ids = {}
 	var doubts_submitted_ids = {}
 	for m in moves:
-		var uid = m.get("user_id", "")
-		if uid == "player" and my_id != "player":
-			uid = my_id
+		var uid = _resolve_player_id(m.get("user_id", ""))
 		submitted_user_ids[uid] = true
 		if m.get("doubts_submitted", false):
 			doubts_submitted_ids[uid] = true
@@ -207,10 +209,7 @@ func _on_day_moves_polled(success: bool, moves: Array) -> void:
 	# Check each participant in our room
 	var all_done = true
 	for member in Global.friend_member_list:
-		var uid = member.get("user_id", "")
-		if uid == "player" and my_id != "player":
-			uid = my_id
-			
+		var uid = _resolve_player_id(member.get("user_id", ""))
 		var is_cpu = uid.begins_with("cpu_")
 		
 		# 1. Check if study moves are submitted
@@ -259,29 +258,18 @@ func update_members_ui(submitted_moves: Array) -> void:
 	for child in members_vbox.get_children():
 		child.queue_free()
 		
-	# Determine my active ID
-	var my_id = "player"
-	if has_node("/root/BackendManager"):
-		var bm = get_node("/root/BackendManager")
-		if bm.logged_in_uuid != "":
-			my_id = bm.logged_in_uuid
-			
 	# Gather submitted list
 	var submitted_ids = {}
 	var doubts_submitted_ids = {}
 	for m in submitted_moves:
-		var uid = m.get("user_id", "")
-		if uid == "player" and my_id != "player":
-			uid = my_id
+		var uid = _resolve_player_id(m.get("user_id", ""))
 		submitted_ids[uid] = true
 		if m.get("doubts_submitted", false):
 			doubts_submitted_ids[uid] = true
 			
 	# Render each member
 	for member in Global.friend_member_list:
-		var uid = member.get("user_id", "")
-		if uid == "player" and my_id != "player":
-			uid = my_id
+		var uid = _resolve_player_id(member.get("user_id", ""))
 			
 		var name_str = member.get("username", "メンバー")
 		
@@ -338,3 +326,36 @@ func update_members_ui(submitted_moves: Array) -> void:
 		stat_lbl.add_theme_font_size_override("font_size", 18)
 		stat_lbl.add_theme_color_override("font_color", status_color)
 		hbox.add_child(stat_lbl)
+
+func _show_timeout_fallback_button() -> void:
+	var btn_name = "TimeoutFallbackButton"
+	if app_vbox.has_node(btn_name):
+		return
+		
+	var fallback_btn = Button.new()
+	fallback_btn.name = btn_name
+	fallback_btn.text = "タイトルへ戻る"
+	fallback_btn.custom_minimum_size = Vector2(200, 50)
+	fallback_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	fallback_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	fallback_btn.add_theme_font_size_override("font_size", 18)
+	Global.apply_white_button_style(fallback_btn)
+	fallback_btn.pressed.connect(func():
+		if has_node("/root/BackendManager"):
+			var bm = get_node("/root/BackendManager")
+			if bm.day_moves_polled.is_connected(_on_day_moves_polled):
+				bm.day_moves_polled.disconnect(_on_day_moves_polled)
+		Global.change_scene_with_fade(get_tree(), "res://Title.tscn")
+	)
+	app_vbox.add_child(fallback_btn)
+
+func _resolve_player_id(uid: String) -> String:
+	var my_id = "player"
+	if has_node("/root/BackendManager"):
+		var bm = get_node("/root/BackendManager")
+		if bm.logged_in_uuid != "":
+			my_id = bm.logged_in_uuid
+			
+	if uid == "player" and my_id != "player":
+		return my_id
+	return uid

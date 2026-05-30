@@ -128,6 +128,26 @@ const CPU_OPPONENTS = {
 	}
 }
 
+# Safely retrieve CPU info with fallback for unknown IDs (e.g. ghost data "cpu_0")
+static func _get_cpu_info(actual_id: String) -> Dictionary:
+	if CPU_OPPONENTS.has(actual_id):
+		return CPU_OPPONENTS[actual_id]
+	# Fallback: determine personality type from ID hash
+	var types = [TYPE_CAUTIOUS, TYPE_AGGRESSIVE, TYPE_BLUFFER, TYPE_HIGHROLLER]
+	var h = abs(actual_id.hash())
+	var type_idx = h % types.size()
+	var fallback_keys = CPU_OPPONENTS.keys()
+	var deck_idx = h % fallback_keys.size()
+	var base = CPU_OPPONENTS[fallback_keys[deck_idx]]
+	return {
+		"name": actual_id,
+		"type": types[type_idx],
+		"avatar": base.get("avatar", ""),
+		"bio": "",
+		"bluff_tendency": "不明",
+		"deck": base["deck"].duplicate()
+	}
+
 # Simulate the Chicken Race for one CPU opponent for the entire day (3 periods)
 # Returns a dictionary of day results:
 # {
@@ -141,7 +161,7 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 	var actual_id = cpu_id
 	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("id"):
 		actual_id = Global.opponent_profiles[cpu_id]["id"]
-	var cpu_info = CPU_OPPONENTS[actual_id]
+	var cpu_info = _get_cpu_info(actual_id)
 	var cpu_type = cpu_info["type"]
 	var deck_config = cpu_info["deck"]
 	
@@ -306,7 +326,7 @@ static func calculate_cpu_bluff(cpu_id: String, actual_score: int) -> int:
 	var actual_id = cpu_id
 	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("id"):
 		actual_id = Global.opponent_profiles[cpu_id]["id"]
-	var cpu_info = CPU_OPPONENTS[actual_id]
+	var cpu_info = _get_cpu_info(actual_id)
 	var cpu_type = cpu_info["type"]
 	var deck_config = cpu_info["deck"]
 	
@@ -359,7 +379,7 @@ static func make_cpu_doubts(cpu_id: String, participants: Array) -> Array[String
 	var actual_id = cpu_id
 	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("id"):
 		actual_id = Global.opponent_profiles[cpu_id]["id"]
-	var cpu_info = CPU_OPPONENTS[actual_id]
+	var cpu_info = _get_cpu_info(actual_id)
 	var cpu_type = cpu_info["type"]
 	var doubts: Array[String] = []
 	

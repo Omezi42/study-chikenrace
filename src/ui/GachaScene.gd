@@ -38,11 +38,60 @@ const GACHA_POOL = [
 ]
 
 func _ready() -> void:
-	# Mahogany background
-	var bg_color = ColorRect.new()
-	bg_color.color = DeskTheme.COLOR_MAHOGANY
-	bg_color.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(bg_color)
+	# 段ボール風（購買部のダンボール箱）背景
+	var cardboard = Panel.new()
+	cardboard.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(cardboard)
+	
+	var board_style = StyleBoxTexture.new()
+	var noise = FastNoiseLite.new()
+	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	noise.frequency = 0.8
+	noise.fractal_type = FastNoiseLite.FRACTAL_FBM
+	
+	var tex = NoiseTexture2D.new()
+	tex.noise = noise
+	tex.width = 512
+	tex.height = 512
+	tex.seamless = true
+	
+	var grad = Gradient.new()
+	grad.offsets = PackedFloat32Array([0.0, 1.0])
+	grad.colors = PackedColorArray([Color("#c09664"), Color("#a67c52")]) # 段ボール色
+	tex.color_ramp = grad
+	
+	board_style.texture = tex
+	board_style.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
+	board_style.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
+	cardboard.add_theme_stylebox_override("panel", board_style)
+	
+	# 購買部のひさし（オーニング：赤白ストライプ）
+	var awning = ColorRect.new()
+	awning.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	awning.custom_minimum_size = Vector2(0, 60)
+	awning.size = Vector2(1920, 60)
+	
+	# ストライプ模様をShaderを使わずにHBoxContainerで作る
+	var stripe_hbox = HBoxContainer.new()
+	stripe_hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	stripe_hbox.add_theme_constant_override("separation", 0)
+	awning.add_child(stripe_hbox)
+	
+	for i in range(32): # 1920 / 60 = 32
+		var stripe = ColorRect.new()
+		stripe.custom_minimum_size = Vector2(60, 60)
+		stripe.color = Color("#e53935") if i % 2 == 0 else Color.WHITE
+		stripe_hbox.add_child(stripe)
+		
+	# ひさしの下に落ちる影
+	var awning_shadow = ColorRect.new()
+	awning_shadow.color = Color(0, 0, 0, 0.2)
+	awning_shadow.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	awning_shadow.position = Vector2(0, 60)
+	awning_shadow.custom_minimum_size = Vector2(0, 20)
+	awning_shadow.size = Vector2(1920, 20)
+	add_child(awning)
+	add_child(awning_shadow)
 	
 	var center_container = CenterContainer.new()
 	center_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

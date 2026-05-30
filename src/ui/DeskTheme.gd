@@ -211,7 +211,27 @@ static func add_spiral_binding(hbox: HBoxContainer, height: float = 750.0) -> vo
 	var drawer = SpiralDrawer.new()
 	drawer.custom_minimum_size = Vector2(0, height)
 	drawer.clip_contents = false
+	drawer.center_x = 0.0
 	binding_control.add_child(drawer)
+
+# Helper to overlay a central spiral binding on a single notebook panel.
+static func add_spiral_binding_overlay(parent_node: Control, size: Vector2, line_color: Color = Color(0.1, 0.08, 0.05, 0.35)) -> void:
+	if not parent_node:
+		return
+	var binding = Control.new()
+	binding.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	binding.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	binding.clip_contents = false
+	parent_node.add_child(binding)
+	parent_node.move_child(binding, 0)
+
+	var drawer = SpiralDrawer.new()
+	drawer.line_color = line_color
+	drawer.custom_minimum_size = size
+	drawer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	drawer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	drawer.center_x = size.x * 0.5
+	binding.add_child(drawer)
 
 # 8. Floating Sticky-Note Toast Message
 static func show_toast(caller_node: Node, text: String, duration: float = 1.8) -> void:
@@ -322,6 +342,68 @@ static func animate_page_flip(outgoing_node: Control, incoming_node: Control, du
 		tween.tween_property(incoming_node, "scale:x", 1.0, duration)
 		tween.tween_property(incoming_node, "modulate:a", 1.0, duration)
 
+# 10. Notebook Page Turn Transition for the study/battle flow
+static func animate_notebook_turn(outgoing_node: Control, incoming_node: Control, duration: float = 0.55, turn_from_left: bool = false) -> void:
+	if not incoming_node or not incoming_node.is_inside_tree():
+		if outgoing_node and outgoing_node.is_inside_tree():
+			outgoing_node.queue_free()
+		return
+
+	var scene_tree = incoming_node.get_tree()
+	if not scene_tree:
+		return
+
+	var incoming_pivot = incoming_node.custom_minimum_size / 2.0 if incoming_node.size == Vector2.ZERO else incoming_node.size / 2.0
+	var outgoing_pivot = incoming_pivot
+	incoming_node.pivot_offset = incoming_pivot
+	incoming_node.modulate.a = 0.0
+	incoming_node.scale = Vector2(0.02, 1.0)
+
+	var offset_dir = -1.0 if turn_from_left else 1.0
+	incoming_node.position += Vector2(140.0 * offset_dir, 0.0)
+
+	var tween = scene_tree.create_tween().bind_node(incoming_node).set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+	if outgoing_node and outgoing_node.is_inside_tree():
+		outgoing_node.pivot_offset = outgoing_pivot
+		var out_tween = scene_tree.create_tween().bind_node(outgoing_node).set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		out_tween.tween_property(outgoing_node, "scale:x", 0.02, duration * 0.45)
+		out_tween.tween_property(outgoing_node, "modulate:a", 0.0, duration * 0.45)
+		out_tween.tween_property(outgoing_node, "position:x", outgoing_node.position.x - (120.0 * offset_dir), duration * 0.45)
+		out_tween.chain().tween_callback(func(): outgoing_node.queue_free())
+
+	tween.tween_property(incoming_node, "position:x", incoming_node.position.x - (140.0 * offset_dir), duration)
+	tween.tween_property(incoming_node, "scale:x", 1.0, duration)
+	tween.tween_property(incoming_node, "modulate:a", 1.0, duration * 0.8)
+
+# 11. Natural notebook-like cross transition for phase switches.
+static func animate_soft_phase_transition(outgoing_node: Control, incoming_node: Control, duration: float = 0.42, from_left: bool = false) -> void:
+	if not incoming_node or not incoming_node.is_inside_tree():
+		if outgoing_node and outgoing_node.is_inside_tree():
+			outgoing_node.queue_free()
+		return
+
+	var scene_tree = incoming_node.get_tree()
+	if not scene_tree:
+		return
+
+	var viewport_size = incoming_node.get_viewport_rect().size
+	var slide = min(viewport_size.x * 0.08, 120.0)
+	var dir = -1.0 if from_left else 1.0
+
+	incoming_node.modulate.a = 0.0
+	incoming_node.position += Vector2(slide * dir, 0.0)
+
+	var tween = scene_tree.create_tween().bind_node(incoming_node).set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(incoming_node, "position:x", incoming_node.position.x - (slide * dir), duration)
+	tween.tween_property(incoming_node, "modulate:a", 1.0, duration * 0.85)
+
+	if outgoing_node and outgoing_node.is_inside_tree():
+		var out_tween = scene_tree.create_tween().bind_node(outgoing_node).set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		out_tween.tween_property(outgoing_node, "position:x", outgoing_node.position.x - (slide * dir), duration)
+		out_tween.tween_property(outgoing_node, "modulate:a", 0.0, duration * 0.8)
+		out_tween.chain().tween_callback(func(): outgoing_node.queue_free())
+
 # Inner class for ruled lines
 class RuledLinesDrawer:
 	extends Control
@@ -343,17 +425,19 @@ class RuledLinesDrawer:
 # Inner class for spiral binding
 class SpiralDrawer:
 	extends Control
+
+	var center_x: float = 0.0
+	var line_color: Color = Color(0.05, 0.04, 0.02, 0.45)
 	
 	func _draw() -> void:
 		var h = size.y
 		var cy = 40.0
 		var step = 32.0
-		var center_x = 0.0
 		
 		# Draw dark spine shadow (center folding crease)
 		draw_rect(Rect2(center_x - 30, 0, 60, h), Color(0.1, 0.08, 0.05, 0.12)) # Broad soft crease shadow
 		draw_rect(Rect2(center_x - 15, 0, 30, h), Color(0.1, 0.08, 0.05, 0.18)) # Narrower crease shadow
-		draw_line(Vector2(center_x, 0), Vector2(center_x, h), Color(0.05, 0.04, 0.02, 0.45), 2.5) # Central seam line
+		draw_line(Vector2(center_x, 0), Vector2(center_x, h), line_color, 2.5) # Central seam line
 		
 		# Draw silver rings looping through paper holes
 		while cy < h - 30.0:
@@ -390,7 +474,7 @@ static func show_rulebook(parent_node: Node) -> void:
 	modal.pivot_offset = Vector2(450, 340)
 	modal.add_theme_stylebox_override("panel", create_craft_panel())
 	canvas.add_child(modal)
-	modal.position = Vector2((1920 - 900) / 2.0, (1080 - 680) / 2.0)
+	modal.position = parent_node.get_viewport_rect().size * 0.5 - modal.pivot_offset
 	
 	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 24)
@@ -420,6 +504,7 @@ static func show_rulebook(parent_node: Node) -> void:
 	close_btn.add_theme_font_override("font", load(FONT_HANDWRITING))
 	close_btn.add_theme_font_size_override("font_size", 18)
 	close_btn.custom_minimum_size = Vector2(100, 36)
+	apply_white_button_style(close_btn)
 	header_hbox.add_child(close_btn)
 	
 	# ScrollContainer for Rule Text
@@ -497,7 +582,7 @@ static func show_settings(parent_node: Node) -> void:
 	modal.pivot_offset = Vector2(250, 240)
 	modal.add_theme_stylebox_override("panel", create_craft_panel())
 	canvas.add_child(modal)
-	modal.position = Vector2((1920 - 500) / 2.0, (1080 - 480) / 2.0)
+	modal.position = parent_node.get_viewport_rect().size * 0.5 - modal.pivot_offset
 	
 	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 30)
@@ -593,6 +678,7 @@ static func show_settings(parent_node: Node) -> void:
 	rule_btn.custom_minimum_size = Vector2(300, 45)
 	rule_btn.add_theme_font_override("font", load(FONT_HANDWRITING))
 	rule_btn.add_theme_font_size_override("font_size", 16)
+	apply_white_button_style(rule_btn)
 	rule_btn.pressed.connect(func():
 		animate_click(rule_btn, Vector2.ONE, 0.08)
 		show_rulebook(parent_node)
@@ -617,6 +703,7 @@ static func show_settings(parent_node: Node) -> void:
 		return_btn.custom_minimum_size = Vector2(200, 45)
 		return_btn.add_theme_font_override("font", load(FONT_HANDWRITING))
 		return_btn.add_theme_font_size_override("font_size", 18)
+		apply_white_button_style(return_btn)
 		return_btn.pressed.connect(func():
 			animate_click(return_btn, Vector2.ONE, 0.08)
 			show_confirm_dialog(parent_node, "本当にタイトルへ戻りますか？\n（進行状況は破棄されます）", func():
@@ -635,6 +722,7 @@ static func show_settings(parent_node: Node) -> void:
 	close_btn.custom_minimum_size = Vector2(200, 45)
 	close_btn.add_theme_font_override("font", load(FONT_HANDWRITING))
 	close_btn.add_theme_font_size_override("font_size", 18)
+	apply_white_button_style(close_btn)
 	close_btn.pressed.connect(func():
 		animate_click(close_btn, Vector2.ONE, 0.08)
 		var out_tween = parent_node.create_tween().bind_node(modal).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -668,7 +756,7 @@ static func show_confirm_dialog(parent_node: Node, text: String, on_confirm: Cal
 	modal.pivot_offset = Vector2(200, 100)
 	modal.add_theme_stylebox_override("panel", create_craft_panel())
 	canvas.add_child(modal)
-	modal.position = Vector2((1920 - 400) / 2.0, (1080 - 200) / 2.0)
+	modal.position = parent_node.get_viewport_rect().size * 0.5 - modal.pivot_offset
 	
 	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 20)
@@ -700,6 +788,7 @@ static func show_confirm_dialog(parent_node: Node, text: String, on_confirm: Cal
 	yes_btn.custom_minimum_size = Vector2(120, 45)
 	yes_btn.add_theme_font_override("font", load(FONT_HANDWRITING))
 	yes_btn.add_theme_font_size_override("font_size", 18)
+	apply_white_button_style(yes_btn)
 	yes_btn.add_theme_color_override("font_color", Color("d32f2f")) # Red text for destructive action
 	btn_hbox.add_child(yes_btn)
 	
@@ -708,6 +797,7 @@ static func show_confirm_dialog(parent_node: Node, text: String, on_confirm: Cal
 	no_btn.custom_minimum_size = Vector2(120, 45)
 	no_btn.add_theme_font_override("font", load(FONT_HANDWRITING))
 	no_btn.add_theme_font_size_override("font_size", 18)
+	apply_white_button_style(no_btn)
 	btn_hbox.add_child(no_btn)
 	
 	yes_btn.pressed.connect(func():
@@ -735,3 +825,57 @@ static func show_confirm_dialog(parent_node: Node, text: String, on_confirm: Cal
 	var anim_tween = parent_node.create_tween().bind_node(modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	anim_tween.tween_property(modal, "scale", Vector2.ONE, 0.3)
 
+static func apply_white_button_style(btn: Button) -> void:
+	if not btn:
+		return
+	
+	# Normal stylebox (white background, ink border)
+	var style_normal = StyleBoxFlat.new()
+	style_normal.bg_color = Color.WHITE
+	style_normal.border_color = COLOR_INK
+	style_normal.border_width_left = 3
+	style_normal.border_width_right = 3
+	style_normal.border_width_top = 3
+	style_normal.border_width_bottom = 3
+	style_normal.corner_radius_top_left = 6
+	style_normal.corner_radius_top_right = 6
+	style_normal.corner_radius_bottom_left = 6
+	style_normal.corner_radius_bottom_right = 6
+	style_normal.shadow_color = Color(0.12, 0.08, 0.05, 0.15)
+	style_normal.shadow_size = 4
+	style_normal.shadow_offset = Vector2(2, 2)
+	
+	# Hover stylebox (very light cream tint)
+	var style_hover = style_normal.duplicate() as StyleBoxFlat
+	style_hover.bg_color = Color("fffde7")
+	style_hover.border_width_left = 4
+	style_hover.border_width_right = 4
+	style_hover.border_width_top = 4
+	style_hover.border_width_bottom = 4
+	style_hover.shadow_size = 6
+	style_hover.shadow_offset = Vector2(3, 3)
+	
+	# Pressed stylebox (slightly darker grey)
+	var style_pressed = style_normal.duplicate() as StyleBoxFlat
+	style_pressed.bg_color = Color("e0e0e0")
+	style_pressed.shadow_size = 1
+	style_pressed.shadow_offset = Vector2(1, 1)
+
+	var style_focus = StyleBoxEmpty.new()
+	
+	btn.add_theme_stylebox_override("normal", style_normal)
+	btn.add_theme_stylebox_override("hover", style_hover)
+	btn.add_theme_stylebox_override("pressed", style_pressed)
+	btn.add_theme_stylebox_override("focus", style_focus)
+	
+	# Text colors
+	btn.add_theme_color_override("font_color", COLOR_INK)
+	btn.add_theme_color_override("font_hover_color", COLOR_INK)
+	btn.add_theme_color_override("font_pressed_color", COLOR_INK)
+	btn.add_theme_color_override("font_focus_color", COLOR_INK)
+	btn.add_theme_color_override("font_hover_pressed_color", COLOR_INK)
+	
+	# Check children for labels (used for custom handwriting look in some parts)
+	for child in btn.get_children():
+		if child is Label:
+			child.add_theme_color_override("font_color", COLOR_INK)

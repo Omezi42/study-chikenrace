@@ -19,7 +19,7 @@ var bgm_volume: float = 0.5:
 		if bgm_volume != new_val:
 			bgm_volume = new_val
 			_update_bgm_volume()
-			if has_node("/root/Global"):
+			if has_node("/root/Global") and is_inside_tree():
 				var global = get_node("/root/Global")
 				global.bgm_volume = bgm_volume
 				global.save_game()
@@ -28,7 +28,7 @@ var se_volume: float = 0.5:
 		var new_val = clamp(val, 0.0, 1.0)
 		if se_volume != new_val:
 			se_volume = new_val
-			if has_node("/root/Global"):
+			if has_node("/root/Global") and is_inside_tree():
 				var global = get_node("/root/Global")
 				global.se_volume = se_volume
 				global.save_game()
@@ -37,7 +37,7 @@ var is_muted: bool = false:
 		if is_muted != val:
 			is_muted = val
 			_update_bgm_volume()
-			if has_node("/root/Global"):
+			if has_node("/root/Global") and is_inside_tree():
 				var global = get_node("/root/Global")
 				global.is_muted = is_muted
 				global.save_game()
@@ -100,6 +100,8 @@ func play_se(stream_path: String) -> void:
 	player.play()
 
 func _update_bgm_volume() -> void:
+	if not bgm_player:
+		return
 	if is_muted:
 		bgm_player.volume_db = -80.0
 	else:

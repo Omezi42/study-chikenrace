@@ -19,6 +19,7 @@ config/features=PackedStringArray("4.6", "GL Compatibility")
 Global="*res://src/autoload/Global.gd"
 AudioManager="*res://src/autoload/AudioManager.gd"
 BackendManager="*res://src/autoload/BackendManager.gd"
+Localization="*res://src/autoload/Localization.gd"
 
 [display]
 

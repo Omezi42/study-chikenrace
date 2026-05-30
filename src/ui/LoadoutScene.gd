@@ -10,9 +10,34 @@ var select_grid: GridContainer
 var active_slot_idx: int = -1
 
 func _ready() -> void:
+	# 木枠（のっぺりした外側の淵）
+	var frame = ColorRect.new()
+	frame.color = Color("#4e342e") # 落ち着いた木枠の色（焦げ茶）
+	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(frame)
+	
+	# 枠の太さ（マージン）を設定
+	var board_margin = MarginContainer.new()
+	board_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	board_margin.add_theme_constant_override("margin_left", 36)
+	board_margin.add_theme_constant_override("margin_right", 36)
+	board_margin.add_theme_constant_override("margin_top", 36)
+	board_margin.add_theme_constant_override("margin_bottom", 36)
+	add_child(board_margin)
+	
+	# コルクボード部分のベース（木枠から一段落ち込んでいる立体感を出すための影付き）
+	var cork_base = PanelContainer.new()
+	var base_style = StyleBoxFlat.new()
+	base_style.bg_color = Color.BLACK # テクスチャの下敷き
+	base_style.border_width_left = 4
+	base_style.border_width_right = 4
+	base_style.border_width_top = 4
+	base_style.border_width_bottom = 4
+	base_style.border_color = Color("#261a17") # コルクと木枠の間の暗い溝
+	cork_base.add_theme_stylebox_override("panel", base_style)
+	board_margin.add_child(cork_base)
+	
 	var cork_panel = Panel.new()
-	cork_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(cork_panel)
 	
 	var cork_style = StyleBoxTexture.new()
 	var noise = FastNoiseLite.new()
@@ -36,6 +61,7 @@ func _ready() -> void:
 	cork_style.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
 	cork_style.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
 	cork_panel.add_theme_stylebox_override("panel", cork_style)
+	cork_base.add_child(cork_panel)
 	
 	# Center container for VBox
 	var center_container = CenterContainer.new()
@@ -47,6 +73,35 @@ func _ready() -> void:
 	main_vbox.add_theme_constant_override("separation", 35)
 	center_container.add_child(main_vbox)
 	
+	# Title Box (付箋風・画用紙風の背景にしてコルクボードとのコントラストを出す)
+	var title_panel = PanelContainer.new()
+	title_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var title_style = StyleBoxFlat.new()
+	title_style.bg_color = Color("#fdfbf7") # わずかにクリーム色
+	title_style.border_width_left = 3
+	title_style.border_width_right = 3
+	title_style.border_width_top = 3
+	title_style.border_width_bottom = 3
+	title_style.border_color = DeskTheme.COLOR_INK
+	title_style.corner_radius_top_left = 2
+	title_style.corner_radius_top_right = 6
+	title_style.corner_radius_bottom_left = 6
+	title_style.corner_radius_bottom_right = 2
+	title_style.shadow_color = Color(0, 0, 0, 0.15)
+	title_style.shadow_size = 6
+	title_style.shadow_offset = Vector2(4, 4)
+	title_style.content_margin_left = 30
+	title_style.content_margin_right = 30
+	title_style.content_margin_top = 16
+	title_style.content_margin_bottom = 16
+	title_panel.add_theme_stylebox_override("panel", title_style)
+	main_vbox.add_child(title_panel)
+	
+	var title_vbox = VBoxContainer.new()
+	title_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	title_vbox.add_theme_constant_override("separation", 8)
+	title_panel.add_child(title_vbox)
+	
 	# Title
 	var title = Label.new()
 	title.text = "デッキ編成（付箋スロット割当）"
@@ -54,7 +109,7 @@ func _ready() -> void:
 	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 	title.add_theme_font_size_override("font_size", 40)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	main_vbox.add_child(title)
+	title_vbox.add_child(title)
 	
 	var sub_title = Label.new()
 	sub_title.text = "1〜10の数字のカードを引いた時に、対応するスロットのアイテムの効果が発動します。"
@@ -62,7 +117,7 @@ func _ready() -> void:
 	sub_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 	sub_title.add_theme_font_size_override("font_size", 20)
 	sub_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
-	main_vbox.add_child(sub_title)
+	title_vbox.add_child(sub_title)
 	
 	# 5x2 slots grid
 	slots_grid = GridContainer.new()
@@ -80,6 +135,7 @@ func _ready() -> void:
 	back_btn.custom_minimum_size = Vector2(320, 70)
 	back_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 	back_btn.add_theme_font_size_override("font_size", 26)
+	Global.apply_white_button_style(back_btn)
 	back_btn.pressed.connect(_on_back_pressed)
 	main_vbox.add_child(back_btn)
 	
@@ -111,6 +167,9 @@ func populate_slots() -> void:
 		note_style.border_width_bottom = 2
 		note_style.corner_radius_bottom_left = 6
 		note_style.corner_radius_bottom_right = 6
+		note_style.shadow_color = Color(0, 0, 0, 0.25)
+		note_style.shadow_size = 8
+		note_style.shadow_offset = Vector2(4, 4)
 		
 		slot_btn.add_theme_stylebox_override("normal", note_style)
 		slot_btn.add_theme_stylebox_override("hover", note_style)
@@ -175,7 +234,7 @@ func setup_select_modal() -> void:
 	select_modal.pivot_offset = Vector2(450, 325)
 	select_modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	add_child(select_modal)
-	select_modal.position = Vector2((1920 - 900) / 2.0, (1080 - 650) / 2.0)
+	select_modal.position = get_viewport_rect().size * 0.5 - select_modal.pivot_offset
 	select_modal.visible = false
 	
 	var margin = MarginContainer.new()
@@ -213,6 +272,7 @@ func setup_select_modal() -> void:
 	close_btn.custom_minimum_size = Vector2(200, 55)
 	close_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 	close_btn.add_theme_font_size_override("font_size", 20)
+	Global.apply_white_button_style(close_btn)
 	close_btn.pressed.connect(func():
 		DeskTheme.animate_click(close_btn, Vector2.ONE, 0.08)
 		select_modal.visible = false

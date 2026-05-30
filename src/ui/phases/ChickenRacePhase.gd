@@ -1,6 +1,9 @@
 class_name ChickenRacePhase
 extends PhaseBase
 
+const CardVisual = preload("res://src/ui/CardVisual.gd")
+const ItemEffects = preload("res://src/core/ItemEffects.gd")
+
 # UI Controls
 var actual_score_label: Label
 var draw_history_container: HBoxContainer
@@ -36,6 +39,8 @@ var is_selecting_card: bool = false
 var card_selection_mode_active: String = ""
 var tutorial_step: int = 0
 var tutorial_dialog_node: PanelContainer = null
+var hovered_card_ui: Button = null
+var hovered_card_tween: Tween = null
 
 func _on_setup(setup_data: Dictionary) -> void:
 	custom_minimum_size = Vector2(1500, 850)
@@ -50,6 +55,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	
 	# Layout setup (2 pages: Left and Right touching at separation 0)
 	var main_hbox = HBoxContainer.new()
+	main_hbox.custom_minimum_size = Vector2(1500, 850)
 	main_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	main_hbox.add_theme_constant_override("separation", 0)
 	add_child(main_hbox)
@@ -245,6 +251,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	draw_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 	draw_btn.add_theme_font_size_override("font_size", 24)
 	draw_btn.pressed.connect(_on_draw_pressed)
+	draw_btn.mouse_entered.connect(_clear_hovered_card)
 	btn_hbox.add_child(draw_btn)
 	
 	stop_btn = Button.new()
@@ -253,6 +260,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	stop_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 	stop_btn.add_theme_font_size_override("font_size", 24)
 	stop_btn.pressed.connect(_on_stop_pressed)
+	stop_btn.mouse_entered.connect(_clear_hovered_card)
 	btn_hbox.add_child(stop_btn)
 	
 	# Notebook decoration
@@ -260,13 +268,18 @@ func _on_setup(setup_data: Dictionary) -> void:
 	DeskTheme.add_ruled_lines(right_page)
 	DeskTheme.add_spiral_binding(main_hbox, 750.0)
 	
+	# Keep the notebook centered within the phase viewport.
+	var viewport_size = get_viewport_rect().size
+	main_hbox.pivot_offset = main_hbox.custom_minimum_size * 0.5
+	main_hbox.position = viewport_size * 0.5 - main_hbox.pivot_offset
+
 	# Standings phone UI setup: sliding smartphone Control container
 	standing_phone = Control.new()
 	standing_phone.custom_minimum_size = Vector2(300, 520)
 	standing_phone.size = Vector2(300, 520)
-	standing_phone.position = Vector2(-260, 150) # Leave 40px on screen when closed
 	standing_phone.clip_contents = false # Allow toggle button outside bounds
 	add_child(standing_phone)
+	standing_phone.position = Vector2(-260, max(viewport_size.y * 0.175, 120.0))
 	
 	var phone_style = StyleBoxFlat.new()
 	phone_style.bg_color = DeskTheme.COLOR_INK
@@ -294,7 +307,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	phone_toggle_btn = Button.new()
 	phone_toggle_btn.text = "📱\n順\n位\n表"
 	phone_toggle_btn.custom_minimum_size = Vector2(40, 120)
-	phone_toggle_btn.position = Vector2(260, 180) # Sits outside the phone body container (starts at x=260)
+	phone_toggle_btn.position = Vector2(260, 180)
 	phone_toggle_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 	phone_toggle_btn.add_theme_font_size_override("font_size", 16)
 	phone_toggle_btn.pressed.connect(_on_phone_toggle_pressed)
@@ -345,7 +358,6 @@ func _on_setup(setup_data: Dictionary) -> void:
 	var opt_btn = Button.new()
 	opt_btn.text = "⚙️ 設定/ルール"
 	opt_btn.custom_minimum_size = Vector2(140, 45)
-	opt_btn.position = Vector2(1330, 20)
 	opt_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 	opt_btn.add_theme_font_size_override("font_size", 18)
 	opt_btn.pressed.connect(func():
@@ -353,6 +365,8 @@ func _on_setup(setup_data: Dictionary) -> void:
 		DeskTheme.show_settings(self)
 	)
 	add_child(opt_btn)
+	var opt_viewport_size = get_viewport_rect().size
+	opt_btn.position = Vector2(max(opt_viewport_size.x - opt_btn.custom_minimum_size.x - 20.0, 0.0), 20)
 	
 	if Global.is_tutorial_mode and session.current_day == 1 and session.current_hour == 1:
 		tutorial_step = 0
@@ -360,15 +374,15 @@ func _on_setup(setup_data: Dictionary) -> void:
 		draw_btn.disabled = true # Must read description first
 		tutorial_dialog_node = show_tutorial_dialog(
 			"自習フェーズ（勉強チキンレース）へようこそ！\n\nここでは山札からカードを引き、勉強成果（実点）を高めます。まずは、点数を大きく伸ばす『教科』と『コンボ』の仕様を学びましょう！",
-			Vector2(450, 100),
+			Vector2(get_viewport_rect().size.x * 0.30, get_viewport_rect().size.y * 0.12),
 			func():
 				tutorial_dialog_node = show_tutorial_dialog(
 					"【教科とコンボボーナス】\nカードには5つの教科（国・英・数・理・社）があります。\n・同教科を連続で引くと『コンボ』となり得点ボーナス加算！\n・5教科をすべて手札に揃えると、合計点の22%（10〜28点）が加算される『5教科ボーナス』が発生します！",
-					Vector2(450, 100),
+					Vector2(get_viewport_rect().size.x * 0.30, get_viewport_rect().size.y * 0.12),
 					func():
 						tutorial_dialog_node = show_tutorial_dialog(
 							"【仕込みアイテム：付箋】\n初期カードの『付箋』は、次のドローで特定の教科を確定で出現させる効果（山札にあれば）を持ちます。教科コンボや5教科ボーナスを狙うのに非常に強力です！\n\nそれでは、実際に『勉強カードを引く』を押して1枚引いてみましょう！",
-							Vector2(450, 100)
+							Vector2(get_viewport_rect().size.x * 0.30, get_viewport_rect().size.y * 0.12)
 						)
 						draw_btn.disabled = false
 				)
@@ -456,6 +470,8 @@ func perform_animated_draw(card: Dictionary, on_complete: Callable = Callable())
 	var card_ui = create_card_visual(card)
 	var hand_idx = session.player_deck.hand.find(card)
 	card_ui.set_meta("hand_index", hand_idx)
+	card_ui.z_index = 20
+	card_ui.position.y -= 180
 	hand_container.add_child(card_ui)
 	
 	# Play draw sound
@@ -464,7 +480,7 @@ func perform_animated_draw(card: Dictionary, on_complete: Callable = Callable())
 		
 	# Animate Card Flip
 	card_ui.scale = Vector2.ONE
-	var card_vbox = card_ui.get_child(0)
+	var card_vbox = card_ui.get_vbox() if card_ui is CardVisual else card_ui.get_child(0)
 	if card_vbox:
 		card_vbox.visible = false
 		
@@ -539,128 +555,11 @@ func _on_draw_pressed() -> void:
 	)
 
 func create_card_visual(card: Dictionary) -> Button:
-	var card_ui = Button.new()
-	card_ui.custom_minimum_size = Vector2(160, 220)
-	card_ui.pivot_offset = Vector2(80, 110)
-	
-	var item_info = CardData.ITEMS.get(card["item_id"], {"role": CardData.ROLE_PREP, "name": card.get("name", "アイテム")})
-	var card_style = StyleBoxFlat.new()
-	card_style.bg_color = DeskTheme.COLOR_CRAFT
-	card_style.border_color = CardData.get_role_color(item_info["role"])
-	card_style.border_width_left = 4
-	card_style.border_width_right = 4
-	card_style.border_width_top = 4
-	card_style.border_width_bottom = 4
-	card_style.corner_radius_top_left = 8
-	card_style.corner_radius_top_right = 8
-	card_style.corner_radius_bottom_left = 8
-	card_style.corner_radius_bottom_right = 8
-	card_ui.add_theme_stylebox_override("normal", card_style)
-	card_ui.add_theme_stylebox_override("hover", card_style)
-	card_ui.add_theme_stylebox_override("pressed", card_style)
-	card_ui.add_theme_stylebox_override("focus", card_style)
-	
-	var card_vbox = VBoxContainer.new()
-	card_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	card_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	card_vbox.add_theme_constant_override("separation", 6)
-	card_ui.add_child(card_vbox)
-	
-	var top_margin = MarginContainer.new()
-	top_margin.add_theme_constant_override("margin_top", 14)
-	card_vbox.add_child(top_margin)
-	
-	# Subject Badge (positioned absolutely in top-left)
-	var sub_icon_path = CardData.get_subject_icon_path(card["subject"])
-	if sub_icon_path != "":
-		var sub_color = Color.GRAY
-		match card["subject"]:
-			CardData.SUBJECT_MATH: sub_color = Color("2979ff")
-			CardData.SUBJECT_ENGLISH: sub_color = Color("ff1744")
-			CardData.SUBJECT_JAPANESE: sub_color = Color("00c853")
-			CardData.SUBJECT_SCIENCE: sub_color = Color("ff9100")
-			CardData.SUBJECT_SOCIAL: sub_color = Color("aa00ff")
-			
-		var subject_badge = PanelContainer.new()
-		subject_badge.position = Vector2(8, 8)
-		subject_badge.custom_minimum_size = Vector2(28, 28)
-		subject_badge.size = Vector2(28, 28)
-		
-		var badge_style = StyleBoxFlat.new()
-		badge_style.bg_color = sub_color
-		badge_style.corner_radius_top_left = 14
-		badge_style.corner_radius_top_right = 14
-		badge_style.corner_radius_bottom_left = 14
-		badge_style.corner_radius_bottom_right = 14
-		badge_style.content_margin_left = 4
-		badge_style.content_margin_right = 4
-		badge_style.content_margin_top = 4
-		badge_style.content_margin_bottom = 4
-		subject_badge.add_theme_stylebox_override("panel", badge_style)
-		
-		var icon_rect = TextureRect.new()
-		icon_rect.texture = load(sub_icon_path)
-		icon_rect.custom_minimum_size = Vector2(20, 20)
-		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		subject_badge.add_child(icon_rect)
-		
-		card_ui.add_child(subject_badge)
-	
-	# Value
-	var val_label = Label.new()
-	val_label.text = str(card["value"])
-	val_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	val_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	val_label.add_theme_font_size_override("font_size", 44)
-	val_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	card_vbox.add_child(val_label)
-	
-	# Illustration
-	var item_id = card.get("item_id", "")
-	var img_path = CardData.get_item_image_path(item_id)
-	if img_path != "":
-		var tex_rect = TextureRect.new()
-		tex_rect.texture = load(img_path)
-		tex_rect.custom_minimum_size = Vector2(80, 80)
-		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tex_rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		card_vbox.add_child(tex_rect)
-	else:
-		# Small spacer for fallback spacing consistent with premium visual feel
-		var spacer = Control.new()
-		spacer.custom_minimum_size = Vector2(80, 20)
-		card_vbox.add_child(spacer)
-		
-	# Item Name
-	var name_lbl = Label.new()
-	name_lbl.text = item_info["name"] if item_info else "カード"
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	name_lbl.add_theme_font_size_override("font_size", 16)
-	name_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.75))
-	card_vbox.add_child(name_lbl)
-	
-	# Short Effect Summary
-	var effect_lbl = Label.new()
-	var short_eff = CardData.get_item_short_effect(item_id)
-	if short_eff != "":
-		effect_lbl.text = "【" + short_eff + "】"
-	else:
-		effect_lbl.text = ""
-	effect_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	effect_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	effect_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	effect_lbl.add_theme_font_size_override("font_size", 10)
-	effect_lbl.add_theme_color_override("font_color", Color("ff4081") if item_info and item_info["role"] == CardData.ROLE_PUSH else Color(DeskTheme.COLOR_INK, 0.6))
-	card_vbox.add_child(effect_lbl)
-	
+	# UIの生成ロジックは CardVisual コンポーネントに委譲する（UIコードの保守性向上）
+	var card_ui = CardVisual.create(card)
 	card_ui.pressed.connect(func(): _on_card_ui_pressed(card, card_ui))
 	card_ui.mouse_entered.connect(func(): _on_card_ui_mouse_entered(card, card_ui))
 	card_ui.mouse_exited.connect(func(): _on_card_ui_mouse_exited(card_ui))
-	
 	return card_ui
 
 func activate_item_effect(card: Dictionary) -> void:
@@ -705,7 +604,11 @@ func show_peek_sticky(peeked: Array) -> void:
 	
 	add_child(active_peek_sticky) # Add directly to self (root Phase control)
 	# Position at the right desk wood background area (outside the notebook)
-	active_peek_sticky.position = Vector2(1180, 520)
+	var sticky_viewport_size = get_viewport_rect().size
+	active_peek_sticky.position = Vector2(
+		max(sticky_viewport_size.x - active_peek_sticky.custom_minimum_size.x - 40.0, 0.0),
+		max(sticky_viewport_size.y - active_peek_sticky.custom_minimum_size.y - 60.0, 0.0)
+	)
 	
 	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 15)
@@ -780,7 +683,7 @@ func arrange_hand_fan() -> void:
 	var radius = 350.0
 	
 	var center_x = hand_container.custom_minimum_size.x / 2.0
-	var base_y = 260.0
+	var base_y = 180.0
 	
 	for idx in range(count):
 		var child = children[idx] as Control
@@ -795,10 +698,12 @@ func arrange_hand_fan() -> void:
 		var scale_mult = 1.0
 		if count > 5:
 			scale_mult = clamp(1.0 - (count - 5) * 0.08, 0.65, 1.0)
-			
+		child.set_meta("fan_scale", scale_mult)
+		child.set_meta("fan_rotation", angle_offset)
+		child.set_meta("fan_position", Vector2(center_x + offset_x - (child.custom_minimum_size.x * scale_mult) / 2.0, base_y + offset_y))
 		child.scale = Vector2.ONE * scale_mult
 		child.rotation_degrees = angle_offset
-		child.position = Vector2(center_x + offset_x - (child.custom_minimum_size.x * scale_mult) / 2.0, base_y + offset_y)
+		child.position = child.get_meta("fan_position", Vector2(center_x, base_y))
 
 func trigger_burst_sequence() -> void:
 	has_bursted = true
@@ -892,8 +797,9 @@ func _process(delta: float) -> void:
 		# Offset slightly so the mouse cursor doesn't block the tooltip
 		card_detail_box.position = mouse_pos + Vector2(20, -100)
 		# Clamp to screen to avoid going offscreen
-		card_detail_box.position.x = clamp(card_detail_box.position.x, 0, 1920 - card_detail_box.size.x)
-		card_detail_box.position.y = clamp(card_detail_box.position.y, 0, 1080 - card_detail_box.size.y)
+		var tooltip_viewport_size = get_viewport_rect().size
+		card_detail_box.position.x = clamp(card_detail_box.position.x, 0, max(tooltip_viewport_size.x - card_detail_box.size.x, 0.0))
+		card_detail_box.position.y = clamp(card_detail_box.position.y, 0, max(tooltip_viewport_size.y - card_detail_box.size.y, 0.0))
 
 func set_mouse_filter_recursive(node: Node, filter: int) -> void:
 	if node is Control:
@@ -1089,7 +995,12 @@ func get_yesterday_standings() -> Array:
 			if key == "player" and Global.player_name != "":
 				name = Global.player_name
 			elif key != "player":
-				name = AIManager.CPU_OPPONENTS[key]["name"]
+				# ScoreEvaluator のヘルパーで安全にID解決
+				var deck_cfg = ScoreEvaluator._get_deck_config(key)
+				if Global.opponent_profiles.has(key):
+					name = Global.opponent_profiles[key].get("name", key)
+				elif AIManager.CPU_OPPONENTS.has(key):
+					name = AIManager.CPU_OPPONENTS[key].get("name", key)
 			standings.append({"id": key, "name": name, "score": 0})
 		return standings
 		
@@ -1115,13 +1026,9 @@ func get_yesterday_standings() -> Array:
 			
 			if is_liar and final_exposed:
 				var penalty = declared - actual
-				var deck_config = Global.current_deck if p_id == "player" else AIManager.CPU_OPPONENTS[p_id]["deck"]
-				var has_copy_answer = false
-				for slot in deck_config.keys():
-					if deck_config[slot] == "item_copy_answer":
-						has_copy_answer = true
-						break
-				if has_copy_answer:
+				# ScoreEvaluator のヘルパーで安全にデッキ設定を取得
+				var deck_config = ScoreEvaluator._get_deck_config(p_id)
+				if ScoreEvaluator._has_item(deck_config, "item_copy_answer"):
 					adjustment -= penalty * 2
 				else:
 					adjustment -= penalty
@@ -1133,20 +1040,12 @@ func get_yesterday_standings() -> Array:
 			var p = day_data.get(p_id, null)
 			if not p:
 				continue
-			var deck_config = Global.current_deck if p_id == "player" else AIManager.CPU_OPPONENTS[p_id]["deck"]
+			var deck_config = ScoreEvaluator._get_deck_config(p_id)
 			
-			var cushion_active = false
-			var earplug_reduction = 0
-			var chat_bonus = 0
-			for slot in deck_config.keys():
-				var item = deck_config[slot]
-				if item == "item_cushion":
-					cushion_active = true
-				elif item == "item_earplugs":
-					earplug_reduction = 10
-				elif item == "item_study_chat":
-					chat_bonus = 6
-					
+			var cushion_active = ScoreEvaluator._has_item(deck_config, "item_cushion")
+			var earplug_reduction = 10 if ScoreEvaluator._has_item(deck_config, "item_earplugs") else 0
+			var chat_bonus = 6 if ScoreEvaluator._has_item(deck_config, "item_study_chat") else 0
+				
 			for target_id in p.get("doubts_made", []):
 				var target = day_data.get(target_id, null)
 				if not target:
@@ -1168,13 +1067,18 @@ func get_yesterday_standings() -> Array:
 				scores[p_id] += doubter_adj
 				
 	scores["player"] += Global.get_total_level_bonus()
+	# 星レベルボーナスもスタンディングに反映
+	scores["player"] += ScoreEvaluator._calculate_star_bonus_for_player()
 	
 	for key in scores.keys():
 		var name = "あなた"
 		if key == "player" and Global.player_name != "":
 			name = Global.player_name
 		elif key != "player":
-			name = AIManager.CPU_OPPONENTS[key]["name"]
+			if Global.opponent_profiles.has(key):
+				name = Global.opponent_profiles[key].get("name", key)
+			elif AIManager.CPU_OPPONENTS.has(key):
+				name = AIManager.CPU_OPPONENTS[key].get("name", key)
 		standings.append({
 			"id": key,
 			"name": name,
@@ -1212,31 +1116,60 @@ func _on_card_ui_pressed(card: Dictionary, card_ui: Button) -> void:
 		show_card_detail(card)
 
 func _on_card_ui_mouse_entered(card: Dictionary, card_ui: Button) -> void:
+	if hovered_card_ui and hovered_card_ui != card_ui:
+		_clear_hovered_card()
+	hovered_card_ui = card_ui
 	if not is_selecting_card:
 		show_card_detail(card)
 	
 	# Set high z_index to draw on top of other cards without altering tree order
 	card_ui.z_index = 10
+	if is_instance_valid(hovered_card_tween):
+		hovered_card_tween.kill()
 	
 	var tween = create_tween().bind_node(card_ui).set_parallel(true).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+	hovered_card_tween = tween
 	var scale_mult = 1.15 if is_selecting_card else 1.12
-	tween.tween_property(card_ui, "scale", card_ui.scale * scale_mult, 0.15)
+	var base_scale = float(card_ui.get_meta("fan_scale", 1.0))
+	var base_pos = card_ui.get_meta("fan_position", card_ui.position)
+	var base_rot = float(card_ui.get_meta("fan_rotation", card_ui.rotation_degrees))
+	tween.tween_property(card_ui, "scale", Vector2.ONE * (base_scale * scale_mult), 0.15)
 	
 	var lift_y = -30 if is_selecting_card else -20
-	tween.tween_property(card_ui, "position:y", card_ui.position.y + lift_y, 0.15)
+	tween.tween_property(card_ui, "position", base_pos + Vector2(0, lift_y), 0.15)
+	tween.tween_property(card_ui, "rotation_degrees", base_rot, 0.15)
 	
 	if is_selecting_card:
 		card_ui.modulate = Color(1.2, 1.2, 1.2, 1.0) # slightly brighter highlight
 
 func _on_card_ui_mouse_exited(card_ui: Button) -> void:
+	if hovered_card_ui == card_ui:
+		hovered_card_ui = null
 	if card_detail_box:
 		card_detail_box.visible = false
-		
-	# Restore z_index
-	card_ui.z_index = 0
 	
+	_reset_hovered_card(card_ui)
+	# arrange_hand_fan restores the canonical hand layout after hover exits
+	arrange_hand_fan()
+
+func _reset_hovered_card(card_ui: Button) -> void:
+	if not card_ui:
+		return
+	card_ui.z_index = 0
 	card_ui.modulate = Color.WHITE
-	# arrange_hand_fan restores correct positioning and scale
+	card_ui.scale = Vector2.ONE * float(card_ui.get_meta("fan_scale", 1.0))
+	card_ui.rotation_degrees = float(card_ui.get_meta("fan_rotation", 0.0))
+	card_ui.position = card_ui.get_meta("fan_position", card_ui.position)
+
+func _clear_hovered_card() -> void:
+	if is_instance_valid(hovered_card_tween):
+		hovered_card_tween.kill()
+	hovered_card_tween = null
+	if hovered_card_ui:
+		_reset_hovered_card(hovered_card_ui)
+		hovered_card_ui = null
+	if card_detail_box:
+		card_detail_box.visible = false
 	arrange_hand_fan()
 
 func _on_card_selected_from_hand(hand_idx: int, card: Dictionary) -> void:
@@ -1284,19 +1217,19 @@ func advance_tutorial_step() -> void:
 			draw_btn.disabled = false
 			tutorial_dialog_node = show_tutorial_dialog(
 				"カードを引きました！カードの左上には『教科アイコン』、中央には大きく『点数（数字）』が書かれています。\n\nもう1枚引いてみましょう！",
-				Vector2(450, 100)
+				Vector2(get_viewport_rect().size.x * 0.30, get_viewport_rect().size.y * 0.12)
 			)
 		2:
 			stop_btn.disabled = true
 			draw_btn.disabled = false
 			tutorial_dialog_node = show_tutorial_dialog(
 				"2枚目を引きました！もし手札に同じ数字のカードが重なると「寝落ち（バースト）」してこの時限の点数は0点になります。\n右上の「眠気」パーセントがバーストする確率です。安全第一で、もう1枚引いてみましょう！",
-				Vector2(450, 100)
+				Vector2(get_viewport_rect().size.x * 0.30, get_viewport_rect().size.y * 0.12)
 			)
 		3:
 			draw_btn.disabled = true # これ以上ドローさせない
 			stop_btn.disabled = false # 休憩を有効化
 			tutorial_dialog_node = show_tutorial_dialog(
 				"3枚目を引きました！同じ教科を連続して引くと「コンボボーナス」が入ります！\n眠気も上がってきたので、ここらで『休憩する』を押して自習を終え、本日の成果（点数）を確定させましょう！",
-				Vector2(450, 100)
+				Vector2(get_viewport_rect().size.x * 0.30, get_viewport_rect().size.y * 0.12)
 			)

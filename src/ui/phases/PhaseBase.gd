@@ -20,11 +20,34 @@ func finish_phase(result_data: Dictionary = {}, next_phase: String = "") -> void
 		result_data["next_phase"] = next_phase
 	phase_finished.emit(result_data)
 
+func fit_control_to_viewport(node: Control, base_size: Vector2, margin: Vector2 = Vector2(48, 48), min_scale: float = 0.72, center: bool = true) -> float:
+	if not node:
+		return 1.0
+	var viewport_size = get_viewport_rect().size
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		return 1.0
+
+	var available_size = viewport_size - margin
+	var fit_scale = min(available_size.x / base_size.x, available_size.y / base_size.y)
+	fit_scale = clamp(fit_scale, min_scale, 1.0)
+	node.pivot_offset = base_size * 0.5
+	node.scale = Vector2.ONE * fit_scale
+	if center:
+		node.position = viewport_size * 0.5 - node.pivot_offset
+	return fit_scale
+
 func show_tutorial_dialog(text: String, pos: Vector2 = Vector2(700, 50), next_callback: Callable = Callable()) -> PanelContainer:
 	var dialog = PanelContainer.new()
 	dialog.custom_minimum_size = Vector2(520, 220)
 	dialog.size = Vector2(520, 220)
-	dialog.position = pos
+	var viewport_size = get_viewport_rect().size
+	if pos == Vector2(700, 50):
+		dialog.position = viewport_size * 0.5 - dialog.pivot_offset
+	else:
+		dialog.position = Vector2(
+			clamp(pos.x, 0.0, max(viewport_size.x - dialog.size.x, 0.0)),
+			clamp(pos.y, 0.0, max(viewport_size.y - dialog.size.y, 0.0))
+		)
 	
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color("fff59d") # 明るい付箋イエロー

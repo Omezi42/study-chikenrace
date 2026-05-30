@@ -3,6 +3,15 @@ extends Node
 var _supabase_url: String = ""
 var _supabase_key: String = ""
 
+# ─────────────────────────────────────────────────────────
+# HTTP Object Pool（WebGL向けメモリ最適化）
+# 毎回 HTTPRequest.new() / queue_free() するのではなく、
+# 起動時に生成したプール内のノードを使い回し、GCスパイクを防ぐ。
+# ─────────────────────────────────────────────────────────
+const POOL_SIZE = 6
+var _http_pool: Array[HTTPRequest] = []
+var _pool_callbacks: Dictionary = {}   # HTTPRequest インスタンス -> Callable
+
 func _init() -> void:
 	_supabase_url = OS.get_environment("SUPABASE_URL")
 	if _supabase_url == "":
@@ -11,6 +20,35 @@ func _init() -> void:
 	_supabase_key = OS.get_environment("SUPABASE_KEY")
 	if _supabase_key == "":
 		_supabase_key = ProjectSettings.get_setting("backend/supabase_key", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoenhhbmR2a2duYWZzaGR0cm92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NzEzMzMsImV4cCI6MjA5NDI0NzMzM30.dof6q-gDq9qJE32MxWfTD76PBvdgAr6X3EQ1do291sk")
+
+func _ready() -> void:
+	# プール内にHTTPRequestノードを事前生成する
+	for i in range(POOL_SIZE):
+		var req = HTTPRequest.new()
+		req.name = "HttpPoolNode_%d" % i
+		add_child(req)
+		req.request_completed.connect(_on_pool_request_completed.bind(req))
+		_http_pool.append(req)
+
+# プール内で接続待機中（アイドル）のノードを取得する
+func _get_available_request() -> HTTPRequest:
+	for req in _http_pool:
+		if req.get_http_client_status() == HTTPClient.STATUS_DISCONNECTED:
+			return req
+	# プールが枯渇した場合（全ノード使用中）は一時的なノードを生成する
+	# 通常の3秒ポーリングではこのパスには到達しない
+	var fallback = HTTPRequest.new()
+	add_child(fallback)
+	fallback.request_completed.connect(_on_pool_request_completed.bind(fallback))
+	_http_pool.append(fallback)
+	push_warning("[BackendManager] HTTP pool exhausted, growing pool to %d." % _http_pool.size())
+	return fallback
+
+func _on_pool_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray, req: HTTPRequest) -> void:
+	if _pool_callbacks.has(req):
+		var cb: Callable = _pool_callbacks[req]
+		_pool_callbacks.erase(req)
+		cb.call(result, response_code, headers, body)
 
 func _get_supabase_url() -> String:
 	return _supabase_url
@@ -51,20 +89,48 @@ func _get_headers(auth_required: bool = false) -> Array[String]:
 		headers.append("Authorization: Bearer " + _get_supabase_key())
 	return headers
 
-# Helper to create and perform HTTP request
-func _send_request(url: String, method: HTTPClient.Method, body_str: String, auth_required: bool, callback: Callable) -> void:
-	var request = HTTPRequest.new()
-	add_child(request)
-	request.request_completed.connect(func(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray):
-		callback.call(result, response_code, headers, body)
-		request.queue_free()
-	)
+# ─────────────────────────────────────────────────────────
+# Helper to perform HTTP request using the object pool
+# ─────────────────────────────────────────────────────────
+# 最大リトライ回数
+const MAX_RETRIES = 3
+
+func _send_request(url: String, method: HTTPClient.Method, body_str: String, auth_required: bool, callback: Callable, retry_count: int = 0) -> void:
+	var req = _get_available_request()
+	if req == null:
+		if retry_count < MAX_RETRIES:
+			var timer = get_tree().create_timer(1.0)
+			timer.timeout.connect(func():
+				_send_request(url, method, body_str, auth_required, callback, retry_count + 1)
+			)
+		else:
+			callback.call(HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray())
+		return
 	
-	var err = request.request(url, _get_headers(auth_required), method, body_str)
+	var wrapped_callback = func(result: int, response_code: int, headers: PackedStringArray, body_data: PackedByteArray):
+		var is_network_error = result != HTTPRequest.RESULT_SUCCESS
+		var is_server_error = response_code >= 500 and response_code < 600
+		
+		if (is_network_error or is_server_error) and retry_count < MAX_RETRIES:
+			push_warning("[BackendManager] Request failed (result: %d, HTTP: %d). Retrying (%d/%d)..." % [result, response_code, retry_count + 1, MAX_RETRIES])
+			var timer = get_tree().create_timer(1.0)
+			timer.timeout.connect(func():
+				_send_request(url, method, body_str, auth_required, callback, retry_count + 1)
+			)
+		else:
+			callback.call(result, response_code, headers, body_data)
+			
+	_pool_callbacks[req] = wrapped_callback
+	var err = req.request(url, _get_headers(auth_required), method, body_str)
 	if err != OK:
-		# Immediate local failure
-		callback.call(HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray())
-		request.queue_free()
+		_pool_callbacks.erase(req)
+		if retry_count < MAX_RETRIES:
+			var timer = get_tree().create_timer(1.0)
+			timer.timeout.connect(func():
+				_send_request(url, method, body_str, auth_required, callback, retry_count + 1)
+			)
+		else:
+			callback.call(HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray())
 
 # 1. Sign Up (ユーザー登録)
 func signup_user(user_id: String, password: String) -> void:
@@ -161,22 +227,20 @@ func save_cloud_data(data_dict: Dictionary) -> void:
 		"data": data_dict
 	}
 	
-	# custom header to return minimal and handle duplicate resolution
-	var request = HTTPRequest.new()
-	add_child(request)
-	request.request_completed.connect(func(result: int, response_code: int, headers: PackedStringArray, body_data: PackedByteArray):
+	var req = _get_available_request()
+	if req == null:
+		save_completed.emit(false)
+		return
+		
+	_pool_callbacks[req] = func(result: int, response_code: int, headers: PackedStringArray, body_data: PackedByteArray):
 		if result == HTTPRequest.RESULT_SUCCESS and (response_code == 200 or response_code == 201 or response_code == 204):
 			save_completed.emit(true)
 		else:
-			# If custom 'saves' table doesn't exist, we silently fail (we still have local save)
 			save_completed.emit(false)
-		request.queue_free()
-	)
 	
 	var custom_headers = _get_headers(true)
 	custom_headers.append("Prefer: resolution=merge-duplicates")
-	
-	request.request(url, custom_headers, HTTPClient.METHOD_POST, JSON.stringify(body))
+	req.request(url, custom_headers, HTTPClient.METHOD_POST, JSON.stringify(body))
 
 # 4. Cloud Load (クラウドロード)
 func load_cloud_data() -> void:
@@ -205,13 +269,16 @@ func load_cloud_data() -> void:
 func upload_daily_record(day_idx: int, score: int, record: Dictionary) -> void:
 	if auth_token == "" or logged_in_uuid == "":
 		return
+	
+	# クライアント側でも上限チェックを行い、異常値を送信しない（多層防御）
+	var safe_score = clampi(score, 0, 9999)
 		
 	var url = _get_supabase_url() + "/rest/v1/daily_scores"
 	var body = {
 		"user_id": logged_in_uuid,
 		"username": Global.player_name,
 		"day_idx": day_idx,
-		"score": score,
+		"score": safe_score,
 		"record": record,
 		"season": Global.current_season
 	}
@@ -341,7 +408,7 @@ func _enable_mock_room(code: String, host_name: String) -> void:
 			mock_participants.append({"user_id": "cpu_suzuki", "username": "鈴木さん (CPU)"})
 	)
 
-# 2. Join Room
+# 2. Join Room (RPC版 - アトミックなルーム参加でレースコンディションを防ぐ)
 func join_friend_room(room_code: String) -> void:
 	is_mock_room = false
 	var user_name = Global.player_name if Global.player_name != "" else "あなた"
@@ -349,40 +416,36 @@ func join_friend_room(room_code: String) -> void:
 	if auth_token == "" or logged_in_uuid == "":
 		_join_mock_room(room_code, user_name)
 		return
-		
-	# First get the room participants
-	var url = _get_supabase_url() + "/rest/v1/friend_rooms?room_code=eq." + room_code
-	_send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
+	
+	# RPC経由でサーバー側でアトミックに参加処理を行う
+	# GET→PATCHパターン（旧来の実装）はレースコンディションの危険があるため廃止
+	var rpc_url = _get_supabase_url() + "/rest/v1/rpc/join_friend_room_safe"
+	var rpc_body = {
+		"p_room_code": room_code,
+		"p_user_id": logged_in_uuid,
+		"p_username": user_name
+	}
+	
+	_send_request(rpc_url, HTTPClient.METHOD_POST, JSON.stringify(rpc_body), true, func(result, response_code, headers, body_data):
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
 			var json = JSON.new()
 			if json.parse(body_data.get_string_from_utf8()) == OK:
 				var data = json.get_data()
-				if data is Array and data.size() > 0:
-					var room = data[0]
-					var parts = room.get("participants", [])
-					
-					# Append self
-					var already_in = false
-					for p in parts:
-						if p.get("user_id") == logged_in_uuid:
-							already_in = true
-							break
-					if not already_in:
-						parts.append({"user_id": logged_in_uuid, "username": user_name})
-						
-					# Update room
-					var patch_url = _get_supabase_url() + "/rest/v1/friend_rooms?room_code=eq." + room_code
-					var patch_body = {"participants": parts}
-					_send_request(patch_url, HTTPClient.METHOD_PATCH, JSON.stringify(patch_body), true, func(r_res, r_code, r_headers, r_body):
-						if r_res == HTTPRequest.RESULT_SUCCESS and (r_code == 200 or r_code == 204):
-							room_joined.emit(true, parts)
+				if data is Dictionary:
+					if data.has("error"):
+						var error_code = data["error"]
+						if error_code == "room_full":
+							room_joined.emit(false, [])
 						else:
+							# ルームが見つからない場合はモックにフォールバック
 							_join_mock_room(room_code, user_name)
-					)
-					return
-			room_joined.emit(false, [])
-		else:
-			_join_mock_room(room_code, user_name)
+					elif data.has("participants"):
+						var parts = data["participants"]
+						if parts is Array:
+							room_joined.emit(true, parts)
+							return
+		# 通信エラー時はモックにフォールバック
+		_join_mock_room(room_code, user_name)
 	)
 
 func _join_mock_room(room_code: String, user_name: String) -> void:
@@ -474,98 +537,37 @@ func upload_friend_move(room_code: String, day_idx: int, move_data: Dictionary) 
 		else:
 			mock_moves[day_idx].append(my_move)
 			
-		# 2. Update/Insert CPU moves
-		var existing_cpus = {}
-		for m in mock_moves[day_idx]:
-			var uid = m.get("user_id", "")
-			if uid.begins_with("cpu_"):
-				existing_cpus[uid] = m
-				
-		for p in mock_participants:
-			var uid = p["user_id"]
-			if uid != "player":
-				if not existing_cpus.has(uid):
-					var simulated_score = randi_range(25, 55)
-					var declared = simulated_score + (randi_range(5, 15) if randf() < 0.5 else 0)
-					var cpu_move = {
-						"room_code": room_code,
-						"user_id": uid,
-						"username": p["username"],
-						"day_idx": day_idx,
-						"actual_score": simulated_score,
-						"declared_score": declared,
-						"hours_history": [{"draws": 4, "used_items": [], "bursted": false, "score": simulated_score}],
-						"doubts_made": [],
-						"doubts_submitted": true
-					}
-					mock_moves[day_idx].append(cpu_move)
-					existing_cpus[uid] = cpu_move
-					
-		# 3. If doubts are submitted, evaluate and generate CPU doubts
-		if move_data.get("doubts_submitted", false):
-			var participants = []
-			participants.append({
-				"id": "player",
-				"declared_score": my_move["declared_score"],
-				"hours": my_move["hours_history"]
-			})
-			for uid in existing_cpus.keys():
-				var m = existing_cpus[uid]
-				participants.append({
-					"id": uid,
-					"declared_score": m["declared_score"],
-					"hours": m["hours_history"]
-				})
-				
-			for uid in existing_cpus.keys():
-				var m = existing_cpus[uid]
-				
-				# Find matching slot key in Global.opponent_profiles
-				var profile_slot_key = ""
-				for k in Global.opponent_profiles.keys():
-					if Global.opponent_profiles[k].get("id") == uid:
-						profile_slot_key = k
-						break
-				if profile_slot_key == "":
-					if Global.opponent_profiles.has(uid):
-						profile_slot_key = uid
-					else:
-						profile_slot_key = Global.opponent_profiles.keys()[0]
-						
-				var cpu_doubts = AIManager.make_cpu_doubts(profile_slot_key, participants)
-				var mapped_doubts = []
-				for target_id in cpu_doubts:
-					if target_id == "player":
-						mapped_doubts.append("player")
-					else:
-						mapped_doubts.append(target_id)
-				m["doubts_made"] = mapped_doubts
-				m["doubts_submitted"] = true
+		MockDataGenerator.simulate_friend_room_cpus(
+			room_code, day_idx, mock_moves, mock_participants, my_move, Global.opponent_profiles
+		)
 		return
 		
+	# クライアント側でもスコアの上限チェック（多層防御）
+	var safe_actual = clampi(move_data.get("actual_score", 0), 0, 9999)
+	var safe_declared = clampi(move_data.get("declared_score", 0), 0, 9999)
+	
 	var url = _get_supabase_url() + "/rest/v1/friend_room_moves"
 	var body = {
 		"room_code": room_code,
 		"user_id": logged_in_uuid,
 		"username": Global.player_name,
 		"day_idx": day_idx,
-		"actual_score": move_data.get("actual_score", 0),
-		"declared_score": move_data.get("declared_score", 0),
+		"actual_score": safe_actual,
+		"declared_score": safe_declared,
 		"hours_history": move_data.get("hours_history", []),
 		"doubts_made": move_data.get("doubts_made", []),
 		"doubts_submitted": move_data.get("doubts_submitted", false)
 	}
 	
-	var request = HTTPRequest.new()
-	add_child(request)
-	request.request_completed.connect(func(result: int, response_code: int, headers: PackedStringArray, body_data: PackedByteArray):
-		request.queue_free()
-	)
+	var req = _get_available_request()
+	if req == null:
+		return
+	_pool_callbacks[req] = func(result: int, response_code: int, headers: PackedStringArray, body_data: PackedByteArray):
+		pass # Silent upload
 	
 	var custom_headers = _get_headers(true)
 	custom_headers.append("Prefer: resolution=merge-duplicates")
-	
-	request.request(url, custom_headers, HTTPClient.METHOD_POST, JSON.stringify(body))
+	req.request(url, custom_headers, HTTPClient.METHOD_POST, JSON.stringify(body))
 
 # 5. Poll Room Status
 func poll_room_status(room_code: String) -> void:

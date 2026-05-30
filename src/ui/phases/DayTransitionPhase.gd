@@ -35,7 +35,8 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	add_child(calendar_panel)
 	
 	# Center it manually to prevent layout offsets on un-sized parents
-	calendar_panel.position = Vector2((800 - 400) / 2.0, (550 - 400) / 2.0)
+	var viewport_size = get_viewport_rect().size
+	calendar_panel.position = viewport_size * 0.5 - calendar_panel.pivot_offset
 	
 	var cal_vbox = VBoxContainer.new()
 	cal_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -75,18 +76,18 @@ func animate_calendar_transition() -> void:
 	calendar_panel.scale = Vector2.ZERO
 	
 	var tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(calendar_panel, "scale", Vector2.ONE, 0.4)
+	tween.tween_property(calendar_panel, "scale", Vector2.ONE, 0.55)
 	
-	tween.chain().tween_interval(0.4) # Wait briefly
+	tween.chain().tween_interval(0.55) # Wait briefly
 	
 	# Start tearing page
 	tween.chain().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	# Paper flies to top-right
 	var target_pos = calendar_panel.position + Vector2(400, -400)
-	tween.tween_property(calendar_panel, "position", target_pos, 0.45)
-	tween.tween_property(calendar_panel, "rotation_degrees", 45.0, 0.45)
-	tween.tween_property(calendar_panel, "scale", Vector2(0.2, 0.2), 0.45)
-	tween.tween_property(calendar_panel, "modulate:a", 0.0, 0.3)
+	tween.tween_property(calendar_panel, "position", target_pos, 0.6)
+	tween.tween_property(calendar_panel, "rotation_degrees", 45.0, 0.6)
+	tween.tween_property(calendar_panel, "scale", Vector2(0.2, 0.2), 0.6)
+	tween.tween_property(calendar_panel, "modulate:a", 0.0, 0.4)
 	
 	# Callback to close phase
 	tween.chain().tween_callback(func():
