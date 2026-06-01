@@ -1,6 +1,7 @@
 extends Node
 
 const SAVE_PATH = "user://savegame.json"
+var _preloaded_font = preload("res://assets/hgrsmp.ttf")
 
 # Player Progression & Saved Stats
 var player_name: String = ""
@@ -115,7 +116,7 @@ const SIMPLE_SAVE_FIELDS = [
 	"unlocked_items", "item_usage_counts", "unlocked_titles", 
 	"deviation_value", "max_deviation_value", "game_mode", 
 	"opponent_profiles", "bgm_volume", "se_volume", "is_muted",
-	"logged_in_user_id", "logged_in_password", "daily_current_day",
+	"logged_in_user_id", "daily_current_day",
 	"daily_last_played_date", "daily_opponent_ghosts", "daily_my_records",
 	"friend_room_code", "friend_is_host", "friend_member_list",
 	"friend_current_day", "friend_match_history"
@@ -509,3 +510,91 @@ func apply_white_button_style(btn: Button) -> void:
 func _migrate_save_data(data: Dictionary, from_version: int) -> void:
 	# Future migration logic goes here
 	pass
+
+# --- Loading overlay UI ---
+var loading_overlay: CanvasLayer = null
+
+func show_loading(text: String = "通信中...") -> void:
+	if is_instance_valid(loading_overlay):
+		var lbl = loading_overlay.get_node_or_null("Panel/Margin/VBox/Label")
+		if lbl:
+			lbl.text = text
+		return
+		
+	loading_overlay = CanvasLayer.new()
+	loading_overlay.layer = 200
+	add_child(loading_overlay)
+	
+	var bg = ColorRect.new()
+	bg.color = Color(0, 0, 0, 0.4)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	loading_overlay.add_child(bg)
+	
+	var panel = PanelContainer.new()
+	panel.name = "Panel"
+	panel.custom_minimum_size = Vector2(300, 140)
+	panel.pivot_offset = Vector2(150, 70)
+	
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color("f4efe6") # Craft paper color
+	style.border_color = Color("1e2022")
+	style.border_width_left = 3
+	style.border_width_right = 3
+	style.border_width_top = 3
+	style.border_width_bottom = 3
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	style.shadow_color = Color(0.12, 0.08, 0.05, 0.25)
+	style.shadow_size = 12
+	style.shadow_offset = Vector2(5, 5)
+	panel.add_theme_stylebox_override("panel", style)
+	loading_overlay.add_child(panel)
+	
+	var viewport_size = get_viewport().get_visible_rect().size
+	panel.position = viewport_size * 0.5 - panel.pivot_offset
+	
+	var margin = MarginContainer.new()
+	margin.name = "Margin"
+	margin.add_theme_constant_override("margin_left", 20)
+	margin.add_theme_constant_override("margin_right", 20)
+	margin.add_theme_constant_override("margin_top", 15)
+	margin.add_theme_constant_override("margin_bottom", 15)
+	panel.add_child(margin)
+	
+	var vbox = VBoxContainer.new()
+	vbox.name = "VBox"
+	vbox.add_theme_constant_override("separation", 12)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	margin.add_child(vbox)
+	
+	var label = Label.new()
+	label.name = "Label"
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_override("font", load("res://assets/hgrsmp.ttf"))
+	label.add_theme_font_size_override("font_size", 20)
+	label.add_theme_color_override("font_color", Color("1e2022"))
+	vbox.add_child(label)
+	
+	var spinner = Control.new()
+	spinner.custom_minimum_size = Vector2(40, 40)
+	spinner.pivot_offset = Vector2(20, 20)
+	vbox.add_child(spinner)
+	
+	var spinner_lbl = Label.new()
+	spinner_lbl.text = "✏️"
+	spinner_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	spinner_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	spinner_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	spinner_lbl.add_theme_font_size_override("font_size", 24)
+	spinner.add_child(spinner_lbl)
+	
+	var spinner_tween = create_tween().set_loops()
+	spinner_tween.tween_property(spinner, "rotation_degrees", 360.0, 1.2).from(0.0)
+
+func hide_loading() -> void:
+	if is_instance_valid(loading_overlay):
+		loading_overlay.queue_free()
+		loading_overlay = null

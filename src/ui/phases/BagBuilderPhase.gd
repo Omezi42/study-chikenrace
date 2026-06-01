@@ -356,8 +356,7 @@ func _on_card_selected(idx: int, button: Button) -> void:
 			"item_id": chosen_item["id"],
 			"name": chosen_item["name"]
 		}
-		session.player_deck.cards.append(new_card)
-		session.player_deck.draw_pile.append(new_card)
+		session.player_deck.add_card_to_deck(new_card)
 		session.player_deck.shuffle_draw_pile()
 		
 		finish_phase({

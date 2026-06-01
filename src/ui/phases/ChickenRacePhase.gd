@@ -362,7 +362,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	opt_btn.add_theme_font_size_override("font_size", 18)
 	opt_btn.pressed.connect(func():
 		DeskTheme.animate_click(opt_btn, Vector2.ONE, 0.08)
-		DeskTheme.show_settings(self)
+		SettingsModal.create_and_show(self)
 	)
 	add_child(opt_btn)
 	var opt_viewport_size = get_viewport_rect().size

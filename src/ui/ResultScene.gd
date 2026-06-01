@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 class_name ResultScene
 extends Control
 
@@ -22,6 +23,12 @@ var day_bar_rows: Dictionary = {}
 var showdown_data: Dictionary
 var current_step_day: int = 1
 var is_revealing: bool = true
+var old_deviation: float = 50.0
+var new_deviation: float = 50.0
+var deviation_change: float = 0.0
+var _active_score_labels: Dictionary = {}
+var _anim_line1: Line2D
+var _anim_line2: Line2D
 
 # Participant list for results
 var participants: Array = []
@@ -75,8 +82,16 @@ func _ready() -> void:
 	scorecard_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	blackboard_vbox.add_child(scorecard_label)
 
-	day_chart_area = VBoxContainer.new()
-	day_chart_area.add_theme_constant_override("separation", 10)
+	# Title for cumulative score chart
+	var chart_title = Label.new()
+	chart_title.text = "累計獲得点数"
+	chart_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	chart_title.add_theme_font_size_override("font_size", 20)
+	chart_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	blackboard_vbox.add_child(chart_title)
+
+	day_chart_area = Control.new()
+	day_chart_area.custom_minimum_size = Vector2(1320, 180)
 	blackboard_vbox.add_child(day_chart_area)
 	_build_day_chart_shell()
 	
@@ -95,6 +110,9 @@ func _ready() -> void:
 			dummy_session.player_hours_history_today = [{"draws": 4, "used_items": [], "bursted": false, "score": dummy_session.player_actual_score_today}]
 			dummy_session.end_day()
 		showdown_data = dummy_session.calculate_final_showdown()
+		
+	# Calculate deviation changes before proceeding
+	_calculate_deviation()
 		
 	# Report Card Overlay Panel (Notebook spread, hidden initially)
 	report_notebook = PanelContainer.new()
@@ -206,10 +224,13 @@ func _reflow_layout() -> void:
 
 func reveal_next_day_showdown() -> void:
 	if current_step_day > showdown_data.get("details", {}).size():
-		# Reveal complete! Trigger report card overlay
+		# Reveal complete! Trigger report card overlay or deviation animation
 		if is_revealing:
 			is_revealing = false
-			trigger_report_card()
+			if Global.game_mode == Constants.MODE_RANDOM:
+				_play_chalk_deviation_animation()
+			else:
+				trigger_report_card()
 		return
 		
 	# Clear older elements so we only show the current day's reveal
@@ -220,7 +241,7 @@ func reveal_next_day_showdown() -> void:
 	_update_day_chart(current_step_day)
 	# Day Title
 	var day_lbl = Label.new()
-	day_lbl.text = "? %d ????" % current_step_day
+	day_lbl.text = "第 %d 日目" % current_step_day
 	day_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	day_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 	day_lbl.add_theme_font_size_override("font_size", 26)
@@ -242,7 +263,7 @@ func reveal_next_day_showdown() -> void:
 		var is_exposed = info["is_doubt_exposed"]
 		var actual = info["actual"]
 		var declared = info["declared"]
-		var name_str = "???"
+		var name_str = "ライバル"
 		if p_id != "player":
 			if Global.opponent_profiles.has(p_id):
 				name_str = Global.opponent_profiles[p_id].get("name", "ライバル")
@@ -422,28 +443,34 @@ func _build_day_chart_shell() -> void:
 		child.queue_free()
 	day_bar_rows.clear()
 	
-	var title = Label.new()
-	title.text = "???????"
-	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	title.add_theme_font_size_override("font_size", 20)
-	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	day_chart_area.add_child(title)
+	var start_y = 0.0
+	var spacing = 12.0
+	var row_height = 30.0
 	
+	var idx = 0
 	for p_id in ["player", "cpu_sato", "cpu_suzuki", "cpu_takahashi"]:
-		var row = VBoxContainer.new()
-		row.add_theme_constant_override("separation", 4)
+		var row = Control.new()
+		row.custom_minimum_size = Vector2(1320, row_height)
+		row.size = Vector2(1320, row_height)
+		row.position = Vector2(0, start_y + idx * (row_height + spacing))
 		day_chart_area.add_child(row)
 		day_bar_rows[p_id] = row
 		
+		var hbox = HBoxContainer.new()
+		hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		hbox.add_theme_constant_override("separation", 15)
+		row.add_child(hbox)
+		
 		var name_lbl = Label.new()
 		name_lbl.text = _get_participant_name(p_id)
+		name_lbl.custom_minimum_size = Vector2(120, 0)
 		name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 		name_lbl.add_theme_font_size_override("font_size", 16)
 		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-		row.add_child(name_lbl)
+		hbox.add_child(name_lbl)
 		
 		var bar_wrap = PanelContainer.new()
-		bar_wrap.custom_minimum_size = Vector2(1320, 22)
+		bar_wrap.custom_minimum_size = Vector2(1000, 22)
 		var style = StyleBoxFlat.new()
 		style.bg_color = Color("efe7d8")
 		style.border_color = Color("b59d7a")
@@ -456,7 +483,7 @@ func _build_day_chart_shell() -> void:
 		style.corner_radius_bottom_left = 8
 		style.corner_radius_bottom_right = 8
 		bar_wrap.add_theme_stylebox_override("panel", style)
-		row.add_child(bar_wrap)
+		hbox.add_child(bar_wrap)
 		
 		var fill = ColorRect.new()
 		fill.name = "fill"
@@ -464,11 +491,23 @@ func _build_day_chart_shell() -> void:
 		fill.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 		fill.size = Vector2(1, 22)
 		bar_wrap.add_child(fill)
+		
+		var score_lbl = Label.new()
+		score_lbl.name = "score_lbl"
+		score_lbl.text = "0 点"
+		score_lbl.custom_minimum_size = Vector2(80, 0)
+		score_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		score_lbl.add_theme_font_size_override("font_size", 16)
+		score_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+		hbox.add_child(score_lbl)
+		
+		_active_score_labels[p_id] = score_lbl
+		
+		idx += 1
 
 func _update_day_chart(day_idx: int) -> void:
 	if not showdown_data.has("details"):
 		return
-	var max_score := 1
 	var cumulative := {}
 	for p_id in ["player", "cpu_sato", "cpu_suzuki", "cpu_takahashi"]:
 		cumulative[p_id] = 0
@@ -479,21 +518,58 @@ func _update_day_chart(day_idx: int) -> void:
 		for p_id in cumulative.keys():
 			if day_data.has(p_id):
 				cumulative[p_id] += int(day_data[p_id].get("base", 0)) + int(day_data[p_id].get("adjustment", 0))
+				
+	var sort_arr := []
+	for p_id in cumulative.keys():
+		sort_arr.append({"id": p_id, "score": cumulative[p_id]})
+	
+	sort_arr.sort_custom(func(a, b): return a["score"] > b["score"])
+	
+	var max_score := 1
 	for p_id in cumulative.keys():
 		max_score = max(max_score, cumulative[p_id])
-	for p_id in cumulative.keys():
-		var row: VBoxContainer = day_bar_rows.get(p_id)
+		
+	var row_height = 30.0
+	var spacing = 12.0
+	var start_y = 0.0
+	
+	for rank in range(sort_arr.size()):
+		var item = sort_arr[rank]
+		var p_id = item["id"]
+		var score = item["score"]
+		
+		var row: Control = day_bar_rows.get(p_id)
 		if not row:
 			continue
-		var bar_wrap: PanelContainer = row.get_child(1)
-		var fill: ColorRect = bar_wrap.get_node("fill")
-		var target = int(1320.0 * float(cumulative[p_id]) / float(max_score))
-		var tween = create_tween().bind_node(fill).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		tween.tween_property(fill, "size:x", max(8, target), 0.35)
+			
+		var target_y = start_y + rank * (row_height + spacing)
+		var pos_tween = create_tween().bind_node(row).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		pos_tween.tween_property(row, "position:y", target_y, 0.6)
+		
+		var hbox = row.get_child(0)
+		var bar_wrap = hbox.get_child(1)
+		var fill = bar_wrap.get_node("fill")
+		var target_width = int(1000.0 * float(score) / float(max_score))
+		var bar_tween = create_tween().bind_node(fill).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		bar_tween.tween_property(fill, "size:x", max(8, target_width), 0.55)
+		
+		var score_lbl: Label = _active_score_labels.get(p_id)
+		if score_lbl:
+			var current_score_text = score_lbl.text.replace(" 点", "")
+			var start_score = int(current_score_text)
+			var count_tween = create_tween().set_trans(Tween.TRANS_LINEAR)
+			var callable: Callable
+			match p_id:
+				"player": callable = _set_score_player
+				"cpu_sato": callable = _set_score_sato
+				"cpu_suzuki": callable = _set_score_suzuki
+				"cpu_takahashi": callable = _set_score_takahashi
+			if callable:
+				count_tween.tween_method(callable, start_score, score, 0.5)
 
 func _get_participant_name(p_id: String) -> String:
 	if p_id == "player":
-		return "?????"
+		return "あなた"
 	if Global.opponent_profiles.has(p_id):
 		return Global.opponent_profiles[p_id].get("name", p_id)
 	if AIManager.CPU_OPPONENTS.has(p_id):
@@ -537,34 +613,15 @@ func trigger_report_card() -> void:
 	score_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	report_left_page.add_child(score_lbl)
 	
-	# Calculate Deviation Value if playing random match
+	# Display Deviation Value if playing random match
 	if Global.game_mode == Constants.MODE_RANDOM:
-		var change = 0.0
-		var my_rank = showdown_data["my_rank"]
-		if my_rank == 1:
-			change = randf_range(3.2, 4.8) + max(0.0, (60.0 - Global.deviation_value) * 0.15)
-		elif my_rank == 2:
-			change = randf_range(0.8, 1.6) + (55.0 - Global.deviation_value) * 0.05
-		elif my_rank == 3:
-			change = -randf_range(0.8, 1.6) - (Global.deviation_value - 45.0) * 0.05
-		elif my_rank == 4:
-			change = -randf_range(3.2, 4.8) - max(0.0, (Global.deviation_value - 40.0) * 0.15)
-		
-		change = clamp(change, -8.0, 8.0)
-		var old_deviation = Global.deviation_value
-		var new_deviation = clamp(old_deviation + change, 30.0, 90.0)
-		Global.deviation_value = snapped(new_deviation, 0.1)
-		if Global.deviation_value > Global.max_deviation_value:
-			Global.max_deviation_value = Global.deviation_value
-		Global.save_game()
-		
 		var deviation_change_lbl = Label.new()
-		deviation_change_lbl.text = "全国ランダムマッチ 偏差値: %.1f (前回: %.1f)\n" % [Global.deviation_value, old_deviation]
-		if change >= 0:
-			deviation_change_lbl.text += "➔ 偏差値が %.1f アップしました！ 📈" % change
+		deviation_change_lbl.text = "全国ランダムマッチ 偏差値: %.1f (前回: %.1f)\n" % [new_deviation, old_deviation]
+		if deviation_change >= 0:
+			deviation_change_lbl.text += "➔ 偏差値が %.1f アップしました！ 📈" % deviation_change
 			deviation_change_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_BONUS)
 		else:
-			deviation_change_lbl.text += "➔ 偏差値が %.1f ダウンしました... 📉" % abs(change)
+			deviation_change_lbl.text += "➔ 偏差値が %.1f ダウンしました... 📉" % abs(deviation_change)
 			deviation_change_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
 		deviation_change_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 		deviation_change_lbl.add_theme_font_size_override("font_size", 22)
@@ -703,7 +760,7 @@ func trigger_report_card() -> void:
 	report_right_page.add_child(act_hbox)
 	
 	share_btn = Button.new()
-	share_btn.text = "X??????"
+	share_btn.text = "Xでシェア"
 	share_btn.custom_minimum_size = Vector2(260, 65)
 	share_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 	share_btn.add_theme_font_size_override("font_size", 22)
@@ -712,7 +769,7 @@ func trigger_report_card() -> void:
 	act_hbox.add_child(share_btn)
 	
 	restart_btn = Button.new()
-	restart_btn.text = "???????"
+	restart_btn.text = "タイトルへ"
 	restart_btn.custom_minimum_size = Vector2(260, 65)
 	restart_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 	restart_btn.add_theme_font_size_override("font_size", 22)
@@ -737,5 +794,177 @@ func _on_restart_pressed() -> void:
 	timer.timeout.connect(func():
 		Global.change_scene_with_fade(get_tree(), "res://Title.tscn")
 	)
-	
 
+func _calculate_deviation() -> void:
+	if Global.game_mode == Constants.MODE_RANDOM:
+		var change = 0.0
+		var my_rank = showdown_data.get("my_rank", 3)
+		if my_rank == 1:
+			change = randf_range(3.2, 4.8) + max(0.0, (60.0 - Global.deviation_value) * 0.15)
+		elif my_rank == 2:
+			change = randf_range(0.8, 1.6) + (55.0 - Global.deviation_value) * 0.05
+		elif my_rank == 3:
+			change = -randf_range(0.8, 1.6) - (Global.deviation_value - 45.0) * 0.05
+		elif my_rank == 4:
+			change = -randf_range(3.2, 4.8) - max(0.0, (Global.deviation_value - 40.0) * 0.15)
+		
+		change = clamp(change, -8.0, 8.0)
+		old_deviation = Global.deviation_value
+		new_deviation = clamp(old_deviation + change, 30.0, 90.0)
+		deviation_change = change
+		
+		Global.deviation_value = snapped(new_deviation, 0.1)
+		if Global.deviation_value > Global.max_deviation_value:
+			Global.max_deviation_value = Global.deviation_value
+		Global.save_game()
+
+func _play_chalk_deviation_animation() -> void:
+	if is_instance_valid(skip_btn):
+		skip_btn.queue_free()
+		
+	var fade_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	for child in blackboard_vbox.get_children():
+		if child != scorecard_label:
+			fade_tween.tween_property(child, "modulate:a", 0.0, 0.4)
+			
+	await fade_tween.finished
+	
+	for child in blackboard_vbox.get_children():
+		if child != scorecard_label:
+			child.queue_free()
+			
+	var chalk_container = VBoxContainer.new()
+	chalk_container.alignment = BoxContainer.ALIGNMENT_CENTER
+	chalk_container.add_theme_constant_override("separation", 25)
+	blackboard_vbox.add_child(chalk_container)
+	
+	var title_lbl = Label.new()
+	title_lbl.text = "今回の偏差値判定"
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	title_lbl.add_theme_font_size_override("font_size", 36)
+	title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_WHITE)
+	chalk_container.add_child(title_lbl)
+	
+	var val_hbox = HBoxContainer.new()
+	val_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	val_hbox.add_theme_constant_override("separation", 40)
+	chalk_container.add_child(val_hbox)
+	
+	var old_val_box = Control.new()
+	old_val_box.custom_minimum_size = Vector2(180, 80)
+	val_hbox.add_child(old_val_box)
+	
+	var old_lbl = Label.new()
+	old_lbl.text = "%.1f" % old_deviation
+	old_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	old_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	old_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	old_lbl.add_theme_font_size_override("font_size", 64)
+	old_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_WHITE)
+	old_val_box.add_child(old_lbl)
+	
+	var arrow_lbl = Label.new()
+	arrow_lbl.text = "➔"
+	arrow_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	arrow_lbl.add_theme_font_size_override("font_size", 48)
+	arrow_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_WHITE)
+	val_hbox.add_child(arrow_lbl)
+	
+	var new_lbl = Label.new()
+	new_lbl.text = "%.1f" % new_deviation
+	new_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	new_lbl.add_theme_font_size_override("font_size", 72)
+	
+	if deviation_change >= 0:
+		new_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_YELLOW)
+	else:
+		new_lbl.add_theme_color_override("font_color", Color("ff6b6b"))
+	val_hbox.add_child(new_lbl)
+	
+	new_lbl.pivot_offset = Vector2(40, 40)
+	new_lbl.scale = Vector2.ZERO
+	
+	var change_lbl = Label.new()
+	if deviation_change >= 0:
+		change_lbl.text = "+%.1f アップ！ 📈" % deviation_change
+		change_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_YELLOW)
+	else:
+		change_lbl.text = "-%.1f ダウン... 📉" % abs(deviation_change)
+		change_lbl.add_theme_color_override("font_color", Color("ff6b6b"))
+	change_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	change_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	change_lbl.add_theme_font_size_override("font_size", 28)
+	change_lbl.modulate.a = 0.0
+	chalk_container.add_child(change_lbl)
+	
+	var line1 = Line2D.new()
+	line1.width = 6.0
+	line1.default_color = Color("ff4444", 0.9)
+	line1.points = PackedVector2Array([Vector2(-10, 20), Vector2(-10, 20)])
+	old_val_box.add_child(line1)
+	
+	var line2 = Line2D.new()
+	line2.width = 6.0
+	line2.default_color = Color("ff4444", 0.9)
+	line2.points = PackedVector2Array([Vector2(-10, 45), Vector2(-10, 45)])
+	old_val_box.add_child(line2)
+	
+	_anim_line1 = line1
+	_anim_line2 = line2
+	
+	DeskTheme.shake_control(blackboard_panel, 2.0, 0.15)
+	
+	var timer_anim = get_tree().create_timer(0.8)
+	await timer_anim.timeout
+	
+	var draw_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	draw_tween.tween_method(_set_line1_point, Vector2(-10, 20), Vector2(190, 60), 0.3)
+	draw_tween.tween_method(_set_line2_point, Vector2(-10, 45), Vector2(190, 85), 0.3).set_delay(0.1)
+	
+	await draw_tween.finished
+	DeskTheme.shake_control(blackboard_panel, 4.0, 0.2)
+	
+	var timer_pop = get_tree().create_timer(0.4)
+	await timer_pop.timeout
+	
+	var pop_tween = create_tween().set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+	pop_tween.tween_property(new_lbl, "scale", Vector2.ONE, 0.4)
+	pop_tween.parallel().tween_property(change_lbl, "modulate:a", 1.0, 0.3).set_delay(0.15)
+	
+	await pop_tween.finished
+	DeskTheme.shake_control(blackboard_panel, 6.0, 0.25)
+	
+	var timer_end = get_tree().create_timer(2.2)
+	await timer_end.timeout
+	
+	var out_tween = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	out_tween.tween_property(chalk_container, "modulate:a", 0.0, 0.4)
+	await out_tween.finished
+	
+	trigger_report_card()
+
+func _set_score_player(val: float) -> void:
+	if _active_score_labels.has("player") and is_instance_valid(_active_score_labels["player"]):
+		_active_score_labels["player"].text = "%d 点" % int(val)
+
+func _set_score_sato(val: float) -> void:
+	if _active_score_labels.has("cpu_sato") and is_instance_valid(_active_score_labels["cpu_sato"]):
+		_active_score_labels["cpu_sato"].text = "%d 点" % int(val)
+
+func _set_score_suzuki(val: float) -> void:
+	if _active_score_labels.has("cpu_suzuki") and is_instance_valid(_active_score_labels["cpu_suzuki"]):
+		_active_score_labels["cpu_suzuki"].text = "%d 点" % int(val)
+
+func _set_score_takahashi(val: float) -> void:
+	if _active_score_labels.has("cpu_takahashi") and is_instance_valid(_active_score_labels["cpu_takahashi"]):
+		_active_score_labels["cpu_takahashi"].text = "%d 点" % int(val)
+
+func _set_line1_point(val: Vector2) -> void:
+	if is_instance_valid(_anim_line1):
+		_anim_line1.set_point_position(1, val)
+
+func _set_line2_point(val: Vector2) -> void:
+	if is_instance_valid(_anim_line2):
+		_anim_line2.set_point_position(1, val)
+	

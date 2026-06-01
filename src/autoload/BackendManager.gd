@@ -15,11 +15,11 @@ var _pool_callbacks: Dictionary = {}   # HTTPRequest インスタンス -> Calla
 func _init() -> void:
 	_supabase_url = OS.get_environment("SUPABASE_URL")
 	if _supabase_url == "":
-		_supabase_url = ProjectSettings.get_setting("backend/supabase_url", "https://lhzxandvkgnafshdtrov.supabase.co")
+		_supabase_url = ProjectSettings.get_setting("backend/supabase_url", "https://your-project.supabase.co")
 		
 	_supabase_key = OS.get_environment("SUPABASE_KEY")
 	if _supabase_key == "":
-		_supabase_key = ProjectSettings.get_setting("backend/supabase_key", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoenhhbmR2a2duYWZzaGR0cm92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NzEzMzMsImV4cCI6MjA5NDI0NzMzM30.dof6q-gDq9qJE32MxWfTD76PBvdgAr6X3EQ1do291sk")
+		_supabase_key = ProjectSettings.get_setting("backend/supabase_key", "your-supabase-key")
 
 func _ready() -> void:
 	# プール内にHTTPRequestノードを事前生成する
@@ -134,6 +134,7 @@ func _send_request(url: String, method: HTTPClient.Method, body_str: String, aut
 
 # 1. Sign Up (ユーザー登録)
 func signup_user(user_id: String, password: String) -> void:
+	Global.show_loading("新規登録中...")
 	var safe_email = user_id.to_utf8_buffer().hex_encode() + "@chikenrace.com"
 	var url = _get_supabase_url() + "/auth/v1/signup"
 	var body = {
@@ -142,6 +143,7 @@ func signup_user(user_id: String, password: String) -> void:
 	}
 	
 	_send_request(url, HTTPClient.METHOD_POST, JSON.stringify(body), false, func(result, response_code, headers, body_data):
+		Global.hide_loading()
 		if result == HTTPRequest.RESULT_SUCCESS and (response_code == 200 or response_code == 201):
 			var json = JSON.new()
 			if json.parse(body_data.get_string_from_utf8()) == OK:
@@ -176,6 +178,7 @@ func signup_user(user_id: String, password: String) -> void:
 
 # 2. Login (ログイン)
 func login_user(user_id: String, password: String) -> void:
+	Global.show_loading("ログイン中...")
 	var safe_email = user_id.to_utf8_buffer().hex_encode() + "@chikenrace.com"
 	var url = _get_supabase_url() + "/auth/v1/token?grant_type=password"
 	var body = {
@@ -184,6 +187,7 @@ func login_user(user_id: String, password: String) -> void:
 	}
 	
 	_send_request(url, HTTPClient.METHOD_POST, JSON.stringify(body), false, func(result, response_code, headers, body_data):
+		Global.hide_loading()
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
 			var json = JSON.new()
 			if json.parse(body_data.get_string_from_utf8()) == OK:
@@ -248,9 +252,11 @@ func load_cloud_data() -> void:
 		load_completed.emit(false, {})
 		return
 		
+	Global.show_loading("クラウドロード中...")
 	var url = _get_supabase_url() + "/rest/v1/saves?user_id=eq." + logged_in_uuid + "&select=data"
 	
 	_send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
+		Global.hide_loading()
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
 			var json = JSON.new()
 			if json.parse(body_data.get_string_from_utf8()) == OK:
@@ -365,12 +371,14 @@ func generate_simulated_ghosts(day_idx: int) -> Array:
 
 # 1. Create Room
 func create_friend_room() -> void:
+	Global.show_loading("ルーム作成中...")
 	is_mock_room = false
 	var code = str(randi_range(1000, 9999))
 	var host_name = Global.player_name if Global.player_name != "" else "あなた"
 	
 	if auth_token == "" or logged_in_uuid == "":
 		_enable_mock_room(code, host_name)
+		Global.hide_loading()
 		room_created.emit(true, code)
 		return
 		
@@ -384,6 +392,7 @@ func create_friend_room() -> void:
 	}
 	
 	_send_request(url, HTTPClient.METHOD_POST, JSON.stringify(body), true, func(result, response_code, headers, body_data):
+		Global.hide_loading()
 		if result == HTTPRequest.RESULT_SUCCESS and (response_code == 200 or response_code == 201 or response_code == 204):
 			room_created.emit(true, code)
 		else:
@@ -410,11 +419,13 @@ func _enable_mock_room(code: String, host_name: String) -> void:
 
 # 2. Join Room (RPC版 - アトミックなルーム参加でレースコンディションを防ぐ)
 func join_friend_room(room_code: String) -> void:
+	Global.show_loading("ルーム参加中...")
 	is_mock_room = false
 	var user_name = Global.player_name if Global.player_name != "" else "あなた"
 	
 	if auth_token == "" or logged_in_uuid == "":
 		_join_mock_room(room_code, user_name)
+		Global.hide_loading()
 		return
 	
 	# RPC経由でサーバー側でアトミックに参加処理を行う
@@ -427,6 +438,7 @@ func join_friend_room(room_code: String) -> void:
 	}
 	
 	_send_request(rpc_url, HTTPClient.METHOD_POST, JSON.stringify(rpc_body), true, func(result, response_code, headers, body_data):
+		Global.hide_loading()
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
 			var json = JSON.new()
 			if json.parse(body_data.get_string_from_utf8()) == OK:

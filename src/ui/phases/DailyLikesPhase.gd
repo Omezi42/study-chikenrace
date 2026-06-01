@@ -260,13 +260,28 @@ func populate_timeline() -> void:
 		text_vbox.add_theme_constant_override("separation", 6)
 		card_hbox.add_child(text_vbox)
 		
-		# Header (Name)
+		# Header (Name & Reaction if CPU)
+		var header_hbox = HBoxContainer.new()
+		header_hbox.add_theme_constant_override("separation", 10)
+		text_vbox.add_child(header_hbox)
+		
 		var name_lbl = Label.new()
 		name_lbl.text = p["name"]
 		name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
 		name_lbl.add_theme_font_size_override("font_size", 22)
 		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-		text_vbox.add_child(name_lbl)
+		header_hbox.add_child(name_lbl)
+		
+		if p["id"] != "player":
+			var reaction = _determine_cpu_reaction(p["id"], p["declared_score"], p["actual_score"])
+			var react_lbl = Label.new()
+			react_lbl.text = reaction
+			react_lbl.add_theme_font_size_override("font_size", 20)
+			header_hbox.add_child(react_lbl)
+			
+			if reaction != REACT_CALM:
+				var timer_shake = get_tree().create_timer(randf_range(0.2, 0.8))
+				timer_shake.timeout.connect(_on_reaction_shake_timeout.bind(react_lbl))
 		
 		# Body (Declared score text)
 		var decl_lbl = Label.new()
@@ -537,3 +552,40 @@ func show_tutorial_finish_modal() -> void:
 	modal.scale = Vector2.ZERO
 	var tween = create_tween().bind_node(modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(modal, "scale", Vector2.ONE, 0.3)
+
+const REACT_CALM = "😐"
+const REACT_SWEAT = "💦"
+const REACT_SMIRK = "😏"
+
+func _determine_cpu_reaction(p_id: String, declared: int, actual: int) -> String:
+	var diff = declared - actual
+	var cpu_type = ""
+	var actual_profile_id = p_id
+	if Global.opponent_profiles.has(p_id):
+		actual_profile_id = Global.opponent_profiles[p_id].get("id", p_id)
+	if AIManager.CPU_OPPONENTS.has(actual_profile_id):
+		cpu_type = AIManager.CPU_OPPONENTS[actual_profile_id].get("type", "")
+		
+	if diff <= 0:
+		return REACT_CALM if randf() < 0.9 else REACT_SWEAT
+	else:
+		var bluff_rate = float(diff) / 40.0
+		if cpu_type == AIManager.TYPE_CAUTIOUS:
+			var sweat_prob = clamp(bluff_rate * 0.8, 0.2, 0.8)
+			if randf() < sweat_prob:
+				return REACT_SWEAT
+			return REACT_CALM
+		elif cpu_type == AIManager.TYPE_BLUFFER:
+			if randf() < 0.35:
+				return REACT_SMIRK
+			return REACT_CALM
+		else:
+			var react_prob = clamp(bluff_rate * 0.7, 0.1, 0.7)
+			if randf() < react_prob:
+				return REACT_SWEAT if randf() < 0.5 else REACT_SMIRK
+			return REACT_CALM
+
+func _on_reaction_shake_timeout(lbl: Object) -> void:
+	var react_lbl = lbl as Label
+	if react_lbl and is_instance_valid(react_lbl):
+		DeskTheme.shake_control(react_lbl, 2.0, 0.3)

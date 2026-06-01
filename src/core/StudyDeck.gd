@@ -108,7 +108,10 @@ func shuffle_draw_pile() -> void:
 		draw_pile[j] = temp
 
 # Draw the top card
-func draw_card() -> Dictionary:
+func draw_card(max_depth: int = 5) -> Dictionary:
+	if max_depth <= 0:
+		return {} # Recursion guard
+		
 	if draw_pile.size() == 0:
 		if discard_pile.size() > 0:
 			# Recycle discard pile
@@ -125,7 +128,7 @@ func draw_card() -> Dictionary:
 	if red_sheet_active and would_card_burst(card):
 		red_sheet_active = false
 		discard_pile.append(card)
-		return draw_card() # Recursive draw
+		return draw_card(max_depth - 1) # Recursive draw
 		
 	# Apply Eraser (消しゴム) charges
 	if would_card_burst(card) and eraser_charges > 0:
@@ -133,7 +136,7 @@ func draw_card() -> Dictionary:
 		# Put back to draw pile, shuffle, and draw again
 		draw_pile.append(card)
 		shuffle_draw_pile()
-		return draw_card()
+		return draw_card(max_depth - 1)
 		
 	# Apply Mech Pencil (シャーペン) points bonus (+3 points to next drawn cards)
 	if next_draw_bonus_points > 0:
@@ -280,7 +283,7 @@ func get_streak_bonus(streak: int) -> int:
 		2: return 3
 		3: return 7
 		4: return 12
-		_: return 12 + (streak - 4) * 5
+		_: return min(12 + (streak - 4) * 5, 25)
 
 # Reset status effects
 func reset_status_effects() -> void:
@@ -436,3 +439,25 @@ func activate_forget_notebook() -> int:
 		delete_card_value(lowest_val)
 		return lowest_val
 	return 0
+
+const MAX_DECK_SIZE = 58
+
+func add_card_to_deck(card: Dictionary) -> void:
+	if cards.size() >= MAX_DECK_SIZE:
+		var counts := {}
+		for c in cards:
+			var val = c["value"]
+			counts[val] = counts.get(val, 0) + 1
+			
+		var max_val = -1
+		var max_count = 0
+		for val in counts.keys():
+			if counts[val] > max_count:
+				max_count = counts[val]
+				max_val = val
+				
+		if max_val != -1:
+			delete_card_value(max_val)
+			
+	cards.append(card)
+	draw_pile.append(card)

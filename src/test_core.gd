@@ -111,7 +111,19 @@ func test_combos_and_wildcards() -> bool:
 		"Scenario C: Wildcard completes 5-subject set, yielding bounded +10 points bonus."
 	)
 	
-	return pass_a and pass_b and pass_c
+	# Scenario D: Long consecutive subject combo capped at 25
+	# 8 consecutive math cards (streak = 8)
+	var hand_d: Array[Dictionary] = []
+	for i in range(8):
+		hand_d.append({"value": 3, "subject": CardData.SUBJECT_MATH, "item_id": "item_sticky_note"})
+	deck.hand = hand_d
+	var score_d = deck.calculate_hand_score()
+	var pass_d = assert_true(
+		score_d["combo_bonus"] == 25,
+		"Scenario D: 8 consecutive subjects yields combo bonus capped at 25 points. (Actual: %d)" % score_d["combo_bonus"]
+	)
+	
+	return pass_a and pass_b and pass_c and pass_d
 
 # Test 3: AI Simulation functions
 func test_ai_simulation() -> bool:
@@ -185,6 +197,17 @@ func test_session_showdown() -> bool:
 func test_title_determination() -> bool:
 	print("\n--- Test 5: Title Determination & Cram Mode ---")
 	
+	var orig_coins = Global.coins
+	var orig_play_count = Global.play_count
+	var orig_deviation = Global.deviation_value
+	var orig_items = Global.unlocked_items.duplicate()
+	
+	# Reset global states for clean testing environment
+	Global.coins = 100
+	Global.play_count = 0
+	Global.deviation_value = 50.0
+	Global.unlocked_items = []
+	
 	# Cram Mode test
 	var title_cram_genius = ScoreEvaluator._determine_title(150, 1, 0, 1, 0, 0, Constants.MODE_CRAM)
 	var pass_cram_genius = assert_true(
@@ -212,14 +235,13 @@ func test_title_determination() -> bool:
 	)
 	
 	# 偏差値70の境界値テスト
-	var orig_dev = Global.deviation_value
 	Global.deviation_value = 70.0
 	var title_god_bound = ScoreEvaluator._determine_title(50, 4, 0, 0, 0, 0, Constants.MODE_NATIONAL)
 	var pass_god_bound = assert_true(
 		title_god_bound == Constants.TITLE_DEV_GOD,
 		"Deviation boundary 70.0 -> '%s' (Actual: %s)" % [Constants.TITLE_DEV_GOD, title_god_bound]
 	)
-	Global.deviation_value = orig_dev
+	Global.deviation_value = 50.0
 	
 	# 赤点回避失敗の境界値テスト
 	var title_red_fail = ScoreEvaluator._determine_title(50, 3, 1, 0, 0, 0, Constants.MODE_NATIONAL)
@@ -253,7 +275,70 @@ func test_title_determination() -> bool:
 		"Conflict test: Should prioritize '%s' (Cram Honest) over 'Safety First' (Actual: %s)" % [Constants.TITLE_CRAM_HONEST, title_conflict]
 	)
 	
-	return pass_cram_genius and pass_normal_gold and pass_cram_honest and pass_normal_honest and pass_god_bound and pass_red_fail and pass_storm and pass_bridge and pass_conflict
+	# 新規追加称号のテスト
+	
+	# 1. 文房具財閥 (TITLE_RICH_STUDENT): coins >= 500, my_rank == 1, bursts >= 1 (to bypass TITLE_SAFE_CHAMP)
+	Global.coins = 500
+	var title_rich = ScoreEvaluator._determine_title(150, 1, 1, 1, 0, 0, Constants.MODE_NATIONAL)
+	var pass_rich = assert_true(
+		title_rich == Constants.TITLE_RICH_STUDENT,
+		"Rich student test: coins >= 500 -> '%s' (Actual: %s)" % [Constants.TITLE_RICH_STUDENT, title_rich]
+	)
+	Global.coins = 100
+	
+	# 2. 破産寸前のカモ (TITLE_DEBT_KING): coins <= 10, my_rank == 4
+	Global.coins = 5
+	var title_debt = ScoreEvaluator._determine_title(80, 4, 1, 1, 0, 1, Constants.MODE_NATIONAL)
+	var pass_debt = assert_true(
+		title_debt == Constants.TITLE_DEBT_KING,
+		"Debt king test: coins <= 10, rank 4 -> '%s' (Actual: %s)" % [Constants.TITLE_DEBT_KING, title_debt]
+	)
+	Global.coins = 100
+	
+	# 3. 鉄壁 of ガリ勉 (TITLE_OVERACHIEVER): lies_count == 0, score >= 200, bursts >= 1 (to bypass TITLE_SAFE_CHAMP)
+	var title_overachiever = ScoreEvaluator._determine_title(200, 1, 1, 0, 0, 0, Constants.MODE_NATIONAL)
+	var pass_overachiever = assert_true(
+		title_overachiever == Constants.TITLE_OVERACHIEVER,
+		"Overachiever test: lies 0, score 200 -> '%s' (Actual: %s)" % [Constants.TITLE_OVERACHIEVER, title_overachiever]
+	)
+	
+	# 4. 崖っぷちの勇者 (TITLE_CHIKEN_HERO): bursts <= 1, score >= 250, bursts >= 1 (to bypass TITLE_SAFE_CHAMP)
+	var title_chicken_hero = ScoreEvaluator._determine_title(250, 1, 1, 2, 0, 0, Constants.MODE_NATIONAL)
+	var pass_chicken_hero = assert_true(
+		title_chicken_hero == Constants.TITLE_CHIKEN_HERO,
+		"Chicken hero test: bursts <= 1, score 250 -> '%s' (Actual: %s)" % [Constants.TITLE_CHIKEN_HERO, title_chicken_hero]
+	)
+	
+	# 5. 速読の鬼 (TITLE_SPEED_RUNNER): play_count >= 50, bursts >= 1
+	Global.play_count = 55
+	var title_speed = ScoreEvaluator._determine_title(100, 2, 1, 1, 0, 0, Constants.MODE_NATIONAL)
+	var pass_speed = assert_true(
+		title_speed == Constants.TITLE_SPEED_RUNNER,
+		"Speed runner test: play_count >= 50 -> '%s' (Actual: %s)" % [Constants.TITLE_SPEED_RUNNER, title_speed]
+	)
+	Global.play_count = 0
+	
+	# 6. 疑惑の追跡者 (TITLE_DOUBT_SPAMMER): doubt_successes >= 4, bursts >= 1
+	var title_doubt_spammer = ScoreEvaluator._determine_title(100, 2, 1, 1, 0, 4, Constants.MODE_NATIONAL)
+	var pass_doubt_spammer = assert_true(
+		title_doubt_spammer == Constants.TITLE_DOUBT_SPAMMER,
+		"Doubt spammer test: doubt_successes >= 4 -> '%s' (Actual: %s)" % [Constants.TITLE_DOUBT_SPAMMER, title_doubt_spammer]
+	)
+	
+	# 7. 幸運のセブン (TITLE_LUCKY_SEVEN): score % 10 == 7, my_rank == 1, bursts >= 1 (to bypass TITLE_SAFE_CHAMP)
+	var title_lucky = ScoreEvaluator._determine_title(157, 1, 1, 1, 0, 0, Constants.MODE_NATIONAL)
+	var pass_lucky = assert_true(
+		title_lucky == Constants.TITLE_LUCKY_SEVEN,
+		"Lucky seven test: score ends in 7, rank 1 -> '%s' (Actual: %s)" % [Constants.TITLE_LUCKY_SEVEN, title_lucky]
+	)
+	
+	# Restore original global values
+	Global.coins = orig_coins
+	Global.play_count = orig_play_count
+	Global.deviation_value = orig_deviation
+	Global.unlocked_items = orig_items
+	
+	return pass_cram_genius and pass_normal_gold and pass_cram_honest and pass_normal_honest and pass_god_bound and pass_red_fail and pass_storm and pass_bridge and pass_conflict and pass_rich and pass_debt and pass_overachiever and pass_chicken_hero and pass_speed and pass_doubt_spammer and pass_lucky
 
 # Test 6: Game Session State & Transition Integrity
 func test_game_session_states() -> bool:
@@ -388,6 +473,12 @@ func test_scenario_modes() -> bool:
 	)
 	
 	# --- Part B: Friend (フレンド) / Random Mode Simulation ---
+	var bm = Engine.get_main_loop().root.get_node_or_null("BackendManager")
+	var orig_mock = false
+	if bm:
+		orig_mock = bm.is_mock_room
+		bm.is_mock_room = true
+		
 	Global.game_mode = Constants.MODE_FRIEND
 	Global.friend_current_day = 2
 	Global.friend_match_history = {
@@ -414,6 +505,9 @@ func test_scenario_modes() -> bool:
 	)
 	
 	# Restore original Global variables
+	if bm:
+		bm.is_mock_room = orig_mock
+		
 	Global.game_mode = orig_game_mode
 	Global.daily_current_day = orig_daily_current_day
 	Global.daily_my_records = orig_daily_my_records

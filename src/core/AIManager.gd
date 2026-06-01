@@ -169,11 +169,11 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 	var deck = StudyDeck.new()
 	deck.initialize_deck(deck_config)
 	
-	# CPU deck inflation simulation: Add accumulated items from previous days
-	var prev_days_added = (day_idx - 1) * 3
+	# CPU deck inflation simulation: Add accumulated items from previous days + today's choice (1 per day, matching player)
+	var total_added_cards = day_idx
 	var possible_items = deck_config.values()
 	var subjects_pool = [CardData.SUBJECT_MATH, CardData.SUBJECT_ENGLISH, CardData.SUBJECT_JAPANESE, CardData.SUBJECT_SCIENCE, CardData.SUBJECT_SOCIAL]
-	for i in range(prev_days_added):
+	for i in range(total_added_cards):
 		var cpu_chosen_item = possible_items[randi() % possible_items.size()]
 		var cpu_new_card = {
 			"value": randi_range(1, 10),
@@ -181,8 +181,7 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 			"item_id": cpu_chosen_item,
 			"name": CardData.ITEMS[cpu_chosen_item]["name"]
 		}
-		deck.cards.append(cpu_new_card)
-		deck.draw_pile.append(cpu_new_card)
+		deck.add_card_to_deck(cpu_new_card)
 	deck.shuffle_draw_pile()
 	
 	# Risk tolerances for drawing (stop drawing if burst probability is higher than this)
@@ -219,21 +218,9 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 	for h in range(total_periods):
 		deck.reset_status_effects()
 		
-		# CPU also appends 1 item (like player's BagBuilder choice) before hour starts
-		var cpu_chosen_item = possible_items[randi() % possible_items.size()]
-		var cpu_new_card = {
-			"value": randi_range(1, 10),
-			"subject": CardData.ITEMS[cpu_chosen_item]["subject"] if CardData.ITEMS[cpu_chosen_item]["subject"] != CardData.SUBJECT_NONE else subjects_pool[randi() % subjects_pool.size()],
-			"item_id": cpu_chosen_item,
-			"name": CardData.ITEMS[cpu_chosen_item]["name"]
-		}
-		deck.cards.append(cpu_new_card)
-		deck.draw_pile.append(cpu_new_card)
-		deck.shuffle_draw_pile()
-		
 		# AI Decides to activate items before starting draw
 		var used_items = []
-		decide_and_apply_cpu_items(deck, deck_config, used_items)
+		decide_and_apply_cpu_items(deck, deck_config, used_items, day_idx)
 		
 		var draw_count = 0
 		var bursted = false
@@ -295,28 +282,31 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 	}
 
 # Decide which items CPU activates before drawing
-static func decide_and_apply_cpu_items(deck: StudyDeck, deck_config: Dictionary, used_items: Array) -> void:
+static func decide_and_apply_cpu_items(deck: StudyDeck, deck_config: Dictionary, used_items: Array, day_idx: int) -> void:
+	# Scale up item activation rates in later days
+	var late_game_boost = clamp(day_idx * 0.12, 0.0, 0.45)
+	
 	# Cautious AIs slot eraser charge
-	if "item_eraser" in deck_config.values() and randf() < 0.4:
+	if "item_eraser" in deck_config.values() and randf() < (0.3 + late_game_boost):
 		deck.eraser_charges = 1
 		used_items.append("item_eraser")
 		
 	# Cautious AIs look at ruler/wordbook
-	if "item_wordbook" in deck_config.values() and randf() < 0.2:
+	if "item_wordbook" in deck_config.values() and randf() < (0.15 + late_game_boost):
 		used_items.append("item_wordbook")
-	elif "item_ruler" in deck_config.values() and randf() < 0.2:
+	elif "item_ruler" in deck_config.values() and randf() < (0.15 + late_game_boost):
 		used_items.append("item_ruler")
 		
 	# Aggressive/Highroller AIs use mechanical pencil or energy drink
-	if "item_mech_pencil" in deck_config.values() and randf() < 0.3:
+	if "item_mech_pencil" in deck_config.values() and randf() < (0.22 + late_game_boost):
 		deck.next_draw_bonus_points = 2
 		used_items.append("item_mech_pencil")
 		
-	if "item_energy_drink" in deck_config.values() and randf() < 0.25:
+	if "item_energy_drink" in deck_config.values() and randf() < (0.18 + late_game_boost):
 		deck.energy_drink_active = true
 		used_items.append("item_energy_drink")
 		
-	if "item_highlighter" in deck_config.values() and randf() < 0.25:
+	if "item_highlighter" in deck_config.values() and randf() < (0.18 + late_game_boost):
 		deck.highlighter_active = true
 		used_items.append("item_highlighter")
 

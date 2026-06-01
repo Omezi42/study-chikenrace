@@ -1,0 +1,24 @@
+{
+  "name": "study-chikenrace",
+  "version": "1.0.0",
+  "description": "放課後の机の上で、嘘と引きの心理戦を楽しむ **Godot 4.6** ブラウザ向けカジュアルゲーム。",
+  "main": "test_browser.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Omezi42/study-chikenrace.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Omezi42/study-chikenrace/issues"
+  },
+  "homepage": "https://github.com/Omezi42/study-chikenrace#readme",
+  "dependencies": {
+    "puppeteer": "^25.1.0"
+  }
+}

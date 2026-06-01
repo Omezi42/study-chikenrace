@@ -349,7 +349,7 @@ func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 			
 		if is_liar and not p["is_doubt_exposed"]:
 			var diff = p["declared_score"] - p["actual_score"]
-			var auto_prob = clamp((diff - 5) * 0.03, 0.05, 0.9)
+			var auto_prob = pow(float(diff) / 40.0, 2.0)
 			if randf() < auto_prob:
 				p["auto_exposed"] = true
 				p["is_doubt_exposed"] = true
