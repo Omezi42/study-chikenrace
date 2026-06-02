@@ -1,4 +1,4 @@
-class_name TutorialModal
+﻿class_name TutorialModal
 extends PanelContainer
 
 var current_tutorial_page: int = 1
@@ -45,7 +45,7 @@ func _init() -> void:
 	var header_title = Label.new()
 	header_title.text = "テスト勉強チキンレースのあそびかた 📝"
 	header_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	header_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	header_title.add_theme_font_override("font", DeskTheme.get_font())
 	header_title.add_theme_font_size_override("font_size", 24)
 	header_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(header_title)
@@ -60,7 +60,7 @@ func _init() -> void:
 	tutorial_desc_lbl = Label.new()
 	tutorial_desc_lbl.custom_minimum_size = Vector2(960, 80)
 	tutorial_desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	tutorial_desc_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	tutorial_desc_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	tutorial_desc_lbl.add_theme_font_size_override("font_size", 18)
 	tutorial_desc_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(tutorial_desc_lbl)
@@ -74,7 +74,7 @@ func _init() -> void:
 	tutorial_back_btn = Button.new()
 	tutorial_back_btn.text = "◀ 前へ"
 	tutorial_back_btn.custom_minimum_size = Vector2(120, 45)
-	tutorial_back_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	tutorial_back_btn.add_theme_font_override("font", DeskTheme.get_font())
 	tutorial_back_btn.add_theme_font_size_override("font_size", 18)
 	Global.apply_white_button_style(tutorial_back_btn)
 	tutorial_back_btn.pressed.connect(_on_tutorial_back_pressed)
@@ -82,7 +82,7 @@ func _init() -> void:
 	
 	tutorial_page_lbl = Label.new()
 	tutorial_page_lbl.text = "1 / 5"
-	tutorial_page_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	tutorial_page_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	tutorial_page_lbl.add_theme_font_size_override("font_size", 20)
 	tutorial_page_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	nav_hbox.add_child(tutorial_page_lbl)
@@ -90,7 +90,7 @@ func _init() -> void:
 	tutorial_next_btn = Button.new()
 	tutorial_next_btn.text = "次へ ▶"
 	tutorial_next_btn.custom_minimum_size = Vector2(120, 45)
-	tutorial_next_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	tutorial_next_btn.add_theme_font_override("font", DeskTheme.get_font())
 	tutorial_next_btn.add_theme_font_size_override("font_size", 18)
 	Global.apply_white_button_style(tutorial_next_btn)
 	tutorial_next_btn.pressed.connect(_on_tutorial_next_pressed)

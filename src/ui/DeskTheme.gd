@@ -20,7 +20,27 @@ const COLOR_ROLE_PREP = Color("2979ff")     # Blue (仕込み)
 
 # Font File Paths
 const FONT_HANDWRITING = "res://assets/hgrsmp.ttf"
+const _preloaded_font = preload(FONT_HANDWRITING)
 
+static func get_font() -> Font:
+	return _preloaded_font
+
+# UI Constant Tokens (レイアウト定数)
+const MARGIN_LARGE = 35
+const MARGIN_DEFAULT = 30
+const MARGIN_MEDIUM = 25
+const MARGIN_SMALL = 20
+const MARGIN_TINY = 15
+
+const FONT_SIZE_GIANT = 54
+const FONT_SIZE_TITLE_LARGE = 40
+const FONT_SIZE_TITLE = 32
+const FONT_SIZE_SUBTITLE = 28
+const FONT_SIZE_LARGE = 26
+const FONT_SIZE_NORMAL = 22
+const FONT_SIZE_SMALL = 18
+const FONT_SIZE_TINY = 16
+const FONT_SIZE_MINI = 14
 
 # Static Tween Animation Helper Functions
 

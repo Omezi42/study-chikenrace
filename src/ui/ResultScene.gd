@@ -16,7 +16,8 @@ var root_layer: Control
 var board_frame: ColorRect
 var board_inner: ColorRect
 var graph_area: VBoxContainer
-var day_chart_area: VBoxContainer
+var day_chart_area: Control
+var chart_title: Label
 var day_bar_rows: Dictionary = {}
 
 # Score details from session
@@ -40,7 +41,6 @@ func _ready() -> void:
 	add_child(root_layer)
 	_build_scripted_background()
 
-	
 	# Main layout: Blackboard at center top, report card overlay later
 	blackboard_panel = PanelContainer.new()
 	blackboard_panel.custom_minimum_size = Vector2(1480, 760)
@@ -65,28 +65,28 @@ func _ready() -> void:
 	blackboard_panel.position = get_viewport_rect().size * 0.5 - blackboard_panel.custom_minimum_size * 0.5
 	
 	var board_margin = MarginContainer.new()
-	board_margin.add_theme_constant_override("margin_top", 30)
-	board_margin.add_theme_constant_override("margin_bottom", 30)
+	board_margin.add_theme_constant_override("margin_top", DeskTheme.MARGIN_DEFAULT)
+	board_margin.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_DEFAULT)
 	blackboard_panel.add_child(board_margin)
 	
 	blackboard_vbox = VBoxContainer.new()
-	blackboard_vbox.add_theme_constant_override("separation", 20)
+	blackboard_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_SMALL)
 	board_margin.add_child(blackboard_vbox)
 	
 	# Result Header
 	scorecard_label = Label.new()
 	scorecard_label.text = "学末最終成績通知表"
 	scorecard_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	scorecard_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	scorecard_label.add_theme_font_size_override("font_size", 40)
+	scorecard_label.add_theme_font_override("font", DeskTheme.get_font())
+	scorecard_label.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TITLE_LARGE)
 	scorecard_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	blackboard_vbox.add_child(scorecard_label)
 
 	# Title for cumulative score chart
-	var chart_title = Label.new()
+	chart_title = Label.new()
 	chart_title.text = "累計獲得点数"
-	chart_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	chart_title.add_theme_font_size_override("font_size", 20)
+	chart_title.add_theme_font_override("font", DeskTheme.get_font())
+	chart_title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	chart_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	blackboard_vbox.add_child(chart_title)
 
@@ -108,8 +108,15 @@ func _ready() -> void:
 			dummy_session.player_actual_score_today = randi_range(30, 60)
 			dummy_session.player_declared_score_today = dummy_session.player_actual_score_today + (10 if randf() < 0.5 else 0)
 			dummy_session.player_hours_history_today = [{"draws": 4, "used_items": [], "bursted": false, "score": dummy_session.player_actual_score_today}]
-			dummy_session.end_day()
+		dummy_session.end_day()
 		showdown_data = dummy_session.calculate_final_showdown()
+	
+	if not showdown_data.has("details"):
+		showdown_data["details"] = {}
+	if not showdown_data.has("rankings"):
+		showdown_data["rankings"] = []
+	if not showdown_data.has("final_scores"):
+		showdown_data["final_scores"] = {"player": 0, "cpu_sato": 0, "cpu_suzuki": 0, "cpu_takahashi": 0}
 		
 	# Calculate deviation changes before proceeding
 	_calculate_deviation()
@@ -130,36 +137,36 @@ func _ready() -> void:
 	
 	# Left Page - Report details
 	var left_p = MarginContainer.new()
-	left_p.add_theme_constant_override("margin_left", 25)
-	left_p.add_theme_constant_override("margin_right", 25)
-	left_p.add_theme_constant_override("margin_top", 25)
-	left_p.add_theme_constant_override("margin_bottom", 25)
+	left_p.add_theme_constant_override("margin_left", DeskTheme.MARGIN_MEDIUM)
+	left_p.add_theme_constant_override("margin_right", DeskTheme.MARGIN_MEDIUM)
+	left_p.add_theme_constant_override("margin_top", DeskTheme.MARGIN_MEDIUM)
+	left_p.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_MEDIUM)
 	note_hbox.add_child(left_p)
 	
 	report_left_page = VBoxContainer.new()
 	report_left_page.custom_minimum_size = Vector2(600, 680)
-	report_left_page.add_theme_constant_override("separation", 20)
+	report_left_page.add_theme_constant_override("separation", DeskTheme.MARGIN_SMALL)
 	left_p.add_child(report_left_page)
 	
 	# Right Page - Rankings leaderboard
 	var right_p = MarginContainer.new()
-	right_p.add_theme_constant_override("margin_left", 25)
-	right_p.add_theme_constant_override("margin_right", 25)
-	right_p.add_theme_constant_override("margin_top", 25)
-	right_p.add_theme_constant_override("margin_bottom", 25)
+	right_p.add_theme_constant_override("margin_left", DeskTheme.MARGIN_MEDIUM)
+	right_p.add_theme_constant_override("margin_right", DeskTheme.MARGIN_MEDIUM)
+	right_p.add_theme_constant_override("margin_top", DeskTheme.MARGIN_MEDIUM)
+	right_p.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_MEDIUM)
 	note_hbox.add_child(right_p)
 	
 	report_right_page = VBoxContainer.new()
 	report_right_page.custom_minimum_size = Vector2(600, 680)
-	report_right_page.add_theme_constant_override("separation", 20)
+	report_right_page.add_theme_constant_override("separation", DeskTheme.MARGIN_SMALL)
 	right_p.add_child(report_right_page)
 	
 	# Skip button at bottom right
 	skip_btn = Button.new()
 	skip_btn.text = "結果へスキップ ⏭"
 	skip_btn.custom_minimum_size = Vector2(240, 60)
-	skip_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	skip_btn.add_theme_font_size_override("font_size", 22)
+	skip_btn.add_theme_font_override("font", DeskTheme.get_font())
+	skip_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	skip_btn.pressed.connect(_on_skip_pressed)
 	
 	var skip_style = StyleBoxFlat.new()
@@ -207,7 +214,6 @@ func _build_scripted_background() -> void:
 	vignette.color = Color(0.03, 0.02, 0.01, 0.22)
 	root_layer.add_child(vignette)
 
-
 func _reflow_layout() -> void:
 	if not is_inside_tree():
 		return
@@ -223,6 +229,14 @@ func _reflow_layout() -> void:
 		board_inner.size = vp_size - Vector2(84, 84)
 
 func reveal_next_day_showdown() -> void:
+	print("--- DEBUG: reveal_next_day_showdown, current_step_day = ", current_step_day)
+	print("chart_title instance: ", chart_title)
+	print("day_chart_area instance: ", day_chart_area)
+	for child in blackboard_vbox.get_children():
+		print("  child: ", child.name, " (", child, ")")
+	if not showdown_data.has("details"):
+		showdown_data["details"] = {}
+		
 	if current_step_day > showdown_data.get("details", {}).size():
 		# Reveal complete! Trigger report card overlay or deviation animation
 		if is_revealing:
@@ -235,7 +249,7 @@ func reveal_next_day_showdown() -> void:
 		
 	# Clear older elements so we only show the current day's reveal
 	for child in blackboard_vbox.get_children():
-		if child != scorecard_label:
+		if child != scorecard_label and child != chart_title and child != day_chart_area:
 			child.queue_free()
 			
 	_update_day_chart(current_step_day)
@@ -243,15 +257,15 @@ func reveal_next_day_showdown() -> void:
 	var day_lbl = Label.new()
 	day_lbl.text = "第 %d 日目" % current_step_day
 	day_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	day_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	day_lbl.add_theme_font_size_override("font_size", 26)
+	day_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	day_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_LARGE)
 	day_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	blackboard_vbox.add_child(day_lbl)
 	
 	# Cards HBox Container
 	var cards_hbox = HBoxContainer.new()
 	cards_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	cards_hbox.add_theme_constant_override("separation", 35)
+	cards_hbox.add_theme_constant_override("separation", DeskTheme.MARGIN_LARGE)
 	blackboard_vbox.add_child(cards_hbox)
 	
 	var day_details = showdown_data["details"][current_step_day]
@@ -307,30 +321,31 @@ func reveal_next_day_showdown() -> void:
 		
 		# Inner Margin
 		var margin = MarginContainer.new()
-		margin.add_theme_constant_override("margin_left", 20)
-		margin.add_theme_constant_override("margin_right", 20)
-		margin.add_theme_constant_override("margin_top", 20)
-		margin.add_theme_constant_override("margin_bottom", 20)
+		margin.add_theme_constant_override("margin_left", DeskTheme.MARGIN_SMALL)
+		margin.add_theme_constant_override("margin_right", DeskTheme.MARGIN_SMALL)
+		margin.add_theme_constant_override("margin_top", DeskTheme.MARGIN_SMALL)
+		margin.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_SMALL)
 		card.add_child(margin)
 		
 		# VBox content
 		var vbox = VBoxContainer.new()
 		vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-		vbox.add_theme_constant_override("separation", 10)
+		vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_TINY)
 		margin.add_child(vbox)
 		
-		# Name Label
+		# Name Label (Richer Ink color for readability on light paper)
 		var name_lbl = Label.new()
 		name_lbl.text = name_str
 		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-		name_lbl.add_theme_font_size_override("font_size", 26)
-		name_lbl.add_theme_color_override("font_color", Color.WHITE)
+		name_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		name_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_LARGE)
+		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		vbox.add_child(name_lbl)
+		print("  debug name_lbl font_color override: ", name_lbl.get_theme_color("font_color"))
 		
 		# Chalk line separator
 		var line = ColorRect.new()
-		line.color = Color(1.0, 1.0, 1.0, 0.25)
+		line.color = Color(0.12, 0.08, 0.05, 0.15) # ink line for contrast
 		line.custom_minimum_size = Vector2(0, 2)
 		vbox.add_child(line)
 		
@@ -338,18 +353,22 @@ func reveal_next_day_showdown() -> void:
 		var decl_lbl = Label.new()
 		decl_lbl.text = "申告: %d 点" % declared
 		decl_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		decl_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-		decl_lbl.add_theme_font_size_override("font_size", 22)
-		decl_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_WHITE)
+		decl_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		decl_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
+		decl_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
 		vbox.add_child(decl_lbl)
 		
 		# Actual Score
 		var act_lbl = Label.new()
 		act_lbl.text = "実点: %d 点" % actual
 		act_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		act_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-		act_lbl.add_theme_font_size_override("font_size", 22)
-		act_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_YELLOW)
+		act_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		act_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
+		# Clear coloring: gold for bluffing, deep green for honest
+		if declared > actual:
+			act_lbl.add_theme_color_override("font_color", Color("b8860b")) # Darker gold
+		else:
+			act_lbl.add_theme_color_override("font_color", Color("2e7d32")) # Forest green
 		vbox.add_child(act_lbl)
 		
 		# Stamp/Badge container
@@ -358,8 +377,8 @@ func reveal_next_day_showdown() -> void:
 		
 		# Rubber stamp badge label
 		var stamp_lbl = Label.new()
-		stamp_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-		stamp_lbl.add_theme_font_size_override("font_size", 18)
+		stamp_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		stamp_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
 		
 		var stamp_style = StyleBoxFlat.new()
 		stamp_style.bg_color = Color(1, 1, 1, 0.0) # Transparent bg
@@ -458,14 +477,14 @@ func _build_day_chart_shell() -> void:
 		
 		var hbox = HBoxContainer.new()
 		hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		hbox.add_theme_constant_override("separation", 15)
+		hbox.add_theme_constant_override("separation", DeskTheme.MARGIN_TINY)
 		row.add_child(hbox)
 		
 		var name_lbl = Label.new()
 		name_lbl.text = _get_participant_name(p_id)
 		name_lbl.custom_minimum_size = Vector2(120, 0)
-		name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-		name_lbl.add_theme_font_size_override("font_size", 16)
+		name_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		name_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TINY)
 		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		hbox.add_child(name_lbl)
 		
@@ -496,8 +515,8 @@ func _build_day_chart_shell() -> void:
 		score_lbl.name = "score_lbl"
 		score_lbl.text = "0 点"
 		score_lbl.custom_minimum_size = Vector2(80, 0)
-		score_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-		score_lbl.add_theme_font_size_override("font_size", 16)
+		score_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		score_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TINY)
 		score_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		hbox.add_child(score_lbl)
 		
@@ -523,7 +542,12 @@ func _update_day_chart(day_idx: int) -> void:
 	for p_id in cumulative.keys():
 		sort_arr.append({"id": p_id, "score": cumulative[p_id]})
 	
-	sort_arr.sort_custom(func(a, b): return a["score"] > b["score"])
+	# Stable Sorting (Alphabetical fallback for tie-breaker)
+	sort_arr.sort_custom(func(a, b):
+		if a["score"] == b["score"]:
+			return a["id"] < b["id"]
+		return a["score"] > b["score"]
+	)
 	
 	var max_score := 1
 	for p_id in cumulative.keys():
@@ -580,6 +604,7 @@ func _on_skip_pressed() -> void:
 	if not is_revealing:
 		return
 	is_revealing = false
+	skip_btn.release_focus()
 	DeskTheme.animate_click(skip_btn, Vector2.ONE, 0.08)
 	var timer = get_tree().create_timer(0.1)
 	timer.timeout.connect(func():
@@ -600,16 +625,16 @@ func trigger_report_card() -> void:
 	# Build Left Page (Player scorecard)
 	var rank_title = Label.new()
 	rank_title.text = "学末最終成績通知表"
-	rank_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	rank_title.add_theme_font_size_override("font_size", 32)
+	rank_title.add_theme_font_override("font", DeskTheme.get_font())
+	rank_title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TITLE)
 	rank_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	report_left_page.add_child(rank_title)
 	
 	var my_score = showdown_data["final_scores"]["player"]
 	var score_lbl = Label.new()
 	score_lbl.text = "総合得点: " + str(my_score) + " 点"
-	score_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	score_lbl.add_theme_font_size_override("font_size", 54)
+	score_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	score_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_GIANT)
 	score_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	report_left_page.add_child(score_lbl)
 	
@@ -623,8 +648,8 @@ func trigger_report_card() -> void:
 		else:
 			deviation_change_lbl.text += "➔ 偏差値が %.1f ダウンしました... 📉" % abs(deviation_change)
 			deviation_change_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
-		deviation_change_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-		deviation_change_lbl.add_theme_font_size_override("font_size", 22)
+		deviation_change_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		deviation_change_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 		report_left_page.add_child(deviation_change_lbl)
 	
 	# Breakdown stats
@@ -636,15 +661,15 @@ func trigger_report_card() -> void:
 	breakdown.text = "・レベルボーナス：+" + str(showdown_data["level_bonus"]) + "点" + star_text + "\n" + \
 					"・獲得したコイン：+" + str(showdown_data["coins_earned"]) + "枚\n" + \
 					"・完全犯罪ボーナス：+" + str(showdown_data["perfect_bonus"]) + "枚"
-	breakdown.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	breakdown.add_theme_font_size_override("font_size", 22)
+	breakdown.add_theme_font_override("font", DeskTheme.get_font())
+	breakdown.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	breakdown.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.75))
 	report_left_page.add_child(breakdown)
 	
 	var title_lbl = Label.new()
 	title_lbl.text = "獲得した称号:\n【 " + showdown_data["title"] + " 】"
-	title_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	title_lbl.add_theme_font_size_override("font_size", 28)
+	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	title_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SUBTITLE)
 	title_lbl.add_theme_color_override("font_color", Color("3f51b5"))
 	report_left_page.add_child(title_lbl)
 	
@@ -668,41 +693,51 @@ func trigger_report_card() -> void:
 	# Build Right Page (Leaderboard rankings)
 	var lead_title = Label.new()
 	lead_title.text = "学級ランキング（成績順）"
-	lead_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	lead_title.add_theme_font_size_override("font_size", 32)
+	lead_title.add_theme_font_override("font", DeskTheme.get_font())
+	lead_title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TITLE)
 	lead_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	report_right_page.add_child(lead_title)
 
 	var player_name_lbl = Label.new()
 	var display_name = Global.player_name if Global.player_name != "" else "あなた"
 	player_name_lbl.text = "プレイヤー: %s" % display_name
-	player_name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	player_name_lbl.add_theme_font_size_override("font_size", 20)
+	player_name_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	player_name_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	player_name_lbl.add_theme_color_override("font_color", Color("3f51b5"))
 	report_right_page.add_child(player_name_lbl)
 
 	graph_area = VBoxContainer.new()
-	graph_area.add_theme_constant_override("separation", 12)
+	graph_area.add_theme_constant_override("separation", DeskTheme.MARGIN_TINY)
 	report_right_page.add_child(graph_area)
 
-	var ranks = showdown_data["rankings"]
+	# Stable rankings sort (Higher score, then lower bursts, then alphabetical ID)
+	var ranks = showdown_data["rankings"].duplicate()
+	ranks.sort_custom(func(a, b):
+		if a["score"] != b["score"]:
+			return a["score"] > b["score"]
+		if a["bursts"] != b["bursts"]:
+			return a["bursts"] < b["bursts"]
+		return a["id"] < b["id"]
+	)
+	
 	var max_score = 1
 	for rr in ranks:
 		max_score = max(max_score, int(rr["score"]))
 	for r_idx in range(ranks.size()):
 		var r = ranks[r_idx]
 		
+		# WebGL-friendly text rank labels replacing colored medal emojis to prevent character corruption
 		var medal = ""
 		match r_idx:
-			0: medal = "🥇 1位: "
-			1: medal = "🥈 2位: "
-			2: medal = "🥉 3位: "
-			_: medal = "   4位: "
+			0: medal = "[ 1位 ] "
+			1: medal = "[ 2位 ] "
+			2: medal = "[ 3位 ] "
+			_: medal = "[ 4位 ] "
 			
 		var r_lbl = Label.new()
-		r_lbl.text = medal + r["name"] + " (" + str(r["score"]) + "点, バースト " + str(r["bursts"]) + "回)"
-		r_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-		r_lbl.add_theme_font_size_override("font_size", 22)
+		r_lbl.text = medal + r["name"] + " [ " + str(r["score"]) + "点 / バースト " + str(r["bursts"]) + "回 ]"
+		r_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		r_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 		
 		if r["id"] == "player":
 			r_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
@@ -717,8 +752,8 @@ func trigger_report_card() -> void:
 
 		var bar_name = Label.new()
 		bar_name.text = "%s" % r["name"]
-		bar_name.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-		bar_name.add_theme_font_size_override("font_size", 16)
+		bar_name.add_theme_font_override("font", DeskTheme.get_font())
+		bar_name.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TINY)
 		bar_name.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.9))
 		bar_row.add_child(bar_name)
 
@@ -756,14 +791,14 @@ func trigger_report_card() -> void:
 	# Actions HBox
 	var act_hbox = HBoxContainer.new()
 	act_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	act_hbox.add_theme_constant_override("separation", 30)
+	act_hbox.add_theme_constant_override("separation", DeskTheme.MARGIN_DEFAULT)
 	report_right_page.add_child(act_hbox)
 	
 	share_btn = Button.new()
 	share_btn.text = "Xでシェア"
 	share_btn.custom_minimum_size = Vector2(260, 65)
-	share_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	share_btn.add_theme_font_size_override("font_size", 22)
+	share_btn.add_theme_font_override("font", DeskTheme.get_font())
+	share_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	Global.apply_white_button_style(share_btn)
 	share_btn.pressed.connect(_on_share_pressed)
 	act_hbox.add_child(share_btn)
@@ -771,13 +806,14 @@ func trigger_report_card() -> void:
 	restart_btn = Button.new()
 	restart_btn.text = "タイトルへ"
 	restart_btn.custom_minimum_size = Vector2(260, 65)
-	restart_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	restart_btn.add_theme_font_size_override("font_size", 22)
+	restart_btn.add_theme_font_override("font", DeskTheme.get_font())
+	restart_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	Global.apply_white_button_style(restart_btn)
 	restart_btn.pressed.connect(_on_restart_pressed)
 	act_hbox.add_child(restart_btn)
 
 func _on_share_pressed() -> void:
+	share_btn.release_focus()
 	DeskTheme.animate_click(share_btn, Vector2.ONE, 0.08)
 	var my_score = showdown_data["final_scores"]["player"]
 	var text_to_tweet = "『テスト勉強チキンレース』で称号【" + showdown_data["title"] + "】を獲得！最終スコア：" + str(my_score) + "点！ #テスト勉強チキンレース"
@@ -785,6 +821,7 @@ func _on_share_pressed() -> void:
 	OS.shell_open("https://twitter.com/intent/tweet?text=" + escaped_text)
 
 func _on_restart_pressed() -> void:
+	restart_btn.release_focus()
 	DeskTheme.animate_click(restart_btn, Vector2.ONE, 0.08)
 	
 	# Clear active results in global
@@ -835,20 +872,20 @@ func _play_chalk_deviation_animation() -> void:
 			
 	var chalk_container = VBoxContainer.new()
 	chalk_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	chalk_container.add_theme_constant_override("separation", 25)
+	chalk_container.add_theme_constant_override("separation", DeskTheme.MARGIN_MEDIUM)
 	blackboard_vbox.add_child(chalk_container)
 	
 	var title_lbl = Label.new()
 	title_lbl.text = "今回の偏差値判定"
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	title_lbl.add_theme_font_size_override("font_size", 36)
+	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	title_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TITLE_LARGE)
 	title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_WHITE)
 	chalk_container.add_child(title_lbl)
 	
 	var val_hbox = HBoxContainer.new()
 	val_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	val_hbox.add_theme_constant_override("separation", 40)
+	val_hbox.add_theme_constant_override("separation", DeskTheme.MARGIN_LARGE)
 	chalk_container.add_child(val_hbox)
 	
 	var old_val_box = Control.new()
@@ -859,21 +896,21 @@ func _play_chalk_deviation_animation() -> void:
 	old_lbl.text = "%.1f" % old_deviation
 	old_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	old_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	old_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	old_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	old_lbl.add_theme_font_size_override("font_size", 64)
 	old_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_WHITE)
 	old_val_box.add_child(old_lbl)
 	
 	var arrow_lbl = Label.new()
 	arrow_lbl.text = "➔"
-	arrow_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	arrow_lbl.add_theme_font_size_override("font_size", 48)
+	arrow_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	arrow_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_GIANT)
 	arrow_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_WHITE)
 	val_hbox.add_child(arrow_lbl)
 	
 	var new_lbl = Label.new()
 	new_lbl.text = "%.1f" % new_deviation
-	new_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	new_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	new_lbl.add_theme_font_size_override("font_size", 72)
 	
 	if deviation_change >= 0:
@@ -893,8 +930,8 @@ func _play_chalk_deviation_animation() -> void:
 		change_lbl.text = "-%.1f ダウン... 📉" % abs(deviation_change)
 		change_lbl.add_theme_color_override("font_color", Color("ff6b6b"))
 	change_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	change_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	change_lbl.add_theme_font_size_override("font_size", 28)
+	change_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	change_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SUBTITLE)
 	change_lbl.modulate.a = 0.0
 	chalk_container.add_child(change_lbl)
 	
@@ -967,4 +1004,3 @@ func _set_line1_point(val: Vector2) -> void:
 func _set_line2_point(val: Vector2) -> void:
 	if is_instance_valid(_anim_line2):
 		_anim_line2.set_point_position(1, val)
-	

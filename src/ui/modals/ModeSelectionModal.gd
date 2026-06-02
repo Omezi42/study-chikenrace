@@ -1,4 +1,4 @@
-class_name ModeSelectionModal
+﻿class_name ModeSelectionModal
 extends RefCounted
 
 static func create_and_show(parent: Node, on_friend_match_pressed: Callable, national_names_pool: Array) -> PanelContainer:
@@ -40,7 +40,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	var title = Label.new()
 	title.text = Localization.get_text("MODE_SELECTION_TITLE")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 28)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
@@ -63,7 +63,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	var nat_title = Label.new()
 	nat_title.text = Localization.get_text("MODE_NATIONAL_TITLE")
 	nat_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	nat_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	nat_title.add_theme_font_override("font", DeskTheme.get_font())
 	nat_title.add_theme_font_size_override("font_size", 22)
 	nat_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	nat_inner.add_child(nat_title)
@@ -71,7 +71,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	var nat_desc = Label.new()
 	nat_desc.text = Localization.get_text("MODE_NATIONAL_DESC")
 	nat_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	nat_desc.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	nat_desc.add_theme_font_override("font", DeskTheme.get_font())
 	nat_desc.add_theme_font_size_override("font_size", 14)
 	nat_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	nat_inner.add_child(nat_desc)
@@ -92,7 +92,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	var friend_title_lbl = Label.new()
 	friend_title_lbl.text = Localization.get_text("MODE_FRIEND_TITLE")
 	friend_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	friend_title_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	friend_title_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	friend_title_lbl.add_theme_font_size_override("font_size", 22)
 	friend_title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	friend_inner.add_child(friend_title_lbl)
@@ -100,7 +100,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	var friend_desc = Label.new()
 	friend_desc.text = Localization.get_text("MODE_FRIEND_DESC")
 	friend_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	friend_desc.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	friend_desc.add_theme_font_override("font", DeskTheme.get_font())
 	friend_desc.add_theme_font_size_override("font_size", 14)
 	friend_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	friend_inner.add_child(friend_desc)
@@ -121,7 +121,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	var random_title_lbl = Label.new()
 	random_title_lbl.text = Localization.get_text("MODE_RANDOM_TITLE")
 	random_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	random_title_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	random_title_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	random_title_lbl.add_theme_font_size_override("font_size", 22)
 	random_title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	random_inner.add_child(random_title_lbl)
@@ -129,7 +129,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	var random_desc = Label.new()
 	random_desc.text = Localization.get_text("MODE_RANDOM_DESC")
 	random_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	random_desc.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	random_desc.add_theme_font_override("font", DeskTheme.get_font())
 	random_desc.add_theme_font_size_override("font_size", 14)
 	random_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	random_inner.add_child(random_desc)
@@ -141,7 +141,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	cancel_btn.text = Localization.get_text("CANCEL_BUTTON")
 	cancel_btn.custom_minimum_size = Vector2(160, 45)
 	cancel_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	cancel_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	cancel_btn.add_theme_font_override("font", DeskTheme.get_font())
 	cancel_btn.add_theme_font_size_override("font_size", 18)
 	Global.apply_white_button_style(cancel_btn)
 	vbox.add_child(cancel_btn)

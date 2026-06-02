@@ -1,4 +1,4 @@
-class_name ProfileScene
+﻿class_name ProfileScene
 extends Control
 
 var notebook_panel: PanelContainer
@@ -33,7 +33,7 @@ func _ready() -> void:
 	var title = Label.new()
 	title.text = "生徒手帳の記帳"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 36)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
@@ -41,7 +41,7 @@ func _ready() -> void:
 	var prompt = Label.new()
 	prompt.text = "君の名前を教えてもらえるかな？\n（テスト報告の時に使用します）"
 	prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	prompt.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	prompt.add_theme_font_override("font", DeskTheme.get_font())
 	prompt.add_theme_font_size_override("font_size", 24)
 	prompt.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
 	vbox.add_child(prompt)
@@ -52,7 +52,7 @@ func _ready() -> void:
 	name_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_input.custom_minimum_size = Vector2(400, 60)
 	name_input.max_length = 12
-	name_input.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	name_input.add_theme_font_override("font", DeskTheme.get_font())
 	name_input.add_theme_font_size_override("font_size", 22)
 	vbox.add_child(name_input)
 	
@@ -60,7 +60,7 @@ func _ready() -> void:
 	confirm_btn = Button.new()
 	confirm_btn.text = "これで記帳する"
 	confirm_btn.custom_minimum_size = Vector2(260, 65)
-	confirm_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	confirm_btn.add_theme_font_override("font", DeskTheme.get_font())
 	confirm_btn.add_theme_font_size_override("font_size", 22)
 	confirm_btn.pressed.connect(_on_confirm_pressed)
 	vbox.add_child(confirm_btn)

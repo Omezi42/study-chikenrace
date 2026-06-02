@@ -1,4 +1,4 @@
-class_name PhaseBase
+﻿class_name PhaseBase
 extends Control
 
 signal phase_finished(data: Dictionary)
@@ -78,7 +78,7 @@ func show_tutorial_dialog(text: String, pos: Vector2 = Vector2(700, 50), next_ca
 	
 	var header = Label.new()
 	header.text = "💡 チュートリアルガイド"
-	header.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	header.add_theme_font_override("font", DeskTheme.get_font())
 	header.add_theme_font_size_override("font_size", 20)
 	header.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(header)
@@ -86,7 +86,7 @@ func show_tutorial_dialog(text: String, pos: Vector2 = Vector2(700, 50), next_ca
 	var body = Label.new()
 	body.text = text
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	body.add_theme_font_override("font", DeskTheme.get_font())
 	body.add_theme_font_size_override("font_size", 16)
 	body.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(body)
@@ -96,7 +96,7 @@ func show_tutorial_dialog(text: String, pos: Vector2 = Vector2(700, 50), next_ca
 		btn.text = "次へ ▶"
 		btn.custom_minimum_size = Vector2(100, 36)
 		btn.size_flags_horizontal = Control.SIZE_SHRINK_END
-		btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		btn.add_theme_font_override("font", DeskTheme.get_font())
 		btn.add_theme_font_size_override("font_size", 16)
 		btn.pressed.connect(func():
 			DeskTheme.animate_click(btn, Vector2.ONE, 0.08)

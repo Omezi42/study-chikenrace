@@ -19,10 +19,10 @@ func _ready() -> void:
 	# 枠の太さ（マージン）を設定
 	var board_margin = MarginContainer.new()
 	board_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	board_margin.add_theme_constant_override("margin_left", 36)
-	board_margin.add_theme_constant_override("margin_right", 36)
-	board_margin.add_theme_constant_override("margin_top", 36)
-	board_margin.add_theme_constant_override("margin_bottom", 36)
+	board_margin.add_theme_constant_override("margin_left", DeskTheme.MARGIN_LARGE)
+	board_margin.add_theme_constant_override("margin_right", DeskTheme.MARGIN_LARGE)
+	board_margin.add_theme_constant_override("margin_top", DeskTheme.MARGIN_LARGE)
+	board_margin.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_LARGE)
 	add_child(board_margin)
 	
 	# コルクボード部分のベース（木枠から一段落ち込んでいる立体感を出すための影付き）
@@ -70,7 +70,7 @@ func _ready() -> void:
 	
 	var main_vbox = VBoxContainer.new()
 	main_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	main_vbox.add_theme_constant_override("separation", 35)
+	main_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_LARGE)
 	center_container.add_child(main_vbox)
 	
 	# Title Box (付箋風・画用紙風の背景にしてコルクボードとのコントラストを出す)
@@ -106,24 +106,24 @@ func _ready() -> void:
 	var title = Label.new()
 	title.text = "デッキ編成（付箋スロット割当）"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	title.add_theme_font_size_override("font_size", 40)
+	title.add_theme_font_override("font", DeskTheme.get_font())
+	title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TITLE_LARGE)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	title_vbox.add_child(title)
 	
 	var sub_title = Label.new()
 	sub_title.text = "1〜10の数字のカードを引いた時に、対応するスロットのアイテムの効果が発動します。"
 	sub_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	sub_title.add_theme_font_size_override("font_size", 20)
+	sub_title.add_theme_font_override("font", DeskTheme.get_font())
+	sub_title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
 	sub_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	title_vbox.add_child(sub_title)
 	
 	# 5x2 slots grid
 	slots_grid = GridContainer.new()
 	slots_grid.columns = 5
-	slots_grid.add_theme_constant_override("h_separation", 30)
-	slots_grid.add_theme_constant_override("v_separation", 30)
+	slots_grid.add_theme_constant_override("h_separation", DeskTheme.MARGIN_DEFAULT)
+	slots_grid.add_theme_constant_override("v_separation", DeskTheme.MARGIN_DEFAULT)
 	main_vbox.add_child(slots_grid)
 	
 	# Populate 10 slots
@@ -133,8 +133,8 @@ func _ready() -> void:
 	back_btn = Button.new()
 	back_btn.text = "タイトルに戻る"
 	back_btn.custom_minimum_size = Vector2(320, 70)
-	back_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	back_btn.add_theme_font_size_override("font_size", 26)
+	back_btn.add_theme_font_override("font", DeskTheme.get_font())
+	back_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_LARGE)
 	Global.apply_white_button_style(back_btn)
 	back_btn.pressed.connect(_on_back_pressed)
 	main_vbox.add_child(back_btn)
@@ -185,8 +185,8 @@ func populate_slots() -> void:
 		var num_lbl = Label.new()
 		num_lbl.text = "スロット " + str(i)
 		num_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		num_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-		num_lbl.add_theme_font_size_override("font_size", 14)
+		num_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		num_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_MINI)
 		num_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.5))
 		vbox.add_child(num_lbl)
 		
@@ -213,8 +213,8 @@ func populate_slots() -> void:
 		var name_lbl = Label.new()
 		name_lbl.text = item["name"]
 		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-		name_lbl.add_theme_font_size_override("font_size", 20)
+		name_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		name_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
 		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		vbox.add_child(name_lbl)
 		
@@ -222,6 +222,7 @@ func populate_slots() -> void:
 		slot_btn.mouse_entered.connect(func(): DeskTheme.animate_hover(slot_btn, true, Vector2.ONE, 0.12))
 		slot_btn.mouse_exited.connect(func(): DeskTheme.animate_hover(slot_btn, false, Vector2.ONE, 0.12))
 		slot_btn.pressed.connect(func():
+			slot_btn.release_focus()
 			DeskTheme.animate_click(slot_btn, Vector2.ONE, 0.08)
 			_on_slot_clicked(i)
 		)
@@ -238,21 +239,21 @@ func setup_select_modal() -> void:
 	select_modal.visible = false
 	
 	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 35)
-	margin.add_theme_constant_override("margin_right", 35)
-	margin.add_theme_constant_override("margin_top", 35)
-	margin.add_theme_constant_override("margin_bottom", 35)
+	margin.add_theme_constant_override("margin_left", DeskTheme.MARGIN_LARGE)
+	margin.add_theme_constant_override("margin_right", DeskTheme.MARGIN_LARGE)
+	margin.add_theme_constant_override("margin_top", DeskTheme.MARGIN_LARGE)
+	margin.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_LARGE)
 	select_modal.add_child(margin)
 	
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 25)
+	vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_MEDIUM)
 	margin.add_child(vbox)
 	
 	var title = Label.new()
 	title.text = "アイテムの入れ替え"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_font_override("font", DeskTheme.get_font())
+	title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SUBTITLE)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
 	
@@ -263,17 +264,18 @@ func setup_select_modal() -> void:
 	
 	select_grid = GridContainer.new()
 	select_grid.columns = 4
-	select_grid.add_theme_constant_override("h_separation", 20)
-	select_grid.add_theme_constant_override("v_separation", 20)
+	select_grid.add_theme_constant_override("h_separation", DeskTheme.MARGIN_SMALL)
+	select_grid.add_theme_constant_override("v_separation", DeskTheme.MARGIN_SMALL)
 	scroll.add_child(select_grid)
 	
 	var close_btn = Button.new()
 	close_btn.text = "閉じる"
 	close_btn.custom_minimum_size = Vector2(200, 55)
-	close_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	close_btn.add_theme_font_size_override("font_size", 20)
+	close_btn.add_theme_font_override("font", DeskTheme.get_font())
+	close_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
 	Global.apply_white_button_style(close_btn)
 	close_btn.pressed.connect(func():
+		close_btn.release_focus()
 		DeskTheme.animate_click(close_btn, Vector2.ONE, 0.08)
 		select_modal.visible = false
 	)
@@ -343,12 +345,13 @@ func populate_select_list() -> void:
 			
 		var name_lbl = Label.new()
 		name_lbl.text = item["name"]
-		name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-		name_lbl.add_theme_font_size_override("font_size", 18)
+		name_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		name_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
 		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		btn_hbox.add_child(name_lbl)
 		
 		item_btn.pressed.connect(func():
+			item_btn.release_focus()
 			DeskTheme.animate_click(item_btn, Vector2.ONE, 0.08)
 			_on_item_selected(item_id)
 		)
@@ -376,6 +379,7 @@ func _on_item_selected(item_id: String) -> void:
 	populate_slots()
 
 func _on_back_pressed() -> void:
+	back_btn.release_focus()
 	DeskTheme.animate_click(back_btn, Vector2.ONE, 0.08)
 	var timer = get_tree().create_timer(0.2)
 	timer.timeout.connect(func():

@@ -59,7 +59,7 @@ func _ready() -> void:
 	
 	var header = Label.new()
 	header.text = "生徒手帳 ID CARD 👤"
-	header.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	header.add_theme_font_override("font", DeskTheme.get_font())
 	header.add_theme_font_size_override("font_size", 22)
 	header.add_theme_color_override("font_color", Color("1a237e"))
 	vbox.add_child(header)
@@ -70,14 +70,14 @@ func _ready() -> void:
 	
 	var name_title = Label.new()
 	name_title.text = "氏名: "
-	name_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	name_title.add_theme_font_override("font", DeskTheme.get_font())
 	name_title.add_theme_font_size_override("font_size", 18)
 	name_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	name_hbox.add_child(name_title)
 	
 	var name_lbl = Label.new()
 	name_lbl.text = Global.player_name if Global.player_name != "" else "（未登録）"
-	name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	name_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	name_lbl.add_theme_font_size_override("font_size", 18)
 	name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	name_hbox.add_child(name_lbl)
@@ -85,7 +85,7 @@ func _ready() -> void:
 	var name_input = LineEdit.new()
 	name_input.text = Global.player_name
 	name_input.custom_minimum_size = Vector2(200, 36)
-	name_input.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	name_input.add_theme_font_override("font", DeskTheme.get_font())
 	name_input.add_theme_font_size_override("font_size", 16)
 	name_input.visible = false
 	name_hbox.add_child(name_input)
@@ -93,7 +93,7 @@ func _ready() -> void:
 	var edit_btn = Button.new()
 	edit_btn.text = "✏️ 変更"
 	edit_btn.custom_minimum_size = Vector2(80, 32)
-	edit_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	edit_btn.add_theme_font_override("font", DeskTheme.get_font())
 	edit_btn.add_theme_font_size_override("font_size", 14)
 	Global.apply_white_button_style(edit_btn)
 	name_hbox.add_child(edit_btn)
@@ -101,13 +101,14 @@ func _ready() -> void:
 	var save_btn = Button.new()
 	save_btn.text = "💾 保存"
 	save_btn.custom_minimum_size = Vector2(80, 32)
-	save_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	save_btn.add_theme_font_override("font", DeskTheme.get_font())
 	save_btn.add_theme_font_size_override("font_size", 14)
 	Global.apply_white_button_style(save_btn)
 	save_btn.visible = false
 	name_hbox.add_child(save_btn)
 	
 	edit_btn.pressed.connect(func():
+		edit_btn.release_focus()
 		DeskTheme.animate_click(edit_btn, Vector2.ONE, 0.08)
 		name_lbl.visible = false
 		edit_btn.visible = false
@@ -117,6 +118,7 @@ func _ready() -> void:
 	)
 	
 	save_btn.pressed.connect(func():
+		save_btn.release_focus()
 		DeskTheme.animate_click(save_btn, Vector2.ONE, 0.08)
 		var new_name = name_input.text.strip_edges()
 		if new_name != "":
@@ -134,21 +136,21 @@ func _ready() -> void:
 	
 	var deviation_lbl = Label.new()
 	deviation_lbl.text = "全国偏差値: %.1f (最高: %.1f)" % [Global.deviation_value, Global.max_deviation_value]
-	deviation_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	deviation_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	deviation_lbl.add_theme_font_size_override("font_size", 18)
 	deviation_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(deviation_lbl)
 	
 	var coin_lbl = Label.new()
 	coin_lbl.text = "所持コイン: " + str(Global.coins) + " 枚"
-	coin_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	coin_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	coin_lbl.add_theme_font_size_override("font_size", 18)
 	coin_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(coin_lbl)
 	
 	var record_lbl = Label.new()
 	record_lbl.text = "最高スコア: " + str(Global.best_score) + " 点"
-	record_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	record_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	record_lbl.add_theme_font_size_override("font_size", 18)
 	record_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(record_lbl)
@@ -166,15 +168,17 @@ func _ready() -> void:
 	var logout_btn = Button.new()
 	logout_btn.text = "👤 ログアウト"
 	logout_btn.custom_minimum_size = Vector2(160, 45)
-	logout_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	logout_btn.add_theme_font_override("font", DeskTheme.get_font())
 	logout_btn.add_theme_font_size_override("font_size", 16)
 	Global.apply_white_button_style(logout_btn)
 	logout_btn.add_theme_color_override("font_color", Color("d32f2f"))
 	btn_hbox.add_child(logout_btn)
 	
 	logout_btn.pressed.connect(func():
+		logout_btn.release_focus()
 		DeskTheme.animate_click(logout_btn, Vector2.ONE, 0.08)
 		Global.logged_in_user_id = ""
+		Global.auth_token = ""
 		var bm_node = get_node_or_null("/root/BackendManager")
 		if bm_node:
 			bm_node.auth_token = ""
@@ -188,12 +192,13 @@ func _ready() -> void:
 	var close_btn = Button.new()
 	close_btn.text = "閉じる ✖"
 	close_btn.custom_minimum_size = Vector2(160, 45)
-	close_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	close_btn.add_theme_font_override("font", DeskTheme.get_font())
 	close_btn.add_theme_font_size_override("font_size", 16)
 	Global.apply_white_button_style(close_btn)
 	btn_hbox.add_child(close_btn)
 	
 	close_btn.pressed.connect(func():
+		close_btn.release_focus()
 		DeskTheme.animate_click(close_btn, Vector2.ONE, 0.08)
 		var out_tween = create_tween().bind_node(modal).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		out_tween.tween_property(modal, "scale", Vector2.ZERO, 0.2)

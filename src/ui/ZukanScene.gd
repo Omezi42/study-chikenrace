@@ -52,24 +52,24 @@ func _ready() -> void:
 	main_hbox.add_child(left_page)
 	
 	var left_vbox = VBoxContainer.new()
-	left_vbox.add_theme_constant_override("separation", 20)
+	left_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_SMALL)
 	left_page.add_child(left_vbox)
 	
 	var left_margin = MarginContainer.new()
-	left_margin.add_theme_constant_override("margin_left", 30)
-	left_margin.add_theme_constant_override("margin_right", 30)
-	left_margin.add_theme_constant_override("margin_top", 30)
-	left_margin.add_theme_constant_override("margin_bottom", 30)
+	left_margin.add_theme_constant_override("margin_left", DeskTheme.MARGIN_DEFAULT)
+	left_margin.add_theme_constant_override("margin_right", DeskTheme.MARGIN_DEFAULT)
+	left_margin.add_theme_constant_override("margin_top", DeskTheme.MARGIN_DEFAULT)
+	left_margin.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_DEFAULT)
 	left_vbox.add_child(left_margin)
 	
 	var left_inner = VBoxContainer.new()
-	left_inner.add_theme_constant_override("separation", 20)
+	left_inner.add_theme_constant_override("separation", DeskTheme.MARGIN_SMALL)
 	left_margin.add_child(left_inner)
 	
 	var left_title = Label.new()
 	left_title.text = "参考書アイテム図鑑"
-	left_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	left_title.add_theme_font_size_override("font_size", 32)
+	left_title.add_theme_font_override("font", DeskTheme.get_font())
+	left_title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TITLE)
 	left_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	left_inner.add_child(left_title)
 	
@@ -90,18 +90,18 @@ func _ready() -> void:
 	main_hbox.add_child(right_page)
 	
 	var right_vbox = VBoxContainer.new()
-	right_vbox.add_theme_constant_override("separation", 25)
+	right_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_MEDIUM)
 	right_page.add_child(right_vbox)
 	
 	var right_margin = MarginContainer.new()
-	right_margin.add_theme_constant_override("margin_left", 35)
-	right_margin.add_theme_constant_override("margin_right", 35)
-	right_margin.add_theme_constant_override("margin_top", 35)
-	right_margin.add_theme_constant_override("margin_bottom", 35)
+	right_margin.add_theme_constant_override("margin_left", DeskTheme.MARGIN_LARGE)
+	right_margin.add_theme_constant_override("margin_right", DeskTheme.MARGIN_LARGE)
+	right_margin.add_theme_constant_override("margin_top", DeskTheme.MARGIN_LARGE)
+	right_margin.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_LARGE)
 	right_vbox.add_child(right_margin)
 	
 	var right_inner = VBoxContainer.new()
-	right_inner.add_theme_constant_override("separation", 25)
+	right_inner.add_theme_constant_override("separation", DeskTheme.MARGIN_MEDIUM)
 	right_margin.add_child(right_inner)
 	
 	# Card Visual Container
@@ -122,8 +122,8 @@ func _ready() -> void:
 	card_title = Label.new()
 	card_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	card_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	card_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	card_title.add_theme_font_size_override("font_size", 26)
+	card_title.add_theme_font_override("font", DeskTheme.get_font())
+	card_title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_LARGE)
 	card_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	card_title.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	card_panel.add_child(card_title)
@@ -134,21 +134,21 @@ func _ready() -> void:
 	right_inner.add_child(desc_vbox)
 	
 	card_role_lbl = Label.new()
-	card_role_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	card_role_lbl.add_theme_font_size_override("font_size", 22)
+	card_role_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	card_role_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	desc_vbox.add_child(card_role_lbl)
 	
 	card_description = Label.new()
 	card_description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	card_description.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	card_description.add_theme_font_size_override("font_size", 22)
+	card_description.add_theme_font_override("font", DeskTheme.get_font())
+	card_description.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	card_description.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.75))
 	desc_vbox.add_child(card_description)
 	
 	# Stars & Usage
 	usage_count_lbl = Label.new()
-	usage_count_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	usage_count_lbl.add_theme_font_size_override("font_size", 18)
+	usage_count_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	usage_count_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
 	usage_count_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	right_inner.add_child(usage_count_lbl)
 	
@@ -161,10 +161,13 @@ func _ready() -> void:
 	back_btn = Button.new()
 	back_btn.text = "タイトルに戻る"
 	back_btn.custom_minimum_size = Vector2(320, 70)
-	back_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	back_btn.add_theme_font_size_override("font_size", 26)
+	back_btn.add_theme_font_override("font", DeskTheme.get_font())
+	back_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_LARGE)
 	Global.apply_white_button_style(back_btn)
-	back_btn.pressed.connect(_on_back_pressed)
+	back_btn.pressed.connect(func():
+		back_btn.release_focus()
+		_on_back_pressed()
+	)
 	right_inner.add_child(back_btn)
 	
 	# Populate catalog items
@@ -230,12 +233,13 @@ func populate_catalog() -> void:
 			
 			var name_lbl = Label.new()
 			name_lbl.text = item["name"]
-			name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+			name_lbl.add_theme_font_override("font", DeskTheme.get_font())
 			name_lbl.add_theme_font_size_override("font_size", 20)
 			name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 			btn_hbox.add_child(name_lbl)
 			
 			btn.pressed.connect(func():
+				btn.release_focus()
 				DeskTheme.animate_click(btn, Vector2.ONE, 0.08)
 				select_item(item_id)
 			)
@@ -247,7 +251,7 @@ func populate_catalog() -> void:
 			
 		btn.add_theme_stylebox_override("normal", btn_style)
 		btn.add_theme_stylebox_override("disabled", btn_style)
-		btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		btn.add_theme_font_override("font", DeskTheme.get_font())
 		btn.add_theme_font_size_override("font_size", 22)
 		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		

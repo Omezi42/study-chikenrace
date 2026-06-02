@@ -16,6 +16,7 @@ var current_poll_interval: float = 3.0
 var max_poll_interval: float = 12.0
 var last_submitted_count: int = 0
 var total_poll_time: float = 0.0
+var last_polled_moves: Array = []
 
 func _on_setup(setup_data: Dictionary) -> void:
 	custom_minimum_size = Vector2(1500, 850)
@@ -104,7 +105,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	status_lbl.text = "友達が今日の勉強を\n終えるのを待っています..." if not is_final_reveal_wait else "最終ダウト投票結果の\n同期を待っています..."
 	status_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	status_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	status_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	status_lbl.add_theme_font_size_override("font_size", 24)
 	status_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	app_vbox.add_child(status_lbl)
@@ -121,7 +122,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	# Title for list
 	var list_title = Label.new()
 	list_title.text = "👥 ルーム進捗状況 (Day %d)" % target_day
-	list_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	list_title.add_theme_font_override("font", DeskTheme.get_font())
 	list_title.add_theme_font_size_override("font_size", 20)
 	list_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	app_vbox.add_child(list_title)
@@ -185,7 +186,11 @@ func _on_poll_timeout() -> void:
 func _on_day_moves_polled(success: bool, moves: Array) -> void:
 	if not success:
 		return
+	if not (moves is Array):
+		return
 		
+	last_polled_moves = moves
+	
 	# 提出状況が変化（提出した他プレイヤーが増加）していた場合、ポーリング間隔を3.0秒に即時リセット
 	var current_submits = moves.size()
 	if current_submits > last_submitted_count:
@@ -201,6 +206,8 @@ func _on_day_moves_polled(success: bool, moves: Array) -> void:
 	var submitted_user_ids = {}
 	var doubts_submitted_ids = {}
 	for m in moves:
+		if not (m is Dictionary):
+			continue
 		var uid = _resolve_player_id(m.get("user_id", ""))
 		submitted_user_ids[uid] = true
 		if m.get("doubts_submitted", false):
@@ -262,6 +269,8 @@ func update_members_ui(submitted_moves: Array) -> void:
 	var submitted_ids = {}
 	var doubts_submitted_ids = {}
 	for m in submitted_moves:
+		if not (m is Dictionary):
+			continue
 		var uid = _resolve_player_id(m.get("user_id", ""))
 		submitted_ids[uid] = true
 		if m.get("doubts_submitted", false):
@@ -315,14 +324,14 @@ func update_members_ui(submitted_moves: Array) -> void:
 		var name_lbl = Label.new()
 		name_lbl.text = name_str
 		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		name_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		name_lbl.add_theme_font_size_override("font_size", 18)
 		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		hbox.add_child(name_lbl)
 		
 		var stat_lbl = Label.new()
 		stat_lbl.text = status_text
-		stat_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		stat_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		stat_lbl.add_theme_font_size_override("font_size", 18)
 		stat_lbl.add_theme_color_override("font_color", status_color)
 		hbox.add_child(stat_lbl)
@@ -332,12 +341,28 @@ func _show_timeout_fallback_button() -> void:
 	if app_vbox.has_node(btn_name):
 		return
 		
+	# 1. 0点で強制進行（バースト）ボタン
+	var force_btn = Button.new()
+	force_btn.name = "ForceProgressButton"
+	force_btn.text = "0点(バースト)で強制進行"
+	force_btn.custom_minimum_size = Vector2(240, 50)
+	force_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	force_btn.add_theme_font_override("font", DeskTheme.get_font())
+	force_btn.add_theme_font_size_override("font_size", 18)
+	Global.apply_white_button_style(force_btn)
+	force_btn.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+	force_btn.pressed.connect(func():
+		_on_force_progress_pressed(last_polled_moves)
+	)
+	app_vbox.add_child(force_btn)
+		
+	# 2. タイトルへ戻るボタン
 	var fallback_btn = Button.new()
 	fallback_btn.name = btn_name
 	fallback_btn.text = "タイトルへ戻る"
-	fallback_btn.custom_minimum_size = Vector2(200, 50)
+	fallback_btn.custom_minimum_size = Vector2(240, 50)
 	fallback_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	fallback_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	fallback_btn.add_theme_font_override("font", DeskTheme.get_font())
 	fallback_btn.add_theme_font_size_override("font_size", 18)
 	Global.apply_white_button_style(fallback_btn)
 	fallback_btn.pressed.connect(func():
@@ -348,6 +373,52 @@ func _show_timeout_fallback_button() -> void:
 		Global.change_scene_with_fade(get_tree(), "res://Title.tscn")
 	)
 	app_vbox.add_child(fallback_btn)
+
+func _on_force_progress_pressed(current_moves: Array) -> void:
+	poll_timer.stop()
+	if has_node("/root/BackendManager"):
+		var bm = get_node("/root/BackendManager")
+		if bm.day_moves_polled.is_connected(_on_day_moves_polled):
+			bm.day_moves_polled.disconnect(_on_day_moves_polled)
+			
+	# 未提出のプレイヤーを 0点（バースト）として補完
+	var simulated_moves = current_moves.duplicate(true)
+	var submitted_ids = {}
+	for m in simulated_moves:
+		var uid = _resolve_player_id(m.get("user_id", ""))
+		submitted_ids[uid] = true
+		
+	for member in Global.friend_member_list:
+		if not (member is Dictionary):
+			continue
+		var uid = _resolve_player_id(member.get("user_id", ""))
+		if not submitted_ids.has(uid):
+			var username_str = member.get("username", "メンバー")
+			var dummy_move = {
+				"user_id": uid,
+				"username": username_str,
+				"actual_score": 0,
+				"declared_score": 0,
+				"hours_history": [{"draws": 0, "used_items": [], "bursted": true, "score": 0}],
+				"doubts_made": [],
+				"doubts_submitted": true
+			}
+			simulated_moves.append(dummy_move)
+			
+	# 自分がホストかつ最終結果待ちでなければ、データベースのルーム進行を強制的に進める
+	if Global.friend_is_host and not is_final_reveal_wait and has_node("/root/BackendManager"):
+		var bm = get_node("/root/BackendManager")
+		bm.advance_friend_room_day(Global.friend_room_code, target_day + 1)
+		
+	# 前日の動きの取得を含めて遷移
+	if target_day > 1 and not is_final_reveal_wait and has_node("/root/BackendManager"):
+		var bm = get_node("/root/BackendManager")
+		var temp_callable = func(success_prev: bool, prev_moves: Array):
+			_transition_out(simulated_moves, prev_moves)
+		bm.day_moves_polled.connect(temp_callable, CONNECT_ONE_SHOT)
+		bm.poll_day_moves(Global.friend_room_code, target_day - 1)
+	else:
+		_transition_out(simulated_moves, [])
 
 func _resolve_player_id(uid: String) -> String:
 	var my_id = "player"

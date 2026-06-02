@@ -14,6 +14,7 @@ func _ready() -> void:
 	success = success and test_title_determination()
 	success = success and test_game_session_states()
 	success = success and test_scenario_modes()
+	success = success and test_metadata_and_integrity()
 	
 	print("==================================================")
 	if success:
@@ -515,4 +516,59 @@ func test_scenario_modes() -> bool:
 	Global.friend_match_history = orig_friend_match_history
 	
 	return pass_cram_day and pass_cram_hours and pass_cram_history and pass_cram_next_day and pass_friend_day and pass_friend_history_load and pass_friend_history_save
+
+func test_metadata_and_integrity() -> bool:
+	print("\n--- Test 8: Metadata & Integration Integrity ---")
+	
+	# A. Verify BagBuilder generate_choices() only uses unlocked items
+	var orig_unlocked = Global.unlocked_items.duplicate()
+	Global.unlocked_items = ["item_sticky_note", "item_eraser", "item_ruler"]
+	
+	var bag_builder = BagBuilderPhase.new()
+	bag_builder.card_options.clear()
+	bag_builder.generate_choices()
+	
+	var pass_bag = true
+	for card in bag_builder.card_options:
+		if not card["id"] in Global.unlocked_items:
+			pass_bag = false
+			break
+	var pass_bag_assert = assert_true(pass_bag, "BagBuilder choice generation strictly respects Global.unlocked_items pool.")
+	bag_builder.free()
+	Global.unlocked_items = orig_unlocked
+	
+	# B. Verify deviation change is restricted to MODE_RANDOM in ResultScene
+	var result_scene = ResultScene.new()
+	result_scene.showdown_data = {
+		"final_scores": {"player": 100},
+		"rankings": [],
+		"level_bonus": 0,
+		"coins_earned": 0,
+		"perfect_bonus": 0,
+		"title": "平均的な学生",
+		"details": {}
+	}
+	
+	# Mock deviation calculations for modes
+	var prev_mode = Global.game_mode
+	var orig_deviation = Global.deviation_value
+	
+	# Mode CPU (deviation should NOT change)
+	Global.game_mode = Constants.MODE_CPU
+	Global.deviation_value = 50.0
+	result_scene._calculate_deviation()
+	var pass_cpu_dev = assert_true(Global.deviation_value == 50.0, "CPU mode does not alter player deviation.")
+	
+	# Mode RANDOM (deviation SHOULD change)
+	Global.game_mode = Constants.MODE_RANDOM
+	Global.deviation_value = 50.0
+	result_scene._calculate_deviation()
+	var pass_random_dev = assert_true(Global.deviation_value != 50.0, "Random match mode successfully updates player deviation.")
+	
+	# Restore original settings
+	Global.game_mode = prev_mode
+	Global.deviation_value = orig_deviation
+	result_scene.free()
+	
+	return pass_bag_assert and pass_cpu_dev and pass_random_dev
 

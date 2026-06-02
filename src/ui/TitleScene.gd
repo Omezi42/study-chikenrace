@@ -42,7 +42,7 @@ func _ready() -> void:
 	
 	var center_vbox = VBoxContainer.new()
 	center_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	center_vbox.add_theme_constant_override("separation", 36)
+	center_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_LARGE)
 	center_container.add_child(center_vbox)
 	
 	# Title Logo Container (Larger & Static)
@@ -69,7 +69,7 @@ func _ready() -> void:
 	var top_lbl = Label.new()
 	top_lbl.text = "テスト勉強"
 	top_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	top_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	top_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	top_lbl.add_theme_font_size_override("font_size", 76)
 	top_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	top_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -89,7 +89,7 @@ func _ready() -> void:
 	var bottom_lbl = Label.new()
 	bottom_lbl.text = "チキンレース"
 	bottom_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	bottom_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	bottom_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	bottom_lbl.add_theme_font_size_override("font_size", 114)
 	bottom_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
 	bottom_lbl.add_theme_constant_override("outline_size", 8)
@@ -108,10 +108,10 @@ func _ready() -> void:
 	# Buttons VBox
 	var btn_vbox = VBoxContainer.new()
 	btn_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	btn_vbox.add_theme_constant_override("separation", 18)
+	btn_vbox.add_theme_constant_override("separation", DeskTheme.FONT_SIZE_SMALL)
 	center_vbox.add_child(btn_vbox)
 	
-	start_btn = _create_menu_button("ゲーム開始", Vector2(360, 70), 26)
+	start_btn = _create_menu_button("ゲーム開始", Vector2(360, 70), DeskTheme.FONT_SIZE_LARGE)
 	start_btn.pivot_offset = Vector2(180, 35)
 	start_btn.pressed.connect(_on_start_pressed)
 	btn_vbox.add_child(start_btn)
@@ -123,51 +123,51 @@ func _ready() -> void:
 	
 	var row_hbox = HBoxContainer.new()
 	row_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	row_hbox.add_theme_constant_override("separation", 20)
+	row_hbox.add_theme_constant_override("separation", DeskTheme.MARGIN_SMALL)
 	btn_vbox.add_child(row_hbox)
 	
-	loadout_btn = _create_menu_button("デッキ編成", Vector2(160, 50), 18)
+	loadout_btn = _create_menu_button("デッキ編成", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
 	loadout_btn.pressed.connect(_on_loadout_pressed)
 	row_hbox.add_child(loadout_btn)
 	
-	zukan_btn = _create_menu_button("アイテム図鑑", Vector2(160, 50), 18)
+	zukan_btn = _create_menu_button("アイテム図鑑", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
 	zukan_btn.pressed.connect(_on_zukan_pressed)
 	row_hbox.add_child(zukan_btn)
 	
-	gacha_btn = _create_menu_button("購買部ガチャ", Vector2(160, 50), 18)
+	gacha_btn = _create_menu_button("購買部ガチャ", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
 	gacha_btn.pressed.connect(_on_gacha_pressed)
 	row_hbox.add_child(gacha_btn)
 	
 	var row_hbox2 = HBoxContainer.new()
 	row_hbox2.alignment = BoxContainer.ALIGNMENT_CENTER
-	row_hbox2.add_theme_constant_override("separation", 20)
+	row_hbox2.add_theme_constant_override("separation", DeskTheme.MARGIN_SMALL)
 	btn_vbox.add_child(row_hbox2)
 	
-	tutorial_btn = _create_menu_button("あそびかた", Vector2(160, 50), 18)
+	tutorial_btn = _create_menu_button("あそびかた", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
 	tutorial_btn.pressed.connect(_on_tutorial_pressed)
 	row_hbox2.add_child(tutorial_btn)
 	
-	var ranking_btn = _create_menu_button("🏆 ランキング", Vector2(160, 50), 18)
+	var ranking_btn = _create_menu_button("🏆 ランキング", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
 	ranking_btn.pressed.connect(func():
 		LeaderboardModal.create_and_show(self)
 	)
 	row_hbox2.add_child(ranking_btn)
 	
-	var opt_btn = _create_menu_button("⚙️ 設定", Vector2(160, 50), 18)
+	var opt_btn = _create_menu_button("⚙️ 設定", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
 	opt_btn.pressed.connect(func():
 		SettingsModal.create_and_show(self)
 	)
 	row_hbox2.add_child(opt_btn)
 	
 	# 👤 Profile/Login button on top right of the desk
-	# 👤 Profile/Login button on top right of the desk
 	profile_btn = Button.new()
 	_update_profile_btn_text(profile_btn)
 	profile_btn.custom_minimum_size = Vector2(180, 45)
-	profile_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	profile_btn.add_theme_font_size_override("font_size", 18)
+	profile_btn.add_theme_font_override("font", DeskTheme.get_font())
+	profile_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
 	Global.apply_white_button_style(profile_btn)
 	profile_btn.pressed.connect(func():
+		profile_btn.release_focus()
 		DeskTheme.animate_click(profile_btn, Vector2.ONE, 0.08)
 		if Global.logged_in_user_id != "":
 			ProfileIdCardModal.create_and_show(self, profile_btn, func():
@@ -304,7 +304,7 @@ func _create_menu_button(btn_text: String, min_size: Vector2, font_size: int) ->
 	
 	var lbl = Label.new()
 	lbl.text = btn_text
-	lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	lbl.add_theme_font_override("font", DeskTheme.get_font())
 	lbl.add_theme_font_size_override("font_size", font_size)
 	lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -319,6 +319,9 @@ func _create_menu_button(btn_text: String, min_size: Vector2, font_size: int) ->
 	)
 	btn.mouse_exited.connect(func():
 		DeskTheme.animate_hover(btn, false, Vector2.ONE, 0.12)
+	)
+	btn.pressed.connect(func():
+		btn.release_focus()
 	)
 	
 	return btn

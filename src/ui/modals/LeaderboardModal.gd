@@ -52,7 +52,7 @@ func _ready() -> void:
 	var board_title = Label.new()
 	board_title.text = "全国統一模試ランキング 🏆"
 	board_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	board_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	board_title.add_theme_font_override("font", DeskTheme.get_font())
 	board_title.add_theme_font_size_override("font_size", 24)
 	board_title.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_YELLOW)
 	board_vbox.add_child(board_title)
@@ -75,7 +75,7 @@ func _ready() -> void:
 		
 		var rank_lbl = Label.new()
 		rank_lbl.text = "%d位 " % (idx + 1)
-		rank_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		rank_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		rank_lbl.add_theme_font_size_override("font_size", 18)
 		if idx == 0:
 			rank_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_YELLOW)
@@ -86,7 +86,7 @@ func _ready() -> void:
 		var name_lbl = Label.new()
 		name_lbl.text = entry["name"]
 		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		name_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		name_lbl.add_theme_font_size_override("font_size", 18)
 		if entry.get("is_player", false):
 			name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
@@ -96,7 +96,7 @@ func _ready() -> void:
 		
 		var score_lbl = Label.new()
 		score_lbl.text = "%d点" % entry["score"]
-		score_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		score_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		score_lbl.add_theme_font_size_override("font_size", 18)
 		score_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_WHITE)
 		entry_hbox.add_child(score_lbl)
@@ -105,12 +105,13 @@ func _ready() -> void:
 	close_btn.text = "閉じる ✖"
 	close_btn.custom_minimum_size = Vector2(160, 45)
 	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	close_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	close_btn.add_theme_font_override("font", DeskTheme.get_font())
 	close_btn.add_theme_font_size_override("font_size", 18)
 	Global.apply_white_button_style(close_btn)
 	board_vbox.add_child(close_btn)
 	
 	close_btn.pressed.connect(func():
+		close_btn.release_focus()
 		DeskTheme.animate_click(close_btn, Vector2.ONE, 0.08)
 		var out_tween = create_tween().bind_node(board).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		out_tween.tween_property(board, "scale", Vector2.ZERO, 0.2)

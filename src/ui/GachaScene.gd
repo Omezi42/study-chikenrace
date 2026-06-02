@@ -37,6 +37,27 @@ const GACHA_POOL = [
 	"item_cram_school_print"
 ]
 
+# ガチャ排出率ウェイト (合計1000)
+const GACHA_WEIGHTS = {
+	# レア (各2.0%、合計10.0%)
+	"item_energy_drink": 20,
+	"item_cheat_sheet": 20,
+	"item_copy_answer": 20,
+	"item_night_note": 20,
+	"item_cram_school_print": 20,
+	# アンコモン (各7.5%、合計30.0%)
+	"item_red_sheet": 75,
+	"item_thick_book": 75,
+	"item_amulet": 75,
+	"item_cafe_latte": 75,
+	# コモン (各12.0%、合計60.0%)
+	"item_compass": 120,
+	"item_timer": 120,
+	"item_study_chat": 120,
+	"item_expected_questions": 120,
+	"item_earplugs": 120
+}
+
 func _ready() -> void:
 	# 段ボール風（購買部のダンボール箱）背景
 	var cardboard = Panel.new()
@@ -99,21 +120,21 @@ func _ready() -> void:
 	
 	var center_vbox = VBoxContainer.new()
 	center_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	center_vbox.add_theme_constant_override("separation", 24)
+	center_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_MEDIUM)
 	center_container.add_child(center_vbox)
 	
 	var title = Label.new()
 	title.text = "購買部ガチャ（アイテムカプセル）"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	title.add_theme_font_size_override("font_size", 40)
+	title.add_theme_font_override("font", DeskTheme.get_font())
+	title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TITLE_LARGE)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	center_vbox.add_child(title)
 	
 	coin_lbl = Label.new()
 	coin_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	coin_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	coin_lbl.add_theme_font_size_override("font_size", 24)
+	coin_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	coin_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	coin_lbl.add_theme_color_override("font_color", Color("ff8f00")) # Gold color
 	center_vbox.add_child(coin_lbl)
 	
@@ -293,7 +314,7 @@ func _ready() -> void:
 	
 	var slot_vbox = VBoxContainer.new()
 	slot_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	slot_vbox.add_theme_constant_override("separation", 15)
+	slot_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_TINY)
 	slot_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	slot_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card_slot.add_child(slot_vbox)
@@ -302,8 +323,8 @@ func _ready() -> void:
 	card_title.text = "？"
 	card_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	card_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	card_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	card_title.add_theme_font_size_override("font_size", 30)
+	card_title.add_theme_font_override("font", DeskTheme.get_font())
+	card_title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TITLE)
 	card_title.add_theme_color_override("font_color", Color(Color.WHITE, 0.3))
 	slot_vbox.add_child(card_title)
 	
@@ -335,34 +356,54 @@ func _ready() -> void:
 	result_lbl = Label.new()
 	result_lbl.text = "ガチャを回してみよう！"
 	result_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	result_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	result_lbl.add_theme_font_size_override("font_size", 22)
+	result_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	result_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	result_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	center_vbox.add_child(result_lbl)
 	
 	# Actions
 	var btn_hbox = HBoxContainer.new()
 	btn_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	btn_hbox.add_theme_constant_override("separation", 25)
+	btn_hbox.add_theme_constant_override("separation", DeskTheme.MARGIN_MEDIUM)
 	center_vbox.add_child(btn_hbox)
 	
 	pull_btn = Button.new()
 	pull_btn.text = "1回引く (50コイン)"
 	pull_btn.custom_minimum_size = Vector2(260, 65)
-	pull_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	pull_btn.add_theme_font_size_override("font_size", 22)
+	pull_btn.add_theme_font_override("font", DeskTheme.get_font())
+	pull_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	pull_btn.pressed.connect(func():
+		pull_btn.release_focus()
 		DeskTheme.animate_click(pull_btn, Vector2.ONE, 0.08)
 		_on_pull_pressed()
 	)
 	btn_hbox.add_child(pull_btn)
 	
+	var odds_btn = Button.new()
+	odds_btn.text = "提供割合 📊"
+	odds_btn.custom_minimum_size = Vector2(160, 65)
+	odds_btn.add_theme_font_override("font", DeskTheme.get_font())
+	odds_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
+	odds_btn.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	Global.apply_white_button_style(odds_btn)
+	odds_btn.pressed.connect(func():
+		odds_btn.release_focus()
+		DeskTheme.animate_click(odds_btn, Vector2.ONE, 0.08)
+		_on_odds_pressed()
+	)
+	btn_hbox.add_child(odds_btn)
+	
 	back_btn = Button.new()
 	back_btn.text = "戻る"
 	back_btn.custom_minimum_size = Vector2(160, 65)
-	back_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
-	back_btn.add_theme_font_size_override("font_size", 22)
-	back_btn.pressed.connect(_on_back_pressed)
+	back_btn.add_theme_font_override("font", DeskTheme.get_font())
+	back_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
+	back_btn.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	Global.apply_white_button_style(back_btn)
+	back_btn.pressed.connect(func():
+		back_btn.release_focus()
+		_on_back_pressed()
+	)
 	btn_hbox.add_child(back_btn)
 	
 	update_coins_ui()
@@ -477,7 +518,7 @@ func spawn_capsule(slot_wrapper: Control) -> void:
 		prompt_lbl = Label.new()
 		prompt_lbl.text = "タップして開封！"
 		prompt_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		prompt_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		prompt_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		prompt_lbl.add_theme_font_size_override("font_size", 16)
 		prompt_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		# Positioned below the capsule: capsule center is at (180, 210), prompt is placed at bottom-center
@@ -515,8 +556,8 @@ func _on_capsule_clicked(capsule: Control, shell_t: PanelContainer, shell_b: Pan
 	)
 
 func reveal_gacha_result() -> void:
-	# Pick random item from pool
-	var drawn_item_id = GACHA_POOL[randi() % GACHA_POOL.size()]
+	# Pick random item with weights
+	var drawn_item_id = pick_gacha_item()
 	var item = CardData.ITEMS[drawn_item_id]
 	
 	var is_new = not drawn_item_id in Global.unlocked_items
@@ -577,3 +618,92 @@ func _on_back_pressed() -> void:
 	timer.timeout.connect(func():
 		Global.change_scene_with_fade(get_tree(), "res://Title.tscn")
 	)
+
+func pick_gacha_item() -> String:
+	var total_weight = 0
+	for item_id in GACHA_WEIGHTS.keys():
+		total_weight += GACHA_WEIGHTS[item_id]
+		
+	var roll = randi() % total_weight
+	var current_sum = 0
+	for item_id in GACHA_WEIGHTS.keys():
+		current_sum += GACHA_WEIGHTS[item_id]
+		if roll < current_sum:
+			return item_id
+			
+	return GACHA_WEIGHTS.keys()[0]
+
+func _on_odds_pressed() -> void:
+	# Create modal overlay for odds display
+	var odds_layer = CanvasLayer.new()
+	odds_layer.layer = 110
+	add_child(odds_layer)
+	
+	var overlay_bg = ColorRect.new()
+	overlay_bg.color = Color(0, 0, 0, 0.4)
+	overlay_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	odds_layer.add_child(overlay_bg)
+	
+	var panel = PanelContainer.new()
+	panel.custom_minimum_size = Vector2(500, 480)
+	panel.pivot_offset = Vector2(250, 240)
+	panel.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
+	odds_layer.add_child(panel)
+	
+	var viewport_size = get_viewport().get_visible_rect().size
+	panel.position = viewport_size * 0.5 - panel.pivot_offset
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", DeskTheme.MARGIN_MEDIUM)
+	margin.add_theme_constant_override("margin_right", DeskTheme.MARGIN_MEDIUM)
+	margin.add_theme_constant_override("margin_top", DeskTheme.MARGIN_MEDIUM)
+	margin.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_MEDIUM)
+	panel.add_child(margin)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_TINY)
+	margin.add_child(vbox)
+	
+	var title_lbl = Label.new()
+	title_lbl.text = "📋 ガチャ提供割合"
+	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	title_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
+	title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	vbox.add_child(title_lbl)
+	
+	var text_lbl = Label.new()
+	text_lbl.text = "【レア】 排出率 各 2.0% (合計 10.0%)\n" + \
+		" - エナジードリンク / ズルいカンペ / 解答写し\n" + \
+		" - 追込みノート / 塾プリント\n\n" + \
+		"【アンコモン】 排出率 各 7.5% (合計 30.0%)\n" + \
+		" - 赤シート / 分厚い参考書 / お守り / カフェラテ\n\n" + \
+		"【コモン】 排出率 各 12.0% (合計 60.0%)\n" + \
+		" - コンパス / タイマー / 勉強会チャット\n" + \
+		" - 予想問題集 / 耳栓"
+	text_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	text_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TINY)
+	text_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.8))
+	vbox.add_child(text_lbl)
+	
+	var close_btn = Button.new()
+	close_btn.text = "閉じる ✖"
+	close_btn.custom_minimum_size = Vector2(160, 45)
+	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	close_btn.add_theme_font_override("font", DeskTheme.get_font())
+	close_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
+	Global.apply_white_button_style(close_btn)
+	vbox.add_child(close_btn)
+	
+	close_btn.pressed.connect(func():
+		close_btn.release_focus()
+		DeskTheme.animate_click(close_btn, Vector2.ONE, 0.08)
+		var out_tween = create_tween().bind_node(panel).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		out_tween.tween_property(panel, "scale", Vector2.ZERO, 0.15)
+		out_tween.tween_callback(func():
+			odds_layer.queue_free()
+		)
+	)
+	
+	panel.scale = Vector2.ZERO
+	var tween = create_tween().bind_node(panel).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(panel, "scale", Vector2.ONE, 0.25)

@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS public.daily_scores (
     score INT NOT NULL,
     record JSONB NOT NULL DEFAULT '{}'::jsonb,
     season INT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    CONSTRAINT unique_user_season_day UNIQUE (user_id, season, day_idx)
 );
 
 -- RLS for Daily Scores
@@ -74,8 +75,14 @@ CREATE POLICY "Allow authenticated read friend rooms"
 CREATE POLICY "Allow authenticated users to create/update friend rooms"
     ON public.friend_rooms FOR ALL
     TO authenticated
-    USING (true)
-    WITH CHECK (true);
+    USING (
+        auth.uid() = host_id OR
+        (host_id = auth.uid() OR participants @> jsonb_build_array(jsonb_build_object('user_id', auth.uid()::text)))
+    )
+    WITH CHECK (
+        auth.uid() = host_id OR
+        (host_id = auth.uid() OR participants @> jsonb_build_array(jsonb_build_object('user_id', auth.uid()::text)))
+    );
 
 ---------------------------------------------------------
 -- 4. Friend Room Moves Table (Turn Submissions)
@@ -108,8 +115,28 @@ CREATE POLICY "Allow authenticated users to read moves"
 CREATE POLICY "Allow authenticated users to submit/update moves"
     ON public.friend_room_moves FOR ALL
     TO authenticated
-    USING (auth.uid()::text = user_id OR user_id LIKE 'cpu_%')
-    WITH CHECK (auth.uid()::text = user_id OR user_id LIKE 'cpu_%');
+    USING (
+        auth.uid()::text = user_id OR
+        (
+            user_id LIKE 'cpu_%' AND 
+            EXISTS (
+                SELECT 1 FROM public.friend_rooms r 
+                WHERE r.room_code = friend_room_moves.room_code 
+                  AND r.host_id = auth.uid()
+            )
+        )
+    )
+    WITH CHECK (
+        auth.uid()::text = user_id OR
+        (
+            user_id LIKE 'cpu_%' AND 
+            EXISTS (
+                SELECT 1 FROM public.friend_rooms r 
+                WHERE r.room_code = friend_room_moves.room_code 
+                  AND r.host_id = auth.uid()
+            )
+        )
+    );
 
 ---------------------------------------------------------
 -- 5. Performance Indexes

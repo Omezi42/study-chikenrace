@@ -158,8 +158,8 @@ func generate_choices() -> void:
 	var pool = []
 	for item_id in CardData.ITEMS.keys():
 		var item = CardData.ITEMS[item_id]
-		# Only offer cards that are unlocked OR in the gacha pool, excluding system items like forget notebook
-		if item_id != "item_forget_notebook":
+		# Only offer cards that are in the player's unlocked pool and not system items like forget notebook
+		if item_id != "item_forget_notebook" and item_id in Global.unlocked_items:
 			pool.append(item)
 			
 	pool.shuffle()

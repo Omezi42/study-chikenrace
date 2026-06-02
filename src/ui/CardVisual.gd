@@ -1,4 +1,4 @@
-class_name CardVisual
+﻿class_name CardVisual
 extends Button
 
 ## カード1枚のUI表示を担う再利用可能なコンポーネント。
@@ -87,7 +87,7 @@ func _build_ui() -> void:
 	var val_label = Label.new()
 	val_label.text = str(card_data.get("value", 0))
 	val_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	val_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	val_label.add_theme_font_override("font", DeskTheme.get_font())
 	val_label.add_theme_font_size_override("font_size", 44)
 	val_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	card_vbox.add_child(val_label)
@@ -112,7 +112,7 @@ func _build_ui() -> void:
 	name_lbl.text = item_info.get("name", "カード")
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	name_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	name_lbl.add_theme_font_size_override("font_size", 16)
 	name_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.75))
 	card_vbox.add_child(name_lbl)
@@ -124,7 +124,7 @@ func _build_ui() -> void:
 		effect_lbl.text = "【" + short_eff + "】"
 		effect_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		effect_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		effect_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		effect_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		effect_lbl.add_theme_font_size_override("font_size", 10)
 		var role = item_info.get("role", CardData.ROLE_PREP)
 		var eff_color = Color("ff4081") if role == CardData.ROLE_PUSH else Color(DeskTheme.COLOR_INK, 0.6)

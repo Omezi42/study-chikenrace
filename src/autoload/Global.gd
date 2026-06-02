@@ -25,7 +25,7 @@ var friend_match_history: Dictionary = {}
 
 # Cloud Session Info
 var logged_in_user_id: String = ""
-var logged_in_password: String = ""
+var auth_token: String = ""
 
 # Daily Exam State
 var daily_current_day: int = 1
@@ -101,7 +101,8 @@ func _ready() -> void:
 	if has_node("/root/BackendManager"):
 		var bm = get_node("/root/BackendManager")
 		bm.load_completed.connect(_on_cloud_load_completed)
-	if logged_in_user_id != "" and logged_in_password != "":
+		bm.auth_completed.connect(_on_auth_completed)
+	if logged_in_user_id != "" and auth_token != "":
 		call_deferred("_auto_login")
 		
 	# Calculate current season (1 season = 2 weeks = 14 days = 1,209,600 seconds)
@@ -116,7 +117,7 @@ const SIMPLE_SAVE_FIELDS = [
 	"unlocked_items", "item_usage_counts", "unlocked_titles", 
 	"deviation_value", "max_deviation_value", "game_mode", 
 	"opponent_profiles", "bgm_volume", "se_volume", "is_muted",
-	"logged_in_user_id", "daily_current_day",
+	"logged_in_user_id", "auth_token", "daily_current_day",
 	"daily_last_played_date", "daily_opponent_ghosts", "daily_my_records",
 	"friend_room_code", "friend_is_host", "friend_member_list",
 	"friend_current_day", "friend_match_history"
@@ -132,6 +133,8 @@ func save_game() -> void:
 	save_dict["current_deck"] = get_deck_as_string_keys()
 	save_dict["daily_fixed_deck"] = get_daily_fixed_deck_as_string_keys()
 	save_dict["save_version"] = Constants.SAVE_VERSION
+	validate_current_deck()
+	validate_opponent_profiles()
 	
 	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file:
@@ -180,14 +183,16 @@ func load_game() -> void:
 							
 				if "current_deck" in data:
 					var deck_data = data["current_deck"]
-					for key in deck_data.keys():
-						current_deck[int(key)] = str(deck_data[key])
+					if deck_data is Dictionary:
+						for key in deck_data.keys():
+							current_deck[int(key)] = str(deck_data[key])
 						
 				if "daily_fixed_deck" in data:
 					var fd_data = data["daily_fixed_deck"]
 					daily_fixed_deck.clear()
-					for k in fd_data.keys():
-						daily_fixed_deck[int(k)] = str(fd_data[k])
+					if fd_data is Dictionary:
+						for k in fd_data.keys():
+							daily_fixed_deck[int(k)] = str(fd_data[k])
 						
 		# Ensure all 10 slots are populated in case of load anomalies
 		validate_current_deck()
@@ -242,6 +247,57 @@ func validate_opponent_profiles() -> void:
 			continue
 		if not opponent_profiles[key].has("id"):
 			opponent_profiles[key]["id"] = default_ids.get(key, "cpu_sato")
+		if not opponent_profiles[key].has("name") or str(opponent_profiles[key]["name"]) == "":
+			opponent_profiles[key]["name"] = AIManager.CPU_OPPONENTS.get(opponent_profiles[key]["id"], {}).get("name", "繝ｩ繧､繝舌Ν")
+		if not opponent_profiles[key].has("deviation"):
+			opponent_profiles[key]["deviation"] = 50.0
+
+func get_default_participant_record(participant_id: String, display_name: String = "") -> Dictionary:
+	var name_to_use = display_name
+	if name_to_use == "":
+		if participant_id == "player":
+			name_to_use = player_name if player_name != "" else "縺ゅ↑縺・"
+		elif opponent_profiles.has(participant_id):
+			name_to_use = opponent_profiles[participant_id].get("name", "繝ｩ繧､繝舌Ν")
+		elif AIManager.CPU_OPPONENTS.has(participant_id):
+			name_to_use = AIManager.CPU_OPPONENTS[participant_id].get("name", "繝ｩ繧､繝舌Ν")
+		else:
+			name_to_use = "繝ｩ繧､繝舌Ν"
+
+	return {
+		"id": participant_id,
+		"name": name_to_use,
+		"actual_score": 0,
+		"declared_score": 0,
+		"hours": [],
+		"doubts_made": [],
+		"doubts_received": [],
+		"is_doubt_exposed": false,
+		"auto_exposed": false
+	}
+
+func normalize_participant_record(record: Variant, participant_id: String, display_name: String = "") -> Dictionary:
+	var normalized = get_default_participant_record(participant_id, display_name)
+	if not (record is Dictionary):
+		return normalized
+	normalized["id"] = str(record.get("id", participant_id))
+	normalized["name"] = str(record.get("name", normalized["name"]))
+	normalized["actual_score"] = int(record.get("actual_score", 0))
+	normalized["declared_score"] = int(record.get("declared_score", 0))
+	normalized["hours"] = record.get("hours", record.get("hours_history", []))
+	normalized["doubts_made"] = record.get("doubts_made", [])
+	normalized["doubts_received"] = record.get("doubts_received", [])
+	normalized["is_doubt_exposed"] = bool(record.get("is_doubt_exposed", false))
+	normalized["auto_exposed"] = bool(record.get("auto_exposed", false))
+	return normalized
+
+func normalize_day_record(day_record: Variant) -> Dictionary:
+	var normalized: Dictionary = {}
+	if not (day_record is Dictionary):
+		return normalized
+	for p_id in day_record.keys():
+		normalized[str(p_id)] = normalize_participant_record(day_record[p_id], str(p_id))
+	return normalized
 
 # Select 3 random CPU opponents from the pool of 6, and assign them to active match slots
 func select_random_opponents() -> void:
@@ -372,46 +428,66 @@ func change_scene_with_fade(tree: SceneTree, target_scene_path: String, duration
 func _auto_login() -> void:
 	if has_node("/root/BackendManager"):
 		var bm = get_node("/root/BackendManager")
-		bm.login_user(logged_in_user_id, logged_in_password)
+		bm.verify_token(auth_token, logged_in_user_id)
+
+func _on_auth_completed(success: bool, error_message: String) -> void:
+	if success:
+		if has_node("/root/BackendManager"):
+			var bm = get_node("/root/BackendManager")
+			auth_token = bm.auth_token
+			logged_in_user_id = bm.logged_in_uuid
+			bm.load_cloud_data()
+		save_game()
+	else:
+		auth_token = ""
+		logged_in_user_id = ""
+		save_game()
 
 func _on_cloud_load_completed(success: bool, cloud_data: Dictionary) -> void:
 	if success and cloud_data.size() > 0:
-		if "player_name" in cloud_data: player_name = cloud_data["player_name"]
-		if "coins" in cloud_data: coins = int(cloud_data["coins"])
-		if "best_score" in cloud_data: best_score = int(cloud_data["best_score"])
-		if "play_count" in cloud_data: play_count = int(cloud_data["play_count"])
-		if "deviation_value" in cloud_data: deviation_value = float(cloud_data["deviation_value"])
-		if "max_deviation_value" in cloud_data: max_deviation_value = float(cloud_data["max_deviation_value"])
+		if "player_name" in cloud_data: player_name = str(cloud_data["player_name"])
+		if "coins" in cloud_data: coins = max(0, int(cloud_data["coins"]))
+		if "best_score" in cloud_data: best_score = max(0, int(cloud_data["best_score"]))
+		if "play_count" in cloud_data: play_count = max(0, int(cloud_data["play_count"]))
+		if "deviation_value" in cloud_data: deviation_value = clampf(float(cloud_data["deviation_value"]), 30.0, 90.0)
+		if "max_deviation_value" in cloud_data: max_deviation_value = clampf(float(cloud_data["max_deviation_value"]), 30.0, 90.0)
 		
 		if "unlocked_items" in cloud_data:
 			unlocked_items.clear()
-			for item in cloud_data["unlocked_items"]:
-				unlocked_items.append(str(item))
+			if cloud_data["unlocked_items"] is Array:
+				for item in cloud_data["unlocked_items"]:
+					unlocked_items.append(str(item))
 				
 		if "item_usage_counts" in cloud_data:
-			item_usage_counts = cloud_data["item_usage_counts"]
+			item_usage_counts = cloud_data["item_usage_counts"] if cloud_data["item_usage_counts"] is Dictionary else {}
 			
 		if "unlocked_titles" in cloud_data:
 			unlocked_titles.clear()
-			for title in cloud_data["unlocked_titles"]:
-				unlocked_titles.append(str(title))
+			if cloud_data["unlocked_titles"] is Array:
+				for title in cloud_data["unlocked_titles"]:
+					unlocked_titles.append(str(title))
 				
 		if "current_deck" in cloud_data:
 			var deck_data = cloud_data["current_deck"]
-			for key in deck_data.keys():
-				current_deck[int(key)] = str(deck_data[key])
+			if deck_data is Dictionary:
+				for key in deck_data.keys():
+					current_deck[int(key)] = str(deck_data[key])
 				
 		if "daily_current_day" in cloud_data: daily_current_day = int(cloud_data["daily_current_day"])
 		if "daily_last_played_date" in cloud_data: daily_last_played_date = str(cloud_data["daily_last_played_date"])
-		if "daily_opponent_ghosts" in cloud_data: daily_opponent_ghosts = cloud_data["daily_opponent_ghosts"]
-		if "daily_my_records" in cloud_data: daily_my_records = cloud_data["daily_my_records"]
+		if "daily_opponent_ghosts" in cloud_data:
+			daily_opponent_ghosts = cloud_data["daily_opponent_ghosts"] if cloud_data["daily_opponent_ghosts"] is Dictionary else {}
+		if "daily_my_records" in cloud_data:
+			daily_my_records = cloud_data["daily_my_records"] if cloud_data["daily_my_records"] is Dictionary else {}
 		if "daily_fixed_deck" in cloud_data:
 			var fd_data = cloud_data["daily_fixed_deck"]
 			daily_fixed_deck.clear()
-			for k in fd_data.keys():
-				daily_fixed_deck[int(k)] = str(fd_data[k])
+			if fd_data is Dictionary:
+				for k in fd_data.keys():
+					daily_fixed_deck[int(k)] = str(fd_data[k])
 				
 		validate_current_deck()
+		validate_opponent_profiles()
 		save_game()
 
 func get_daily_fixed_deck_as_string_keys() -> Dictionary:

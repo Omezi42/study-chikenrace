@@ -23,6 +23,11 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	var max_doubts = 3
 	local_doubts_count = max_doubts - session.player_doubts_made_today.size()
 	
+	if has_node("/root/BackendManager"):
+		var bm = get_node("/root/BackendManager")
+		if not bm.connection_lost.is_connected(_on_connection_lost):
+			bm.connection_lost.connect(_on_connection_lost)
+	
 	# Layout setup: Left is Phone, Right is controls & inspection
 	var main_hbox = HBoxContainer.new()
 	main_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -80,7 +85,7 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	
 	remaining_doubts_label = Label.new()
 	remaining_doubts_label.text = "今日のダウト投票可能数：3回"
-	remaining_doubts_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	remaining_doubts_label.add_theme_font_override("font", DeskTheme.get_font())
 	remaining_doubts_label.add_theme_font_size_override("font_size", 28)
 	remaining_doubts_label.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
 	right_vbox.add_child(remaining_doubts_label)
@@ -108,7 +113,7 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	
 	detail_title = Label.new()
 	detail_title.text = "ライバル詳細ログ"
-	detail_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	detail_title.add_theme_font_override("font", DeskTheme.get_font())
 	detail_title.add_theme_font_size_override("font_size", 26)
 	detail_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	detail_vbox.add_child(detail_title)
@@ -116,7 +121,7 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	detail_body = Label.new()
 	detail_body.text = "タイムラインの「詳細確認」を押すと、ライバルが今日引いたドロー数と使用したアイテムのログがここに表示されます。"
 	detail_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail_body.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	detail_body.add_theme_font_override("font", DeskTheme.get_font())
 	detail_body.add_theme_font_size_override("font_size", 20)
 	detail_body.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
 	detail_body.custom_minimum_size = Vector2(580, 200)
@@ -130,7 +135,7 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	next_day_btn = Button.new()
 	next_day_btn.text = "明日の勉強へ進む"
 	next_day_btn.custom_minimum_size = Vector2(360, 65)
-	next_day_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	next_day_btn.add_theme_font_override("font", DeskTheme.get_font())
 	next_day_btn.add_theme_font_size_override("font_size", 24)
 	next_day_btn.pressed.connect(_on_next_day_pressed)
 	right_vbox.add_child(next_day_btn)
@@ -267,26 +272,14 @@ func populate_timeline() -> void:
 		
 		var name_lbl = Label.new()
 		name_lbl.text = p["name"]
-		name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		name_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		name_lbl.add_theme_font_size_override("font_size", 22)
 		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		header_hbox.add_child(name_lbl)
-		
-		if p["id"] != "player":
-			var reaction = _determine_cpu_reaction(p["id"], p["declared_score"], p["actual_score"])
-			var react_lbl = Label.new()
-			react_lbl.text = reaction
-			react_lbl.add_theme_font_size_override("font_size", 20)
-			header_hbox.add_child(react_lbl)
-			
-			if reaction != REACT_CALM:
-				var timer_shake = get_tree().create_timer(randf_range(0.2, 0.8))
-				timer_shake.timeout.connect(_on_reaction_shake_timeout.bind(react_lbl))
-		
 		# Body (Declared score text)
 		var decl_lbl = Label.new()
 		decl_lbl.text = "今日の勉強報告：" + str(p["declared_score"]) + " 点！"
-		decl_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		decl_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		decl_lbl.add_theme_font_size_override("font_size", 18)
 		decl_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.8))
 		text_vbox.add_child(decl_lbl)
@@ -347,7 +340,7 @@ func _on_inspect_pressed(p: Dictionary) -> void:
 		# Hour badge
 		var hour_lbl = Label.new()
 		hour_lbl.text = " %d時限目 " % (h_idx + 1)
-		hour_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		hour_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		hour_lbl.add_theme_font_size_override("font_size", 16)
 		hour_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		
@@ -393,7 +386,7 @@ func _on_inspect_pressed(p: Dictionary) -> void:
 		# Text fallback for cards count
 		var count_lbl = Label.new()
 		count_lbl.text = "(%d枚ドロー)" % h["draws"]
-		count_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		count_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		count_lbl.add_theme_font_size_override("font_size", 16)
 		count_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 		row.add_child(count_lbl)
@@ -439,7 +432,7 @@ func _on_inspect_pressed(p: Dictionary) -> void:
 				
 				var badge_lbl = Label.new()
 				badge_lbl.text = "%s %s" % [symbol, item["name"]]
-				badge_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+				badge_lbl.add_theme_font_override("font", DeskTheme.get_font())
 				badge_lbl.add_theme_font_size_override("font_size", 14)
 				badge_lbl.add_theme_color_override("font_color", CardData.get_role_color(item["role"]))
 				badge.add_child(badge_lbl)
@@ -519,7 +512,7 @@ func show_tutorial_finish_modal() -> void:
 	var title = Label.new()
 	title.text = "チュートリアル完了！"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 32)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	vbox.add_child(title)
@@ -527,7 +520,7 @@ func show_tutorial_finish_modal() -> void:
 	var body = Label.new()
 	body.text = "お疲れ様でした！『テスト勉強チキンレース』の基本的な遊び方（自習、カバン整理、チキスタへの投稿、嘘とダウトの見極め）をマスターしました。\n\n本番の5日制マッチで、他のライバルたちを実力とブラフで圧倒し、第一志望合格（偏差値アップ）を勝ち取りましょう！"
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	body.add_theme_font_override("font", DeskTheme.get_font())
 	body.add_theme_font_size_override("font_size", 18)
 	body.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(body)
@@ -536,7 +529,7 @@ func show_tutorial_finish_modal() -> void:
 	btn.text = "タイトル画面に戻る"
 	btn.custom_minimum_size = Vector2(240, 50)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	btn.add_theme_font_override("font", DeskTheme.get_font())
 	btn.add_theme_font_size_override("font_size", 20)
 	btn.pressed.connect(func():
 		DeskTheme.animate_click(btn, Vector2.ONE, 0.08)
@@ -553,39 +546,9 @@ func show_tutorial_finish_modal() -> void:
 	var tween = create_tween().bind_node(modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(modal, "scale", Vector2.ONE, 0.3)
 
-const REACT_CALM = "😐"
-const REACT_SWEAT = "💦"
-const REACT_SMIRK = "😏"
 
-func _determine_cpu_reaction(p_id: String, declared: int, actual: int) -> String:
-	var diff = declared - actual
-	var cpu_type = ""
-	var actual_profile_id = p_id
-	if Global.opponent_profiles.has(p_id):
-		actual_profile_id = Global.opponent_profiles[p_id].get("id", p_id)
-	if AIManager.CPU_OPPONENTS.has(actual_profile_id):
-		cpu_type = AIManager.CPU_OPPONENTS[actual_profile_id].get("type", "")
-		
-	if diff <= 0:
-		return REACT_CALM if randf() < 0.9 else REACT_SWEAT
-	else:
-		var bluff_rate = float(diff) / 40.0
-		if cpu_type == AIManager.TYPE_CAUTIOUS:
-			var sweat_prob = clamp(bluff_rate * 0.8, 0.2, 0.8)
-			if randf() < sweat_prob:
-				return REACT_SWEAT
-			return REACT_CALM
-		elif cpu_type == AIManager.TYPE_BLUFFER:
-			if randf() < 0.35:
-				return REACT_SMIRK
-			return REACT_CALM
-		else:
-			var react_prob = clamp(bluff_rate * 0.7, 0.1, 0.7)
-			if randf() < react_prob:
-				return REACT_SWEAT if randf() < 0.5 else REACT_SMIRK
-			return REACT_CALM
-
-func _on_reaction_shake_timeout(lbl: Object) -> void:
-	var react_lbl = lbl as Label
-	if react_lbl and is_instance_valid(react_lbl):
-		DeskTheme.shake_control(react_lbl, 2.0, 0.3)
+func _on_connection_lost() -> void:
+	if not is_inside_tree():
+		return
+	next_day_btn.disabled = true
+	ConnectionErrorModal.create_and_show(self)

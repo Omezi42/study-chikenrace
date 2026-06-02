@@ -199,6 +199,14 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 	
 	# Apply ±15% fluctuation to risk tolerance, adjusted by deviation
 	risk_tolerance *= randf_range(0.85, 1.15) * dev_factor
+	
+	# 状況評価: 後半戦で負けているか、勝っているか
+	var is_losing = day_idx >= 3 and deviation < 48.0
+	var is_winning = day_idx >= 3 and deviation >= 53.0
+	if is_losing:
+		risk_tolerance *= 1.25
+	elif is_winning:
+		risk_tolerance *= 0.85
 		
 	var hours_result = []
 	var total_actual_score = 0
@@ -220,7 +228,7 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 		
 		# AI Decides to activate items before starting draw
 		var used_items = []
-		decide_and_apply_cpu_items(deck, deck_config, used_items, day_idx)
+		decide_and_apply_cpu_items(deck, deck_config, used_items, day_idx, cpu_id)
 		
 		var draw_count = 0
 		var bursted = false
@@ -228,6 +236,15 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 		# Chicken race loop
 		while true:
 			var burst_prob = deck.get_burst_probability()
+			
+			# カフェラテの動的割り込み発動
+			if "item_cafe_latte" in deck_config.values() and not "item_cafe_latte" in used_items:
+				if burst_prob >= 0.4 and randf() < 0.75:
+					used_items.append("item_cafe_latte")
+					var card = deck.activate_cafe_latte()
+					if not card.is_empty():
+						draw_count += 1
+						continue
 			
 			# Decide to draw or stop
 			# Always draw the first 2 cards safely (burst probability is usually 0 initially)
@@ -282,31 +299,43 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 	}
 
 # Decide which items CPU activates before drawing
-static func decide_and_apply_cpu_items(deck: StudyDeck, deck_config: Dictionary, used_items: Array, day_idx: int) -> void:
+static func decide_and_apply_cpu_items(deck: StudyDeck, deck_config: Dictionary, used_items: Array, day_idx: int, cpu_id: String) -> void:
+	var deviation = 50.0
+	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("deviation"):
+		deviation = Global.opponent_profiles[cpu_id]["deviation"]
+	
 	# Scale up item activation rates in later days
 	var late_game_boost = clamp(day_idx * 0.12, 0.0, 0.45)
 	
+	# 状況評価: 後半戦で負けているか、勝っているか
+	var is_losing = day_idx >= 3 and deviation < 48.0
+	var is_winning = day_idx >= 3 and deviation >= 53.0
+	
+	# アイテム使用確率の倍率補正
+	var defense_mult = 1.5 if is_winning else (0.6 if is_losing else 1.0)
+	var offense_mult = 1.6 if is_losing else (0.4 if is_winning else 1.0)
+	
 	# Cautious AIs slot eraser charge
-	if "item_eraser" in deck_config.values() and randf() < (0.3 + late_game_boost):
+	if "item_eraser" in deck_config.values() and randf() < ((0.3 + late_game_boost) * defense_mult):
 		deck.eraser_charges = 1
 		used_items.append("item_eraser")
 		
 	# Cautious AIs look at ruler/wordbook
-	if "item_wordbook" in deck_config.values() and randf() < (0.15 + late_game_boost):
+	if "item_wordbook" in deck_config.values() and randf() < ((0.15 + late_game_boost) * defense_mult):
 		used_items.append("item_wordbook")
-	elif "item_ruler" in deck_config.values() and randf() < (0.15 + late_game_boost):
+	elif "item_ruler" in deck_config.values() and randf() < ((0.15 + late_game_boost) * defense_mult):
 		used_items.append("item_ruler")
 		
 	# Aggressive/Highroller AIs use mechanical pencil or energy drink
-	if "item_mech_pencil" in deck_config.values() and randf() < (0.22 + late_game_boost):
+	if "item_mech_pencil" in deck_config.values() and randf() < ((0.22 + late_game_boost) * offense_mult):
 		deck.next_draw_bonus_points = 2
 		used_items.append("item_mech_pencil")
 		
-	if "item_energy_drink" in deck_config.values() and randf() < (0.18 + late_game_boost):
+	if "item_energy_drink" in deck_config.values() and randf() < ((0.18 + late_game_boost) * offense_mult):
 		deck.energy_drink_active = true
 		used_items.append("item_energy_drink")
 		
-	if "item_highlighter" in deck_config.values() and randf() < (0.18 + late_game_boost):
+	if "item_highlighter" in deck_config.values() and randf() < ((0.18 + late_game_boost) * offense_mult):
 		deck.highlighter_active = true
 		used_items.append("item_highlighter")
 

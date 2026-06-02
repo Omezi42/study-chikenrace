@@ -41,7 +41,7 @@ func _ready() -> void:
 	var title = Label.new()
 	title.text = "⚙️ オプション設定"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 26)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
@@ -55,7 +55,7 @@ func _ready() -> void:
 	
 	var bgm_label = Label.new()
 	bgm_label.text = "BGM 音量: %d%%" % int(audio.bgm_volume * 100)
-	bgm_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	bgm_label.add_theme_font_override("font", DeskTheme.get_font())
 	bgm_label.add_theme_font_size_override("font_size", 16)
 	bgm_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	bgm_vbox.add_child(bgm_label)
@@ -78,7 +78,7 @@ func _ready() -> void:
 	
 	var se_label = Label.new()
 	se_label.text = "SE 音量: %d%%" % int(audio.se_volume * 100)
-	se_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	se_label.add_theme_font_override("font", DeskTheme.get_font())
 	se_label.add_theme_font_size_override("font_size", 16)
 	se_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	se_vbox.add_child(se_label)
@@ -101,7 +101,7 @@ func _ready() -> void:
 	
 	var mute_label = Label.new()
 	mute_label.text = "すべての音声をミュートする: "
-	mute_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	mute_label.add_theme_font_override("font", DeskTheme.get_font())
 	mute_label.add_theme_font_size_override("font_size", 16)
 	mute_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	mute_hbox.add_child(mute_label)
@@ -117,10 +117,11 @@ func _ready() -> void:
 	var rule_btn = Button.new()
 	rule_btn.text = "📖 ルールブックを閲覧"
 	rule_btn.custom_minimum_size = Vector2(300, 45)
-	rule_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	rule_btn.add_theme_font_override("font", DeskTheme.get_font())
 	rule_btn.add_theme_font_size_override("font_size", 16)
 	DeskTheme.apply_white_button_style(rule_btn)
 	rule_btn.pressed.connect(func():
+		rule_btn.release_focus()
 		DeskTheme.animate_click(rule_btn, Vector2.ONE, 0.08)
 		RulebookModal.create_and_show(get_parent())
 	)
@@ -143,10 +144,11 @@ func _ready() -> void:
 		var return_btn = Button.new()
 		return_btn.text = "🚪 タイトルへ戻る"
 		return_btn.custom_minimum_size = Vector2(200, 45)
-		return_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		return_btn.add_theme_font_override("font", DeskTheme.get_font())
 		return_btn.add_theme_font_size_override("font_size", 18)
 		DeskTheme.apply_white_button_style(return_btn)
 		return_btn.pressed.connect(func():
+			return_btn.release_focus()
 			DeskTheme.animate_click(return_btn, Vector2.ONE, 0.08)
 			show_confirm_dialog(parent_node, "本当にタイトルへ戻りますか？\n（進行状況は破棄されます）", func():
 				# Close settings and change scene
@@ -161,10 +163,11 @@ func _ready() -> void:
 	var close_btn = Button.new()
 	close_btn.text = " ✖ 閉じる "
 	close_btn.custom_minimum_size = Vector2(200, 45)
-	close_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	close_btn.add_theme_font_override("font", DeskTheme.get_font())
 	close_btn.add_theme_font_size_override("font_size", 18)
 	DeskTheme.apply_white_button_style(close_btn)
 	close_btn.pressed.connect(func():
+		close_btn.release_focus()
 		DeskTheme.animate_click(close_btn, Vector2.ONE, 0.08)
 		var out_tween = create_tween().bind_node(modal).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		out_tween.tween_property(modal, "scale", Vector2.ZERO, 0.2)
@@ -216,7 +219,7 @@ func show_confirm_dialog(parent_node: Node, text: String, on_confirm: Callable) 
 	var label = Label.new()
 	label.text = text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	label.add_theme_font_override("font", DeskTheme.get_font())
 	label.add_theme_font_size_override("font_size", 18)
 	label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(label)
@@ -229,7 +232,7 @@ func show_confirm_dialog(parent_node: Node, text: String, on_confirm: Callable) 
 	var yes_btn = Button.new()
 	yes_btn.text = "はい"
 	yes_btn.custom_minimum_size = Vector2(120, 45)
-	yes_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	yes_btn.add_theme_font_override("font", DeskTheme.get_font())
 	yes_btn.add_theme_font_size_override("font_size", 18)
 	DeskTheme.apply_white_button_style(yes_btn)
 	yes_btn.add_theme_color_override("font_color", Color("d32f2f"))
@@ -238,12 +241,13 @@ func show_confirm_dialog(parent_node: Node, text: String, on_confirm: Callable) 
 	var no_btn = Button.new()
 	no_btn.text = "いいえ"
 	no_btn.custom_minimum_size = Vector2(120, 45)
-	no_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	no_btn.add_theme_font_override("font", DeskTheme.get_font())
 	no_btn.add_theme_font_size_override("font_size", 18)
 	DeskTheme.apply_white_button_style(no_btn)
 	btn_hbox.add_child(no_btn)
 	
 	yes_btn.pressed.connect(func():
+		yes_btn.release_focus()
 		DeskTheme.animate_click(yes_btn, Vector2.ONE, 0.08)
 		var out_tween = create_tween().bind_node(modal).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		out_tween.tween_property(modal, "scale", Vector2.ZERO, 0.2)
@@ -255,6 +259,7 @@ func show_confirm_dialog(parent_node: Node, text: String, on_confirm: Callable) 
 	)
 	
 	no_btn.pressed.connect(func():
+		no_btn.release_focus()
 		DeskTheme.animate_click(no_btn, Vector2.ONE, 0.08)
 		var out_tween = create_tween().bind_node(modal).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		out_tween.tween_property(modal, "scale", Vector2.ZERO, 0.2)

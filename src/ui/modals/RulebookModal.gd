@@ -1,4 +1,4 @@
-class_name RulebookModal
+﻿class_name RulebookModal
 extends CanvasLayer
 
 static func create_and_show(parent_node: Node) -> void:
@@ -42,7 +42,7 @@ func _ready() -> void:
 	
 	var title = Label.new()
 	title.text = "📝 テスト勉強チキンレース 公式ルールブック"
-	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -50,7 +50,7 @@ func _ready() -> void:
 	
 	var close_btn = Button.new()
 	close_btn.text = " ✖ 閉じる "
-	close_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	close_btn.add_theme_font_override("font", DeskTheme.get_font())
 	close_btn.add_theme_font_size_override("font_size", 18)
 	close_btn.custom_minimum_size = Vector2(100, 36)
 	DeskTheme.apply_white_button_style(close_btn)
@@ -63,8 +63,8 @@ func _ready() -> void:
 	
 	var rtb = RichTextLabel.new()
 	rtb.bbcode_enabled = true
-	rtb.add_theme_font_override("normal_font", load(DeskTheme.FONT_HANDWRITING))
-	rtb.add_theme_font_override("bold_font", load(DeskTheme.FONT_HANDWRITING))
+	rtb.add_theme_font_override("normal_font", DeskTheme.get_font())
+	rtb.add_theme_font_override("bold_font", DeskTheme.get_font())
 	rtb.add_theme_font_size_override("normal_font_size", 16)
 	rtb.add_theme_font_size_override("bold_font_size", 18)
 	rtb.add_theme_color_override("default_color", DeskTheme.COLOR_INK)

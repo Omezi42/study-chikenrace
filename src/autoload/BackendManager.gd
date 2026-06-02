@@ -65,9 +65,11 @@ signal room_created(success: bool, room_code: String)
 signal room_joined(success: bool, participants: Array)
 signal room_polled(status: String, current_day: int, participants: Array)
 signal day_moves_polled(success: bool, moves: Array)
+signal connection_lost()
 
 var logged_in_uuid: String = ""
 var auth_token: String = ""
+var consecutive_network_errors: int = 0
 
 # Offline/Mock state for friend rooms
 var is_mock_room: bool = false
@@ -88,6 +90,23 @@ func _get_headers(auth_required: bool = false) -> Array[String]:
 	else:
 		headers.append("Authorization: Bearer " + _get_supabase_key())
 	return headers
+
+func _normalize_score_payload(move_data: Variant) -> Dictionary:
+	if not (move_data is Dictionary):
+		return {
+			"actual_score": 0,
+			"declared_score": 0,
+			"hours_history": [],
+			"doubts_made": [],
+			"doubts_submitted": false
+		}
+	return {
+		"actual_score": clampi(int(move_data.get("actual_score", 0)), 0, 9999),
+		"declared_score": clampi(int(move_data.get("declared_score", 0)), 0, 9999),
+		"hours_history": move_data.get("hours_history", []),
+		"doubts_made": move_data.get("doubts_made", []),
+		"doubts_submitted": bool(move_data.get("doubts_submitted", false))
+	}
 
 # ─────────────────────────────────────────────────────────
 # Helper to perform HTTP request using the object pool
@@ -218,6 +237,27 @@ func login_user(user_id: String, password: String) -> void:
 			auth_completed.emit(false, err_msg)
 	)
 
+# 2.5 Token Verification (セッション検証)
+func verify_token(token: String, uuid: String) -> void:
+	if token == "" or uuid == "":
+		auth_completed.emit(false, "トークンが無効です")
+		return
+	
+	Global.show_loading("セッション復旧中...")
+	auth_token = token
+	logged_in_uuid = uuid
+	var url = _get_supabase_url() + "/auth/v1/user"
+	
+	_send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
+		Global.hide_loading()
+		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
+			auth_completed.emit(true, "")
+		else:
+			auth_token = ""
+			logged_in_uuid = ""
+			auth_completed.emit(false, "セッション期限切れ")
+	)
+
 # 3. Cloud Save (クラウドセーブ)
 func save_cloud_data(data_dict: Dictionary) -> void:
 	if auth_token == "" or logged_in_uuid == "":
@@ -241,6 +281,8 @@ func save_cloud_data(data_dict: Dictionary) -> void:
 			save_completed.emit(true)
 		else:
 			save_completed.emit(false)
+			if is_inside_tree():
+				DeskTheme.show_toast(self, "クラウドセーブ失敗。ローカルに保存します。")
 	
 	var custom_headers = _get_headers(true)
 	custom_headers.append("Prefer: resolution=merge-duplicates")
@@ -269,6 +311,8 @@ func load_cloud_data() -> void:
 			load_completed.emit(false, {})
 		else:
 			load_completed.emit(false, {})
+			if is_inside_tree():
+				DeskTheme.show_toast(self, "クラウドロード失敗。ローカルデータを使用します。")
 	)
 
 # 5. Upload Daily Score & Ghost Record
@@ -291,7 +335,9 @@ func upload_daily_record(day_idx: int, score: int, record: Dictionary) -> void:
 	
 	# Send to database
 	_send_request(url, HTTPClient.METHOD_POST, JSON.stringify(body), true, func(result, response_code, headers, body_data):
-		pass # Silent upload
+		if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
+			if is_inside_tree():
+				DeskTheme.show_toast(self, "今日のスコアの保存に失敗しました。")
 	)
 
 # 6. Fetch Daily Scores & Ghost Records (for current day)
@@ -399,6 +445,8 @@ func create_friend_room() -> void:
 			# Offline fallback
 			_enable_mock_room(code, host_name)
 			room_created.emit(true, code)
+			if is_inside_tree():
+				DeskTheme.show_toast(self, "接続失敗。オフライン(CPU戦)で開始します。")
 	)
 
 func _enable_mock_room(code: String, host_name: String) -> void:
@@ -458,6 +506,8 @@ func join_friend_room(room_code: String) -> void:
 							return
 		# 通信エラー時はモックにフォールバック
 		_join_mock_room(room_code, user_name)
+		if is_inside_tree():
+			DeskTheme.show_toast(self, "接続失敗。オフライン(CPU戦)として参加します。")
 	)
 
 func _join_mock_room(room_code: String, user_name: String) -> void:
@@ -575,7 +625,9 @@ func upload_friend_move(room_code: String, day_idx: int, move_data: Dictionary) 
 	if req == null:
 		return
 	_pool_callbacks[req] = func(result: int, response_code: int, headers: PackedStringArray, body_data: PackedByteArray):
-		pass # Silent upload
+		if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
+			if is_inside_tree():
+				DeskTheme.show_toast(self, "対戦データの送信に失敗しました。")
 	
 	var custom_headers = _get_headers(true)
 	custom_headers.append("Prefer: resolution=merge-duplicates")
@@ -590,6 +642,7 @@ func poll_room_status(room_code: String) -> void:
 	var url = _get_supabase_url() + "/rest/v1/friend_rooms?room_code=eq." + room_code
 	_send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
+			consecutive_network_errors = 0
 			var json = JSON.new()
 			if json.parse(body_data.get_string_from_utf8()) == OK:
 				var data = json.get_data()
@@ -608,6 +661,9 @@ func poll_room_status(room_code: String) -> void:
 					return
 			room_polled.emit("waiting", 1, [])
 		else:
+			consecutive_network_errors += 1
+			if consecutive_network_errors >= 3:
+				connection_lost.emit()
 			# Mock Fallback
 			room_polled.emit(mock_room_status, mock_current_day, mock_participants)
 	)
@@ -622,6 +678,7 @@ func poll_day_moves(room_code: String, day_idx: int) -> void:
 	var url = _get_supabase_url() + "/rest/v1/friend_room_moves?room_code=eq." + room_code + "&day_idx=eq." + str(day_idx)
 	_send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
+			consecutive_network_errors = 0
 			var json = JSON.new()
 			if json.parse(body_data.get_string_from_utf8()) == OK:
 				var data = json.get_data()
@@ -630,6 +687,9 @@ func poll_day_moves(room_code: String, day_idx: int) -> void:
 					return
 			day_moves_polled.emit(false, [])
 		else:
+			consecutive_network_errors += 1
+			if consecutive_network_errors >= 3:
+				connection_lost.emit()
 			# Mock Fallback
 			var day_data = mock_moves.get(day_idx, [])
 			day_moves_polled.emit(true, day_data)

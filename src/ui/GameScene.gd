@@ -1,4 +1,4 @@
-extends Control
+﻿extends Control
 
 # Preload Phase Scripts
 const BagBuilderPhaseClass = preload("res://src/ui/phases/BagBuilderPhase.gd")
@@ -230,7 +230,7 @@ func show_daily_finished_modal() -> void:
 	var title = Label.new()
 	title.text = "今日の自習完了！ 🎉"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 26)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
@@ -238,7 +238,7 @@ func show_daily_finished_modal() -> void:
 	var desc = Label.new()
 	desc.text = "本日のデイリー試験の成績はチキスタに投稿されました。\n明日になると次の日（Day %d）に進むことができます！" % Global.daily_current_day
 	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	desc.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	desc.add_theme_font_override("font", DeskTheme.get_font())
 	desc.add_theme_font_size_override("font_size", 16)
 	desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.8))
 	vbox.add_child(desc)
@@ -247,7 +247,7 @@ func show_daily_finished_modal() -> void:
 	ok_btn.text = "タイトルへ戻る"
 	ok_btn.custom_minimum_size = Vector2(180, 45)
 	ok_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	ok_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	ok_btn.add_theme_font_override("font", DeskTheme.get_font())
 	ok_btn.add_theme_font_size_override("font_size", 18)
 	vbox.add_child(ok_btn)
 	

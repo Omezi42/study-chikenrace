@@ -1,4 +1,4 @@
-class_name ReportPhase
+﻿class_name ReportPhase
 extends PhaseBase
 
 # UI Controls
@@ -108,7 +108,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	var title = Label.new()
 	title.text = "今日の勉強報告"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 28)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	card_vbox.add_child(title)
@@ -120,14 +120,14 @@ func _on_setup(setup_data: Dictionary) -> void:
 	
 	var actual_title = Label.new()
 	actual_title.text = "実際の実点（正直）： "
-	actual_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	actual_title.add_theme_font_override("font", DeskTheme.get_font())
 	actual_title.add_theme_font_size_override("font_size", 18)
 	actual_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	actual_hbox.add_child(actual_title)
 	
 	var actual_val = Label.new()
 	actual_val.text = str(actual_score) + " 点"
-	actual_val.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	actual_val.add_theme_font_override("font", DeskTheme.get_font())
 	actual_val.add_theme_font_size_override("font_size", 22)
 	actual_val.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	actual_hbox.add_child(actual_val)
@@ -136,7 +136,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	var decl_title = Label.new()
 	decl_title.text = "投稿する申告点数："
 	decl_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	decl_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	decl_title.add_theme_font_override("font", DeskTheme.get_font())
 	decl_title.add_theme_font_size_override("font_size", 18)
 	decl_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
 	card_vbox.add_child(decl_title)
@@ -144,7 +144,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	declared_score_label = Label.new()
 	declared_score_label.text = str(actual_score) + "点"
 	declared_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	declared_score_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	declared_score_label.add_theme_font_override("font", DeskTheme.get_font())
 	declared_score_label.add_theme_font_size_override("font_size", 54)
 	declared_score_label.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	card_vbox.add_child(declared_score_label)
@@ -186,7 +186,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	warning_text = Label.new()
 	warning_text.text = "⚠️ 申告が実点を超えています！ダウトされる危険性があります。"
 	warning_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	warning_text.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	warning_text.add_theme_font_override("font", DeskTheme.get_font())
 	warning_text.add_theme_font_size_override("font_size", 14)
 	warning_text.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
 	warn_margin.add_child(warning_text)
@@ -198,7 +198,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	submit_btn.text = "タイムラインに投稿"
 	submit_btn.custom_minimum_size = Vector2(400, 60)
 	submit_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	submit_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	submit_btn.add_theme_font_override("font", DeskTheme.get_font())
 	submit_btn.add_theme_font_size_override("font_size", 22)
 	submit_btn.pressed.connect(_on_submit_pressed)
 	

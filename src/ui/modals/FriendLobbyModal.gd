@@ -24,7 +24,7 @@ static func create_selection_modal(parent: Node) -> void:
 	var title = Label.new()
 	title.text = "友達対戦ロビー"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 26)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
@@ -33,7 +33,7 @@ static func create_selection_modal(parent: Node) -> void:
 	var create_btn = Button.new()
 	create_btn.text = "新しいルームを作る"
 	create_btn.custom_minimum_size = Vector2(400, 60)
-	create_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	create_btn.add_theme_font_override("font", DeskTheme.get_font())
 	create_btn.add_theme_font_size_override("font_size", 18)
 	Global.apply_white_button_style(create_btn)
 	vbox.add_child(create_btn)
@@ -49,14 +49,14 @@ static func create_selection_modal(parent: Node) -> void:
 	join_input.max_length = 4
 	join_input.custom_minimum_size = Vector2(240, 45)
 	join_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	join_input.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	join_input.add_theme_font_override("font", DeskTheme.get_font())
 	join_input.add_theme_font_size_override("font_size", 16)
 	join_hbox.add_child(join_input)
 	
 	var join_btn = Button.new()
 	join_btn.text = "入室"
 	join_btn.custom_minimum_size = Vector2(100, 45)
-	join_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	join_btn.add_theme_font_override("font", DeskTheme.get_font())
 	join_btn.add_theme_font_size_override("font_size", 16)
 	Global.apply_white_button_style(join_btn)
 	join_hbox.add_child(join_btn)
@@ -65,7 +65,7 @@ static func create_selection_modal(parent: Node) -> void:
 	var cancel_btn = Button.new()
 	cancel_btn.text = "閉じる"
 	cancel_btn.custom_minimum_size = Vector2(100, 45)
-	cancel_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	cancel_btn.add_theme_font_override("font", DeskTheme.get_font())
 	cancel_btn.add_theme_font_size_override("font_size", 16)
 	Global.apply_white_button_style(cancel_btn)
 	vbox.add_child(cancel_btn)
@@ -74,6 +74,7 @@ static func create_selection_modal(parent: Node) -> void:
 	var bm = parent.get_node_or_null("/root/BackendManager")
 	
 	create_btn.pressed.connect(func():
+		create_btn.release_focus()
 		DeskTheme.animate_click(create_btn, Vector2.ONE, 0.08)
 		create_btn.disabled = true
 		join_btn.disabled = true
@@ -95,6 +96,7 @@ static func create_selection_modal(parent: Node) -> void:
 	)
 	
 	join_btn.pressed.connect(func():
+		join_btn.release_focus()
 		var code = join_input.text.strip_edges()
 		if code.length() != 4:
 			return
@@ -119,6 +121,7 @@ static func create_selection_modal(parent: Node) -> void:
 	)
 	
 	cancel_btn.pressed.connect(func():
+		cancel_btn.release_focus()
 		DeskTheme.animate_click(cancel_btn, Vector2.ONE, 0.08)
 		sel_modal.queue_free()
 	)
@@ -147,27 +150,39 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	vbox.add_theme_constant_override("separation", 20)
 	margin.add_child(vbox)
 	
+	var bm = parent.get_node_or_null("/root/BackendManager")
+	var is_mock = bm.is_mock_room if bm else true
+	
 	var title = Label.new()
-	title.text = "ロビー：友達の合流待ち (人数確認中)"
+	if is_mock:
+		title.text = "ロビー：オフライン (CPU合流待ち)"
+		title.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+	else:
+		title.text = "ロビー：友達の合流待ち (人数確認中)"
+		title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 26)
-	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
 	
 	# Room Code display
 	var code_lbl = Label.new()
 	code_lbl.text = "ルームコード: " + room_code
 	code_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	code_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	code_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	code_lbl.add_theme_font_size_override("font_size", 36)
 	code_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	vbox.add_child(code_lbl)
 	
 	var hint_lbl = Label.new()
-	hint_lbl.text = "（友達にこのコードを教えて入室させてね！）"
+	if is_mock:
+		hint_lbl.text = "※接続エラーまたは未ログインのため、CPU対戦となります"
+		hint_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+	else:
+		hint_lbl.text = "（友達にこのコードを教えて入室させてね！）"
+		hint_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	hint_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	hint_lbl.add_theme_font_size_override("font_size", 14)
 	hint_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	vbox.add_child(hint_lbl)
@@ -186,7 +201,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		start_btn_lobby.text = "自習を開始する！ ✏️"
 		start_btn_lobby.custom_minimum_size = Vector2(260, 50)
 		start_btn_lobby.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		start_btn_lobby.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		start_btn_lobby.add_theme_font_override("font", DeskTheme.get_font())
 		start_btn_lobby.add_theme_font_size_override("font_size", 18)
 		start_btn_lobby.disabled = true # Enabled when 2+ players join
 		Global.apply_white_button_style(start_btn_lobby)
@@ -194,7 +209,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	else:
 		waiting_lbl.text = "ホストがゲームを開始するのを待っています..."
 		waiting_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		waiting_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		waiting_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		waiting_lbl.add_theme_font_size_override("font_size", 16)
 		waiting_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		vbox.add_child(waiting_lbl)
@@ -205,13 +220,12 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	exit_btn.custom_minimum_size = Vector2(160, 45)
 	exit_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	Global.apply_white_button_style(exit_btn)
-	exit_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	exit_btn.add_theme_font_override("font", DeskTheme.get_font())
 	exit_btn.add_theme_font_size_override("font_size", 16)
 	vbox.add_child(exit_btn)
 	
 	# Polling Logic via SceneTree timers
 	var is_polling_active = true
-	var bm = parent.get_node_or_null("/root/BackendManager")
 	
 	var start_game_transition = func(final_participants: Array):
 		is_polling_active = false
@@ -281,7 +295,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 			else:
 				name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 			name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+			name_lbl.add_theme_font_override("font", DeskTheme.get_font())
 			name_lbl.add_theme_font_size_override("font_size", 18)
 			list_vbox.add_child(name_lbl)
 			
@@ -325,6 +339,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		
 	if is_host:
 		start_btn_lobby.pressed.connect(func():
+			start_btn_lobby.release_focus()
 			DeskTheme.animate_click(start_btn_lobby, Vector2.ONE, 0.08)
 			if bm:
 				# Set status to playing and fill remaining slots
@@ -346,6 +361,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		)
 		
 	exit_btn.pressed.connect(func():
+		exit_btn.release_focus()
 		DeskTheme.animate_click(exit_btn, Vector2.ONE, 0.08)
 		is_polling_active = false
 		if bm and bm.room_polled.is_connected(on_polled):

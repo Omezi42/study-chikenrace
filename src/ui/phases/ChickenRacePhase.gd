@@ -37,8 +37,7 @@ var active_used_items: Array[String] = []
 var active_peek_sticky: PanelContainer = null
 var is_selecting_card: bool = false
 var card_selection_mode_active: String = ""
-var tutorial_step: int = 0
-var tutorial_dialog_node: PanelContainer = null
+var tutorial: ChickenRaceTutorial = null
 var hovered_card_ui: Button = null
 var hovered_card_tween: Tween = null
 
@@ -52,6 +51,11 @@ func _on_setup(setup_data: Dictionary) -> void:
 	is_phone_open = false
 	is_selecting_card = false
 	card_selection_mode_active = ""
+	
+	if has_node("/root/BackendManager"):
+		var bm = get_node("/root/BackendManager")
+		if not bm.connection_lost.is_connected(_on_connection_lost):
+			bm.connection_lost.connect(_on_connection_lost)
 	
 	# Layout setup (2 pages: Left and Right touching at separation 0)
 	var main_hbox = HBoxContainer.new()
@@ -85,28 +89,28 @@ func _on_setup(setup_data: Dictionary) -> void:
 	
 	var header_left = Label.new()
 	header_left.text = "自習ノート - %d時限目" % session.current_hour
-	header_left.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	header_left.add_theme_font_override("font", DeskTheme.get_font())
 	header_left.add_theme_font_size_override("font_size", 32)
 	header_left.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	left_inner_vbox.add_child(header_left)
 	
 	var score_title = Label.new()
 	score_title.text = "現在の勉強成果（実点）"
-	score_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	score_title.add_theme_font_override("font", DeskTheme.get_font())
 	score_title.add_theme_font_size_override("font_size", 22)
 	score_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	left_inner_vbox.add_child(score_title)
 	
 	actual_score_label = Label.new()
 	actual_score_label.text = "0点"
-	actual_score_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	actual_score_label.add_theme_font_override("font", DeskTheme.get_font())
 	actual_score_label.add_theme_font_size_override("font_size", 84)
 	actual_score_label.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	left_inner_vbox.add_child(actual_score_label)
 	
 	var history_title = Label.new()
 	history_title.text = "勉強履歴"
-	history_title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	history_title.add_theme_font_override("font", DeskTheme.get_font())
 	history_title.add_theme_font_size_override("font_size", 22)
 	history_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	left_inner_vbox.add_child(history_title)
@@ -156,21 +160,21 @@ func _on_setup(setup_data: Dictionary) -> void:
 	
 	detail_title_label = Label.new()
 	detail_title_label.text = "カード説明"
-	detail_title_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	detail_title_label.add_theme_font_override("font", DeskTheme.get_font())
 	detail_title_label.add_theme_font_size_override("font_size", 20)
 	detail_title_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	detail_header_hbox.add_child(detail_title_label)
 	
 	detail_role_label = Label.new()
 	detail_role_label.text = ""
-	detail_role_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	detail_role_label.add_theme_font_override("font", DeskTheme.get_font())
 	detail_role_label.add_theme_font_size_override("font_size", 16)
 	detail_header_hbox.add_child(detail_role_label)
 	
 	detail_desc_label = Label.new()
 	detail_desc_label.text = "カードをクリックすると効果の説明が表示されます。"
 	detail_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail_desc_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	detail_desc_label.add_theme_font_override("font", DeskTheme.get_font())
 	detail_desc_label.add_theme_font_size_override("font_size", 14)
 	detail_desc_label.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
 	detail_desc_label.custom_minimum_size = Vector2(360, 50)
@@ -209,7 +213,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	
 	burst_prob_label = Label.new()
 	burst_prob_label.text = "眠気：安全 (0%)"
-	burst_prob_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	burst_prob_label.add_theme_font_override("font", DeskTheme.get_font())
 	burst_prob_label.add_theme_font_size_override("font_size", 22)
 	burst_prob_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	status_hbox.add_child(burst_prob_label)
@@ -233,7 +237,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	alert_label = Label.new()
 	alert_label.text = "寝落ち注意！"
 	alert_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	alert_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	alert_label.add_theme_font_override("font", DeskTheme.get_font())
 	alert_label.add_theme_font_size_override("font_size", 20)
 	alert_label.add_theme_color_override("font_color", Color.WHITE)
 	alert_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -248,7 +252,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	draw_btn = Button.new()
 	draw_btn.text = "勉強カードを引く"
 	draw_btn.custom_minimum_size = Vector2(260, 65)
-	draw_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	draw_btn.add_theme_font_override("font", DeskTheme.get_font())
 	draw_btn.add_theme_font_size_override("font_size", 24)
 	draw_btn.pressed.connect(_on_draw_pressed)
 	draw_btn.mouse_entered.connect(_clear_hovered_card)
@@ -257,7 +261,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	stop_btn = Button.new()
 	stop_btn.text = "休憩する"
 	stop_btn.custom_minimum_size = Vector2(260, 65)
-	stop_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	stop_btn.add_theme_font_override("font", DeskTheme.get_font())
 	stop_btn.add_theme_font_size_override("font_size", 24)
 	stop_btn.pressed.connect(_on_stop_pressed)
 	stop_btn.mouse_entered.connect(_clear_hovered_card)
@@ -308,7 +312,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	phone_toggle_btn.text = "📱\n順\n位\n表"
 	phone_toggle_btn.custom_minimum_size = Vector2(40, 120)
 	phone_toggle_btn.position = Vector2(260, 180)
-	phone_toggle_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	phone_toggle_btn.add_theme_font_override("font", DeskTheme.get_font())
 	phone_toggle_btn.add_theme_font_size_override("font_size", 16)
 	phone_toggle_btn.pressed.connect(_on_phone_toggle_pressed)
 	
@@ -358,7 +362,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	var opt_btn = Button.new()
 	opt_btn.text = "⚙️ 設定/ルール"
 	opt_btn.custom_minimum_size = Vector2(140, 45)
-	opt_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	opt_btn.add_theme_font_override("font", DeskTheme.get_font())
 	opt_btn.add_theme_font_size_override("font_size", 18)
 	opt_btn.pressed.connect(func():
 		DeskTheme.animate_click(opt_btn, Vector2.ONE, 0.08)
@@ -369,24 +373,8 @@ func _on_setup(setup_data: Dictionary) -> void:
 	opt_btn.position = Vector2(max(opt_viewport_size.x - opt_btn.custom_minimum_size.x - 20.0, 0.0), 20)
 	
 	if Global.is_tutorial_mode and session.current_day == 1 and session.current_hour == 1:
-		tutorial_step = 0
-		stop_btn.disabled = true # Cannot stop yet
-		draw_btn.disabled = true # Must read description first
-		tutorial_dialog_node = show_tutorial_dialog(
-			"自習フェーズ（勉強チキンレース）へようこそ！\n\nここでは山札からカードを引き、勉強成果（実点）を高めます。まずは、点数を大きく伸ばす『教科』と『コンボ』の仕様を学びましょう！",
-			Vector2(get_viewport_rect().size.x * 0.30, get_viewport_rect().size.y * 0.12),
-			func():
-				tutorial_dialog_node = show_tutorial_dialog(
-					"【教科とコンボボーナス】\nカードには5つの教科（国・英・数・理・社）があります。\n・同教科を連続で引くと『コンボ』となり得点ボーナス加算！\n・5教科をすべて手札に揃えると、合計点の22%（10〜28点）が加算される『5教科ボーナス』が発生します！",
-					Vector2(get_viewport_rect().size.x * 0.30, get_viewport_rect().size.y * 0.12),
-					func():
-						tutorial_dialog_node = show_tutorial_dialog(
-							"【仕込みアイテム：付箋】\n初期カードの『付箋』は、次のドローで特定の教科を確定で出現させる効果（山札にあれば）を持ちます。教科コンボや5教科ボーナスを狙うのに非常に強力です！\n\nそれでは、実際に『勉強カードを引く』を押して1枚引いてみましょう！",
-							Vector2(get_viewport_rect().size.x * 0.30, get_viewport_rect().size.y * 0.12)
-						)
-						draw_btn.disabled = false
-				)
-		)
+		tutorial = ChickenRaceTutorial.new(self)
+		tutorial.start()
 
 func apply_deck_startup_items() -> void:
 	# Simulate activating Eraser or Red Sheet if slotted
@@ -456,7 +444,7 @@ func perform_animated_draw(card: Dictionary, on_complete: Callable = Callable())
 	var badge_label = Label.new()
 	badge_label.text = str(card["value"])
 	badge_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	badge_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	badge_label.add_theme_font_override("font", DeskTheme.get_font())
 	badge_label.add_theme_font_size_override("font_size", 18)
 	badge_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	card_badge.add_child(badge_label)
@@ -528,6 +516,7 @@ func _on_draw_pressed() -> void:
 		is_animating = false
 		draw_btn.disabled = false
 		stop_btn.disabled = false
+		DeskTheme.show_toast(self, "山札が空になりました！休憩（ストップ）しましょう。")
 		return
 		
 	perform_animated_draw(card, func():
@@ -546,8 +535,8 @@ func _on_draw_pressed() -> void:
 			else:
 				update_ui()
 				if not has_bursted:
-					if Global.is_tutorial_mode and session.current_day == 1 and session.current_hour == 1:
-						advance_tutorial_step()
+					if tutorial:
+						tutorial.advance_step()
 					else:
 						draw_btn.disabled = false
 						stop_btn.disabled = false
@@ -623,7 +612,7 @@ func show_peek_sticky(peeked: Array) -> void:
 	
 	var title = Label.new()
 	title.text = "のぞき見メモ ✍️"
-	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 18)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
@@ -644,7 +633,7 @@ func show_peek_sticky(peeked: Array) -> void:
 			
 		var card_lbl = Label.new()
 		card_lbl.text = "・%d枚目： %s (%d 点)" % [idx + 1, sub_jp, card["value"]]
-		card_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		card_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		card_lbl.add_theme_font_size_override("font_size", 16)
 		card_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.8))
 		list_vbox.add_child(card_lbl)
@@ -765,6 +754,9 @@ func _on_stop_pressed() -> void:
 func finish_hour_and_transition() -> void:
 	session.player_deck.reset_for_next_hour()
 	
+	if tutorial:
+		tutorial.cleanup()
+		
 	# Clear active peek sticky if exists
 	if active_peek_sticky:
 		active_peek_sticky.queue_free()
@@ -868,14 +860,14 @@ func update_active_effects_ui() -> void:
 		
 		var title_lbl = Label.new()
 		title_lbl.text = eff["name"]
-		title_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		title_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		title_lbl.add_theme_font_size_override("font_size", 10)
 		title_lbl.add_theme_color_override("font_color", eff["color"])
 		vbox.add_child(title_lbl)
 		
 		var desc_lbl = Label.new()
 		desc_lbl.text = eff["desc"]
-		desc_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		desc_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		desc_lbl.add_theme_font_size_override("font_size", 9)
 		desc_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		vbox.add_child(desc_lbl)
@@ -896,7 +888,7 @@ func update_yesterday_standings_ui() -> void:
 	var day_lbl = Label.new()
 	day_lbl.text = "Day %d (本日) 朝時点の総得点" % session.current_day
 	day_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	day_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	day_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	day_lbl.add_theme_font_size_override("font_size", 14)
 	day_lbl.add_theme_color_override("font_color", Color("90a4ae"))
 	standings_list.add_child(day_lbl)
@@ -931,7 +923,7 @@ func update_yesterday_standings_ui() -> void:
 		
 		var rank_lbl = Label.new()
 		rank_lbl.text = "%d位 " % (idx + 1)
-		rank_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		rank_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		rank_lbl.add_theme_font_size_override("font_size", 16)
 		if idx == 0:
 			rank_lbl.add_theme_color_override("font_color", Color("ffd700"))
@@ -942,14 +934,14 @@ func update_yesterday_standings_ui() -> void:
 		var name_lbl = Label.new()
 		name_lbl.text = p["name"]
 		name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		name_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		name_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		name_lbl.add_theme_font_size_override("font_size", 16)
 		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		hbox.add_child(name_lbl)
 		
 		var score_lbl = Label.new()
 		score_lbl.text = "%d点" % p["score"]
-		score_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+		score_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		score_lbl.add_theme_font_size_override("font_size", 16)
 		score_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		hbox.add_child(score_lbl)
@@ -957,7 +949,7 @@ func update_yesterday_standings_ui() -> void:
 	# target clue text
 	var clue = Label.new()
 	clue.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	clue.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	clue.add_theme_font_override("font", DeskTheme.get_font())
 	clue.add_theme_font_size_override("font_size", 13)
 	clue.add_theme_color_override("font_color", Color.WHITE)
 	
@@ -1089,6 +1081,12 @@ func get_yesterday_standings() -> Array:
 	return standings
 
 func start_card_selection(mode: String, guide_text: String) -> void:
+	if session.player_deck.hand.size() == 0:
+		update_ui()
+		draw_btn.disabled = false
+		stop_btn.disabled = false
+		return
+		
 	is_selecting_card = true
 	card_selection_mode_active = mode
 	
@@ -1204,32 +1202,11 @@ func _on_card_selected_from_hand(hand_idx: int, card: Dictionary) -> void:
 			draw_btn.disabled = false
 			stop_btn.disabled = false
 
-func advance_tutorial_step() -> void:
-	if tutorial_dialog_node:
-		tutorial_dialog_node.queue_free()
-		tutorial_dialog_node = null
-		
-	tutorial_step += 1
-	
-	match tutorial_step:
-		1:
-			stop_btn.disabled = true
-			draw_btn.disabled = false
-			tutorial_dialog_node = show_tutorial_dialog(
-				"カードを引きました！カードの左上には『教科アイコン』、中央には大きく『点数（数字）』が書かれています。\n\nもう1枚引いてみましょう！",
-				Vector2(get_viewport_rect().size.x * 0.30, get_viewport_rect().size.y * 0.12)
-			)
-		2:
-			stop_btn.disabled = true
-			draw_btn.disabled = false
-			tutorial_dialog_node = show_tutorial_dialog(
-				"2枚目を引きました！もし手札に同じ数字のカードが重なると「寝落ち（バースト）」してこの時限の点数は0点になります。\n右上の「眠気」パーセントがバーストする確率です。安全第一で、もう1枚引いてみましょう！",
-				Vector2(get_viewport_rect().size.x * 0.30, get_viewport_rect().size.y * 0.12)
-			)
-		3:
-			draw_btn.disabled = true # これ以上ドローさせない
-			stop_btn.disabled = false # 休憩を有効化
-			tutorial_dialog_node = show_tutorial_dialog(
-				"3枚目を引きました！同じ教科を連続して引くと「コンボボーナス」が入ります！\n眠気も上がってきたので、ここらで『休憩する』を押して自習を終え、本日の成果（点数）を確定させましょう！",
-				Vector2(get_viewport_rect().size.x * 0.30, get_viewport_rect().size.y * 0.12)
-			)
+func _on_connection_lost() -> void:
+	if not is_inside_tree():
+		return
+	draw_btn.disabled = true
+	stop_btn.disabled = true
+	ConnectionErrorModal.create_and_show(self)
+
+# Removed obsolete advance_tutorial_step method.

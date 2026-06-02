@@ -56,7 +56,7 @@ func setup(btn: Button, callback: Callable) -> void:
 	var title = Label.new()
 	title.text = "👤 アカウント接続"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
@@ -67,7 +67,7 @@ func setup(btn: Button, callback: Callable) -> void:
 	
 	var id_lbl = Label.new()
 	id_lbl.text = "ユーザーID (英数字)"
-	id_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	id_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	id_lbl.add_theme_font_size_override("font_size", 14)
 	id_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
 	id_vbox.add_child(id_lbl)
@@ -75,7 +75,7 @@ func setup(btn: Button, callback: Callable) -> void:
 	var id_input = LineEdit.new()
 	id_input.placeholder_text = "例: testuser123"
 	id_input.custom_minimum_size = Vector2(0, 40)
-	id_input.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	id_input.add_theme_font_override("font", DeskTheme.get_font())
 	id_input.add_theme_font_size_override("font_size", 16)
 	id_vbox.add_child(id_input)
 	
@@ -85,7 +85,7 @@ func setup(btn: Button, callback: Callable) -> void:
 	
 	var pw_lbl = Label.new()
 	pw_lbl.text = "パスワード (6文字以上)"
-	pw_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	pw_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	pw_lbl.add_theme_font_size_override("font_size", 14)
 	pw_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
 	pw_vbox.add_child(pw_lbl)
@@ -94,7 +94,7 @@ func setup(btn: Button, callback: Callable) -> void:
 	pw_input.secret = true
 	pw_input.placeholder_text = "パスワード"
 	pw_input.custom_minimum_size = Vector2(0, 40)
-	pw_input.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	pw_input.add_theme_font_override("font", DeskTheme.get_font())
 	pw_input.add_theme_font_size_override("font_size", 16)
 	pw_vbox.add_child(pw_input)
 	
@@ -102,7 +102,7 @@ func setup(btn: Button, callback: Callable) -> void:
 	status_lbl.text = ""
 	status_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	status_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status_lbl.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	status_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	status_lbl.add_theme_font_size_override("font_size", 14)
 	status_lbl.add_theme_color_override("font_color", Color("d32f2f"))
 	vbox.add_child(status_lbl)
@@ -115,7 +115,7 @@ func setup(btn: Button, callback: Callable) -> void:
 	var register_btn = Button.new()
 	register_btn.text = "新規登録"
 	register_btn.custom_minimum_size = Vector2(120, 45)
-	register_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	register_btn.add_theme_font_override("font", DeskTheme.get_font())
 	register_btn.add_theme_font_size_override("font_size", 16)
 	Global.apply_white_button_style(register_btn)
 	btn_hbox.add_child(register_btn)
@@ -123,7 +123,7 @@ func setup(btn: Button, callback: Callable) -> void:
 	var log_in_btn = Button.new()
 	log_in_btn.text = "ログイン"
 	log_in_btn.custom_minimum_size = Vector2(120, 45)
-	log_in_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	log_in_btn.add_theme_font_override("font", DeskTheme.get_font())
 	log_in_btn.add_theme_font_size_override("font_size", 16)
 	Global.apply_white_button_style(log_in_btn)
 	btn_hbox.add_child(log_in_btn)
@@ -131,7 +131,7 @@ func setup(btn: Button, callback: Callable) -> void:
 	var cancel_btn = Button.new()
 	cancel_btn.text = "閉じる"
 	cancel_btn.custom_minimum_size = Vector2(100, 45)
-	cancel_btn.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	cancel_btn.add_theme_font_override("font", DeskTheme.get_font())
 	cancel_btn.add_theme_font_size_override("font_size", 16)
 	Global.apply_white_button_style(cancel_btn)
 	btn_hbox.add_child(cancel_btn)
@@ -168,6 +168,7 @@ func setup(btn: Button, callback: Callable) -> void:
 		bm.auth_completed.connect(on_auth_ref[0])
 		
 	register_btn.pressed.connect(func():
+		register_btn.release_focus()
 		var uid = id_input.text.strip_edges()
 		var pw = pw_input.text
 		if uid.length() < 3 or pw.length() < 6:
@@ -184,6 +185,7 @@ func setup(btn: Button, callback: Callable) -> void:
 	)
 	
 	log_in_btn.pressed.connect(func():
+		log_in_btn.release_focus()
 		var uid = id_input.text.strip_edges()
 		var pw = pw_input.text
 		if uid.length() < 3 or pw.length() < 6:
@@ -200,6 +202,7 @@ func setup(btn: Button, callback: Callable) -> void:
 	)
 	
 	cancel_btn.pressed.connect(func():
+		cancel_btn.release_focus()
 		if bm and bm.auth_completed.is_connected(on_auth_ref[0]):
 			bm.auth_completed.disconnect(on_auth_ref[0])
 		queue_free()

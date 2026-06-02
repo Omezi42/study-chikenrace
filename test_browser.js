@@ -23,8 +23,8 @@ const puppeteer = require('puppeteer');
   });
 
   try {
-    console.log("Navigating to http://localhost:8000 for cache clearing...");
-    await page.goto('http://localhost:8000', { waitUntil: 'domcontentloaded', timeout: 30000 });
+    console.log("Navigating to http://127.0.0.1:8000 for cache clearing...");
+    await page.goto('http://127.0.0.1:8000', { waitUntil: 'domcontentloaded', timeout: 30000 });
     
     await page.evaluate(async () => {
       localStorage.clear();
@@ -38,7 +38,7 @@ const puppeteer = require('puppeteer');
     });
     
     console.log("Reloading clean page...");
-    await page.goto('http://localhost:8000', { waitUntil: 'load', timeout: 90000 });
+    await page.goto('http://127.0.0.1:8000', { waitUntil: 'load', timeout: 90000 });
     
     // Wait 6 seconds for load & first day reveal
     console.log("Waiting 6 seconds (initial state)...");

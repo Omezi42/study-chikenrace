@@ -1,4 +1,4 @@
-class_name DayTransitionPhase
+﻿class_name DayTransitionPhase
 extends PhaseBase
 
 # UI Controls
@@ -45,7 +45,7 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	var header = Label.new()
 	header.text = "学期末まで"
 	header.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	header.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	header.add_theme_font_override("font", DeskTheme.get_font())
 	header.add_theme_font_size_override("font_size", 26)
 	header.add_theme_color_override("font_color", Color.GRAY)
 	cal_vbox.add_child(header)
@@ -53,7 +53,7 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	day_label = Label.new()
 	day_label.text = "Day " + str(session.current_day)
 	day_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	day_label.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	day_label.add_theme_font_override("font", DeskTheme.get_font())
 	day_label.add_theme_font_size_override("font_size", 84)
 	day_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	cal_vbox.add_child(day_label)
@@ -61,7 +61,7 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	var footer = Label.new()
 	footer.text = "あしたの勉強"
 	footer.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	footer.add_theme_font_override("font", load(DeskTheme.FONT_HANDWRITING))
+	footer.add_theme_font_override("font", DeskTheme.get_font())
 	footer.add_theme_font_size_override("font_size", 22)
 	footer.add_theme_color_override("font_color", Color.GRAY)
 	cal_vbox.add_child(footer)

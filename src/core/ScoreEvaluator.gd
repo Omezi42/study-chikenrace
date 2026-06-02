@@ -73,8 +73,7 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 			var auto_exposed := false
 			if is_liar and not exposed_by_doubt:
 				var bluff_amount := declared - actual
-				# Exponential exposure chance: pow(bluff / 40.0, 2.0)
-				var exposure_chance: float = pow(float(bluff_amount) / 40.0, 2.0)
+				var exposure_chance: float = get_auto_exposure_chance(bluff_amount)
 				if randf() < exposure_chance:
 					auto_exposed = true
 					
@@ -321,4 +320,7 @@ static func _determine_title(
 			return rule["title"]
 	
 	return Constants.TITLE_AVERAGE
+
+static func get_auto_exposure_chance(bluff_amount: int) -> float:
+	return pow(float(bluff_amount) / 40.0, 2.0)
 
