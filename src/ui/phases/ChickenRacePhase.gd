@@ -1200,17 +1200,17 @@ func _on_card_ui_mouse_entered(card: Dictionary, card_ui: Button) -> void:
 	if is_instance_valid(hovered_card_tween):
 		hovered_card_tween.kill()
 	
-	var tween = create_tween().bind_node(card_ui).set_parallel(true).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+	var tween = create_tween().bind_node(card_ui).set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	hovered_card_tween = tween
 	var scale_mult = 1.15 if is_selecting_card else 1.12
 	var base_scale = float(card_ui.get_meta("fan_scale", 1.0))
 	var base_pos = card_ui.get_meta("fan_position", card_ui.position)
 	var base_rot = float(card_ui.get_meta("fan_rotation", card_ui.rotation_degrees))
-	tween.tween_property(card_ui, "scale", Vector2.ONE * (base_scale * scale_mult), 0.15)
+	tween.tween_property(card_ui, "scale", Vector2.ONE * (base_scale * scale_mult), 0.12)
 	
-	var lift_y = -30 if is_selecting_card else -20
-	tween.tween_property(card_ui, "position", base_pos + Vector2(0, lift_y), 0.15)
-	tween.tween_property(card_ui, "rotation_degrees", base_rot, 0.15)
+	var lift_y = -35 if is_selecting_card else -25
+	tween.tween_property(card_ui, "position", base_pos + Vector2(0, lift_y), 0.12)
+	tween.tween_property(card_ui, "rotation_degrees", base_rot, 0.12)
 	
 	if is_selecting_card:
 		card_ui.modulate = Color(1.2, 1.2, 1.2, 1.0) # slightly brighter highlight
@@ -1224,17 +1224,21 @@ func _on_card_ui_mouse_exited(card_ui: Button) -> void:
 	show_card_detail({})
 	
 	_reset_hovered_card(card_ui)
-	# arrange_hand_fan restores the canonical hand layout after hover exits
-	arrange_hand_fan()
 
 func _reset_hovered_card(card_ui: Button) -> void:
 	if not card_ui:
 		return
 	card_ui.z_index = 0
 	card_ui.modulate = Color.WHITE
-	card_ui.scale = Vector2.ONE * float(card_ui.get_meta("fan_scale", 1.0))
-	card_ui.rotation_degrees = float(card_ui.get_meta("fan_rotation", 0.0))
-	card_ui.position = card_ui.get_meta("fan_position", card_ui.position)
+	
+	var base_scale = float(card_ui.get_meta("fan_scale", 1.0))
+	var base_rot = float(card_ui.get_meta("fan_rotation", 0.0))
+	var base_pos = card_ui.get_meta("fan_position", card_ui.position)
+	
+	var tween = create_tween().bind_node(card_ui).set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(card_ui, "scale", Vector2.ONE * base_scale, 0.12)
+	tween.tween_property(card_ui, "rotation_degrees", base_rot, 0.12)
+	tween.tween_property(card_ui, "position", base_pos, 0.12)
 
 func _clear_hovered_card() -> void:
 	if is_instance_valid(hovered_card_tween):
