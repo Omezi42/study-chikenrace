@@ -26,6 +26,11 @@ static func get_font() -> Font:
 	return _preloaded_font
 
 # UI Constant Tokens (レイアウト定数)
+const TOOLTIP_OFFSET = Vector2(20, -100)
+const SMARTPHONE_Y_OFFSET_RATIO = 0.175
+const SMARTPHONE_HIDDEN_X = -260.0
+const SMARTPHONE_SHOWN_X = 0.0
+
 const MARGIN_LARGE = 35
 const MARGIN_DEFAULT = 30
 const MARGIN_MEDIUM = 25
@@ -533,3 +538,166 @@ static func apply_white_button_style(btn: Button) -> void:
 	for child in btn.get_children():
 		if child is Label:
 			child.add_theme_color_override("font_color", COLOR_INK)
+
+# 12. Floating Error Banner (Top of the screen)
+static func show_error_banner(caller_node: Node, text: String, duration: float = 3.0) -> void:
+	if not caller_node or not caller_node.is_inside_tree():
+		return
+	var scene_tree = caller_node.get_tree()
+	if not scene_tree or not scene_tree.root:
+		return
+		
+	var canvas = CanvasLayer.new()
+	canvas.layer = 110
+	scene_tree.root.add_child(canvas)
+	
+	var panel = PanelContainer.new()
+	panel.custom_minimum_size = Vector2(600, 50)
+	panel.pivot_offset = Vector2(300, 25)
+	
+	var style = StyleBoxFlat.new()
+	style.bg_color = COLOR_TENSION # Alert red/pink
+	style.border_color = COLOR_INK
+	style.border_width_left = 2
+	style.border_width_right = 2
+	style.border_width_top = 2
+	style.border_width_bottom = 2
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	style.shadow_color = Color(0, 0, 0, 0.25)
+	style.shadow_size = 6
+	style.shadow_offset = Vector2(3, 3)
+	panel.add_theme_stylebox_override("panel", style)
+	
+	var label = Label.new()
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_override("font", load(FONT_HANDWRITING))
+	label.add_theme_font_size_override("font_size", 18)
+	label.add_theme_color_override("font_color", Color.WHITE)
+	panel.add_child(label)
+	
+	canvas.add_child(panel)
+	
+	var viewport_size = scene_tree.root.get_viewport().get_visible_rect().size
+	var screen_w = viewport_size.x if viewport_size.x > 0 else 1920
+	
+	var start_pos = Vector2((screen_w - 600) / 2.0, -60)
+	var end_pos = Vector2((screen_w - 600) / 2.0, 40)
+	
+	panel.position = start_pos
+	panel.modulate.a = 0.0
+	
+	var tween = scene_tree.create_tween().set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(panel, "position", end_pos, 0.35)
+	tween.tween_property(panel, "modulate:a", 1.0, 0.25)
+	
+	var timer = scene_tree.create_timer(duration)
+	timer.timeout.connect(func():
+		if panel and panel.is_inside_tree():
+			var fade_tween = scene_tree.create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			fade_tween.tween_property(panel, "position", start_pos, 0.3)
+			fade_tween.tween_property(panel, "modulate:a", 0.0, 0.25)
+			fade_tween.chain().tween_callback(func():
+				canvas.queue_free()
+			)
+	)
+
+# 13. Confirm Dialog Modal
+static func show_confirm_modal(caller_node: Node, title_text: String, message_text: String, on_confirm: Callable, on_cancel: Callable = Callable()) -> void:
+	if not caller_node or not caller_node.is_inside_tree():
+		return
+	var scene_tree = caller_node.get_tree()
+	if not scene_tree or not scene_tree.root:
+		return
+		
+	var canvas = CanvasLayer.new()
+	canvas.layer = 150
+	scene_tree.root.add_child(canvas)
+	
+	var bg = ColorRect.new()
+	bg.color = Color(0, 0, 0, 0.4)
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	canvas.add_child(bg)
+	
+	var modal = PanelContainer.new()
+	modal.custom_minimum_size = Vector2(500, 260)
+	modal.pivot_offset = Vector2(250, 130)
+	modal.add_theme_stylebox_override("panel", create_craft_panel())
+	canvas.add_child(modal)
+	
+	var viewport_size = scene_tree.root.get_viewport().get_visible_rect().size
+	var screen_w = viewport_size.x if viewport_size.x > 0 else 1920
+	var screen_h = viewport_size.y if viewport_size.y > 0 else 1080
+	modal.position = Vector2((screen_w - 500) / 2.0, (screen_h - 260) / 2.0)
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_bottom", 20)
+	modal.add_child(margin)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 18)
+	margin.add_child(vbox)
+	
+	var lbl_title = Label.new()
+	lbl_title.text = title_text
+	lbl_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_title.add_theme_font_override("font", load(FONT_HANDWRITING))
+	lbl_title.add_theme_font_size_override("font_size", 22)
+	lbl_title.add_theme_color_override("font_color", COLOR_INK)
+	vbox.add_child(lbl_title)
+	
+	var lbl_msg = Label.new()
+	lbl_msg.text = message_text
+	lbl_msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl_msg.add_theme_font_override("font", load(FONT_HANDWRITING))
+	lbl_msg.add_theme_font_size_override("font_size", 16)
+	lbl_msg.add_theme_color_override("font_color", Color(COLOR_INK, 0.8))
+	vbox.add_child(lbl_msg)
+	
+	var hbox = HBoxContainer.new()
+	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	hbox.add_theme_constant_override("separation", 24)
+	vbox.add_child(hbox)
+	
+	var btn_ok = Button.new()
+	btn_ok.text = "確定"
+	btn_ok.custom_minimum_size = Vector2(140, 45)
+	apply_white_button_style(btn_ok)
+	hbox.add_child(btn_ok)
+	
+	var btn_cancel = Button.new()
+	btn_cancel.text = "キャンセル"
+	btn_cancel.custom_minimum_size = Vector2(140, 45)
+	apply_white_button_style(btn_cancel)
+	hbox.add_child(btn_cancel)
+	
+	btn_ok.pressed.connect(func():
+		animate_click(btn_ok, Vector2.ONE, 0.08)
+		var timer = scene_tree.create_timer(0.1)
+		timer.timeout.connect(func():
+			canvas.queue_free()
+			on_confirm.call()
+		)
+	)
+	
+	btn_cancel.pressed.connect(func():
+		animate_click(btn_cancel, Vector2.ONE, 0.08)
+		var timer = scene_tree.create_timer(0.1)
+		timer.timeout.connect(func():
+			canvas.queue_free()
+			if on_cancel.is_valid():
+				on_cancel.call()
+		)
+	)
+	
+	modal.scale = Vector2.ZERO
+	var tween = scene_tree.create_tween().bind_node(modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(modal, "scale", Vector2.ONE, 0.3)

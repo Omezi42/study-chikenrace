@@ -459,6 +459,7 @@ func _on_doubt_pressed(target_id: String, card_node: Control, btn: Button) -> vo
 	DeskTheme.shake_control(phone_panel, 8.0, 0.35)
 
 func _on_next_day_pressed() -> void:
+	next_day_btn.disabled = true
 	DeskTheme.animate_click(next_day_btn, Vector2.ONE, 0.08)
 	
 	var timer = get_tree().create_timer(0.25)

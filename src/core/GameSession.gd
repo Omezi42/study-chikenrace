@@ -1,6 +1,22 @@
 class_name GameSession
 extends RefCounted
 
+enum SessionPhaseState {
+	LOBBY,
+	READY,
+	STUDY,
+	REPORT,
+	WAIT_OTHERS,
+	DOUBT,
+	FINAL_REVEAL,
+	RESULT,
+	ERROR
+}
+
+signal state_changed(new_state: SessionPhaseState)
+
+var current_state: SessionPhaseState = SessionPhaseState.LOBBY
+
 var current_day: int = 1
 var current_hour: int = 1
 var max_hours_today: int = 3
@@ -13,6 +29,11 @@ var player_hours_history_today: Array = []
 var player_doubts_made_today: Array[String] = []
 
 var match_history: Dictionary = {}
+
+func change_state(new_state: SessionPhaseState) -> void:
+	if current_state != new_state:
+		current_state = new_state
+		state_changed.emit(current_state)
 
 func start_session(deck_config: Dictionary) -> void:
 	current_day = 1
@@ -43,7 +64,7 @@ func start_session(deck_config: Dictionary) -> void:
 					match_history[d][slots[i]] = Global.normalize_participant_record(
 						g.get("record", {}),
 						str(g.get("user_id", slots[i])),
-						str(g.get("username", "繝励Ξ繧､繝､繝ｼ"))
+						str(g.get("username", Localization.JP_PLAYER))
 					)
 	elif Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
 		current_day = max(Global.friend_current_day, 1)
@@ -65,7 +86,7 @@ func simulate_cpus_for_day(day_idx: int) -> void:
 		var decl = AIManager.calculate_cpu_bluff(cpu_id, sim["actual_score"])
 		day_data[cpu_id] = {
 			"id": cpu_id,
-			"name": Global.opponent_profiles[cpu_id].get("name", "繝ｩ繧､繝舌Ν"),
+			"name": Global.opponent_profiles[cpu_id].get("name", Localization.JP_RIVAL),
 			"actual_score": sim["actual_score"],
 			"declared_score": decl,
 			"hours": sim["hours"],
@@ -107,14 +128,17 @@ func _finalize_day_data() -> void:
 	day_data["player"]["hours"] = player_hours_history_today.duplicate(true)
 	day_data["player"]["doubts_made"] = player_doubts_made_today.duplicate(true)
 
-	var participants: Array = []
+	var participants: Array[Dictionary] = []
 	for p_id in day_data.keys():
 		var p = Global.normalize_participant_record(day_data[p_id], str(p_id))
 		day_data[p_id] = p
+		var hours_typed: Array[Dictionary] = []
+		for h in p["hours"]:
+			hours_typed.append(h as Dictionary)
 		participants.append({
 			"id": p_id,
 			"declared_score": p["declared_score"],
-			"hours": p["hours"]
+			"hours": hours_typed
 		})
 
 	if Global.game_mode not in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
@@ -159,7 +183,9 @@ func _save_and_upload_day() -> void:
 				"declared_score": player_declared_score_today,
 				"hours_history": player_hours_history_today.duplicate(true),
 				"doubts_made": player_doubts_made_today.duplicate(true),
-				"doubts_submitted": true
+				"doubts_submitted": true,
+				"phase": "day_end",
+				"client_nonce": "%s-%d-%d" % [Global.friend_room_code, current_day, Time.get_unix_time_from_system()]
 			}
 			bm.upload_friend_move(Global.friend_room_code, current_day, my_move)
 
@@ -203,9 +229,9 @@ func _prepare_opponents_for_day(day_idx: int) -> void:
 				dummy_ghosts = bm.generate_simulated_ghosts(day_idx)
 			else:
 				dummy_ghosts = [
-					{"username": "菴占陸縺上ｓ", "score": 40, "record": {"actual_score": 40, "declared_score": 45, "hours": []}},
-					{"username": "驤ｴ譛ｨ縺輔ｓ", "score": 48, "record": {"actual_score": 48, "declared_score": 48, "hours": []}},
-					{"username": "鬮俶ｩ九￥繧・", "score": 38, "record": {"actual_score": 38, "declared_score": 45, "hours": []}}
+					{"username": Localization.CPU_SATO, "score": 40, "record": {"actual_score": 40, "declared_score": 45, "hours": []}},
+					{"username": Localization.CPU_SUZUKI, "score": 48, "record": {"actual_score": 48, "declared_score": 48, "hours": []}},
+					{"username": Localization.CPU_TAKAHASHI, "score": 38, "record": {"actual_score": 38, "declared_score": 45, "hours": []}}
 				]
 			Global.daily_opponent_ghosts[next_day_str] = dummy_ghosts
 			Global.save_game()
@@ -256,7 +282,7 @@ func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 			else:
 				continue
 
-		day_data[slot_name] = Global.normalize_participant_record(m, uid, str(m.get("username", "繝励Ξ繧､繝､繝ｼ")))
+		day_data[slot_name] = Global.normalize_participant_record(m, uid, str(m.get("username", Localization.JP_PLAYER)))
 
 	if not day_data.has("player"):
 		day_data["player"] = Global.get_default_participant_record("player", Global.player_name)

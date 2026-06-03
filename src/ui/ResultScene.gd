@@ -116,7 +116,7 @@ func _ready() -> void:
 	if not showdown_data.has("rankings"):
 		showdown_data["rankings"] = []
 	if not showdown_data.has("final_scores"):
-		showdown_data["final_scores"] = {"player": 0, "cpu_sato": 0, "cpu_suzuki": 0, "cpu_takahashi": 0}
+		showdown_data["final_scores"] = {"player": 0}
 		
 	# Calculate deviation changes before proceeding
 	_calculate_deviation()
@@ -229,11 +229,6 @@ func _reflow_layout() -> void:
 		board_inner.size = vp_size - Vector2(84, 84)
 
 func reveal_next_day_showdown() -> void:
-	print("--- DEBUG: reveal_next_day_showdown, current_step_day = ", current_step_day)
-	print("chart_title instance: ", chart_title)
-	print("day_chart_area instance: ", day_chart_area)
-	for child in blackboard_vbox.get_children():
-		print("  child: ", child.name, " (", child, ")")
 	if not showdown_data.has("details"):
 		showdown_data["details"] = {}
 		
@@ -341,7 +336,6 @@ func reveal_next_day_showdown() -> void:
 		name_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_LARGE)
 		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		vbox.add_child(name_lbl)
-		print("  debug name_lbl font_color override: ", name_lbl.get_theme_color("font_color"))
 		
 		# Chalk line separator
 		var line = ColorRect.new()
@@ -467,7 +461,8 @@ func _build_day_chart_shell() -> void:
 	var row_height = 30.0
 	
 	var idx = 0
-	for p_id in ["player", "cpu_sato", "cpu_suzuki", "cpu_takahashi"]:
+	var final_scores_keys = showdown_data.get("final_scores", {"player": 0}).keys()
+	for p_id in final_scores_keys:
 		var row = Control.new()
 		row.custom_minimum_size = Vector2(1320, row_height)
 		row.size = Vector2(1320, row_height)
@@ -528,7 +523,8 @@ func _update_day_chart(day_idx: int) -> void:
 	if not showdown_data.has("details"):
 		return
 	var cumulative := {}
-	for p_id in ["player", "cpu_sato", "cpu_suzuki", "cpu_takahashi"]:
+	var final_scores_keys = showdown_data.get("final_scores", {"player": 0}).keys()
+	for p_id in final_scores_keys:
 		cumulative[p_id] = 0
 	for d in range(1, day_idx + 1):
 		if not showdown_data["details"].has(d):
@@ -588,6 +584,10 @@ func _update_day_chart(day_idx: int) -> void:
 				"cpu_sato": callable = _set_score_sato
 				"cpu_suzuki": callable = _set_score_suzuki
 				"cpu_takahashi": callable = _set_score_takahashi
+				_:
+					callable = func(val: float):
+						if _active_score_labels.has(p_id) and is_instance_valid(_active_score_labels[p_id]):
+							_active_score_labels[p_id].text = "%d 点" % int(val)
 			if callable:
 				count_tween.tween_method(callable, start_score, score, 0.5)
 

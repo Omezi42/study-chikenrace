@@ -19,29 +19,25 @@ extends RefCounted
 # }
 
 static func calculate_final_showdown(session: GameSession) -> Dictionary:
-	var final_scores := {
-		"player": 0,
-		"cpu_sato": 0,
-		"cpu_suzuki": 0,
-		"cpu_takahashi": 0
-	}
+	var final_scores := { "player": 0 }
+	var max_days := Constants.MAX_DAYS
 	
-	# Detailed adjustment logs for blackboard rendering
+	# 参加者IDを動的に収集する
+	for day_idx in range(1, max_days + 1):
+		if session.match_history.has(day_idx):
+			var day_data: Dictionary = session.match_history[day_idx]
+			for p_id in day_data.keys():
+				final_scores[str(p_id)] = 0
+				
 	var showdown_details: Dictionary = {}
 	
-	# Total bursted hours (Tie-breaker: lower bursts rank higher)
-	var total_bursts := {
-		"player": 0,
-		"cpu_sato": 0,
-		"cpu_suzuki": 0,
-		"cpu_takahashi": 0
-	}
+	var total_bursts := {}
+	for p_id in final_scores.keys():
+		total_bursts[p_id] = 0
 	
 	var doubt_success_count := 0       # Player's successful doubt count
 	var player_lies_count := 0
 	var player_caught_lies_count := 0
-	
-	var max_days := Constants.MAX_DAYS
 	
 	# === Step 1: Base scores & exposure checks for each day ===
 	for day_idx in range(1, max_days + 1):

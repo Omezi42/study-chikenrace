@@ -16,6 +16,7 @@ var draw_btn: Button
 var stop_btn: Button
 var left_page: PanelContainer
 var right_page: PanelContainer
+var header_left: Label
 
 # Card explanation panel
 var card_detail_box: PanelContainer
@@ -87,7 +88,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	left_inner_vbox.add_theme_constant_override("separation", 20)
 	left_margin.add_child(left_inner_vbox)
 	
-	var header_left = Label.new()
+	header_left = Label.new()
 	header_left.text = "自習ノート - %d時限目" % session.current_hour
 	header_left.add_theme_font_override("font", DeskTheme.get_font())
 	header_left.add_theme_font_size_override("font_size", 32)
@@ -119,12 +120,12 @@ func _on_setup(setup_data: Dictionary) -> void:
 	draw_history_container.add_theme_constant_override("separation", 12)
 	left_inner_vbox.add_child(draw_history_container)
 	
-	# Card details panel as floating tooltip
+	# Card details panel statically placed on left page
 	card_detail_box = PanelContainer.new()
 	card_detail_box.custom_minimum_size = Vector2(400, 140)
-	card_detail_box.z_index = 100 # Ensure it draws on top
+	card_detail_box.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	card_detail_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	card_detail_box.visible = false
+	card_detail_box.visible = true
 	
 	var detail_style = StyleBoxFlat.new()
 	detail_style.bg_color = DeskTheme.COLOR_CRAFT # Use craft color for tooltip
@@ -146,8 +147,8 @@ func _on_setup(setup_data: Dictionary) -> void:
 	detail_style.shadow_offset = Vector2(2, 2)
 	card_detail_box.add_theme_stylebox_override("panel", detail_style)
 	
-	# Add to self instead of left_inner_vbox
-	add_child(card_detail_box)
+	# Add to left_inner_vbox to place it statically on the left page
+	left_inner_vbox.add_child(card_detail_box)
 	
 	var detail_vbox = VBoxContainer.new()
 	detail_vbox.add_theme_constant_override("separation", 6)
@@ -283,7 +284,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	standing_phone.size = Vector2(300, 520)
 	standing_phone.clip_contents = false # Allow toggle button outside bounds
 	add_child(standing_phone)
-	standing_phone.position = Vector2(-260, max(viewport_size.y * 0.175, 120.0))
+	standing_phone.position = Vector2(DeskTheme.SMARTPHONE_HIDDEN_X, max(viewport_size.y * DeskTheme.SMARTPHONE_Y_OFFSET_RATIO, 120.0))
 	
 	var phone_style = StyleBoxFlat.new()
 	phone_style.bg_color = DeskTheme.COLOR_INK
@@ -392,6 +393,8 @@ func apply_deck_startup_items() -> void:
 			active_used_items.append("item_mech_pencil")
 
 func update_ui() -> void:
+	if header_left:
+		header_left.text = "自習ノート - %d時限目" % session.current_hour
 	var score_info = session.player_deck.calculate_hand_score()
 	actual_score_label.text = str(score_info["total_score"]) + "点"
 	
@@ -484,15 +487,6 @@ func perform_animated_draw(card: Dictionary, on_complete: Callable = Callable())
 	var timer = get_tree().create_timer(0.4)
 	timer.timeout.connect(func():
 		is_animating = false
-		
-		# Play combo sound if last two cards share a non-none subject
-		if session.player_deck.hand.size() > 1:
-			var last = session.player_deck.hand[session.player_deck.hand.size() - 1]
-			var prev = session.player_deck.hand[session.player_deck.hand.size() - 2]
-			if last["subject"] != CardData.SUBJECT_NONE and last["subject"] == prev["subject"]:
-				if has_node("/root/AudioManager"):
-					get_node("/root/AudioManager").play_se(AudioManager.SE_COMBO)
-					
 		if on_complete.is_valid():
 			on_complete.call()
 	)
@@ -623,16 +617,8 @@ func show_peek_sticky(peeked: Array) -> void:
 	
 	for idx in range(peeked.size()):
 		var card = peeked[idx]
-		var sub_jp = "なし"
-		match card["subject"]:
-			CardData.SUBJECT_MATH: sub_jp = "数学"
-			CardData.SUBJECT_ENGLISH: sub_jp = "英語"
-			CardData.SUBJECT_JAPANESE: sub_jp = "国語"
-			CardData.SUBJECT_SCIENCE: sub_jp = "理科"
-			CardData.SUBJECT_SOCIAL: sub_jp = "社会"
-			
 		var card_lbl = Label.new()
-		card_lbl.text = "・%d枚目： %s (%d 点)" % [idx + 1, sub_jp, card["value"]]
+		card_lbl.text = "・%d枚目： %s (%d 点)" % [idx + 1, card["name"], card["value"]]
 		card_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		card_lbl.add_theme_font_size_override("font_size", 16)
 		card_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.8))
@@ -728,7 +714,7 @@ func trigger_burst_sequence() -> void:
 			
 		session.add_player_hour_result(current_hand_cards.size(), active_used_items, true, final_score)
 		
-		finish_hour_and_transition()
+		finish_hour_and_transition(final_score, true)
 	)
 
 func _on_stop_pressed() -> void:
@@ -749,9 +735,11 @@ func _on_stop_pressed() -> void:
 	
 	session.add_player_hour_result(hand_container.get_child_count(), active_used_items, false, final_score)
 	
-	finish_hour_and_transition()
+	finish_hour_and_transition(final_score, false)
 
-func finish_hour_and_transition() -> void:
+func finish_hour_and_transition(final_score: int, is_burst: bool) -> void:
+	show_hour_result_popup(final_score, is_burst)
+	
 	session.player_deck.reset_for_next_hour()
 	
 	if tutorial:
@@ -762,14 +750,114 @@ func finish_hour_and_transition() -> void:
 		active_peek_sticky.queue_free()
 		active_peek_sticky = null
 		
-	# Exit the phase immediately to return flow to GameScene.gd
-	# GameScene will handle the loop, returning to BagBuilder (Card Addition) if remaining periods exist
-	finish_phase({
-		"actual_score": session.player_actual_score_today
-	})
+	draw_btn.disabled = true
+	stop_btn.disabled = true
+	
+	# Wait 1.6s then transition or reset seamlessly (1.2s -> 1.6s)
+	var timer = get_tree().create_timer(1.6)
+	timer.timeout.connect(func():
+		if session.player_hours_history_today.size() >= session.max_hours_today:
+			finish_phase({
+				"actual_score": session.player_actual_score_today
+			})
+		else:
+			session.current_hour += 1
+			reset_phase_for_next_hour()
+	)
+
+func reset_phase_for_next_hour() -> void:
+	has_bursted = false
+	active_used_items.clear()
+	current_hand_cards.clear()
+	
+	# Clear hand and history containers
+	for child in hand_container.get_children():
+		child.queue_free()
+	for child in draw_history_container.get_children():
+		child.queue_free()
+		
+	# Re-apply deck startup items
+	apply_deck_startup_items()
+	
+	# Update UI elements
+	update_ui()
+	
+	# Re-enable buttons
+	draw_btn.disabled = false
+	stop_btn.disabled = false
+	
+	# Hide alert banner
+	alert_banner.color.a = 0.0
+	
+	DeskTheme.show_toast(self, "第 %d 時限目の勉強を開始します！" % session.current_hour)
+
+func show_hour_result_popup(score: int, is_burst: bool) -> void:
+	var popup = PanelContainer.new()
+	popup.custom_minimum_size = Vector2(320, 100)
+	popup.pivot_offset = Vector2(160, 50)
+	
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color("ffebee") if is_burst else Color("e8f5e9")
+	style.border_color = DeskTheme.COLOR_TENSION if is_burst else DeskTheme.COLOR_GREEN
+	style.border_width_left = 3
+	style.border_width_right = 3
+	style.border_width_top = 3
+	style.border_width_bottom = 3
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	style.shadow_color = Color(0, 0, 0, 0.2)
+	style.shadow_size = 6
+	style.shadow_offset = Vector2(3, 3)
+	popup.add_theme_stylebox_override("panel", style)
+	
+	var vbox = VBoxContainer.new()
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_theme_constant_override("separation", 4)
+	popup.add_child(vbox)
+	
+	var main_lbl = Label.new()
+	if is_burst:
+		main_lbl.text = "寝落ちした！"
+		main_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+	else:
+		main_lbl.text = "休憩（ストップ）"
+		main_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
+	main_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	main_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	main_lbl.add_theme_font_size_override("font_size", 22)
+	vbox.add_child(main_lbl)
+	
+	var score_lbl = Label.new()
+	score_lbl.text = "確定得点: +%d点" % score
+	score_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	score_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	score_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	score_lbl.add_theme_font_size_override("font_size", 26)
+	vbox.add_child(score_lbl)
+	
+	add_child(popup)
+	
+	var viewport_size = get_viewport_rect().size
+	popup.position = (viewport_size - popup.custom_minimum_size) / 2.0
+	popup.scale = Vector2.ZERO
+	
+	var tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(popup, "scale", Vector2.ONE, 0.3)
+	
+	var timer = get_tree().create_timer(1.2)
+	timer.timeout.connect(func():
+		if is_instance_valid(popup):
+			var fade_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			fade_tween.tween_property(popup, "scale", Vector2(0.8, 0.8), 0.3)
+			fade_tween.tween_property(popup, "modulate:a", 0.0, 0.25)
+			fade_tween.chain().tween_callback(popup.queue_free)
+	)
 
 func show_card_detail(card: Dictionary) -> void:
-	var item_info = CardData.ITEMS.get(card["item_id"], null)
+	var item_id = card.get("item_id", "")
+	var item_info = CardData.ITEMS.get(item_id, null)
 	if item_info:
 		detail_title_label.text = "【" + item_info["name"] + "】"
 		detail_role_label.text = "系統: " + CardData.get_role_name(item_info["role"])
@@ -779,19 +867,6 @@ func show_card_detail(card: Dictionary) -> void:
 		detail_title_label.text = "カード説明"
 		detail_role_label.text = ""
 		detail_desc_label.text = "カードをクリックすると効果の説明が表示されます。"
-		
-	# Show tooltip
-	card_detail_box.visible = true
-	
-func _process(delta: float) -> void:
-	if card_detail_box and card_detail_box.visible:
-		var mouse_pos = get_global_mouse_position()
-		# Offset slightly so the mouse cursor doesn't block the tooltip
-		card_detail_box.position = mouse_pos + Vector2(20, -100)
-		# Clamp to screen to avoid going offscreen
-		var tooltip_viewport_size = get_viewport_rect().size
-		card_detail_box.position.x = clamp(card_detail_box.position.x, 0, max(tooltip_viewport_size.x - card_detail_box.size.x, 0.0))
-		card_detail_box.position.y = clamp(card_detail_box.position.y, 0, max(tooltip_viewport_size.y - card_detail_box.size.y, 0.0))
 
 func set_mouse_filter_recursive(node: Node, filter: int) -> void:
 	if node is Control:
@@ -803,7 +878,7 @@ func _on_phone_toggle_pressed() -> void:
 	DeskTheme.animate_click(phone_toggle_btn, Vector2.ONE, 0.08)
 	is_phone_open = not is_phone_open
 	
-	var target_x = 0.0 if is_phone_open else -260.0
+	var target_x = DeskTheme.SMARTPHONE_SHOWN_X if is_phone_open else DeskTheme.SMARTPHONE_HIDDEN_X
 	var tween = create_tween().bind_node(standing_phone).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(standing_phone, "position:x", target_x, 0.4)
 	
@@ -1142,9 +1217,11 @@ func _on_card_ui_mouse_entered(card: Dictionary, card_ui: Button) -> void:
 
 func _on_card_ui_mouse_exited(card_ui: Button) -> void:
 	if hovered_card_ui == card_ui:
+		if is_instance_valid(hovered_card_tween):
+			hovered_card_tween.kill()
+		hovered_card_tween = null
 		hovered_card_ui = null
-	if card_detail_box:
-		card_detail_box.visible = false
+	show_card_detail({})
 	
 	_reset_hovered_card(card_ui)
 	# arrange_hand_fan restores the canonical hand layout after hover exits
@@ -1166,8 +1243,7 @@ func _clear_hovered_card() -> void:
 	if hovered_card_ui:
 		_reset_hovered_card(hovered_card_ui)
 		hovered_card_ui = null
-	if card_detail_box:
-		card_detail_box.visible = false
+	show_card_detail({})
 	arrange_hand_fan()
 
 func _on_card_selected_from_hand(hand_idx: int, card: Dictionary) -> void:

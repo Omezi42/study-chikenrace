@@ -1,9 +1,10 @@
-﻿class_name ProfileScene
+class_name ProfileScene
 extends Control
 
 var notebook_panel: PanelContainer
 var name_input: LineEdit
 var confirm_btn: Button
+var is_entrance_done: bool = false
 
 func _ready() -> void:
 	# Mahogany background
@@ -65,9 +66,27 @@ func _ready() -> void:
 	confirm_btn.pressed.connect(_on_confirm_pressed)
 	vbox.add_child(confirm_btn)
 	
-	# Entrance slide in from bottom
-	var target_pos = get_viewport_rect().size * 0.5
+	# Entrance slide in from bottom (左上基準のposition用に中央配置を計算)
+	var panel_size = notebook_panel.custom_minimum_size
+	var target_pos = (get_viewport_rect().size - panel_size) * 0.5
 	DeskTheme.animate_entrance(notebook_panel, target_pos, Vector2(0, 300), 0.5)
+	
+	# ウィンドウリサイズ時の再配置ハンドラを接続
+	get_viewport().size_changed.connect(_reposition_notebook)
+	
+	# アニメーション完了後にリサイズ追従を有効化する
+	get_tree().create_timer(0.55).timeout.connect(func():
+		if is_instance_valid(self):
+			is_entrance_done = true
+			_reposition_notebook()
+	)
+
+func _reposition_notebook() -> void:
+	if not is_entrance_done or not is_instance_valid(notebook_panel):
+		return
+	var vp_size = get_viewport_rect().size
+	var panel_size = notebook_panel.custom_minimum_size
+	notebook_panel.position = (vp_size - panel_size) * 0.5
 
 func _on_confirm_pressed() -> void:
 	var player_name_val = name_input.text.strip_edges()

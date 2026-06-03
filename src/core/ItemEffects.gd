@@ -10,15 +10,8 @@ class ItemEffect extends RefCounted:
 # 1. 付箋
 class StickyNoteEffect extends ItemEffect:
 	func execute(phase: Control, deck: StudyDeck, card: Dictionary) -> void:
-		var sub = deck.activate_sticky_note()
-		var sub_jp = "なし"
-		match sub:
-			CardData.SUBJECT_MATH: sub_jp = "数学"
-			CardData.SUBJECT_ENGLISH: sub_jp = "英語"
-			CardData.SUBJECT_JAPANESE: sub_jp = "国語"
-			CardData.SUBJECT_SCIENCE: sub_jp = "理科"
-			CardData.SUBJECT_SOCIAL: sub_jp = "社会"
-		DeskTheme.show_toast(phase, "付箋の効果！次のドローは【%s】が出やすくなった！" % sub_jp)
+		deck.next_draw_bonus_points = 1
+		DeskTheme.show_toast(phase, "付箋の効果！次に引く1枚の得点＋3点！")
 
 # 2. 消しゴム
 class EraserEffect extends ItemEffect:
@@ -57,13 +50,13 @@ class MemoCardsEffect extends ItemEffect:
 class HighlighterEffect extends ItemEffect:
 	func execute(phase: Control, deck: StudyDeck, card: Dictionary) -> void:
 		deck.highlighter_active = true
-		DeskTheme.show_toast(phase, "蛍光ペンの効果！この時限のコンボボーナスが1.5倍！")
+		DeskTheme.show_toast(phase, "蛍光ペンの効果！この時限で引いたすべてのカードに得点＋1点！")
 
 # 8. 青ペン
 class BluePenEffect extends ItemEffect:
 	func execute(phase: Control, deck: StudyDeck, card: Dictionary) -> void:
 		deck.blue_pen_active = true
-		DeskTheme.show_toast(phase, "青ペンの効果！場に出ている国語・英語の得点が1.5倍！")
+		DeskTheme.show_toast(phase, "青ペンの効果！この時限で引いたすべてのカードに得点＋2点！")
 
 # 9. 座布団
 class CushionEffect extends ItemEffect:
@@ -158,15 +151,8 @@ class StudyChatEffect extends ItemEffect:
 # 21. 予想問題集
 class ExpectedQuestionsEffect extends ItemEffect:
 	func execute(phase: Control, deck: StudyDeck, card: Dictionary) -> void:
-		var sub = deck.activate_expected_questions()
-		var sub_jp = "なし"
-		match sub:
-			CardData.SUBJECT_MATH: sub_jp = "数学"
-			CardData.SUBJECT_ENGLISH: sub_jp = "英語"
-			CardData.SUBJECT_JAPANESE: sub_jp = "国語"
-			CardData.SUBJECT_SCIENCE: sub_jp = "理科"
-			CardData.SUBJECT_SOCIAL: sub_jp = "社会"
-		DeskTheme.show_toast(phase, "予想問題集の効果！次の3枚が【%s】で固定された！" % sub_jp)
+		deck.next_draw_bonus_points = 3
+		DeskTheme.show_toast(phase, "予想問題集の効果！次に引く3枚の得点＋3点！")
 
 # 22. カフェラテ
 class CafeLatteEffect extends ItemEffect:
@@ -193,16 +179,17 @@ class EarplugsEffect extends ItemEffect:
 # 24. 塾プリント
 class CramSchoolPrintEffect extends ItemEffect:
 	func execute(phase: Control, deck: StudyDeck, card: Dictionary) -> void:
-		DeskTheme.show_toast(phase, "塾プリントの効果！5教科コンボのワイルドカードとして機能！")
+		deck.cram_school_print_active = true
+		DeskTheme.show_toast(phase, "塾プリントの効果！この時限の最終得点＋10点！")
 
 # 25. 忘却のノート
 class ForgetNotebookEffect extends ItemEffect:
 	func execute(phase: Control, deck: StudyDeck, card: Dictionary) -> void:
 		var val = deck.activate_forget_notebook()
 		if val > 0:
-			DeskTheme.show_toast(phase, "忘却のノートの効果！不要なカード（%d点）をデッキから削除！" % val)
+			DeskTheme.show_toast(phase, "忘却のノートの効果！不要なカード（%d点）を手札から捨てた！" % val)
 		else:
-			DeskTheme.show_toast(phase, "忘却のノートの効果！不要なカードを削除した！")
+			DeskTheme.show_toast(phase, "忘却のノートの効果！手札からカードを捨てた！")
 
 # 各アイテムエフェクトマッピング
 const EFFECT_MAP = {

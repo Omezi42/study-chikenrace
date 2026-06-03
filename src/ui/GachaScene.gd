@@ -372,6 +372,49 @@ func _ready() -> void:
 	pull_btn.custom_minimum_size = Vector2(260, 65)
 	pull_btn.add_theme_font_override("font", DeskTheme.get_font())
 	pull_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
+	
+	# アナログ文房具風の目立つ黄色の蛍光ペンカラーでデザイン統一
+	var pull_style_normal = StyleBoxFlat.new()
+	pull_style_normal.bg_color = DeskTheme.COLOR_HIGHLIGHTER
+	pull_style_normal.border_color = DeskTheme.COLOR_INK
+	pull_style_normal.border_width_left = 3
+	pull_style_normal.border_width_right = 3
+	pull_style_normal.border_width_top = 3
+	pull_style_normal.border_width_bottom = 3
+	pull_style_normal.corner_radius_top_left = 6
+	pull_style_normal.corner_radius_top_right = 6
+	pull_style_normal.corner_radius_bottom_left = 6
+	pull_style_normal.corner_radius_bottom_right = 6
+	pull_style_normal.shadow_color = Color(0.12, 0.08, 0.05, 0.15)
+	pull_style_normal.shadow_size = 4
+	pull_style_normal.shadow_offset = Vector2(2, 2)
+	
+	var pull_style_hover = pull_style_normal.duplicate() as StyleBoxFlat
+	pull_style_hover.bg_color = Color("ffff8d")
+	pull_style_hover.shadow_size = 6
+	pull_style_hover.shadow_offset = Vector2(3, 3)
+	
+	var pull_style_pressed = pull_style_normal.duplicate() as StyleBoxFlat
+	pull_style_pressed.bg_color = Color("ffd54f")
+	pull_style_pressed.shadow_size = 1
+	pull_style_pressed.shadow_offset = Vector2(1, 1)
+	
+	var pull_style_disabled = pull_style_normal.duplicate() as StyleBoxFlat
+	pull_style_disabled.bg_color = Color("e0e0e0")
+	pull_style_disabled.border_color = Color("9e9e9e")
+	pull_style_disabled.shadow_size = 0
+	
+	pull_btn.add_theme_stylebox_override("normal", pull_style_normal)
+	pull_btn.add_theme_stylebox_override("hover", pull_style_hover)
+	pull_btn.add_theme_stylebox_override("pressed", pull_style_pressed)
+	pull_btn.add_theme_stylebox_override("disabled", pull_style_disabled)
+	pull_btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	
+	pull_btn.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	pull_btn.add_theme_color_override("font_hover_color", DeskTheme.COLOR_INK)
+	pull_btn.add_theme_color_override("font_pressed_color", DeskTheme.COLOR_INK)
+	pull_btn.add_theme_color_override("font_disabled_color", Color("9e9e9e"))
+
 	pull_btn.pressed.connect(func():
 		pull_btn.release_focus()
 		DeskTheme.animate_click(pull_btn, Vector2.ONE, 0.08)

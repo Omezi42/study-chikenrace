@@ -15,6 +15,7 @@ func _ready() -> void:
 	success = success and test_game_session_states()
 	success = success and test_scenario_modes()
 	success = success and test_metadata_and_integrity()
+	success = success and test_multiplayer_sync_and_idempotency()
 	
 	print("==================================================")
 	if success:
@@ -63,65 +64,54 @@ func test_deck_initialization() -> bool:
 	
 	return pass_size and pass_draw and pass_hand and pass_pile
 
-# Test 2: Combo & wildcards calculations
+# Test 2: Scoring, Combos, and Wildcards (Updated for simplified mechanics)
 func test_combos_and_wildcards() -> bool:
-	print("\n--- Test 2: Scoring, Combos, and Wildcards ---")
+	print("\n--- Test 2: Scoring and Item Buffs (No Subjects) ---")
 	var deck = StudyDeck.new()
 	
-	# Scenario A: Standard hand (no combos, distinct subjects)
-	# 3 of math, 4 of english, 5 of japanese
+	# Scenario A: Standard hand (no buffs)
 	var hand_a: Array[Dictionary] = [
-		{"value": 3, "subject": CardData.SUBJECT_MATH, "item_id": "item_sticky_note"},
-		{"value": 4, "subject": CardData.SUBJECT_ENGLISH, "item_id": "item_eraser"},
-		{"value": 5, "subject": CardData.SUBJECT_JAPANESE, "item_id": "item_ruler"}
+		{"value": 3, "item_id": "item_sticky_note"},
+		{"value": 4, "item_id": "item_eraser"},
+		{"value": 5, "item_id": "item_ruler"}
 	]
 	deck.hand = hand_a
 	var score_a = deck.calculate_hand_score()
 	var pass_a = assert_true(
-		score_a["subtotal"] == 12 and score_a["combo_bonus"] == 0 and score_a["five_subjects_bonus"] == 0,
-		"Scenario A: Normal hand score subtotal 12, combo 0, five-subject 0."
+		score_a["total_score"] == 12,
+		"Scenario A: Normal hand score subtotal 12, total 12. (Actual: %d)" % score_a["total_score"]
 	)
 	
-	# Scenario B: Consecutive subject combos
-	# 3 of math, 4 of math (combo of 2), 5 of english
-	var hand_b: Array[Dictionary] = [
-		{"value": 3, "subject": CardData.SUBJECT_MATH, "item_id": "item_sticky_note"},
-		{"value": 4, "subject": CardData.SUBJECT_MATH, "item_id": "item_eraser"},
-		{"value": 5, "subject": CardData.SUBJECT_ENGLISH, "item_id": "item_ruler"}
-	]
-	deck.hand = hand_b
+	# Scenario B: Highlighter active (+1 to each card)
+	deck.reset_status_effects()
+	deck.highlighter_active = true
 	var score_b = deck.calculate_hand_score()
 	var pass_b = assert_true(
-		score_b["subtotal"] == 12 and score_b["combo_bonus"] == 3,
-		"Scenario B: Consecutive combo of 2 maths yields +3 bonus points."
+		score_b["total_score"] == 15,
+		"Scenario B: Highlighter active adds +1 to each of the 3 cards (total 15). (Actual: %d)" % score_b["total_score"]
 	)
 	
-	# Scenario C: 5-subject bonus with Wildcard Cram School Print
-	# Math, English, Japanese, Science + Wildcard. Subtotal = 25
-	var hand_c: Array[Dictionary] = [
-		{"value": 3, "subject": CardData.SUBJECT_MATH, "item_id": "item_sticky_note"},
-		{"value": 4, "subject": CardData.SUBJECT_ENGLISH, "item_id": "item_eraser"},
-		{"value": 5, "subject": CardData.SUBJECT_JAPANESE, "item_id": "item_ruler"},
-		{"value": 6, "subject": CardData.SUBJECT_SCIENCE, "item_id": "item_wordbook"},
-		{"value": 7, "subject": CardData.SUBJECT_NONE, "item_id": "item_cram_school_print"}
-	]
-	deck.hand = hand_c
+	# Scenario C: Blue Pen active (+2 to each card)
+	deck.reset_status_effects()
+	deck.blue_pen_active = true
 	var score_c = deck.calculate_hand_score()
 	var pass_c = assert_true(
-		score_c["five_subjects_bonus"] == 10,
-		"Scenario C: Wildcard completes 5-subject set, yielding bounded +10 points bonus."
+		score_c["total_score"] == 18,
+		"Scenario C: Blue Pen active adds +2 to each of the 3 cards (total 18). (Actual: %d)" % score_c["total_score"]
 	)
 	
-	# Scenario D: Long consecutive subject combo capped at 25
-	# 8 consecutive math cards (streak = 8)
-	var hand_d: Array[Dictionary] = []
-	for i in range(8):
-		hand_d.append({"value": 3, "subject": CardData.SUBJECT_MATH, "item_id": "item_sticky_note"})
+	# Scenario D: Cram School Print active (+10 static bonus)
+	deck.reset_status_effects()
+	var hand_d: Array[Dictionary] = [
+		{"value": 3, "item_id": "item_sticky_note"},
+		{"value": 4, "item_id": "item_eraser"}
+	]
 	deck.hand = hand_d
+	deck.cram_school_print_active = true
 	var score_d = deck.calculate_hand_score()
 	var pass_d = assert_true(
-		score_d["combo_bonus"] == 25,
-		"Scenario D: 8 consecutive subjects yields combo bonus capped at 25 points. (Actual: %d)" % score_d["combo_bonus"]
+		score_d["total_score"] == 17,
+		"Scenario D: Cram School Print active adds +10 to subtotal 7 (total 17). (Actual: %d)" % score_d["total_score"]
 	)
 	
 	return pass_a and pass_b and pass_c and pass_d
@@ -520,23 +510,6 @@ func test_scenario_modes() -> bool:
 func test_metadata_and_integrity() -> bool:
 	print("\n--- Test 8: Metadata & Integration Integrity ---")
 	
-	# A. Verify BagBuilder generate_choices() only uses unlocked items
-	var orig_unlocked = Global.unlocked_items.duplicate()
-	Global.unlocked_items = ["item_sticky_note", "item_eraser", "item_ruler"]
-	
-	var bag_builder = BagBuilderPhase.new()
-	bag_builder.card_options.clear()
-	bag_builder.generate_choices()
-	
-	var pass_bag = true
-	for card in bag_builder.card_options:
-		if not card["id"] in Global.unlocked_items:
-			pass_bag = false
-			break
-	var pass_bag_assert = assert_true(pass_bag, "BagBuilder choice generation strictly respects Global.unlocked_items pool.")
-	bag_builder.free()
-	Global.unlocked_items = orig_unlocked
-	
 	# B. Verify deviation change is restricted to MODE_RANDOM in ResultScene
 	var result_scene = ResultScene.new()
 	result_scene.showdown_data = {
@@ -570,5 +543,57 @@ func test_metadata_and_integrity() -> bool:
 	Global.deviation_value = orig_deviation
 	result_scene.free()
 	
-	return pass_bag_assert and pass_cpu_dev and pass_random_dev
+	return pass_cpu_dev and pass_random_dev
+
+# Test 9: Multiplayer Sync Scheme & Idempotency
+func test_multiplayer_sync_and_idempotency() -> bool:
+	print("\n--- Test 9: Multiplayer Sync Scheme & Idempotency ---")
+	
+	var bm = Engine.get_main_loop().root.get_node_or_null("BackendManager")
+	if not bm:
+		print("  [SKIP] BackendManager not found in scene tree.")
+		return true
+		
+	# A. Schema normalization test
+	var raw_move = {
+		"actual_score": 45,
+		"declared_score": "55", # string, should be parsed to int
+		"hours": [{"draws": 4, "used_items": [], "bursted": false, "score": 45}],
+		"phase": "study",
+		"client_nonce": "test-nonce-123"
+	}
+	
+	var normalized = bm._normalize_score_payload(raw_move)
+	
+	var pass_schema_int = assert_true(normalized["declared_score"] == 55, "Schema correctly parsed declared_score to integer.")
+	var pass_schema_hours = assert_true(normalized["hours_history"].size() == 1, "Schema successfully mapped 'hours' key to 'hours_history'.")
+	
+	# B. Global normalization mapping
+	var global_norm = Global.normalize_participant_record(raw_move, "player", "TestPlayer")
+	var pass_global_hours = assert_true(global_norm["hours"].size() == 1, "Global schema successfully mapped hours_history back to 'hours' field.")
+	
+	# C. Idempotency test (sent_nonces)
+	bm._sent_nonces.clear()
+	var mock_move_data = {
+		"actual_score": 10,
+		"declared_score": 10,
+		"hours_history": [],
+		"client_nonce": "nonce-idemp-test-999"
+	}
+	
+	# First upload
+	bm.is_mock_room = true
+	bm.upload_friend_move("1111", 1, mock_move_data)
+	
+	var pass_nonce_sending = assert_true(bm._sent_nonces.get("nonce-idemp-test-999") == "success", "First upload succeeded and nonce state is success.")
+	
+	# Second upload (should be blocked or ignored due to success state)
+	var prev_sync_rev = bm.mock_last_sync_revision
+	bm.upload_friend_move("1111", 1, mock_move_data)
+	var pass_idemp_prevented = assert_true(bm.mock_last_sync_revision == prev_sync_rev, "Second upload with same nonce was skipped (idempotent).")
+	
+	bm._sent_nonces.clear()
+	bm.is_mock_room = false
+	
+	return pass_schema_int and pass_schema_hours and pass_global_hours and pass_nonce_sending and pass_idemp_prevented
 

@@ -1,4 +1,35 @@
+# -*- coding: utf-8 -*-
 extends Node
+
+# UTF-8 でエンコードされた日本語定数の一元管理クラス
+
+const JP_YOU = "あなた"
+const JP_RIVAL = "ライバル"
+const JP_MEMBER = "メンバー"
+const JP_PLAYER = "プレイヤー"
+const JP_COMMUNICATION_ERROR = "通信エラー"
+
+# CPU名
+const CPU_SATO = "佐藤くん"
+const CPU_SUZUKI = "鈴木さん"
+const CPU_TAKAHASHI = "高橋くん"
+const CPU_TANAKA = "田中くん"
+const CPU_TAKEDA = "武田くん"
+const CPU_WATANABE = "渡辺さん"
+
+# UIテキスト
+const MSG_SAVING = "セーブ中..."
+const MSG_LOADING = "ロード中..."
+const MSG_SIGNUPPING = "新規登録中..."
+const MSG_LOGINNING = "ログイン中..."
+const MSG_VERIFYING = "セッション復旧中..."
+const MSG_ROOM_CREATING = "ルーム作成中..."
+const MSG_ROOM_JOINING = "ルーム参加中..."
+const MSG_CONNECTION_LOST = "接続が切断されました。\n自動再接続中..."
+const MSG_RECONNECT_SUCCESS = "接続復旧しました。\n同期を再開しています..."
+const MSG_TIMELINE_POST = "タイムラインに投稿"
+const MSG_STUDY_REPORT = "今日の勉強報告"
+const MSG_REPORT_SLIDER_WARN = "⚠️ 申告が実点を超えています！ダウトされる危険性があります。"
 
 # UIテキストのキーマップ
 const TEXT_DATA = {

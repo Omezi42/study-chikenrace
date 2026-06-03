@@ -1,4 +1,4 @@
-﻿class_name CardVisual
+class_name CardVisual
 extends Button
 
 ## カード1枚のUI表示を担う再利用可能なコンポーネント。
@@ -52,37 +52,6 @@ func _build_ui() -> void:
 	top_margin.add_theme_constant_override("margin_top", 14)
 	card_vbox.add_child(top_margin)
 	
-	# 教科バッジ（左上に絶対配置）
-	var subject = card_data.get("subject", CardData.SUBJECT_NONE)
-	var sub_icon_path = CardData.get_subject_icon_path(subject)
-	if sub_icon_path != "":
-		var sub_color = _get_subject_color(subject)
-		
-		var subject_badge = PanelContainer.new()
-		subject_badge.position = Vector2(8, 8)
-		subject_badge.custom_minimum_size = Vector2(28, 28)
-		subject_badge.size = Vector2(28, 28)
-		
-		var badge_style = StyleBoxFlat.new()
-		badge_style.bg_color = sub_color
-		badge_style.corner_radius_top_left = 14
-		badge_style.corner_radius_top_right = 14
-		badge_style.corner_radius_bottom_left = 14
-		badge_style.corner_radius_bottom_right = 14
-		badge_style.content_margin_left = 4
-		badge_style.content_margin_right = 4
-		badge_style.content_margin_top = 4
-		badge_style.content_margin_bottom = 4
-		subject_badge.add_theme_stylebox_override("panel", badge_style)
-		
-		var icon_rect = TextureRect.new()
-		icon_rect.texture = load(sub_icon_path)
-		icon_rect.custom_minimum_size = Vector2(20, 20)
-		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		subject_badge.add_child(icon_rect)
-		add_child(subject_badge)
-	
 	# 点数（大きく中央に表示）
 	var val_label = Label.new()
 	val_label.text = str(card_data.get("value", 0))
@@ -131,15 +100,6 @@ func _build_ui() -> void:
 		effect_lbl.add_theme_color_override("font_color", eff_color)
 		card_vbox.add_child(effect_lbl)
 
-## 教科IDから表示色を返すヘルパー
-static func _get_subject_color(subject: String) -> Color:
-	match subject:
-		CardData.SUBJECT_MATH:     return Color("2979ff")
-		CardData.SUBJECT_ENGLISH:  return Color("ff1744")
-		CardData.SUBJECT_JAPANESE: return Color("00c853")
-		CardData.SUBJECT_SCIENCE:  return Color("ff9100")
-		CardData.SUBJECT_SOCIAL:   return Color("aa00ff")
-	return Color.GRAY
 
 ## カードUIのVBoxを返す（アニメーション時に可視性を制御するため）
 func get_vbox() -> VBoxContainer:

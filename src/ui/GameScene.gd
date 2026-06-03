@@ -1,7 +1,6 @@
-﻿extends Control
+extends Control
 
 # Preload Phase Scripts
-const BagBuilderPhaseClass = preload("res://src/ui/phases/BagBuilderPhase.gd")
 const ChickenRacePhaseClass = preload("res://src/ui/phases/ChickenRacePhase.gd")
 const ReportPhaseClass = preload("res://src/ui/phases/ReportPhase.gd")
 const DailyLikesPhaseClass = preload("res://src/ui/phases/DailyLikesPhase.gd")
@@ -44,17 +43,33 @@ func _ready() -> void:
 	session = GameSession.new()
 	session.start_session(Global.current_deck)
 	
-	# Start loop with BagBuilderPhase
-	change_phase(Constants.PHASE_BAG_BUILDER)
+	# Start loop with ChickenRacePhase directly
+	change_phase(Constants.PHASE_CHICKEN_RACE)
 
 func change_phase(phase_type: String, setup_data: Dictionary = {}) -> void:
 	var old_node = active_phase_node
 	active_phase_node = null
 	
-	# Instantiate correct class
+	# 同期状態機械の更新
+	var target_state = GameSession.SessionPhaseState.LOBBY
 	match phase_type:
 		Constants.PHASE_BAG_BUILDER:
-			active_phase_node = BagBuilderPhaseClass.new()
+			target_state = GameSession.SessionPhaseState.STUDY
+		Constants.PHASE_CHICKEN_RACE:
+			target_state = GameSession.SessionPhaseState.STUDY
+		Constants.PHASE_REPORT:
+			target_state = GameSession.SessionPhaseState.REPORT
+		Constants.PHASE_WAITING:
+			target_state = GameSession.SessionPhaseState.WAIT_OTHERS
+		Constants.PHASE_DAILY_LIKES:
+			target_state = GameSession.SessionPhaseState.DOUBT
+		Constants.PHASE_DAY_TRANSITION:
+			target_state = GameSession.SessionPhaseState.READY
+	if session:
+		session.change_state(target_state)
+
+	# Instantiate correct class
+	match phase_type:
 		Constants.PHASE_CHICKEN_RACE:
 			active_phase_node = ChickenRacePhaseClass.new()
 		Constants.PHASE_REPORT:
@@ -74,14 +89,9 @@ func change_phase(phase_type: String, setup_data: Dictionary = {}) -> void:
 		# Initialize
 		active_phase_node.setup(session, setup_data)
 		
-		# Use a softer paper-like transition for bag building / chicken race swaps.
+		# Use a page-flip transition for phase swaps.
 		if old_node and old_node.is_inside_tree():
-			if (old_node is BagBuilderPhaseClass and active_phase_node is ChickenRacePhaseClass):
-				DeskTheme.animate_soft_phase_transition(old_node, active_phase_node, 0.42, false)
-			elif (old_node is ChickenRacePhaseClass and active_phase_node is BagBuilderPhaseClass):
-				DeskTheme.animate_soft_phase_transition(old_node, active_phase_node, 0.42, true)
-			else:
-				DeskTheme.animate_page_flip(old_node, active_phase_node, 0.45)
+			DeskTheme.animate_page_flip(old_node, active_phase_node, 0.45)
 		else:
 			DeskTheme.animate_page_flip(old_node, active_phase_node, 0.45)
 
@@ -94,14 +104,12 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 		return
 		
 	match phase_type:
-		Constants.PHASE_BAG_BUILDER:
-			change_phase(Constants.PHASE_CHICKEN_RACE)
 		Constants.PHASE_CHICKEN_RACE:
 			if session.player_hours_history_today.size() >= session.max_hours_today:
 				change_phase(Constants.PHASE_REPORT, {"actual_score": result_data.get("actual_score", 0)})
 			else:
 				session.current_hour += 1
-				change_phase(Constants.PHASE_BAG_BUILDER)
+				change_phase(Constants.PHASE_CHICKEN_RACE)
 		Constants.PHASE_REPORT:
 			if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
 				# Upload mid-day moves (scores, actual, hours) to server before waiting
@@ -115,7 +123,9 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 						"declared_score": session.player_declared_score_today,
 						"hours_history": session.player_hours_history_today.duplicate(),
 						"doubts_made": [],
-						"doubts_submitted": false
+						"doubts_submitted": false,
+						"phase": "mid_day",
+						"client_nonce": "%s-%d-mid" % [Global.friend_room_code, session.current_day]
 					}
 					bm.upload_friend_move(Global.friend_room_code, session.current_day, mid_move)
 				change_phase(Constants.PHASE_WAITING, {"day": session.current_day, "final_wait": false})
@@ -187,7 +197,7 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 				change_phase(Constants.PHASE_DAILY_LIKES)
 
 		Constants.PHASE_DAY_TRANSITION:
-			change_phase(Constants.PHASE_BAG_BUILDER)
+			change_phase(Constants.PHASE_CHICKEN_RACE)
 
 func show_daily_finished_modal() -> void:
 	var modal = PanelContainer.new()

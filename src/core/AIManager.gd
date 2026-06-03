@@ -169,19 +169,7 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 	var deck = StudyDeck.new()
 	deck.initialize_deck(deck_config)
 	
-	# CPU deck inflation simulation: Add accumulated items from previous days + today's choice (1 per day, matching player)
-	var total_added_cards = day_idx
-	var possible_items = deck_config.values()
-	var subjects_pool = [CardData.SUBJECT_MATH, CardData.SUBJECT_ENGLISH, CardData.SUBJECT_JAPANESE, CardData.SUBJECT_SCIENCE, CardData.SUBJECT_SOCIAL]
-	for i in range(total_added_cards):
-		var cpu_chosen_item = possible_items[randi() % possible_items.size()]
-		var cpu_new_card = {
-			"value": randi_range(1, 10),
-			"subject": CardData.ITEMS[cpu_chosen_item]["subject"] if CardData.ITEMS[cpu_chosen_item]["subject"] != CardData.SUBJECT_NONE else subjects_pool[randi() % subjects_pool.size()],
-			"item_id": cpu_chosen_item,
-			"name": CardData.ITEMS[cpu_chosen_item]["name"]
-		}
-		deck.add_card_to_deck(cpu_new_card)
+	# CPU deck inflation simulation (No longer adding cards due to BagBuilder removal)
 	deck.shuffle_draw_pile()
 	
 	# Risk tolerances for drawing (stop drawing if burst probability is higher than this)
@@ -208,7 +196,7 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 	elif is_winning:
 		risk_tolerance *= 0.85
 		
-	var hours_result = []
+	var hours_result: Array[Dictionary] = []
 	var total_actual_score = 0
 	
 	# 3 periods/hours per day
@@ -227,7 +215,7 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 		deck.reset_status_effects()
 		
 		# AI Decides to activate items before starting draw
-		var used_items = []
+		var used_items: Array[String] = []
 		decide_and_apply_cpu_items(deck, deck_config, used_items, day_idx, cpu_id)
 		
 		var draw_count = 0
@@ -299,7 +287,7 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 	}
 
 # Decide which items CPU activates before drawing
-static func decide_and_apply_cpu_items(deck: StudyDeck, deck_config: Dictionary, used_items: Array, day_idx: int, cpu_id: String) -> void:
+static func decide_and_apply_cpu_items(deck: StudyDeck, deck_config: Dictionary, used_items: Array[String], day_idx: int, cpu_id: String) -> void:
 	var deviation = 50.0
 	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("deviation"):
 		deviation = Global.opponent_profiles[cpu_id]["deviation"]
@@ -338,6 +326,10 @@ static func decide_and_apply_cpu_items(deck: StudyDeck, deck_config: Dictionary,
 	if "item_highlighter" in deck_config.values() and randf() < ((0.18 + late_game_boost) * offense_mult):
 		deck.highlighter_active = true
 		used_items.append("item_highlighter")
+
+	if "item_blue_pen" in deck_config.values() and randf() < ((0.18 + late_game_boost) * defense_mult):
+		deck.blue_pen_active = true
+		used_items.append("item_blue_pen")
 
 # AI decides their declared score based on actual score and personality
 # Returns: declared_score (int)
@@ -394,7 +386,7 @@ static func calculate_cpu_bluff(cpu_id: String, actual_score: int) -> int:
 # participants: Array of dictionaries:
 # {"id": String, "name": String, "declared_score": int, "hours": Array}
 # Returns: Array of String IDs who this CPU doubted (max 3 per day)
-static func make_cpu_doubts(cpu_id: String, participants: Array) -> Array[String]:
+static func make_cpu_doubts(cpu_id: String, participants: Array[Dictionary]) -> Array[String]:
 	var actual_id = cpu_id
 	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("id"):
 		actual_id = Global.opponent_profiles[cpu_id]["id"]
@@ -423,7 +415,7 @@ static func make_cpu_doubts(cpu_id: String, participants: Array) -> Array[String
 		if p["id"] == cpu_id:
 			continue
 			
-		var suspiciousness = evaluate_suspiciousness(p["declared_score"], p["hours"])
+		var suspiciousness = evaluate_suspiciousness(p["declared_score"], p["hours"] as Array[Dictionary])
 		suspect_list.append({
 			"id": p["id"],
 			"value": suspiciousness
@@ -442,7 +434,7 @@ static func make_cpu_doubts(cpu_id: String, participants: Array) -> Array[String
 	return doubts
 
 # Calculate a suspiciousness index from 0.0 to 1.0 based on declared score vs card draw count
-static func evaluate_suspiciousness(declared_score: int, hours: Array) -> float:
+static func evaluate_suspiciousness(declared_score: int, hours: Array[Dictionary]) -> float:
 	var total_draws = 0
 	var used_cheat_items = false
 	

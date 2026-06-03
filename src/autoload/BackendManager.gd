@@ -16,7 +16,7 @@ func _init() -> void:
 	_supabase_url = OS.get_environment("SUPABASE_URL")
 	if _supabase_url == "":
 		_supabase_url = ProjectSettings.get_setting("backend/supabase_url", "https://your-project.supabase.co")
-		
+
 	_supabase_key = OS.get_environment("SUPABASE_KEY")
 	if _supabase_key == "":
 		_supabase_key = ProjectSettings.get_setting("backend/supabase_key", "your-supabase-key")
@@ -70,6 +70,14 @@ signal connection_lost()
 var logged_in_uuid: String = ""
 var auth_token: String = ""
 var consecutive_network_errors: int = 0
+var _sent_nonces: Dictionary = {} # client_nonce (String) -> status (String)
+
+# Active/Polled Room state cache (for connection recovery & state machine)
+var cached_room_status: String = "waiting"
+var cached_current_day: int = 1
+var cached_participants: Array = []
+var cached_last_sync_revision: int = 0
+var cached_day_moves: Dictionary = {} # DayIdx -> Array of normalized moves
 
 # Offline/Mock state for friend rooms
 var is_mock_room: bool = false
@@ -77,6 +85,7 @@ var mock_room_code: String = ""
 var mock_participants: Array = []
 var mock_room_status: String = "waiting"
 var mock_current_day: int = 1
+var mock_last_sync_revision: int = 0
 var mock_moves: Dictionary = {} # DayIdx -> Array of moves
 
 # API Headers
@@ -92,21 +101,70 @@ func _get_headers(auth_required: bool = false) -> Array[String]:
 	return headers
 
 func _normalize_score_payload(move_data: Variant) -> Dictionary:
-	if not (move_data is Dictionary):
-		return {
-			"actual_score": 0,
-			"declared_score": 0,
-			"hours_history": [],
-			"doubts_made": [],
-			"doubts_submitted": false
-		}
+	var d: Dictionary = {}
+	if move_data is Dictionary:
+		d = move_data
+		if d.has("record") and d["record"] is Dictionary:
+			var rec = d["record"]
+			for k in rec.keys():
+				if not d.has(k) or d[k] == null or (d[k] is String and d[k] == ""):
+					d[k] = rec[k]
+	
+	# hours_history と hours の互換性
+	var raw_hours = d.get("hours_history", d.get("hours", []))
+	if not (raw_hours is Array):
+		raw_hours = []
+		
+	# doubts_made の配列化
+	var raw_doubts = d.get("doubts_made", [])
+	if not (raw_doubts is Array):
+		raw_doubts = []
+
+	var norm_doubts = []
+	for db in raw_doubts:
+		norm_doubts.append(str(db))
+
+	# username / name / player の表記揺れ
+	var resolved_name = str(d.get("username", d.get("name", d.get("player_name", ""))))
+	
+	# user_id / id
+	var resolved_uid = str(d.get("user_id", d.get("id", "")))
+
 	return {
-		"actual_score": clampi(int(move_data.get("actual_score", 0)), 0, 9999),
-		"declared_score": clampi(int(move_data.get("declared_score", 0)), 0, 9999),
-		"hours_history": move_data.get("hours_history", []),
-		"doubts_made": move_data.get("doubts_made", []),
-		"doubts_submitted": bool(move_data.get("doubts_submitted", false))
+		"room_code": str(d.get("room_code", "")),
+		"user_id": resolved_uid,
+		"username": resolved_name,
+		"day_idx": int(d.get("day_idx", d.get("day", 0))),
+		"actual_score": clampi(int(d.get("actual_score", 0)), 0, 9999),
+		"declared_score": clampi(int(d.get("declared_score", 0)), 0, 9999),
+		"hours_history": raw_hours,
+		"doubts_made": norm_doubts,
+		"doubts_submitted": bool(d.get("doubts_submitted", false)),
+		"phase": str(d.get("phase", "")),
+		"revision": int(d.get("revision", 0)),
+		"submitted_at": str(d.get("submitted_at", "")),
+		"client_nonce": str(d.get("client_nonce", ""))
 	}
+
+func _build_friend_move_payload(room_code: String, day_idx: int, move_data: Dictionary) -> Dictionary:
+	var normalized = _normalize_score_payload(move_data)
+	normalized["room_code"] = room_code
+	if normalized["user_id"] == "":
+		normalized["user_id"] = logged_in_uuid
+	if normalized["username"] == "":
+		normalized["username"] = Global.player_name if Global.player_name != "" else "Player"
+	if normalized["day_idx"] <= 0:
+		normalized["day_idx"] = day_idx
+	if normalized["submitted_at"] == "":
+		normalized["submitted_at"] = Time.get_datetime_string_from_system(true)
+	if normalized["client_nonce"] == "":
+		normalized["client_nonce"] = "%s-%s-%d-%s" % [
+			room_code,
+			normalized["user_id"],
+			normalized["day_idx"],
+			normalized["phase"]
+		]
+	return normalized
 
 # ─────────────────────────────────────────────────────────
 # Helper to perform HTTP request using the object pool
@@ -125,11 +183,11 @@ func _send_request(url: String, method: HTTPClient.Method, body_str: String, aut
 		else:
 			callback.call(HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray())
 		return
-	
+
 	var wrapped_callback = func(result: int, response_code: int, headers: PackedStringArray, body_data: PackedByteArray):
 		var is_network_error = result != HTTPRequest.RESULT_SUCCESS
 		var is_server_error = response_code >= 500 and response_code < 600
-		
+
 		if (is_network_error or is_server_error) and retry_count < MAX_RETRIES:
 			push_warning("[BackendManager] Request failed (result: %d, HTTP: %d). Retrying (%d/%d)..." % [result, response_code, retry_count + 1, MAX_RETRIES])
 			var timer = get_tree().create_timer(1.0)
@@ -138,7 +196,7 @@ func _send_request(url: String, method: HTTPClient.Method, body_str: String, aut
 			)
 		else:
 			callback.call(result, response_code, headers, body_data)
-			
+
 	_pool_callbacks[req] = wrapped_callback
 	var err = req.request(url, _get_headers(auth_required), method, body_str)
 	if err != OK:
@@ -160,7 +218,7 @@ func signup_user(user_id: String, password: String) -> void:
 		"email": safe_email,
 		"password": password
 	}
-	
+
 	_send_request(url, HTTPClient.METHOD_POST, JSON.stringify(body), false, func(result, response_code, headers, body_data):
 		Global.hide_loading()
 		if result == HTTPRequest.RESULT_SUCCESS and (response_code == 200 or response_code == 201):
@@ -171,7 +229,7 @@ func signup_user(user_id: String, password: String) -> void:
 					auth_token = data["access_token"]
 					if data.has("user") and data["user"] is Dictionary:
 						logged_in_uuid = data["user"].get("id", "")
-					
+
 					auth_completed.emit(true, "")
 					return
 			auth_completed.emit(true, "") # Sometimes signup returns info without immediate token depending on config
@@ -189,7 +247,7 @@ func signup_user(user_id: String, password: String) -> void:
 						err_msg = data["error_description"]
 					elif data.has("error"):
 						err_msg = data["error"]
-			
+
 			if err_msg == "接続エラー" and response_code != 0:
 				err_msg += " (HTTP " + str(response_code) + ")"
 			auth_completed.emit(false, err_msg)
@@ -204,7 +262,7 @@ func login_user(user_id: String, password: String) -> void:
 		"email": safe_email,
 		"password": password
 	}
-	
+
 	_send_request(url, HTTPClient.METHOD_POST, JSON.stringify(body), false, func(result, response_code, headers, body_data):
 		Global.hide_loading()
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
@@ -230,7 +288,7 @@ func login_user(user_id: String, password: String) -> void:
 						err_msg = data["msg"]
 					elif data.has("message"):
 						err_msg = data["message"]
-			
+
 			if err_msg == "IDまたはパスワードが違います" and response_code != 0:
 				if response_code >= 500:
 					err_msg = "サーバーエラー (HTTP " + str(response_code) + ")"
@@ -242,12 +300,12 @@ func verify_token(token: String, uuid: String) -> void:
 	if token == "" or uuid == "":
 		auth_completed.emit(false, "トークンが無効です")
 		return
-	
+
 	Global.show_loading("セッション復旧中...")
 	auth_token = token
 	logged_in_uuid = uuid
 	var url = _get_supabase_url() + "/auth/v1/user"
-	
+
 	_send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
 		Global.hide_loading()
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
@@ -263,19 +321,19 @@ func save_cloud_data(data_dict: Dictionary) -> void:
 	if auth_token == "" or logged_in_uuid == "":
 		save_completed.emit(false)
 		return
-		
+
 	# We UPSERT to the 'saves' table
 	var url = _get_supabase_url() + "/rest/v1/saves"
 	var body = {
 		"user_id": logged_in_uuid,
 		"data": data_dict
 	}
-	
+
 	var req = _get_available_request()
 	if req == null:
 		save_completed.emit(false)
 		return
-		
+
 	_pool_callbacks[req] = func(result: int, response_code: int, headers: PackedStringArray, body_data: PackedByteArray):
 		if result == HTTPRequest.RESULT_SUCCESS and (response_code == 200 or response_code == 201 or response_code == 204):
 			save_completed.emit(true)
@@ -283,7 +341,7 @@ func save_cloud_data(data_dict: Dictionary) -> void:
 			save_completed.emit(false)
 			if is_inside_tree():
 				DeskTheme.show_toast(self, "クラウドセーブ失敗。ローカルに保存します。")
-	
+
 	var custom_headers = _get_headers(true)
 	custom_headers.append("Prefer: resolution=merge-duplicates")
 	req.request(url, custom_headers, HTTPClient.METHOD_POST, JSON.stringify(body))
@@ -293,10 +351,10 @@ func load_cloud_data() -> void:
 	if auth_token == "" or logged_in_uuid == "":
 		load_completed.emit(false, {})
 		return
-		
+
 	Global.show_loading("クラウドロード中...")
 	var url = _get_supabase_url() + "/rest/v1/saves?user_id=eq." + logged_in_uuid + "&select=data"
-	
+
 	_send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
 		Global.hide_loading()
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
@@ -319,10 +377,10 @@ func load_cloud_data() -> void:
 func upload_daily_record(day_idx: int, score: int, record: Dictionary) -> void:
 	if auth_token == "" or logged_in_uuid == "":
 		return
-	
+
 	# クライアント側でも上限チェックを行い、異常値を送信しない（多層防御）
 	var safe_score = clampi(score, 0, 9999)
-		
+
 	var url = _get_supabase_url() + "/rest/v1/daily_scores"
 	var body = {
 		"user_id": logged_in_uuid,
@@ -332,7 +390,7 @@ func upload_daily_record(day_idx: int, score: int, record: Dictionary) -> void:
 		"record": record,
 		"season": Global.current_season
 	}
-	
+
 	# Send to database
 	_send_request(url, HTTPClient.METHOD_POST, JSON.stringify(body), true, func(result, response_code, headers, body_data):
 		if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
@@ -346,7 +404,7 @@ func fetch_daily_records(day_idx: int) -> void:
 	var url = _get_supabase_url() + "/rest/v1/daily_scores?day_idx=eq." + str(day_idx) + "&season=eq." + str(Global.current_season) + "&select=username,score,record&order=score.desc&limit=6"
 	if logged_in_uuid != "":
 		url += "&user_id=neq." + logged_in_uuid
-		
+
 	_send_request(url, HTTPClient.METHOD_GET, "", false, func(result, response_code, headers, body_data):
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
 			var json = JSON.new()
@@ -365,13 +423,13 @@ func generate_simulated_ghosts(day_idx: int) -> Array:
 	var ghosts = []
 	var cpu_names = ["慎重な優等生", "エナドリ狂人", "ブラフの達人", "逆転狙いの浪人生"]
 	cpu_names.shuffle()
-	
+
 	for i in range(3):
 		var cpu_name = cpu_names[i]
 		# Generate a simulated deck profile
 		var simulated_score = 0
 		var hours_history = []
-		
+
 		# Simulating 1 hour for daily (since daily is 1 hour per day in the match history)
 		# Actually, daily has 3 hours per day, let's simulate 3 hours of study for this CPU
 		var bursted_count = 0
@@ -383,7 +441,7 @@ func generate_simulated_ghosts(day_idx: int) -> Array:
 				hour_score = draws * randi_range(2, 4)
 			else:
 				bursted_count += 1
-			
+
 			simulated_score += hour_score
 			hours_history.append({
 				"draws": draws,
@@ -391,13 +449,13 @@ func generate_simulated_ghosts(day_idx: int) -> Array:
 				"bursted": bursted,
 				"score": hour_score
 			})
-			
+
 		var declared_score = simulated_score
 		# Chance of bluffing
 		if randf() < 0.6:
 			var bluff_amount = randi_range(5, 20)
 			declared_score += bluff_amount
-			
+
 		ghosts.append({
 			"username": cpu_name,
 			"score": simulated_score,
@@ -421,13 +479,13 @@ func create_friend_room() -> void:
 	is_mock_room = false
 	var code = str(randi_range(1000, 9999))
 	var host_name = Global.player_name if Global.player_name != "" else "あなた"
-	
+
 	if auth_token == "" or logged_in_uuid == "":
 		_enable_mock_room(code, host_name)
 		Global.hide_loading()
 		room_created.emit(true, code)
 		return
-		
+
 	var url = _get_supabase_url() + "/rest/v1/friend_rooms"
 	var body = {
 		"room_code": code,
@@ -436,7 +494,7 @@ func create_friend_room() -> void:
 		"participants": [{"user_id": logged_in_uuid, "username": host_name}],
 		"host_id": logged_in_uuid
 	}
-	
+
 	_send_request(url, HTTPClient.METHOD_POST, JSON.stringify(body), true, func(result, response_code, headers, body_data):
 		Global.hide_loading()
 		if result == HTTPRequest.RESULT_SUCCESS and (response_code == 200 or response_code == 201 or response_code == 204):
@@ -456,7 +514,7 @@ func _enable_mock_room(code: String, host_name: String) -> void:
 	mock_current_day = 1
 	mock_participants = [{"user_id": "player", "username": host_name}]
 	mock_moves.clear()
-	
+
 	# Simulate 2 friends joining after a short delay (during lobby polling)
 	var timer = get_tree().create_timer(2.0)
 	timer.timeout.connect(func():
@@ -470,12 +528,12 @@ func join_friend_room(room_code: String) -> void:
 	Global.show_loading("ルーム参加中...")
 	is_mock_room = false
 	var user_name = Global.player_name if Global.player_name != "" else "あなた"
-	
+
 	if auth_token == "" or logged_in_uuid == "":
 		_join_mock_room(room_code, user_name)
 		Global.hide_loading()
 		return
-	
+
 	# RPC経由でサーバー側でアトミックに参加処理を行う
 	# GET→PATCHパターン（旧来の実装）はレースコンディションの危険があるため廃止
 	var rpc_url = _get_supabase_url() + "/rest/v1/rpc/join_friend_room_safe"
@@ -484,7 +542,7 @@ func join_friend_room(room_code: String) -> void:
 		"p_user_id": logged_in_uuid,
 		"p_username": user_name
 	}
-	
+
 	_send_request(rpc_url, HTTPClient.METHOD_POST, JSON.stringify(rpc_body), true, func(result, response_code, headers, body_data):
 		Global.hide_loading()
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
@@ -531,14 +589,14 @@ func start_friend_game(room_code: String) -> void:
 		if mock_participants.size() < 4:
 			mock_participants.append({"user_id": "cpu_takahashi", "username": "高橋くん (CPU)"})
 		return
-		
+
 	var url = _get_supabase_url() + "/rest/v1/friend_rooms?room_code=eq." + room_code
-	
+
 	# Determine CPU fill names
 	var current_parts = []
 	for p in mock_participants:
 		current_parts.append(p)
-		
+
 	# Fetch current participants to be sure, then patch
 	_send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
@@ -548,7 +606,7 @@ func start_friend_game(room_code: String) -> void:
 				if data is Array and data.size() > 0:
 					var room = data[0]
 					var parts = room.get("participants", [])
-					
+
 					# Fill up to 4 participants with CPUs
 					var slots = ["cpu_sato", "cpu_suzuki", "cpu_takahashi", "cpu_tanaka"]
 					var slot_idx = 0
@@ -557,7 +615,7 @@ func start_friend_game(room_code: String) -> void:
 						var cpu_profile = AIManager.CPU_OPPONENTS.get(cpu_id, {"name": "CPU"})
 						parts.append({"user_id": cpu_id, "username": cpu_profile["name"] + " (CPU)"})
 						slot_idx += 1
-						
+
 					var patch_body = {
 						"status": "playing",
 						"participants": parts
@@ -569,66 +627,74 @@ func start_friend_game(room_code: String) -> void:
 
 # 4. Upload Friend Move
 func upload_friend_move(room_code: String, day_idx: int, move_data: Dictionary) -> void:
+	var body = _build_friend_move_payload(room_code, day_idx, move_data)
+	var nonce = body.get("client_nonce", "")
+	
+	if nonce != "":
+		if _sent_nonces.get(nonce, "") == "success":
+			return
+		elif _sent_nonces.get(nonce, "") == "sending":
+			return
+		_sent_nonces[nonce] = "sending"
+
 	if is_mock_room:
 		if not mock_moves.has(day_idx):
 			mock_moves[day_idx] = []
-		
-		# 1. Update/Insert player move
+
 		var player_move = null
 		for m in mock_moves[day_idx]:
 			if m.get("user_id") == "player":
 				player_move = m
 				break
-				
+
 		var my_move = {
 			"room_code": room_code,
 			"user_id": "player",
-			"username": Global.player_name if Global.player_name != "" else "あなた",
+			"username": Global.player_name if Global.player_name != "" else "Player",
 			"day_idx": day_idx,
-			"actual_score": move_data.get("actual_score", 0),
-			"declared_score": move_data.get("declared_score", 0),
-			"hours_history": move_data.get("hours_history", []),
-			"doubts_made": move_data.get("doubts_made", []),
-			"doubts_submitted": move_data.get("doubts_submitted", false)
+			"actual_score": body.get("actual_score", 0),
+			"declared_score": body.get("declared_score", 0),
+			"hours_history": body.get("hours_history", []),
+			"doubts_made": body.get("doubts_made", []),
+			"doubts_submitted": body.get("doubts_submitted", false),
+			"phase": str(body.get("phase", "")),
+			"revision": mock_last_sync_revision + 1,
+			"submitted_at": body.get("submitted_at", ""),
+			"client_nonce": nonce
 		}
-		
+
 		if player_move:
 			player_move.clear()
 			for k in my_move.keys():
 				player_move[k] = my_move[k]
 		else:
 			mock_moves[day_idx].append(my_move)
-			
+
+		mock_last_sync_revision += 1
 		MockDataGenerator.simulate_friend_room_cpus(
 			room_code, day_idx, mock_moves, mock_participants, my_move, Global.opponent_profiles
 		)
+		if nonce != "":
+			_sent_nonces[nonce] = "success"
 		return
-		
-	# クライアント側でもスコアの上限チェック（多層防御）
-	var safe_actual = clampi(move_data.get("actual_score", 0), 0, 9999)
-	var safe_declared = clampi(move_data.get("declared_score", 0), 0, 9999)
-	
+
 	var url = _get_supabase_url() + "/rest/v1/friend_room_moves"
-	var body = {
-		"room_code": room_code,
-		"user_id": logged_in_uuid,
-		"username": Global.player_name,
-		"day_idx": day_idx,
-		"actual_score": safe_actual,
-		"declared_score": safe_declared,
-		"hours_history": move_data.get("hours_history", []),
-		"doubts_made": move_data.get("doubts_made", []),
-		"doubts_submitted": move_data.get("doubts_submitted", false)
-	}
-	
 	var req = _get_available_request()
 	if req == null:
+		if nonce != "":
+			_sent_nonces[nonce] = "failed"
 		return
+		
 	_pool_callbacks[req] = func(result: int, response_code: int, headers: PackedStringArray, body_data: PackedByteArray):
-		if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
+		if result == HTTPRequest.RESULT_SUCCESS and response_code >= 200 and response_code < 300:
+			if nonce != "":
+				_sent_nonces[nonce] = "success"
+		else:
+			if nonce != "":
+				_sent_nonces[nonce] = "failed"
 			if is_inside_tree():
-				DeskTheme.show_toast(self, "対戦データの送信に失敗しました。")
-	
+				DeskTheme.show_toast(self, "Failed to send friend-room data.")
+
 	var custom_headers = _get_headers(true)
 	custom_headers.append("Prefer: resolution=merge-duplicates")
 	req.request(url, custom_headers, HTTPClient.METHOD_POST, JSON.stringify(body))
@@ -636,9 +702,12 @@ func upload_friend_move(room_code: String, day_idx: int, move_data: Dictionary) 
 # 5. Poll Room Status
 func poll_room_status(room_code: String) -> void:
 	if is_mock_room:
+		cached_room_status = mock_room_status
+		cached_current_day = mock_current_day
+		cached_participants = mock_participants
+		cached_last_sync_revision = mock_last_sync_revision
 		room_polled.emit(mock_room_status, mock_current_day, mock_participants)
 		return
-		
 	var url = _get_supabase_url() + "/rest/v1/friend_rooms?room_code=eq." + room_code
 	_send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
@@ -651,12 +720,17 @@ func poll_room_status(room_code: String) -> void:
 					var status = room.get("status", "waiting")
 					var day = room.get("current_day", 1)
 					var parts = room.get("participants", [])
+					var last_revision = int(room.get("last_sync_revision", 0))
 					
-					# Sync internal list
+					cached_room_status = status
+					cached_current_day = day
+					cached_participants = parts
+					cached_last_sync_revision = last_revision
+					
 					mock_participants = parts
 					mock_room_status = status
 					mock_current_day = day
-					
+					mock_last_sync_revision = last_revision
 					room_polled.emit(status, day, parts)
 					return
 			room_polled.emit("waiting", 1, [])
@@ -664,7 +738,6 @@ func poll_room_status(room_code: String) -> void:
 			consecutive_network_errors += 1
 			if consecutive_network_errors >= 3:
 				connection_lost.emit()
-			# Mock Fallback
 			room_polled.emit(mock_room_status, mock_current_day, mock_participants)
 	)
 
@@ -672,9 +745,12 @@ func poll_room_status(room_code: String) -> void:
 func poll_day_moves(room_code: String, day_idx: int) -> void:
 	if is_mock_room:
 		var day_data = mock_moves.get(day_idx, [])
-		day_moves_polled.emit(true, day_data)
+		var normalized_day_data = []
+		for m in day_data:
+			normalized_day_data.append(_normalize_score_payload(m))
+		cached_day_moves[day_idx] = normalized_day_data
+		day_moves_polled.emit(true, normalized_day_data)
 		return
-		
 	var url = _get_supabase_url() + "/rest/v1/friend_room_moves?room_code=eq." + room_code + "&day_idx=eq." + str(day_idx)
 	_send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
@@ -683,26 +759,83 @@ func poll_day_moves(room_code: String, day_idx: int) -> void:
 			if json.parse(body_data.get_string_from_utf8()) == OK:
 				var data = json.get_data()
 				if data is Array:
-					day_moves_polled.emit(true, data)
+					var normalized_moves = []
+					for m in data:
+						normalized_moves.append(_normalize_score_payload(m))
+					cached_day_moves[day_idx] = normalized_moves
+					day_moves_polled.emit(true, normalized_moves)
 					return
 			day_moves_polled.emit(false, [])
 		else:
 			consecutive_network_errors += 1
 			if consecutive_network_errors >= 3:
 				connection_lost.emit()
-			# Mock Fallback
 			var day_data = mock_moves.get(day_idx, [])
-			day_moves_polled.emit(true, day_data)
+			var normalized_day_data = []
+			for m in day_data:
+				normalized_day_data.append(_normalize_score_payload(m))
+			cached_day_moves[day_idx] = normalized_day_data
+			day_moves_polled.emit(true, normalized_day_data)
 	)
 
 # 7. Advance Friend Room Day (Host only triggers this when day moves are complete)
 func advance_friend_room_day(room_code: String, next_day: int) -> void:
 	if is_mock_room:
 		mock_current_day = next_day
+		mock_last_sync_revision += 1
+		cached_current_day = next_day
+		cached_last_sync_revision = mock_last_sync_revision
+		return
+	var url = _get_supabase_url() + "/rest/v1/friend_rooms?room_code=eq." + room_code
+	var body = {
+		"current_day": next_day,
+		"last_sync_revision": mock_last_sync_revision + 1
+	}
+	_send_request(url, HTTPClient.METHOD_PATCH, JSON.stringify(body), true, func(result, response_code, headers, body_data):
+		if result == HTTPRequest.RESULT_SUCCESS and (response_code == 200 or response_code == 204):
+			mock_current_day = next_day
+			mock_last_sync_revision += 1
+			cached_current_day = next_day
+			cached_last_sync_revision = mock_last_sync_revision
+	)
+
+# ─────────────────────────────────────────────────────────
+# 再接続と復旧ロジック (指数バックオフ)
+# ─────────────────────────────────────────────────────────
+signal reconnect_succeeded()
+signal reconnect_failed()
+
+var is_reconnecting: bool = false
+var reconnect_attempts: int = 0
+
+func attempt_reconnect() -> void:
+	if is_reconnecting:
+		return
+	is_reconnecting = true
+	reconnect_attempts = 0
+	_reconnect_loop()
+
+func _reconnect_loop() -> void:
+	if auth_token == "" or logged_in_uuid == "":
+		is_reconnecting = false
+		reconnect_failed.emit()
 		return
 		
-	var url = _get_supabase_url() + "/rest/v1/friend_rooms?room_code=eq." + room_code
-	var body = {"current_day": next_day}
-	_send_request(url, HTTPClient.METHOD_PATCH, JSON.stringify(body), true, func(result, response_code, headers, body_data):
-		pass # Day index updated successfully
+	reconnect_attempts += 1
+	var backoff = min(pow(2, reconnect_attempts), 30.0) # 最大30秒
+	
+	var url = _get_supabase_url() + "/auth/v1/user"
+	_send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
+		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
+			consecutive_network_errors = 0
+			is_reconnecting = false
+			reconnect_succeeded.emit()
+			if Global.friend_room_code != "":
+				poll_room_status(Global.friend_room_code)
+		else:
+			if is_inside_tree():
+				var timer = get_tree().create_timer(backoff)
+				timer.timeout.connect(_reconnect_loop)
+			else:
+				is_reconnecting = false
 	)

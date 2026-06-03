@@ -248,7 +248,7 @@ func validate_opponent_profiles() -> void:
 		if not opponent_profiles[key].has("id"):
 			opponent_profiles[key]["id"] = default_ids.get(key, "cpu_sato")
 		if not opponent_profiles[key].has("name") or str(opponent_profiles[key]["name"]) == "":
-			opponent_profiles[key]["name"] = AIManager.CPU_OPPONENTS.get(opponent_profiles[key]["id"], {}).get("name", "繝ｩ繧､繝舌Ν")
+			opponent_profiles[key]["name"] = AIManager.CPU_OPPONENTS.get(opponent_profiles[key]["id"], {}).get("name", Localization.JP_RIVAL)
 		if not opponent_profiles[key].has("deviation"):
 			opponent_profiles[key]["deviation"] = 50.0
 
@@ -256,13 +256,13 @@ func get_default_participant_record(participant_id: String, display_name: String
 	var name_to_use = display_name
 	if name_to_use == "":
 		if participant_id == "player":
-			name_to_use = player_name if player_name != "" else "縺ゅ↑縺・"
+			name_to_use = player_name if player_name != "" else Localization.JP_YOU
 		elif opponent_profiles.has(participant_id):
-			name_to_use = opponent_profiles[participant_id].get("name", "繝ｩ繧､繝舌Ν")
+			name_to_use = opponent_profiles[participant_id].get("name", Localization.JP_RIVAL)
 		elif AIManager.CPU_OPPONENTS.has(participant_id):
-			name_to_use = AIManager.CPU_OPPONENTS[participant_id].get("name", "繝ｩ繧､繝舌Ν")
+			name_to_use = AIManager.CPU_OPPONENTS[participant_id].get("name", Localization.JP_RIVAL)
 		else:
-			name_to_use = "繝ｩ繧､繝舌Ν"
+			name_to_use = Localization.JP_RIVAL
 
 	return {
 		"id": participant_id,
@@ -277,19 +277,55 @@ func get_default_participant_record(participant_id: String, display_name: String
 	}
 
 func normalize_participant_record(record: Variant, participant_id: String, display_name: String = "") -> Dictionary:
-	var normalized = get_default_participant_record(participant_id, display_name)
+	var norm = get_default_participant_record(participant_id, display_name)
 	if not (record is Dictionary):
-		return normalized
-	normalized["id"] = str(record.get("id", participant_id))
-	normalized["name"] = str(record.get("name", normalized["name"]))
-	normalized["actual_score"] = int(record.get("actual_score", 0))
-	normalized["declared_score"] = int(record.get("declared_score", 0))
-	normalized["hours"] = record.get("hours", record.get("hours_history", []))
-	normalized["doubts_made"] = record.get("doubts_made", [])
-	normalized["doubts_received"] = record.get("doubts_received", [])
-	normalized["is_doubt_exposed"] = bool(record.get("is_doubt_exposed", false))
-	normalized["auto_exposed"] = bool(record.get("auto_exposed", false))
-	return normalized
+		return norm
+	
+	var d = record
+	if d.has("record") and d["record"] is Dictionary:
+		var rec = d["record"]
+		for k in rec.keys():
+			if not d.has(k) or d[k] == null or (d[k] is String and d[k] == ""):
+				d[k] = rec[k]
+
+	# hours_history と hours の互換性
+	var raw_hours = d.get("hours_history", d.get("hours", []))
+	if not (raw_hours is Array):
+		raw_hours = []
+
+	# doubts_made の配列化
+	var raw_doubts = d.get("doubts_made", [])
+	if not (raw_doubts is Array):
+		raw_doubts = []
+	var norm_doubts = []
+	for db in raw_doubts:
+		norm_doubts.append(str(db))
+
+	# doubts_received の配列化
+	var raw_received = d.get("doubts_received", [])
+	if not (raw_received is Array):
+		raw_received = []
+	var norm_received = []
+	for dr in raw_received:
+		norm_received.append(str(dr))
+
+	# username / name / player の表記揺れ
+	var resolved_name = str(d.get("username", d.get("name", d.get("player_name", norm["name"]))))
+	
+	# user_id / id
+	var resolved_uid = str(d.get("user_id", d.get("id", participant_id)))
+
+	return {
+		"id": resolved_uid,
+		"name": resolved_name,
+		"actual_score": clampi(int(d.get("actual_score", 0)), 0, 9999),
+		"declared_score": clampi(int(d.get("declared_score", 0)), 0, 9999),
+		"hours": raw_hours,
+		"doubts_made": norm_doubts,
+		"doubts_received": norm_received,
+		"is_doubt_exposed": bool(d.get("is_doubt_exposed", false)),
+		"auto_exposed": bool(d.get("auto_exposed", false))
+	}
 
 func normalize_day_record(day_record: Variant) -> Dictionary:
 	var normalized: Dictionary = {}

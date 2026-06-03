@@ -104,7 +104,7 @@ func _ready() -> void:
 	
 	# Title
 	var title = Label.new()
-	title.text = "デッキ編成（付箋スロット割当）"
+	title.text = "デッキ編成"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TITLE_LARGE)
