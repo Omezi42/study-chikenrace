@@ -1,11 +1,11 @@
 {
-  "current_loop": 4,
-  "last_commit": "214e9cb",
+  "current_loop": 5,
+  "last_commit": "5d9e5d9",
   "scores": {
     "mechanics": 20,
     "cpu_ai": 12,
     "ui_ux": 19,
-    "balance": 12,
+    "balance": 13,
     "robustness": 8,
     "retention": 6
   },
@@ -28,7 +28,12 @@
     {
       "loop": 4,
       "commit": "214e9cb",
-      "description": "時限終了時（reset_for_next_hour）に山札を初期デッキ構成の複製でリセットし、一時的追加カードや捨て札が蓄積されて山札が肥大化・コンボ安定度が低下するバグを修正。"
+      "description": "時限終了時（reset_for_next_hour）に山札を初期デッキ構成の複製でリセットし、一時的追加カードや捨て札が蓄積されて山札が肥大化・コンボ安定度低下するバグを修正。"
+    },
+    {
+      "loop": 5,
+      "commit": "5d9e5d9",
+      "description": "ダウト成功時の報酬（獲得点数）がインフレする問題に対し、相手の嘘の盛り幅（bluff）の100%ではなく75%（端数四捨五入）に軽減して適用するよう調整し、ゲームバランスを適正化。"
     }
   ]
 }
