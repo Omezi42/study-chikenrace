@@ -1,12 +1,12 @@
 {
-  "current_loop": 6,
-  "last_commit": "7d7c1fc",
+  "current_loop": 7,
+  "last_commit": "b617080",
   "scores": {
     "mechanics": 20,
     "cpu_ai": 15,
     "ui_ux": 19,
     "balance": 13,
-    "robustness": 8,
+    "robustness": 10,
     "retention": 6
   },
   "history": [
@@ -23,7 +23,7 @@
     {
       "loop": 3,
       "commit": "b5b8e64",
-      "description": "チキンレース画面の下部ボタン（ドロー・ストップ）にDeskTheme of 紙風スタイルを適用し、ホバー時のサイズアップ・ランダム傾き演出およびクリック沈み込み演出を追加してジュース感を大幅強化。"
+      "description": "チキンレース画面の下部ボタン（ドロー・ストップ）にDeskThemeの紙風スタイルを適用し、ホバー時のサイズアップ・ランダム傾き演出およびクリック沈み込み演出を追加してジュース感を大幅強化。"
     },
     {
       "loop": 4,
@@ -39,6 +39,11 @@
       "loop": 6,
       "commit": "7d7c1fc",
       "description": "CPU AIの意思決定において、(1)バースト確率75%以上かつ防御効果無しの場合の無謀なドロー自滅を防ぐ安全ガードを実装。(2)バースト0点時はブラフ申告上限を14点に抑え、バレバレの大嘘で即ダウトされる愚行を防止。"
+    },
+    {
+      "loop": 7,
+      "commit": "b617080",
+      "description": "非同期のタイマーやawaitの復帰後におけるシーン破棄によるクラッシュを防止するため、ChickenRacePhaseおよびResultScene内のすべての長距離タイマーと非同期処理の再開位置に、is_instance_valid(self)とis_inside_tree()のガードを適用。"
     }
   ]
 }
