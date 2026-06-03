@@ -133,7 +133,9 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 				var doubter_adj := 0
 				if target_lied:
 					var bluff: int = target["declared_score"] - target["actual_score"]
-					doubter_adj += bluff + 6 + chat_bonus
+					# Mitigate point inflation: doubter receives 75% of the bluff amount + 6 points
+					var adjusted_bluff = int(round(bluff * 0.75))
+					doubter_adj += adjusted_bluff + 6 + chat_bonus
 					if p_id == "player":
 						doubt_success_count += 1
 				else:
