@@ -1,11 +1,11 @@
 {
-  "current_loop": 3,
-  "last_commit": "b5b8e64",
+  "current_loop": 4,
+  "last_commit": "214e9cb",
   "scores": {
     "mechanics": 20,
     "cpu_ai": 12,
     "ui_ux": 19,
-    "balance": 10,
+    "balance": 12,
     "robustness": 8,
     "retention": 6
   },
@@ -24,6 +24,11 @@
       "loop": 3,
       "commit": "b5b8e64",
       "description": "チキンレース画面の下部ボタン（ドロー・ストップ）にDeskThemeの紙風スタイルを適用し、ホバー時のサイズアップ・ランダム傾き演出およびクリック沈み込み演出を追加してジュース感を大幅強化。"
+    },
+    {
+      "loop": 4,
+      "commit": "214e9cb",
+      "description": "時限終了時（reset_for_next_hour）に山札を初期デッキ構成の複製でリセットし、一時的追加カードや捨て札が蓄積されて山札が肥大化・コンボ安定度が低下するバグを修正。"
     }
   ]
 }
