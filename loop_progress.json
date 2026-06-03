@@ -1,0 +1,13 @@
+{
+  "current_loop": 0,
+  "last_commit": "3963d0a",
+  "scores": {
+    "mechanics": 20,
+    "cpu_ai": 12,
+    "ui_ux": 16,
+    "balance": 10,
+    "robustness": 8,
+    "retention": 6
+  },
+  "history": []
+}
