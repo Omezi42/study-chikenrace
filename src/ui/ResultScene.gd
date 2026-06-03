@@ -409,7 +409,7 @@ func reveal_next_day_showdown() -> void:
 		# Entrance scale pop animation for cards
 		card.scale = Vector2.ZERO
 		var c_tween = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		c_tween.tween_property(card, "scale", Vector2.ONE, 0.25)
+		c_tween.tween_property(card, "scale", Vector2.ONE, 0.18)
 		
 		# If exposed: Draw a bold red 'X' Line2D scaling overlay on the panel
 		if declared > actual and is_exposed:
@@ -431,12 +431,12 @@ func reveal_next_day_showdown() -> void:
 			
 			# Animate drawing the cross lines dynamically after the card pops in
 			var x_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-			x_tween.tween_method(func(val: Vector2): line1.set_point_position(1, val), Vector2(15, 15), Vector2(305, 245), 0.3).set_delay(0.3)
-			x_tween.tween_method(func(val: Vector2): line2.set_point_position(1, val), Vector2(305, 15), Vector2(15, 245), 0.3).set_delay(0.45)
+			x_tween.tween_method(func(val: Vector2): line1.set_point_position(1, val), Vector2(15, 15), Vector2(305, 245), 0.2).set_delay(0.15)
+			x_tween.tween_method(func(val: Vector2): line2.set_point_position(1, val), Vector2(305, 15), Vector2(15, 245), 0.2).set_delay(0.25)
 			
 	# Camera shake for dramatic exposure if anyone was caught lying
 	if any_exposed:
-		var shake_timer = get_tree().create_timer(0.4)
+		var shake_timer = get_tree().create_timer(0.3)
 		shake_timer.timeout.connect(func():
 			DeskTheme.shake_control(blackboard_panel, 8.0, 0.25)
 		)
@@ -444,7 +444,7 @@ func reveal_next_day_showdown() -> void:
 		DeskTheme.shake_control(blackboard_panel, 2.5, 0.15)
 		
 	# Go to next day after delay
-	var timer = get_tree().create_timer(1.8)
+	var timer = get_tree().create_timer(1.1)
 	timer.timeout.connect(func():
 		if is_revealing:
 			current_step_day += 1
