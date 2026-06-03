@@ -236,8 +236,13 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 			
 			# Decide to draw or stop
 			# Always draw the first 2 cards safely (burst probability is usually 0 initially)
-			if draw_count >= 2 and burst_prob >= risk_tolerance:
-				break # Stop drawing
+			# Absolute safety guard: If burst probability is extremely high (>= 75%) and CPU has no active protection (eraser/red sheet), stop drawing.
+			var has_protection = deck.eraser_charges > 0 or deck.red_sheet_active
+			if draw_count >= 2:
+				if burst_prob >= 0.75 and not has_protection:
+					break # Stop drawing to prevent near-certain suicide
+				if burst_prob >= risk_tolerance:
+					break # Stop drawing based on personality risk tolerance
 				
 			# Check energy drink side effect (25% burst on draw)
 			if deck.energy_drink_active and draw_count > 0 and randf() < 0.25:
@@ -349,6 +354,11 @@ static func calculate_cpu_bluff(cpu_id: String, actual_score: int) -> int:
 		base_bluff_limit += 16
 	if "item_copy_answer" in deck_config.values():
 		base_bluff_limit += 25
+		
+	# Special adjustment for burst (0 points):
+	# If actual score is 0, CPU should bluff much more conservatively to avoid obvious doubt.
+	if actual_score == 0:
+		base_bluff_limit = min(base_bluff_limit, 14)
 		
 	var bluff_amount = 0
 	
