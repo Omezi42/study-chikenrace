@@ -220,10 +220,12 @@ func reset_status_effects() -> void:
 	energy_drink_active = false
 	cram_school_print_active = false
 
-# End of period: recycle hand
+# End of period: reset deck back to initial state to prevent deck size inflation
 func reset_for_next_hour() -> void:
-	discard_pile.append_array(hand)
 	hand.clear()
+	discard_pile.clear()
+	draw_pile = cards.duplicate()
+	shuffle_draw_pile()
 	reset_status_effects()
 
 # Deletion card mechanic: remove a specific card value from the deck
