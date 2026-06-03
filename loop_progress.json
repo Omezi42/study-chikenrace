@@ -1,13 +1,19 @@
 {
-  "current_loop": 0,
-  "last_commit": "3963d0a",
+  "current_loop": 1,
+  "last_commit": "f145fcb",
   "scores": {
     "mechanics": 20,
     "cpu_ai": 12,
-    "ui_ux": 16,
+    "ui_ux": 17,
     "balance": 10,
     "robustness": 8,
     "retention": 6
   },
-  "history": []
+  "history": [
+    {
+      "loop": 1,
+      "commit": "f145fcb",
+      "description": "手札カードのホバーイン・ホバーアウト時のアニメーションをTween化し、TRANS_BACKイージングで弾む手触りに改善。カクつきを排除。"
+    }
+  ]
 }
