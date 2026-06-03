@@ -772,6 +772,8 @@ func finish_hour_and_transition(final_score: int, is_burst: bool) -> void:
 	# Wait 1.6s then transition or reset seamlessly (1.2s -> 1.6s)
 	var timer = get_tree().create_timer(1.6)
 	timer.timeout.connect(func():
+		if not is_instance_valid(self) or not is_inside_tree():
+			return
 		if session.player_hours_history_today.size() >= session.max_hours_today:
 			finish_phase({
 				"actual_score": session.player_actual_score_today

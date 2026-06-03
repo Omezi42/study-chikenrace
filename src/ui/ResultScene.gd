@@ -446,6 +446,8 @@ func reveal_next_day_showdown() -> void:
 	# Go to next day after delay
 	var timer = get_tree().create_timer(1.1)
 	timer.timeout.connect(func():
+		if not is_instance_valid(self) or not is_inside_tree():
+			return
 		if is_revealing:
 			current_step_day += 1
 			reveal_next_day_showdown()
@@ -954,30 +956,36 @@ func _play_chalk_deviation_animation() -> void:
 	
 	var timer_anim = get_tree().create_timer(0.8)
 	await timer_anim.timeout
+	if not is_instance_valid(self) or not is_inside_tree(): return
 	
 	var draw_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	draw_tween.tween_method(_set_line1_point, Vector2(-10, 20), Vector2(190, 60), 0.3)
 	draw_tween.tween_method(_set_line2_point, Vector2(-10, 45), Vector2(190, 85), 0.3).set_delay(0.1)
 	
 	await draw_tween.finished
+	if not is_instance_valid(self) or not is_inside_tree(): return
 	DeskTheme.shake_control(blackboard_panel, 4.0, 0.2)
 	
 	var timer_pop = get_tree().create_timer(0.4)
 	await timer_pop.timeout
+	if not is_instance_valid(self) or not is_inside_tree(): return
 	
 	var pop_tween = create_tween().set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 	pop_tween.tween_property(new_lbl, "scale", Vector2.ONE, 0.4)
 	pop_tween.parallel().tween_property(change_lbl, "modulate:a", 1.0, 0.3).set_delay(0.15)
 	
 	await pop_tween.finished
+	if not is_instance_valid(self) or not is_inside_tree(): return
 	DeskTheme.shake_control(blackboard_panel, 6.0, 0.25)
 	
 	var timer_end = get_tree().create_timer(2.2)
 	await timer_end.timeout
+	if not is_instance_valid(self) or not is_inside_tree(): return
 	
 	var out_tween = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	out_tween.tween_property(chalk_container, "modulate:a", 0.0, 0.4)
 	await out_tween.finished
+	if not is_instance_valid(self) or not is_inside_tree(): return
 	
 	trigger_report_card()
 
