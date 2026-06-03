@@ -253,19 +253,35 @@ func _on_setup(setup_data: Dictionary) -> void:
 	draw_btn = Button.new()
 	draw_btn.text = "勉強カードを引く"
 	draw_btn.custom_minimum_size = Vector2(260, 65)
+	draw_btn.pivot_offset = Vector2(130, 32.5)
 	draw_btn.add_theme_font_override("font", DeskTheme.get_font())
 	draw_btn.add_theme_font_size_override("font_size", 24)
 	draw_btn.pressed.connect(_on_draw_pressed)
-	draw_btn.mouse_entered.connect(_clear_hovered_card)
+	draw_btn.mouse_entered.connect(func():
+		_clear_hovered_card()
+		DeskTheme.animate_hover(draw_btn, true, Vector2.ONE, 0.1)
+	)
+	draw_btn.mouse_exited.connect(func():
+		DeskTheme.animate_hover(draw_btn, false, Vector2.ONE, 0.1)
+	)
+	DeskTheme.apply_white_button_style(draw_btn)
 	btn_hbox.add_child(draw_btn)
 	
 	stop_btn = Button.new()
 	stop_btn.text = "休憩する"
 	stop_btn.custom_minimum_size = Vector2(260, 65)
+	stop_btn.pivot_offset = Vector2(130, 32.5)
 	stop_btn.add_theme_font_override("font", DeskTheme.get_font())
 	stop_btn.add_theme_font_size_override("font_size", 24)
 	stop_btn.pressed.connect(_on_stop_pressed)
-	stop_btn.mouse_entered.connect(_clear_hovered_card)
+	stop_btn.mouse_entered.connect(func():
+		_clear_hovered_card()
+		DeskTheme.animate_hover(stop_btn, true, Vector2.ONE, 0.1)
+	)
+	stop_btn.mouse_exited.connect(func():
+		DeskTheme.animate_hover(stop_btn, false, Vector2.ONE, 0.1)
+	)
+	DeskTheme.apply_white_button_style(stop_btn)
 	btn_hbox.add_child(stop_btn)
 	
 	# Notebook decoration
