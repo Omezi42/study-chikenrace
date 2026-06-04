@@ -252,10 +252,66 @@ func _on_submit_pressed() -> void:
 	
 	var final_declared = int(report_slider.value)
 	
-	var timer = get_tree().create_timer(0.2)
+	# Create stamp UI node (Loop 14)
+	var stamp = PanelContainer.new()
+	stamp.custom_minimum_size = Vector2(160, 90)
+	stamp.size = Vector2(160, 90)
+	phone_panel.add_child(stamp)
+	
+	stamp.pivot_offset = Vector2(80, 45)
+	stamp.position = Vector2(275 - 80, 390 - 45)
+	stamp.rotation_degrees = -15.0
+	
+	var stamp_style = StyleBoxFlat.new()
+	stamp_style.bg_color = Color(1.0, 0.9, 0.9, 0.85) # Semi-transparent light red
+	stamp_style.border_color = Color("d32f2f") # Red stamp ink
+	stamp_style.border_width_left = 4
+	stamp_style.border_width_right = 4
+	stamp_style.border_width_top = 4
+	stamp_style.border_width_bottom = 4
+	stamp_style.corner_radius_top_left = 8
+	stamp_style.corner_radius_top_right = 8
+	stamp_style.corner_radius_bottom_left = 8
+	stamp_style.corner_radius_bottom_right = 8
+	stamp.add_theme_stylebox_override("panel", stamp_style)
+	
+	var stamp_vbox = VBoxContainer.new()
+	stamp_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	stamp_vbox.add_theme_constant_override("separation", 2)
+	stamp.add_child(stamp_vbox)
+	
+	var stamp_circle = Label.new()
+	stamp_circle.text = "💮 提出済 💮"
+	stamp_circle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stamp_circle.add_theme_font_override("font", DeskTheme.get_font())
+	stamp_circle.add_theme_font_size_override("font_size", 22)
+	stamp_circle.add_theme_color_override("font_color", Color("d32f2f"))
+	stamp_vbox.add_child(stamp_circle)
+	
+	var stamp_date = Label.new()
+	stamp_date.text = "合格印"
+	stamp_date.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stamp_date.add_theme_font_override("font", DeskTheme.get_font())
+	stamp_date.add_theme_font_size_override("font_size", 14)
+	stamp_date.add_theme_color_override("font_color", Color("d32f2f", 0.7))
+	stamp_vbox.add_child(stamp_date)
+	
+	# Scale animation
+	stamp.scale = Vector2(2.5, 2.5)
+	stamp.modulate.a = 0.0
+	
+	var tween = create_tween()
+	tween.parallel().tween_property(stamp, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(stamp, "modulate:a", 1.0, 0.15)
+	
+	# Sound effect and screen shake
+	if has_node("/root/AudioManager"):
+		get_node("/root/AudioManager").play_se(AudioManager.SE_PLACE)
+	
+	DeskTheme.shake_control(phone_panel, 8.0, 0.15)
+	
+	var timer = get_tree().create_timer(0.7)
 	timer.timeout.connect(func():
-		if has_node("/root/AudioManager"):
-			get_node("/root/AudioManager").play_se(AudioManager.SE_PLACE)
 		session.submit_player_declaration(final_declared)
 		finish_phase({
 			"declared_score": final_declared
