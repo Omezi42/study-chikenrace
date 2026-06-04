@@ -14,6 +14,8 @@ var blue_pen_active: bool = false
 var red_sheet_active: bool = false
 var energy_drink_active: bool = false
 var cram_school_print_active: bool = false
+var timer_active: bool = false
+var compass_active: bool = false
 
 # Initialize the 55-card deck based on a slots configuration (1-10)
 func initialize_deck(deck_config: Dictionary) -> void:
@@ -102,20 +104,21 @@ func draw_card(max_depth: int = 5) -> Dictionary:
 		else:
 			return {} # No cards available
 
-	var card = draw_pile.pop_back()
+	var original_card = draw_pile.pop_back()
+	var card = original_card.duplicate()
 	
 	# Apply Red Sheet (赤シート) effect if active
 	# Safe draw: if card causes a burst, discard it and draw another (one time)
 	if red_sheet_active and would_card_burst(card):
 		red_sheet_active = false
-		discard_pile.append(card)
+		discard_pile.append(original_card)
 		return draw_card(max_depth - 1) # Recursive draw
 		
 	# Apply Eraser (消しゴム) charges
 	if would_card_burst(card) and eraser_charges > 0:
 		eraser_charges -= 1
 		# Put back to draw pile, shuffle, and draw again
-		draw_pile.append(card)
+		draw_pile.append(original_card)
 		shuffle_draw_pile()
 		return draw_card(max_depth - 1)
 		
@@ -219,6 +222,8 @@ func reset_status_effects() -> void:
 	red_sheet_active = false
 	energy_drink_active = false
 	cram_school_print_active = false
+	timer_active = false
+	compass_active = false
 
 # End of period (hour): Move hand to discard pile, keep draw and discard piles as is for day-long counting
 func reset_for_next_hour() -> void:
@@ -298,6 +303,18 @@ func activate_compass() -> int:
 		if c["value"] in hand_values:
 			count += 1
 	return count
+
+func activate_compass_indices() -> Array[int]:
+	var hand_values = []
+	for c in hand:
+		hand_values.append(c["value"])
+	var indices: Array[int] = []
+	var n = draw_pile.size()
+	for i in range(n):
+		var card = draw_pile[n - 1 - i]
+		if card["value"] in hand_values:
+			indices.append(i + 1)
+	return indices
 
 func activate_thick_book() -> void:
 	for i in range(3):

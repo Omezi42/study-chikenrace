@@ -16,6 +16,7 @@ func _ready() -> void:
 	success = success and test_scenario_modes()
 	success = success and test_metadata_and_integrity()
 	success = success and test_multiplayer_sync_and_idempotency()
+	success = success and test_timer_and_compass_and_cloning()
 	
 	print("==================================================")
 	if success:
@@ -596,4 +597,70 @@ func test_multiplayer_sync_and_idempotency() -> bool:
 	bm.is_mock_room = false
 	
 	return pass_schema_int and pass_schema_hours and pass_global_hours and pass_nonce_sending and pass_idemp_prevented
+
+# Test 10: Timer, Compass and Card Cloning Debug checks
+func test_timer_and_compass_and_cloning() -> bool:
+	print("\n--- Test 10: Timer, Compass & Reference Cloning Checks ---")
+	var deck = StudyDeck.new()
+	var mock_deck_config = {
+		1: "item_sticky_note",
+		2: "item_eraser",
+		3: "item_ruler",
+		4: "item_wordbook",
+		5: "item_mech_pencil",
+		6: "item_memo_cards",
+		7: "item_highlighter",
+		8: "item_blue_pen",
+		9: "item_cushion",
+		10: "item_memo_app"
+	}
+	deck.initialize_deck(mock_deck_config)
+	
+	# 1. Timer initial state & activation test
+	var pass_timer_init = assert_true(deck.timer_active == false, "Timer is inactive by default.")
+	deck.timer_active = true
+	var pass_timer_act = assert_true(deck.timer_active == true, "Timer is successfully activated.")
+	
+	# 2. Compass initial state & indices detection test
+	var pass_compass_init = assert_true(deck.compass_active == false, "Compass is inactive by default.")
+	
+	# Manually setup hand and draw pile to test compass warning indexes
+	var h: Array[Dictionary] = [{"value": 5, "item_id": "item_sticky_note"}]
+	deck.hand = h
+	var dp: Array[Dictionary] = [
+		{"value": 3, "item_id": "item_eraser"},
+		{"value": 5, "item_id": "item_sticky_note"}, # duplicate of hand! (Index 2 from top)
+		{"value": 2, "item_id": "item_ruler"}        # Index 1 from top
+	]
+	deck.draw_pile = dp
+	
+	var indices = deck.activate_compass_indices()
+	var pass_compass_index = assert_true(
+		indices.size() == 1 and indices[0] == 2,
+		"Compass indices successfully detected duplicate value 5 at index 2 from top."
+	)
+	
+	# 3. Reference Sharing / Cloning Bug check
+	deck.initialize_deck(mock_deck_config)
+	deck.next_draw_bonus_points = 1
+	var drawn_card = deck.draw_card()
+	
+	var pass_cloned_points = assert_true(
+		drawn_card["bonus_points"] == 3,
+		"Drawn card successfully obtained +3 bonus points."
+	)
+	
+	# Verify that the original card in the 'cards' pool is NOT modified (due to duplicate/clone)
+	var original_found = null
+	for card in deck.cards:
+		if card["value"] == drawn_card["value"]:
+			original_found = card
+			break
+			
+	var pass_cloned_integrity = assert_true(
+		original_found != null and not original_found.has("bonus_points"),
+		"Original card in cards pool remains unmodified (bonus_points not leaked)."
+	)
+	
+	return pass_timer_init and pass_timer_act and pass_compass_init and pass_compass_index and pass_cloned_points and pass_cloned_integrity
 

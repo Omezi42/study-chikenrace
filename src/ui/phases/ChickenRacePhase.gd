@@ -541,22 +541,23 @@ func update_ui() -> void:
 	# Update burst probability & LED
 	var prob = session.player_deck.get_burst_probability()
 	var pct = int(prob * 100)
+	var has_timer = session.player_deck.timer_active
 	
 	if pct == 0:
-		burst_prob_label.text = "眠気：安全 (0%)"
+		burst_prob_label.text = "眠気：安全" + (" (0%)" if has_timer else "")
 		led_indicator.color = DeskTheme.COLOR_GREEN
 		alert_banner.color.a = 0.0
 	elif pct < 45:
-		burst_prob_label.text = "眠気：眠くなってきた (" + str(pct) + "%)"
+		burst_prob_label.text = "眠気：眠くなってきた" + (" (" + str(pct) + "%)" if has_timer else "")
 		led_indicator.color = Color.YELLOW
 		alert_banner.color.a = 0.0
 	elif pct < 80:
-		burst_prob_label.text = "眠気：限界に近い！ (" + str(pct) + "%)"
+		burst_prob_label.text = "眠気：限界に近い！" + (" (" + str(pct) + "%)" if has_timer else "")
 		led_indicator.color = Color.ORANGE
 		alert_banner.color.a = 0.3
 		alert_banner.color = Color(DeskTheme.COLOR_TENSION, 0.3)
 	else:
-		burst_prob_label.text = "眠気：意識が飛びそう！！ (" + str(pct) + "%)"
+		burst_prob_label.text = "眠気：意識が飛びそう！！" + (" (" + str(pct) + "%)" if has_timer else "")
 		led_indicator.color = DeskTheme.COLOR_TENSION
 		alert_banner.color.a = 0.8
 		alert_banner.color = Color(DeskTheme.COLOR_TENSION, 0.8)
@@ -781,13 +782,27 @@ func show_peek_sticky(peeked: Array) -> void:
 	list_vbox.add_theme_constant_override("separation", 4)
 	vbox.add_child(list_vbox)
 	
+	var player_deck = session.player_deck
+	var is_compass_active = player_deck.compass_active
+	var hand_values = []
+	for c in player_deck.hand:
+		hand_values.append(c["value"])
+		
 	for idx in range(peeked.size()):
 		var card = peeked[idx]
 		var card_lbl = Label.new()
-		card_lbl.text = "・%d枚目： %s (%d 点)" % [idx + 1, card["name"], card["value"]]
+		var text_str = "・%d枚目： %s (%d 点)" % [idx + 1, card["name"], card["value"]]
+		
 		card_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		card_lbl.add_theme_font_size_override("font_size", 16)
-		card_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.8))
+		
+		if is_compass_active and card["value"] in hand_values:
+			text_str += " ⚠️被り！"
+			card_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+		else:
+			card_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.8))
+			
+		card_lbl.text = text_str
 		list_vbox.add_child(card_lbl)
 		
 	# Disable mouse filter recursively so it never blocks clicks

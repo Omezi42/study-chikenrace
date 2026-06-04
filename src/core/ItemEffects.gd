@@ -94,8 +94,19 @@ class CheatSheetEffect extends ItemEffect:
 # 12. コンパス
 class CompassEffect extends ItemEffect:
 	func execute(phase: Control, deck: StudyDeck, card: Dictionary) -> void:
-		var count = deck.activate_compass()
-		DeskTheme.show_toast(phase, "コンパスの効果！被り候補カードが山札に %d 枚残っています！" % count)
+		deck.compass_active = true
+		var indices = deck.activate_compass_indices()
+		if indices.size() > 0:
+			var idx_strs = []
+			for idx in indices:
+				idx_strs.append(str(idx) + "枚目")
+			var show_limit = min(3, idx_strs.size())
+			var msg = "コンパスの効果！山札の上から " + ", ".join(idx_strs.slice(0, show_limit)) + " に被り札を探知！"
+			if indices.size() > 3:
+				msg += " (他 %d 枚)" % (indices.size() - 3)
+			DeskTheme.show_toast(phase, msg)
+		else:
+			DeskTheme.show_toast(phase, "コンパスの効果！山札に被りカードはありません！")
 
 # 13. エナジードリンク
 class EnergyDrinkEffect extends ItemEffect:
@@ -141,7 +152,9 @@ class CopyAnswerEffect extends ItemEffect:
 # 19. タイマー
 class TimerEffect extends ItemEffect:
 	func execute(phase: Control, deck: StudyDeck, card: Dictionary) -> void:
-		DeskTheme.show_toast(phase, "タイマーの効果！正確なバースト確率が常時表示された！")
+		deck.timer_active = true
+		phase.update_ui()
+		DeskTheme.show_toast(phase, "タイマーの効果！正確な眠気確率（%）が常時表示された！")
 
 # 20. 勉強会チャット
 class StudyChatEffect extends ItemEffect:
