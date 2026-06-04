@@ -282,6 +282,8 @@ func setup_select_modal() -> void:
 	vbox.add_child(close_btn)
 
 func _on_slot_clicked(slot_num: int) -> void:
+	if select_modal.visible:
+		return
 	active_slot_idx = slot_num
 	select_modal.visible = true
 	
@@ -358,6 +360,9 @@ func populate_select_list() -> void:
 		select_grid.add_child(item_btn)
 
 func _on_item_selected(item_id: String) -> void:
+	if not select_modal.visible:
+		return
+	select_modal.visible = false
 	var duplicate_slot = -1
 	for slot_idx in Global.current_deck.keys():
 		if int(slot_idx) != active_slot_idx and Global.current_deck[slot_idx] == item_id:
@@ -375,10 +380,12 @@ func _on_item_selected(item_id: String) -> void:
 		DeskTheme.show_toast(self, "%s を装備しました！" % item_name)
 		
 	Global.save_game()
-	select_modal.visible = false
 	populate_slots()
 
 func _on_back_pressed() -> void:
+	if back_btn.disabled:
+		return
+	back_btn.disabled = true
 	back_btn.release_focus()
 	DeskTheme.animate_click(back_btn, Vector2.ONE, 0.08)
 	var timer = get_tree().create_timer(0.2)

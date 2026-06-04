@@ -603,9 +603,10 @@ func _get_participant_name(p_id: String) -> String:
 	return p_id
 
 func _on_skip_pressed() -> void:
-	if not is_revealing:
+	if not is_revealing or skip_btn.disabled:
 		return
 	is_revealing = false
+	skip_btn.disabled = true
 	skip_btn.release_focus()
 	DeskTheme.animate_click(skip_btn, Vector2.ONE, 0.08)
 	var timer = get_tree().create_timer(0.1)
@@ -903,6 +904,13 @@ func trigger_report_card() -> void:
 	act_hbox.add_child(restart_btn)
 
 func _on_share_pressed() -> void:
+	if share_btn.disabled:
+		return
+	share_btn.disabled = true
+	get_tree().create_timer(3.0).timeout.connect(func():
+		if is_instance_valid(share_btn):
+			share_btn.disabled = false
+	)
 	share_btn.release_focus()
 	DeskTheme.animate_click(share_btn, Vector2.ONE, 0.08)
 	var my_score = showdown_data["final_scores"]["player"]
@@ -911,6 +919,9 @@ func _on_share_pressed() -> void:
 	OS.shell_open("https://twitter.com/intent/tweet?text=" + escaped_text)
 
 func _on_restart_pressed() -> void:
+	if restart_btn.disabled:
+		return
+	restart_btn.disabled = true
 	restart_btn.release_focus()
 	DeskTheme.animate_click(restart_btn, Vector2.ONE, 0.08)
 	

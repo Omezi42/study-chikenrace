@@ -574,6 +574,9 @@ func spawn_capsule(slot_wrapper: Control) -> void:
 		float_tween.tween_property(prompt_lbl, "position:y", 266.0, 0.4)
 		
 		cap_btn.pressed.connect(func():
+			if cap_btn.disabled:
+				return
+			cap_btn.disabled = true
 			float_tween.kill()
 			prompt_lbl.queue_free()
 			_on_capsule_clicked(capsule, shell_t, shell_b)

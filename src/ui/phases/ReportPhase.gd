@@ -246,8 +246,10 @@ func _on_slider_changed(val: float) -> void:
 		warning_panel.visible = false
 
 func _on_submit_pressed() -> void:
-	DeskTheme.animate_click(submit_btn, Vector2.ONE, 0.08)
+	if submit_btn.disabled:
+		return
 	submit_btn.disabled = true
+	DeskTheme.animate_click(submit_btn, Vector2.ONE, 0.08)
 	report_slider.editable = false
 	
 	var final_declared = int(report_slider.value)

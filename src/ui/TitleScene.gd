@@ -12,6 +12,7 @@ var profile_btn: Button
 # Tutorial Slide Viewer Elements
 
 var bgm_started: bool = false
+var is_transitioning: bool = false
 
 const NATIONAL_NAMES = [
 	"東大理三志望", "早慶合格マシーン", "徹夜明けの浪人生", "定期テストの神", 
@@ -325,14 +326,21 @@ func start_bgm() -> void:
 		get_node("/root/AudioManager").play_bgm(AudioManager.BGM_MAIN)
 
 func _on_start_pressed() -> void:
+	if is_transitioning:
+		return
+	is_transitioning = true
 	DeskTheme.animate_click(start_btn, Vector2.ONE, 0.08)
 	
 	var timer = get_tree().create_timer(0.2)
 	timer.timeout.connect(func():
 		show_mode_selection_modal()
+		is_transitioning = false
 	)
 
 func _on_loadout_pressed() -> void:
+	if is_transitioning:
+		return
+	is_transitioning = true
 	DeskTheme.animate_click(loadout_btn, Vector2.ONE, 0.08)
 	var timer = get_tree().create_timer(0.2)
 	timer.timeout.connect(func():
@@ -340,6 +348,9 @@ func _on_loadout_pressed() -> void:
 	)
 
 func _on_zukan_pressed() -> void:
+	if is_transitioning:
+		return
+	is_transitioning = true
 	DeskTheme.animate_click(zukan_btn, Vector2.ONE, 0.08)
 	var timer = get_tree().create_timer(0.2)
 	timer.timeout.connect(func():
@@ -347,6 +358,9 @@ func _on_zukan_pressed() -> void:
 	)
 
 func _on_gacha_pressed() -> void:
+	if is_transitioning:
+		return
+	is_transitioning = true
 	DeskTheme.animate_click(gacha_btn, Vector2.ONE, 0.08)
 	var timer = get_tree().create_timer(0.2)
 	timer.timeout.connect(func():
@@ -354,6 +368,9 @@ func _on_gacha_pressed() -> void:
 	)
 
 func _on_tutorial_pressed() -> void:
+	if is_transitioning:
+		return
+	is_transitioning = true
 	DeskTheme.animate_click(tutorial_btn, Vector2.ONE, 0.08)
 	Global.is_tutorial_mode = true
 	Global.game_mode = Constants.MODE_CPU

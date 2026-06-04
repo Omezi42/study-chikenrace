@@ -933,9 +933,14 @@ func _spawn_zzz_scribbles() -> void:
 			tween.tween_callback(z_lbl.queue_free)
 
 func _on_stop_pressed() -> void:
-	if is_animating or has_bursted:
+	if is_animating or has_bursted or draw_btn.disabled or stop_btn.disabled:
 		return
 		
+	# 即座に入力をロックして二重入力を防ぐ
+	is_animating = true
+	draw_btn.disabled = true
+	stop_btn.disabled = true
+	
 	# Clear peek sticky on stop
 	if active_peek_sticky:
 		active_peek_sticky.queue_free()
@@ -1398,9 +1403,10 @@ func start_card_selection(mode: String, guide_text: String) -> void:
 	arrange_hand_fan()
 
 func _on_card_ui_pressed(card: Dictionary, card_ui: Button) -> void:
-	if is_animating:
+	if is_animating or card_ui.is_queued_for_deletion() or card_ui.disabled:
 		return
 	if is_selecting_card:
+		card_ui.disabled = true
 		var hand_idx = card_ui.get_meta("hand_index", -1)
 		if hand_idx != -1:
 			_on_card_selected_from_hand(hand_idx, card)

@@ -18,6 +18,7 @@ func _ready() -> void:
 	success = success and test_multiplayer_sync_and_idempotency()
 	success = success and test_timer_and_compass_and_cloning()
 	success = success and test_amulet_and_memo_app_guard()
+	success = success and test_ui_guard_states()
 	
 	print("==================================================")
 	if success:
@@ -722,4 +723,19 @@ func test_amulet_and_memo_app_guard() -> bool:
 	var pass_memo_draw = assert_true(cards_drawn.size() == 2, "Memo App successfully drew 2 cards.")
 	
 	return pass_amulet_init and pass_amulet_draw and pass_amulet_act and pass_burst and pass_preservation and pass_memo_draw
+
+
+# Test 12: UI Guard States initialization checks
+func test_ui_guard_states() -> bool:
+	print("\n--- Test 12: UI Guard States Checks ---")
+	
+	# Instantiate TitleScene to check default variables (transition flag)
+	var title_scene = load("res://Title.tscn").instantiate()
+	var pass_title_init = assert_true(
+		title_scene != null and title_scene.get("is_transitioning") == false,
+		"TitleScene correctly initializes is_transitioning as false."
+	)
+	title_scene.free()
+	
+	return pass_title_init
 
