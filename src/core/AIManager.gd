@@ -262,13 +262,8 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 				
 		var period_score = 0
 		if bursted:
-			# Apply Amulet (お守り) if CPU has it (keeps 50% points)
-			var has_amulet = false
-			for slot_idx in deck_config.keys():
-				if deck_config[slot_idx] == "item_amulet":
-					has_amulet = true
-					break
-			if has_amulet:
+			# Apply Amulet (お守り) if CPU drew it during simulation (keeps 50% points)
+			if deck.amulet_active:
 				var mock_score = deck.calculate_hand_score()["total_score"]
 				period_score = int(round(mock_score * 0.5))
 			else:

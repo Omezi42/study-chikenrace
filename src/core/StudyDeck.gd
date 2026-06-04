@@ -16,6 +16,7 @@ var energy_drink_active: bool = false
 var cram_school_print_active: bool = false
 var timer_active: bool = false
 var compass_active: bool = false
+var amulet_active: bool = false
 
 # Initialize the 55-card deck based on a slots configuration (1-10)
 func initialize_deck(deck_config: Dictionary) -> void:
@@ -129,6 +130,9 @@ func draw_card(max_depth: int = 5) -> Dictionary:
 	else:
 		card["bonus_points"] = 0
 		
+	if card.get("item_id", "") == "item_amulet":
+		amulet_active = true
+		
 	hand.append(card)
 	return card
 
@@ -224,6 +228,7 @@ func reset_status_effects() -> void:
 	cram_school_print_active = false
 	timer_active = false
 	compass_active = false
+	amulet_active = false
 
 # End of period (hour): Move hand to discard pile, keep draw and discard piles as is for day-long counting
 func reset_for_next_hour() -> void:

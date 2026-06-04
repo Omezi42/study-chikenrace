@@ -885,12 +885,7 @@ func trigger_burst_sequence() -> void:
 	
 	var timer = get_tree().create_timer(1.2)
 	timer.timeout.connect(func():
-		var has_amulet = false
-		for slot in Global.current_deck.keys():
-			if Global.current_deck[slot] == "item_amulet":
-				has_amulet = true
-				break
-				
+		var has_amulet = session.player_deck.amulet_active
 		var final_score = 0
 		if has_amulet:
 			var score_info = session.player_deck.calculate_hand_score()
@@ -1403,6 +1398,8 @@ func start_card_selection(mode: String, guide_text: String) -> void:
 	arrange_hand_fan()
 
 func _on_card_ui_pressed(card: Dictionary, card_ui: Button) -> void:
+	if is_animating:
+		return
 	if is_selecting_card:
 		var hand_idx = card_ui.get_meta("hand_index", -1)
 		if hand_idx != -1:

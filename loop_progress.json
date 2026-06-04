@@ -1,12 +1,12 @@
 {
-  "current_loop": 20,
-  "last_commit": "7b69f66",
+  "current_loop": 21,
+  "last_commit": "6253bdf",
   "scores": {
     "mechanics": 22,
     "cpu_ai": 15,
     "ui_ux": 28,
     "balance": 14,
-    "robustness": 10,
+    "robustness": 15,
     "retention": 8
   },
   "history": [
@@ -109,6 +109,11 @@
       "loop": 20,
       "commit": "7b69f66",
       "description": "全アイテム・カード効果のバグ及び仕様不整合（タイマーでの％数値常時開示、コンパスの探知位置可視化、デッキ内でのDictionary参照共有によるボーナス残存リスク）を徹底デバッグ・正常化し、新規検証テストを追加。"
+    },
+    {
+      "loop": 21,
+      "commit": "6253bdf",
+      "description": "お守り（item_amulet）のパッシブ効果漏れバグを修正しドロー時のみアクティブ化。メモアプリ（item_memo_app）の2枚ドロー時の非同期バースト判定競合、およびドロー演出中の手札カードクリック競合を防止するガード処理を実装。"
     }
   ]
 }

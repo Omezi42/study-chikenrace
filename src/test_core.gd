@@ -17,6 +17,7 @@ func _ready() -> void:
 	success = success and test_metadata_and_integrity()
 	success = success and test_multiplayer_sync_and_idempotency()
 	success = success and test_timer_and_compass_and_cloning()
+	success = success and test_amulet_and_memo_app_guard()
 	
 	print("==================================================")
 	if success:
@@ -663,4 +664,62 @@ func test_timer_and_compass_and_cloning() -> bool:
 	)
 	
 	return pass_timer_init and pass_timer_act and pass_compass_init and pass_compass_index and pass_cloned_points and pass_cloned_integrity
+
+
+# Test 11: Amulet effect activation and burst protection
+func test_amulet_and_memo_app_guard() -> bool:
+	print("\n--- Test 11: Amulet & Memo App Guard Checks ---")
+	var deck = StudyDeck.new()
+	var mock_deck_config = {
+		1: "item_amulet", # お守りを1枚投入
+		2: "item_memo_app",
+		3: "item_sticky_note",
+		4: "item_eraser",
+		5: "item_ruler",
+		6: "item_wordbook",
+		7: "item_mech_pencil",
+		8: "item_memo_cards",
+		9: "item_highlighter",
+		10: "item_blue_pen"
+	}
+	deck.initialize_deck(mock_deck_config)
+	
+	# 1. Amulet initially inactive
+	var pass_amulet_init = assert_true(deck.amulet_active == false, "Amulet is inactive initially.")
+	
+	# 2. Draw Amulet card and verify active state
+	# We manually place Amulet at the top of draw pile for testing
+	var amulet_card = {
+		"value": 1,
+		"item_id": "item_amulet",
+		"name": "お守り"
+	}
+	deck.draw_pile.append(amulet_card)
+	var drawn = deck.draw_card()
+	
+	var pass_amulet_draw = assert_true(drawn["item_id"] == "item_amulet", "Amulet card was drawn.")
+	var pass_amulet_act = assert_true(deck.amulet_active == true, "Amulet state becomes active after drawing.")
+	
+	# 3. Verify points preservation on burst when Amulet is active
+	# Setup a mock hand with duplicate values
+	var mock_hand: Array[Dictionary] = [
+		{"value": 5, "item_id": "item_sticky_note"},
+		{"value": 5, "item_id": "item_eraser"},
+		{"value": 1, "item_id": "item_amulet"}
+	]
+	deck.hand = mock_hand
+	var is_burst = deck.check_burst()
+	var pass_burst = assert_true(is_burst == true, "Hand state is correctly evaluated as burst.")
+	
+	# Score reduction check
+	var score_info = deck.calculate_hand_score()
+	var half_score = int(round(score_info["total_score"] * 0.5))
+	var pass_preservation = assert_true(half_score == 6, "Amulet score preservation calculated 6 points (half of 11). (Actual: %d)" % half_score)
+	
+	# 4. Memo App draw returns two cards
+	deck.initialize_deck(mock_deck_config)
+	var cards_drawn = deck.activate_memo_app_draw()
+	var pass_memo_draw = assert_true(cards_drawn.size() == 2, "Memo App successfully drew 2 cards.")
+	
+	return pass_amulet_init and pass_amulet_draw and pass_amulet_act and pass_burst and pass_preservation and pass_memo_draw
 

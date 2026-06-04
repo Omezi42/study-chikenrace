@@ -66,6 +66,7 @@ class CushionEffect extends ItemEffect:
 # 10. メモアプリ
 class MemoAppEffect extends ItemEffect:
 	func execute(phase: Control, deck: StudyDeck, card: Dictionary) -> void:
+		phase.is_selecting_card = true
 		var card1 = deck.draw_card()
 		var card2 = deck.draw_card()
 		var msg = "メモアプリの効果！カードを2枚引いた！"
@@ -135,6 +136,7 @@ class ThickBookEffect extends ItemEffect:
 # 16. お守り
 class AmuletEffect extends ItemEffect:
 	func execute(phase: Control, deck: StudyDeck, card: Dictionary) -> void:
+		deck.amulet_active = true
 		DeskTheme.show_toast(phase, "お守りの効果！寝落ち（バースト）しても点数の50%をキープ！")
 
 # 17. 追込みノート
