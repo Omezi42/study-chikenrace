@@ -1,13 +1,13 @@
 {
-  "current_loop": 7,
-  "last_commit": "b617080",
+  "current_loop": 9,
+  "last_commit": "4d529da",
   "scores": {
-    "mechanics": 20,
+    "mechanics": 22,
     "cpu_ai": 15,
-    "ui_ux": 19,
-    "balance": 13,
+    "ui_ux": 20,
+    "balance": 14,
     "robustness": 10,
-    "retention": 6
+    "retention": 8
   },
   "history": [
     {
@@ -43,7 +43,17 @@
     {
       "loop": 7,
       "commit": "b617080",
-      "description": "非同期のタイマーやawaitの復帰後におけるシーン破棄によるクラッシュを防止するため、ChickenRacePhaseおよびResultScene内のすべての長距離タイマーと非同期処理の再開位置に、is_instance_valid(self)とis_inside_tree()のガードを適用。"
+      "description": "非同期のタイマーやawaitの復帰後におけるシーン破棄によるクラッシュを防止するため、ChickenRacePhaseおよびResultScene内のすべての長距離タイマー and 非同期処理の再開位置に、is_instance_valid(self)とis_inside_tree()のガードを適用。"
+    },
+    {
+      "loop": 8,
+      "commit": "3fe5efa",
+      "description": "即時ダウト開示（判定トースト、ボタン無効化時の文字色・テキスト更新）の実装、二重加算バグ修正、生徒手帳スタッツ（ダウト成功率、累計バースト数など）の表示拡張、装備中称号のバッジ表示、リザルト画面でのスタンプ押下Tweenアニメーションの追加、および同室メンバーの個別付箋風ネームプレート（傾き・影デザイン）のポリッシュ。"
+    },
+    {
+      "loop": 9,
+      "commit": "4d529da",
+      "description": "1日を通したデッキ継続とカウンティングの維持のため、時限間の山札リセット処理を廃止。第1時限開始時（Hour 1）にのみ山札のフルリセットとシャッフルを行い、時限間では手札のみを捨て札に移して山札と捨て札を引き継ぐ仕様に変更。"
     }
   ]
 }
