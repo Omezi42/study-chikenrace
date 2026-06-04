@@ -565,6 +565,17 @@ func perform_animated_draw(card: Dictionary, on_complete: Callable = Callable())
 			on_complete.call()
 	)
 
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.is_pressed() and not event.is_echo():
+		if event.keycode == KEY_SPACE:
+			if is_instance_valid(draw_btn) and not draw_btn.disabled and not is_animating and not has_bursted:
+				get_viewport().set_input_as_handled()
+				_on_draw_pressed()
+		elif event.keycode == KEY_ENTER or event.keycode == KEY_S:
+			if is_instance_valid(stop_btn) and not stop_btn.disabled and not is_animating and not has_bursted:
+				get_viewport().set_input_as_handled()
+				_on_stop_pressed()
+
 func _on_draw_pressed() -> void:
 	if is_animating or has_bursted:
 		return
