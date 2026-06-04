@@ -53,6 +53,9 @@ func _on_setup(setup_data: Dictionary) -> void:
 	is_selecting_card = false
 	card_selection_mode_active = ""
 	
+	if session.current_hour == 1:
+		session.player_deck.reset_for_next_day()
+	
 	if has_node("/root/BackendManager"):
 		var bm = get_node("/root/BackendManager")
 		if not bm.connection_lost.is_connected(_on_connection_lost):

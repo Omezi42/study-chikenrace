@@ -220,8 +220,15 @@ func reset_status_effects() -> void:
 	energy_drink_active = false
 	cram_school_print_active = false
 
-# End of period: reset deck back to initial state to prevent deck size inflation
+# End of period (hour): Move hand to discard pile, keep draw and discard piles as is for day-long counting
 func reset_for_next_hour() -> void:
+	for card in hand:
+		discard_pile.append(card.duplicate())
+	hand.clear()
+	reset_status_effects()
+
+# Start of new day: completely reset deck to initial state (recycle all cards, shuffle draw pile)
+func reset_for_next_day() -> void:
 	hand.clear()
 	discard_pile.clear()
 	draw_pile = cards.duplicate()
