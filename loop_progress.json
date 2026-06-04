@@ -1,10 +1,10 @@
 {
-  "current_loop": 16,
-  "last_commit": "ae3fc5c",
+  "current_loop": 17,
+  "last_commit": "4ec970e",
   "scores": {
     "mechanics": 22,
     "cpu_ai": 15,
-    "ui_ux": 27,
+    "ui_ux": 28,
     "balance": 14,
     "robustness": 10,
     "retention": 8
@@ -28,7 +28,7 @@
     {
       "loop": 4,
       "commit": "214e9cb",
-      "description": "時限終了時（reset_for_next_hour）に山札を初期デッキ構成の複製でリセットし、一時的追加カードや捨て札が蓄積されて山札が肥大化・コンボ安定度低下するバグを修正。"
+      "description": "時限終了時（reset_for_next_hour）に山札を初期デッキ構成 of 複製でリセットし、一時的追加カードや捨て札が蓄積されて山札が肥大化・コンボ安定度低下するバグを修正。"
     },
     {
       "loop": 5,
@@ -43,7 +43,7 @@
     {
       "loop": 7,
       "commit": "b617080",
-      "description": "非同期のタイマーやawaitの復帰後におけるシーン破棄によるクラッシュを防止するため、ChickenRacePhaseおよびResultScene内のすべての長距離タイマー and 非同期処理の再開位置に、is_instance_valid(self)とis_inside_tree()のガードを適用。"
+      "description": "非同期のタイマーやawaitの逆引き・復帰後におけるシーン破棄によるクラッシュを防止するため、ChickenRacePhaseおよびResultScene内のすべての長距離タイマー and 非同期処理の再開位置に、is_instance_valid(self)とis_inside_tree()のガードを適用。"
     },
     {
       "loop": 8,
@@ -63,7 +63,7 @@
     {
       "loop": 11,
       "commit": "16b2ca2",
-      "description": "チキンレース画面の右ページ右上に付箋風 of 山札枚数表示UIを追加。山札が残り3枚以下になった際に背景が淡い赤色に変化し「残少!!」と警告する手書き風のエフェクトを実装。"
+      "description": "チキンレース画面の右ページ右上に付箋風の山札枚数表示UIを追加。山札が残り3枚以下になった際に背景が淡い赤色に変化し「残少!!」と警告する手書き風のエフェクトを実装。"
     },
     {
       "loop": 12,
@@ -87,8 +87,13 @@
     },
     {
       "loop": 16,
-      "commit": "ae3fc5c",
+      "commit": "5bfc7a3",
       "description": "タイトル画面（TitleScene）の背景（机の上）にスクリプト描画による鉛筆と消しゴムを配置。それぞれマウスホバー時にコトコトと微小に回転して揺れる「文房具のmicro-animation」を追加。"
+    },
+    {
+      "loop": 17,
+      "commit": "4ec970e",
+      "description": "全25種類のアイテム効果の発動処理（ItemEffects.gd）において、文房具の特性（筆記用具系はSE_CLICK、本・シート・ノート系はSE_PLACE）に合わせた効果音を動的かつ網羅的に割り当て、音響演出を大幅強化。"
     }
   ]
 }

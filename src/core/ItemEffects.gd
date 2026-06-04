@@ -223,6 +223,19 @@ const EFFECT_MAP = {
 # アイテム効果の発動エントリーポイント
 static func execute_effect(item_id: String, phase: Control, deck: StudyDeck, card: Dictionary) -> void:
 	if EFFECT_MAP.has(item_id):
+		# Play dynamic stationery SE on item activation (Loop 17)
+		var se_path = AudioManager.SE_CLICK
+		var place_items = [
+			"item_ruler", "item_wordbook", "item_memo_cards", "item_memo_app",
+			"item_compass", "item_thick_book", "item_amulet", "item_night_note",
+			"item_study_chat", "item_cafe_latte", "item_forget_notebook"
+		]
+		if item_id in place_items:
+			se_path = AudioManager.SE_PLACE
+			
+		if phase.has_node("/root/AudioManager"):
+			phase.get_node("/root/AudioManager").play_se(se_path)
+			
 		var effect_class = EFFECT_MAP[item_id]
 		var effect_instance = effect_class.new()
 		effect_instance.execute(phase, deck, card)
