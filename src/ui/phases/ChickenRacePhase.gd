@@ -18,6 +18,11 @@ var left_page: PanelContainer
 var right_page: PanelContainer
 var header_left: Label
 
+# Deck count sticky note (Loop 11)
+var deck_sticky: PanelContainer
+var deck_count_lbl: Label
+var deck_warning_lbl: Label
+
 # Card explanation panel
 var card_detail_box: PanelContainer
 var detail_title_label: Label
@@ -429,6 +434,67 @@ func _on_setup(setup_data: Dictionary) -> void:
 	
 	update_yesterday_standings_ui()
 	
+	# Deck count sticky note on the top-right corner of the right page (Loop 11)
+	var right_free_control = Control.new()
+	right_page.add_child(right_free_control)
+	
+	deck_sticky = PanelContainer.new()
+	deck_sticky.custom_minimum_size = Vector2(100, 75)
+	deck_sticky.size = Vector2(100, 75)
+	deck_sticky.position = Vector2(580, 20)
+	deck_sticky.rotation_degrees = 5.0
+	right_free_control.add_child(deck_sticky)
+	
+	var sticky_style = StyleBoxFlat.new()
+	sticky_style.bg_color = Color("fff59d")
+	sticky_style.border_color = Color(DeskTheme.COLOR_INK, 0.15)
+	sticky_style.border_width_left = 1
+	sticky_style.border_width_right = 1
+	sticky_style.border_width_top = 1
+	sticky_style.border_width_bottom = 1
+	sticky_style.corner_radius_top_left = 2
+	sticky_style.corner_radius_top_right = 2
+	sticky_style.corner_radius_bottom_left = 2
+	sticky_style.corner_radius_bottom_right = 2
+	sticky_style.content_margin_left = 8
+	sticky_style.content_margin_right = 8
+	sticky_style.content_margin_top = 6
+	sticky_style.content_margin_bottom = 6
+	sticky_style.shadow_color = Color(0, 0, 0, 0.08)
+	sticky_style.shadow_size = 2
+	sticky_style.shadow_offset = Vector2(1, 1.5)
+	deck_sticky.add_theme_stylebox_override("panel", sticky_style)
+	
+	var sticky_vbox = VBoxContainer.new()
+	sticky_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	sticky_vbox.add_theme_constant_override("separation", 2)
+	deck_sticky.add_child(sticky_vbox)
+	
+	var deck_title_lbl = Label.new()
+	deck_title_lbl.text = "山札残り"
+	deck_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	deck_title_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	deck_title_lbl.add_theme_font_size_override("font_size", 14)
+	deck_title_lbl.add_theme_color_override("font_color", Color("37474f"))
+	sticky_vbox.add_child(deck_title_lbl)
+	
+	deck_count_lbl = Label.new()
+	deck_count_lbl.text = "0枚"
+	deck_count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	deck_count_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	deck_count_lbl.add_theme_font_size_override("font_size", 20)
+	deck_count_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	sticky_vbox.add_child(deck_count_lbl)
+	
+	deck_warning_lbl = Label.new()
+	deck_warning_lbl.text = "残少!!"
+	deck_warning_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	deck_warning_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	deck_warning_lbl.add_theme_font_size_override("font_size", 12)
+	deck_warning_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+	deck_warning_lbl.visible = false
+	sticky_vbox.add_child(deck_warning_lbl)
+	
 	# Check if player deck contains items to auto-apply at hour start
 	apply_deck_startup_items()
 	update_ui()
@@ -497,6 +563,21 @@ func update_ui() -> void:
 		DeskTheme.pulse_vignette(alert_banner, Color(DeskTheme.COLOR_TENSION), prob)
 		
 	update_active_effects_ui()
+	
+	# Update deck count sticky UI (Loop 11)
+	if is_instance_valid(deck_count_lbl) and is_instance_valid(deck_warning_lbl) and is_instance_valid(deck_sticky):
+		var deck_size = session.player_deck.draw_pile.size()
+		deck_count_lbl.text = str(deck_size) + "枚"
+		
+		var sticky_style = deck_sticky.get_theme_stylebox("panel") as StyleBoxFlat
+		if deck_size <= 3:
+			deck_warning_lbl.visible = true
+			if sticky_style:
+				sticky_style.bg_color = Color("ffcdd2") # Light red warning color
+		else:
+			deck_warning_lbl.visible = false
+			if sticky_style:
+				sticky_style.bg_color = Color("fff59d") # Yellow note color
 
 func perform_animated_draw(card: Dictionary, on_complete: Callable = Callable()) -> void:
 	is_animating = true
