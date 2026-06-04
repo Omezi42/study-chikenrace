@@ -83,11 +83,12 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 						
 				if final_exposed:
 					var penalty := declared - actual
+					var extra_penalty := int(penalty * 0.5) # 50% extra penalty
 					# double penalty if item_copy_answer is slotted
 					if _has_item(deck_config, "item_copy_answer"):
-						adjustment -= penalty * 2
+						adjustment -= (penalty + extra_penalty * 2)
 					else:
-						adjustment -= penalty
+						adjustment -= (penalty + extra_penalty)
 						
 					p["is_doubt_exposed"] = true
 					p["auto_exposed"] = auto_exposed

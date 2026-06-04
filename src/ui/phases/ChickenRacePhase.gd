@@ -35,6 +35,11 @@ var phone_toggle_btn: Button
 var is_phone_open: bool = false
 var active_effects_hbox: HBoxContainer
 
+# Dynamic member tracking UI
+var member_panels: Dictionary = {} # player_id -> PanelContainer
+var member_labels: Dictionary = {} # player_id -> Label
+var cpu_sim_states: Dictionary = {} # opp_id -> { "current_draws": int, "max_draws": int, "bursted": bool, "status": String }
+
 # Active local variables
 var current_hand_cards: Array[Dictionary] = []
 var is_animating: bool = false
@@ -109,9 +114,12 @@ func _on_setup(setup_data: Dictionary) -> void:
 	room_members_hbox.add_theme_constant_override("separation", 12)
 	left_inner_vbox.add_child(room_members_hbox)
 	
+	member_panels.clear()
+	member_labels.clear()
+	
 	var members = []
 	var player_disp_name = Global.player_name if Global.player_name != "" else "あなた"
-	members.append({"name": "📌 " + player_disp_name, "color": Color("fff9c4"), "angle": 0.8}) # 淡い黄
+	members.append({"id": "player", "name": player_disp_name, "icon": "📌", "color": Color("fff9c4"), "angle": 0.8}) # 淡い黄
 	
 	var colors = [Color("bbdefb"), Color("f8bbd0"), Color("c8e6c9")] # 淡い青、淡いピンク、淡い緑
 	var angles = [-1.5, 1.2, -0.6]
@@ -122,12 +130,12 @@ func _on_setup(setup_data: Dictionary) -> void:
 		var opp_name = opp.get("name", "ライバル")
 		var col = colors[color_idx % colors.size()]
 		var ang = angles[color_idx % angles.size()]
-		members.append({"name": "✏️ " + opp_name, "color": col, "angle": ang})
+		members.append({"id": opp_id, "name": opp_name, "icon": "✏️", "color": col, "angle": ang})
 		color_idx += 1
 		
 	for member in members:
 		var note_label = Label.new()
-		note_label.text = member["name"]
+		note_label.text = member["icon"] + " " + member["name"] + "\n📝 0枚"
 		note_label.add_theme_font_override("font", DeskTheme.get_font())
 		note_label.add_theme_font_size_override("font_size", 14)
 		note_label.add_theme_color_override("font_color", Color("263238"))
@@ -157,6 +165,9 @@ func _on_setup(setup_data: Dictionary) -> void:
 		note_panel.rotation_degrees = member["angle"]
 		note_panel.pivot_offset = Vector2(50, 15)
 		room_members_hbox.add_child(note_panel)
+		
+		member_panels[member["id"]] = note_panel
+		member_labels[member["id"]] = note_label
 	
 	var score_title = Label.new()
 	score_title.text = "現在の勉強成果（実点）"
@@ -497,7 +508,9 @@ func _on_setup(setup_data: Dictionary) -> void:
 	
 	# Check if player deck contains items to auto-apply at hour start
 	apply_deck_startup_items()
+	init_cpu_simulation_states()
 	update_ui()
+	_update_member_badge_ui("player")
 	
 	# ⚙️ Settings / Rules Button
 	var opt_btn = Button.new()
@@ -564,6 +577,9 @@ func update_ui() -> void:
 		alert_banner.color.a = 0.8
 		alert_banner.color = Color(DeskTheme.COLOR_TENSION, 0.8)
 		DeskTheme.pulse_vignette(alert_banner, Color(DeskTheme.COLOR_TENSION), prob)
+		
+	if session.player_deck.energy_drink_active:
+		burst_prob_label.text += " ⚠️ドロー時25%で即寝落ち！"
 		
 	update_active_effects_ui()
 	
@@ -681,6 +697,10 @@ func _on_draw_pressed() -> void:
 		stop_btn.disabled = false
 		DeskTheme.show_toast(self, "山札が空になりました！休憩（ストップ）しましょう。")
 		return
+		
+	# Advance CPU simulation states
+	advance_cpu_simulations()
+	_update_member_badge_ui("player")
 		
 	perform_animated_draw(card, func():
 		activate_item_effect(card)
@@ -876,6 +896,9 @@ func trigger_burst_sequence() -> void:
 	draw_btn.disabled = true
 	stop_btn.disabled = true
 	
+	fast_forward_cpus_to_end()
+	_update_member_badge_ui("player")
+	
 	if has_node("/root/AudioManager"):
 		get_node("/root/AudioManager").play_se(AudioManager.SE_BURST)
 	
@@ -889,6 +912,42 @@ func trigger_burst_sequence() -> void:
 	led_indicator.color = DeskTheme.COLOR_TENSION
 	burst_prob_label.text = "寝落ちしました！(バースト)"
 	actual_score_label.text = "0点"
+	
+	# Find duplicate card values in hand to highlight them (UX Improvement)
+	var value_counts = {}
+	for c in session.player_deck.hand:
+		var val = c.get("value", 0)
+		if val != 0:
+			value_counts[val] = value_counts.get(val, 0) + 1
+			
+	var duplicate_values = []
+	for val in value_counts.keys():
+		if value_counts[val] > 1:
+			duplicate_values.append(val)
+			
+	# Highlight duplicate card visuals
+	for child in hand_container.get_children():
+		if child is CardVisual:
+			var card_val = child.card_data.get("value", 0)
+			if card_val in duplicate_values:
+				var style = child.get_theme_stylebox("normal").duplicate() as StyleBoxFlat
+				if style:
+					style.border_color = Color("ff1744") # Vivid red
+					style.border_width_left = 6
+					style.border_width_right = 6
+					style.border_width_top = 6
+					style.border_width_bottom = 6
+					child.add_theme_stylebox_override("normal", style)
+					child.add_theme_stylebox_override("hover", style)
+					child.add_theme_stylebox_override("pressed", style)
+					
+				child.modulate = Color("ff8a80")
+				
+				var base_pos = child.position
+				var tween = create_tween().bind_node(child).set_parallel(true).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+				var base_scale = child.scale
+				tween.tween_property(child, "scale", base_scale * 1.15, 0.3)
+				tween.tween_property(child, "position:y", base_pos.y - 25.0, 0.25)
 	
 	# 落書き「Zzz...」エフェクトの追加 (Loop 13)
 	_spawn_zzz_scribbles()
@@ -964,6 +1023,8 @@ func _on_stop_pressed() -> void:
 	var final_score = score_info["total_score"]
 	
 	session.add_player_hour_result(hand_container.get_child_count(), active_used_items, false, final_score)
+	fast_forward_cpus_to_end()
+	_update_member_badge_ui("player")
 	
 	finish_hour_and_transition(final_score, false)
 
@@ -1524,4 +1585,97 @@ func _on_connection_lost() -> void:
 	stop_btn.disabled = true
 	ConnectionErrorModal.create_and_show(self)
 
-# Removed obsolete advance_tutorial_step method.
+func init_cpu_simulation_states() -> void:
+	cpu_sim_states.clear()
+	var day_idx = session.current_day
+	var hour_idx = session.current_hour
+	var day_data = session.match_history.get(day_idx, {})
+	
+	for opp_id in Global.opponent_profiles.keys():
+		var max_draws = 0
+		var bursted = false
+		if day_data.has(opp_id):
+			var opp_records = day_data[opp_id].get("hours", [])
+			if opp_records.size() >= hour_idx:
+				var hour_rec = opp_records[hour_idx - 1]
+				max_draws = hour_rec.get("draws", 0)
+				bursted = hour_rec.get("bursted", false)
+				
+		cpu_sim_states[opp_id] = {
+			"current_draws": 0,
+			"max_draws": max_draws,
+			"bursted": bursted,
+			"status": "studying"
+		}
+		_update_member_badge_ui(opp_id)
+
+func advance_cpu_simulations() -> void:
+	for opp_id in cpu_sim_states.keys():
+		var state = cpu_sim_states[opp_id]
+		if state["status"] != "studying":
+			continue
+			
+		# Advanceドロー枚数
+		if state["current_draws"] < state["max_draws"]:
+			state["current_draws"] += 1
+			if state["current_draws"] == state["max_draws"]:
+				if state["bursted"]:
+					state["status"] = "bursted"
+				else:
+					state["status"] = "stopped"
+		else:
+			if state["bursted"]:
+				state["status"] = "bursted"
+			else:
+				state["status"] = "stopped"
+				
+		_update_member_badge_ui(opp_id)
+
+func fast_forward_cpus_to_end() -> void:
+	for opp_id in cpu_sim_states.keys():
+		var state = cpu_sim_states[opp_id]
+		while state["status"] == "studying":
+			state["current_draws"] += 1
+			if state["current_draws"] >= state["max_draws"]:
+				if state["bursted"]:
+					state["status"] = "bursted"
+				else:
+					state["status"] = "stopped"
+			_update_member_badge_ui(opp_id)
+
+func _update_member_badge_ui(member_id: String) -> void:
+	if not member_labels.has(member_id):
+		return
+	var label = member_labels[member_id]
+	var display_name = ""
+	var icon = ""
+	
+	if member_id == "player":
+		display_name = Global.player_name if Global.player_name != "" else "あなた"
+		icon = "📌"
+		var hand_size = current_hand_cards.size()
+		if has_bursted:
+			label.text = icon + " " + display_name + "\n💤 寝落ち！"
+			var style = member_panels["player"].get_theme_stylebox("panel") as StyleBoxFlat
+			if style:
+				style.bg_color = Color("ffcdd2") # 赤い警告色
+		else:
+			label.text = icon + " " + display_name + "\n📝 " + str(hand_size) + "枚"
+	else:
+		if Global.opponent_profiles.has(member_id):
+			display_name = Global.opponent_profiles[member_id].get("name", "ライバル")
+		icon = "✏️"
+		
+		var state = cpu_sim_states[member_id]
+		var style = member_panels[member_id].get_theme_stylebox("panel") as StyleBoxFlat
+		
+		if state["status"] == "studying":
+			label.text = icon + " " + display_name + "\n📝 " + str(state["current_draws"]) + "枚"
+		elif state["status"] == "stopped":
+			label.text = icon + " " + display_name + "\n☕ 休憩"
+			if style:
+				style.bg_color = Color("c8e6c9") # 緑の休憩色
+		elif state["status"] == "bursted":
+			label.text = icon + " " + display_name + "\n💤 寝落ち！"
+			if style:
+				style.bg_color = Color("ffcdd2") # 赤のバースト色

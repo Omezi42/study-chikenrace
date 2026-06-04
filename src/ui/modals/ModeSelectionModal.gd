@@ -1,4 +1,4 @@
-﻿class_name ModeSelectionModal
+class_name ModeSelectionModal
 extends RefCounted
 
 static func create_and_show(parent: Node, on_friend_match_pressed: Callable, national_names_pool: Array) -> PanelContainer:
@@ -149,39 +149,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	# ── Connect: 📝 模試 ──
 	national_btn.pressed.connect(func():
 		DeskTheme.animate_click(national_btn, Vector2.ONE, 0.08)
-		Global.game_mode = Constants.MODE_NATIONAL
-		# Generate random profiles with random CPU ID mappings for simulation
-		var pool = national_names_pool.duplicate()
-		pool.shuffle()
-		var cpu_pool_keys = AIManager.CPU_OPPONENTS.keys().duplicate()
-		cpu_pool_keys.shuffle()
-		
-		Global.opponent_profiles = {
-			"cpu_sato": {
-				"id": cpu_pool_keys[0],
-				"name": pool[0],
-				"deviation": clamp(Global.deviation_value + randf_range(-5.0, 5.0), 35.0, 80.0)
-			},
-			"cpu_suzuki": {
-				"id": cpu_pool_keys[1],
-				"name": pool[1],
-				"deviation": clamp(Global.deviation_value + randf_range(-3.0, 3.0), 35.0, 80.0)
-			},
-			"cpu_takahashi": {
-				"id": cpu_pool_keys[2],
-				"name": pool[2],
-				"deviation": clamp(Global.deviation_value + randf_range(-8.0, 8.0), 35.0, 80.0)
-			}
-		}
-		Global.save_game()
-		var timer = parent.get_tree().create_timer(0.2)
-		timer.timeout.connect(func():
-			mode_modal.queue_free()
-			if Global.player_name == "":
-				Global.change_scene_with_fade(parent.get_tree(), "res://Profile.tscn")
-			else:
-				Global.change_scene_with_fade(parent.get_tree(), "res://Main.tscn")
-		)
+		_show_difficulty_selection(parent, mode_modal, on_friend_match_pressed, national_names_pool)
 	)
 	
 	# ── Connect: 🤝 フレンド戦 ──
@@ -253,3 +221,162 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 		tween.tween_property(mode_modal, "scale", Vector2.ONE, 0.3)
 		
 	return mode_modal
+
+static func _show_difficulty_selection(parent: Node, mode_modal: PanelContainer, on_friend_match_pressed: Callable, national_names_pool: Array) -> void:
+	var parent_tree = parent
+	mode_modal.queue_free()
+	
+	var diff_modal = PanelContainer.new()
+	diff_modal.custom_minimum_size = Vector2(720, 620)
+	diff_modal.pivot_offset = Vector2(360, 310)
+	diff_modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
+	parent.add_child(diff_modal)
+	diff_modal.position = parent.get_viewport_rect().size * 0.5 - diff_modal.pivot_offset
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 30)
+	margin.add_theme_constant_override("margin_right", 30)
+	margin.add_theme_constant_override("margin_top", 30)
+	margin.add_theme_constant_override("margin_bottom", 30)
+	diff_modal.add_child(margin)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 20)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	margin.add_child(vbox)
+	
+	var title = Label.new()
+	title.text = "模試のクラス選択"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_override("font", DeskTheme.get_font())
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	vbox.add_child(title)
+	
+	var my_dev_lbl = Label.new()
+	my_dev_lbl.text = "現在のあなたの偏差値: %.1f" % Global.deviation_value
+	my_dev_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	my_dev_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	my_dev_lbl.add_theme_font_size_override("font_size", 16)
+	my_dev_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
+	vbox.add_child(my_dev_lbl)
+	
+	var btn_vbox = VBoxContainer.new()
+	btn_vbox.add_theme_constant_override("separation", 15)
+	vbox.add_child(btn_vbox)
+	
+	# クラスの定義
+	var classes = [
+		{"id": "remedial", "name": "補習室", "desc": "ダウト警戒度が非常に低い初心者クラス。基本を学ぶのに最適。", "req": 0.0},
+		{"id": "regular", "name": "一般クラス", "desc": "通常の強さのCPUと対戦する標準クラス。推奨偏差値：50以上", "req": 50.0},
+		{"id": "advanced", "name": "特進クラス", "desc": "CPUが期待値計算で的確にダウトを撃つ高難易度クラス。推奨偏差値：60以上", "req": 60.0}
+	]
+	
+	for cls in classes:
+		var btn = Button.new()
+		btn.custom_minimum_size = Vector2(660, 90)
+		Global.apply_white_button_style(btn)
+		
+		var unlocked = Global.deviation_value >= cls["req"]
+		
+		var inner = VBoxContainer.new()
+		inner.alignment = BoxContainer.ALIGNMENT_CENTER
+		inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn.add_child(inner)
+		
+		var btn_title = Label.new()
+		if unlocked:
+			btn_title.text = cls["name"]
+		else:
+			btn_title.text = "🔒 " + cls["name"] + " (必要偏差値: %.1f)" % cls["req"]
+		btn_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		btn_title.add_theme_font_override("font", DeskTheme.get_font())
+		btn_title.add_theme_font_size_override("font_size", 20)
+		btn_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK if unlocked else Color(DeskTheme.COLOR_INK, 0.4))
+		inner.add_child(btn_title)
+		
+		var btn_desc = Label.new()
+		btn_desc.text = cls["desc"]
+		btn_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		btn_desc.add_theme_font_override("font", DeskTheme.get_font())
+		btn_desc.add_theme_font_size_override("font_size", 12)
+		btn_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.5) if unlocked else Color(DeskTheme.COLOR_INK, 0.3))
+		inner.add_child(btn_desc)
+		
+		btn_vbox.add_child(btn)
+		
+		if not unlocked:
+			btn.disabled = true
+			btn.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		else:
+			btn.pressed.connect(func():
+				DeskTheme.animate_click(btn, Vector2.ONE, 0.08)
+				Global.selected_class = cls["id"]
+				
+				# 対戦相手の偏差値をクラスに合わせて調整
+				var dev_min = 35.0
+				var dev_max = 50.0
+				if cls["id"] == "regular":
+					dev_min = 48.0
+					dev_max = 58.0
+				elif cls["id"] == "advanced":
+					dev_min = 58.0
+					dev_max = 80.0
+				
+				Global.game_mode = Constants.MODE_NATIONAL
+				var pool = national_names_pool.duplicate()
+				pool.shuffle()
+				var cpu_pool_keys = AIManager.CPU_OPPONENTS.keys().duplicate()
+				cpu_pool_keys.shuffle()
+				
+				Global.opponent_profiles = {
+					"cpu_sato": {
+						"id": cpu_pool_keys[0],
+						"name": pool[0],
+						"deviation": clamp(randf_range(dev_min, dev_max), 35.0, 80.0)
+					},
+					"cpu_suzuki": {
+						"id": cpu_pool_keys[1],
+						"name": pool[1],
+						"deviation": clamp(randf_range(dev_min, dev_max), 35.0, 80.0)
+					},
+					"cpu_takahashi": {
+						"id": cpu_pool_keys[2],
+						"name": pool[2],
+						"deviation": clamp(randf_range(dev_min, dev_max), 35.0, 80.0)
+					}
+				}
+				Global.save_game()
+				
+				var timer = parent.get_tree().create_timer(0.2)
+				timer.timeout.connect(func():
+					diff_modal.queue_free()
+					if Global.player_name == "":
+						Global.change_scene_with_fade(parent.get_tree(), "res://Profile.tscn")
+					else:
+						Global.change_scene_with_fade(parent.get_tree(), "res://Main.tscn")
+				)
+			)
+			
+	# Back Button
+	var back_btn = Button.new()
+	back_btn.text = "戻る"
+	back_btn.custom_minimum_size = Vector2(160, 45)
+	back_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	back_btn.add_theme_font_override("font", DeskTheme.get_font())
+	back_btn.add_theme_font_size_override("font_size", 18)
+	Global.apply_white_button_style(back_btn)
+	vbox.add_child(back_btn)
+	
+	back_btn.pressed.connect(func():
+		DeskTheme.animate_click(back_btn, Vector2.ONE, 0.08)
+		diff_modal.queue_free()
+		ModeSelectionModal.create_and_show(parent, on_friend_match_pressed, national_names_pool)
+	)
+	
+	# Entrance animation
+	diff_modal.scale = Vector2.ZERO
+	if parent.get_tree() != null:
+		var tween = parent.get_tree().create_tween().bind_node(diff_modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_property(diff_modal, "scale", Vector2.ONE, 0.3)

@@ -58,6 +58,11 @@ const puppeteer = require('puppeteer');
     await page.mouse.click(576, 246);
     await new Promise(resolve => setTimeout(resolve, 3000));
 
+    // Click "一般クラス" (Regular Class difficulty)
+    console.log("Selecting Regular Class difficulty...");
+    await page.mouse.click(576, 278);
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
     // Click "これで記帳する" (Register name)
     console.log("Confirming profile name...");
     await page.mouse.click(576, 405);
@@ -67,58 +72,72 @@ const puppeteer = require('puppeteer');
 
     // Helper function to complete one study hour safely (0 draw and stop)
     const completeOneHour = async (hourNum) => {
-      console.log(`--- Starting Hour ${hourNum} ---`);
+      console.log(`  - Starting Hour ${hourNum} -`);
       // Click "休憩する" (Stop)
-      console.log("Clicking Stop (休憩する) button...");
+      console.log("    Clicking Stop (休憩する) button...");
       await page.mouse.click(858, 428);
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for result evaluation
+      await new Promise(resolve => setTimeout(resolve, 3500)); // Wait for result evaluation
     };
 
-    // Day 1 has 3 hours
-    await completeOneHour(1);
-    await page.screenshot({ path: 'screenshot_hour1_end.png' });
-    await completeOneHour(2);
-    await page.screenshot({ path: 'screenshot_hour2_end.png' });
-    await completeOneHour(3);
+    const playOneFullDay = async (dayNum) => {
+      console.log(`================ PLAYING DAY ${dayNum} ================`);
+      // 3 hours of chicken race
+      await completeOneHour(1);
+      await completeOneHour(2);
+      await completeOneHour(3);
+      
+      // Wait for Report Phase (auto-submits due to window.is_antigravity_test)
+      console.log("  Waiting for Report Phase auto-submit...");
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for auto-submit & transition
+      
+      // Now we should be in DailyLikesPhase (Timeline)
+      console.log("  In Daily Likes Phase (timeline)...");
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Optional: on Day 1, take screenshots and do one doubt
+      if (dayNum === 1) {
+        await page.screenshot({ path: 'screenshot_day1_likes.png' });
+        console.log("  Day 1 timeline screenshot saved.");
+        
+        console.log("  Clicking Inspect details (詳細確認) of first rival...");
+        await page.mouse.click(355, 240, { delay: 150 });
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        await page.screenshot({ path: 'screenshot_inspected.png' });
+        
+        console.log("  Clicking Doubt (ダウト！) button of first rival...");
+        await page.mouse.click(412, 240, { delay: 150 });
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        await page.screenshot({ path: 'screenshot_doubt_result.png' });
+      }
+      
+      // Click "明日の勉強へ進む" (Next Day / Show Results) button
+      console.log("  Clicking Next Day (明日の勉強へ進む) button...");
+      await page.mouse.click(1050, 680);
+      
+      // Wait for day transition / results transition
+      await new Promise(resolve => setTimeout(resolve, 5500));
+    };
+
+    // Play all 5 days
+    for (let day = 1; day <= 5; day++) {
+      await playOneFullDay(day);
+      await page.screenshot({ path: `screenshot_day${day}_end.png` });
+      console.log(`Saved screenshot_day${day}_end.png`);
+    }
+
+    // Now we should be in ResultScene.
+    console.log("================ WAITING FOR RESULT SCENE ================");
+    // Wait for the blackboard reveal animations to start
+    await new Promise(resolve => setTimeout(resolve, 8000));
     
-    // Now we should be in ReportPhase (Score declaration screen)
-    console.log("Waiting for Report Phase (score declaration)...");
-    await new Promise(resolve => setTimeout(resolve, 6000));
-    await page.screenshot({ path: 'screenshot_report_phase.png' });
+    // We can also click "結果へスキップ" to fast-track, 
+    // The skip button is at bottom right, coordinates roughly (1020, 600)
+    console.log("Clicking Skip to results (結果へスキップ)...");
+    await page.mouse.click(1020, 600);
+    await new Promise(resolve => setTimeout(resolve, 4000));
     
-    // Click "タイムラインに投稿" (Submit to timeline) button (try multiple coordinates around it with delay)
-    console.log("Clicking Submit to timeline (タイムラインに投稿) button...");
-    await page.mouse.click(576, 495, { delay: 200 });
-    await new Promise(resolve => setTimeout(resolve, 800));
-    await page.mouse.click(576, 515, { delay: 200 });
-    await new Promise(resolve => setTimeout(resolve, 800));
-    await page.mouse.click(576, 535, { delay: 200 });
-    await new Promise(resolve => setTimeout(resolve, 6000)); // wait for transition through transition phase
-
-    // Now we should be in DailyLikesPhase (Timeline)
-    await page.screenshot({ path: 'screenshot_day1_likes.png' });
-    console.log("Saved screenshot_day1_likes.png (Daily Likes Phase)");
-
-    // Click "詳細確認" (Inspect details of first rival)
-    console.log("Clicking Inspect details (詳細確認) of first rival...");
-    await page.mouse.click(355, 240, { delay: 150 });
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    await page.screenshot({ path: 'screenshot_inspected.png' });
-    console.log("Saved screenshot_inspected.png");
-
-    // Click "ダウト！" (Doubt first rival)
-    console.log("Clicking Doubt (ダウト！) button of first rival...");
-    await page.mouse.click(412, 240, { delay: 150 });
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    await page.screenshot({ path: 'screenshot_doubt_result.png' });
-    console.log("Saved screenshot_doubt_result.png");
-
-    // Click "明日の勉強へ進む" (Next Day)
-    console.log("Clicking Next Day (明日の勉強へ進む) button...");
-    await page.mouse.click(1050, 680);
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    await page.screenshot({ path: 'screenshot_day2_start.png' });
-    console.log("Saved screenshot_day2_start.png (Day 2 Started)");
+    await page.screenshot({ path: 'screenshot_final_results.png' });
+    console.log("Saved screenshot_final_results.png");
 
   } catch (e) {
     console.error("Error during test play:", e);

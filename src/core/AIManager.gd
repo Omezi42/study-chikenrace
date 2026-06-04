@@ -411,8 +411,15 @@ static func make_cpu_doubts(cpu_id: String, participants: Array[Dictionary]) -> 
 		TYPE_BLUFFER: threshold = 0.82
 		TYPE_HIGHROLLER: threshold = 0.50
 		
+	# Class difficulty doubt modifiers
+	var class_mod = 1.0
+	if Global:
+		match Global.selected_class:
+			"remedial": class_mod = 1.35 # Make CPU dumber/more naive
+			"advanced": class_mod = 0.75 # Make CPU much sharper
+			
 	# Apply ±15% fluctuation to suspect threshold (clamped)
-	threshold = clamp(threshold * randf_range(0.85, 1.15) / dev_doubt_mod, 0.1, 0.95)
+	threshold = clamp(threshold * randf_range(0.85, 1.15) * class_mod / dev_doubt_mod, 0.1, 0.95)
 		
 	# Sort participants by suspiciousness
 	var suspect_list = []

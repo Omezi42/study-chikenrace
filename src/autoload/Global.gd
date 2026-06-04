@@ -45,6 +45,7 @@ var current_season: int = 1                 # 1シーズン=2週間
 # Deviation Values (偏差値)
 var deviation_value: float = 50.0
 var max_deviation_value: float = 50.0
+var selected_class: String = "regular" # "remedial", "regular", "advanced"
 
 # Opponent profiles for the active match
 var opponent_profiles: Dictionary = {
@@ -122,7 +123,7 @@ func _ready() -> void:
 const SIMPLE_SAVE_FIELDS = [
 	"player_name", "player_title", "coins", "best_score", "play_count", 
 	"unlocked_items", "item_usage_counts", "unlocked_titles", 
-	"deviation_value", "max_deviation_value", "game_mode", 
+	"deviation_value", "max_deviation_value", "selected_class", "game_mode", 
 	"opponent_profiles", "bgm_volume", "se_volume", "is_muted",
 	"logged_in_user_id", "auth_token", "daily_current_day",
 	"daily_last_played_date", "daily_opponent_ghosts", "daily_my_records",
