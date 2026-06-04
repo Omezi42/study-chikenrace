@@ -179,6 +179,124 @@ func _ready() -> void:
 			)
 	)
 	add_child(profile_btn)
+	
+	# Title Background Stationery (Pencil & Eraser) with micro-interactions (Loop 16)
+	var pencil = Control.new()
+	pencil.custom_minimum_size = Vector2(40, 240)
+	pencil.size = Vector2(40, 240)
+	pencil.position = Vector2(180, 480)
+	pencil.rotation_degrees = 35.0
+	pencil.pivot_offset = Vector2(20, 120)
+	add_child(pencil)
+	
+	var p_body = PanelContainer.new()
+	p_body.custom_minimum_size = Vector2(20, 180)
+	p_body.size = Vector2(20, 180)
+	p_body.position = Vector2(10, 0)
+	var p_body_style = StyleBoxFlat.new()
+	p_body_style.bg_color = Color("ffca28") # Yellow pencil body
+	p_body_style.border_color = DeskTheme.COLOR_INK
+	p_body_style.border_width_left = 2
+	p_body_style.border_width_right = 2
+	p_body_style.border_width_top = 2
+	p_body_style.border_width_bottom = 2
+	p_body_style.corner_radius_top_left = 2
+	p_body_style.corner_radius_top_right = 2
+	p_body.add_theme_stylebox_override("panel", p_body_style)
+	pencil.add_child(p_body)
+	
+	var p_tip = PanelContainer.new()
+	p_tip.custom_minimum_size = Vector2(20, 25)
+	p_tip.size = Vector2(20, 25)
+	p_tip.position = Vector2(10, 180)
+	var p_tip_style = StyleBoxFlat.new()
+	p_tip_style.bg_color = Color("ffe082") # Wood tip
+	p_tip_style.border_color = DeskTheme.COLOR_INK
+	p_tip_style.border_width_left = 2
+	p_tip_style.border_width_right = 2
+	p_tip_style.border_width_bottom = 2
+	p_tip_style.corner_radius_bottom_left = 10
+	p_tip_style.corner_radius_bottom_right = 10
+	p_tip.add_theme_stylebox_override("panel", p_tip_style)
+	pencil.add_child(p_tip)
+	
+	var p_lead = ColorRect.new()
+	p_lead.color = DeskTheme.COLOR_INK
+	p_lead.custom_minimum_size = Vector2(6, 6)
+	p_lead.size = Vector2(6, 6)
+	p_lead.position = Vector2(10 - 3, 25 - 6)
+	p_tip.add_child(p_lead)
+	
+	# Eraser Setup
+	var eraser = Control.new()
+	eraser.custom_minimum_size = Vector2(100, 60)
+	eraser.size = Vector2(100, 60)
+	eraser.position = Vector2(1280, 530)
+	eraser.rotation_degrees = -15.0
+	eraser.pivot_offset = Vector2(50, 30)
+	add_child(eraser)
+	
+	var e_body = PanelContainer.new()
+	e_body.custom_minimum_size = Vector2(85, 45)
+	e_body.size = Vector2(85, 45)
+	e_body.position = Vector2(7, 7)
+	var e_body_style = StyleBoxFlat.new()
+	e_body_style.bg_color = Color.WHITE
+	e_body_style.border_color = DeskTheme.COLOR_INK
+	e_body_style.border_width_left = 2
+	e_body_style.border_width_right = 2
+	e_body_style.border_width_top = 2
+	e_body_style.border_width_bottom = 2
+	e_body_style.corner_radius_top_left = 4
+	e_body_style.corner_radius_top_right = 4
+	e_body_style.corner_radius_bottom_left = 4
+	e_body_style.corner_radius_bottom_right = 4
+	e_body.add_theme_stylebox_override("panel", e_body_style)
+	eraser.add_child(e_body)
+	
+	var e_sleeve = PanelContainer.new()
+	e_sleeve.custom_minimum_size = Vector2(50, 45)
+	e_sleeve.size = Vector2(50, 45)
+	e_sleeve.position = Vector2(35, 7) # Covers the right half
+	var e_sleeve_style = StyleBoxFlat.new()
+	e_sleeve_style.bg_color = Color("1565c0") # Blue sleeve
+	e_sleeve_style.border_color = DeskTheme.COLOR_INK
+	e_sleeve_style.border_width_left = 2
+	e_sleeve_style.border_width_right = 2
+	e_sleeve_style.border_width_top = 2
+	e_sleeve_style.border_width_bottom = 2
+	e_sleeve_style.corner_radius_top_right = 4
+	e_sleeve_style.corner_radius_bottom_right = 4
+	e_sleeve.add_theme_stylebox_override("panel", e_sleeve_style)
+	eraser.add_child(e_sleeve)
+	
+	# Setup micro-interactions (jitter rot animation on hover)
+	var setup_stationery_hover = func(ctrl: Control, base_rot: float):
+		ctrl.mouse_filter = Control.MOUSE_FILTER_STOP
+		var active_tween: Tween = null
+		
+		ctrl.mouse_entered.connect(func():
+			if active_tween:
+				active_tween.kill()
+			active_tween = ctrl.create_tween().set_loops().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			active_tween.tween_property(ctrl, "rotation_degrees", base_rot + 3.0, 0.05)
+			active_tween.tween_property(ctrl, "rotation_degrees", base_rot - 3.0, 0.05)
+			
+			if has_node("/root/AudioManager"):
+				get_node("/root/AudioManager").play_se(AudioManager.SE_CLICK)
+		)
+		
+		ctrl.mouse_exited.connect(func():
+			if active_tween:
+				active_tween.kill()
+				active_tween = null
+			var reset_tween = ctrl.create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			reset_tween.tween_property(ctrl, "rotation_degrees", base_rot, 0.15)
+		)
+		
+	setup_stationery_hover.call(pencil, 35.0)
+	setup_stationery_hover.call(eraser, -15.0)
+	
 	_reflow_profile_button()
 	
 	if has_node("/root/BackendManager"):
