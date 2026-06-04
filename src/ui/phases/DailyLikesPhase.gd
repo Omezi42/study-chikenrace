@@ -6,6 +6,9 @@ var phone_panel: PanelContainer
 var timeline_list: VBoxContainer
 var next_day_btn: Button
 var remaining_doubts_label: Label
+var scroll_container: ScrollContainer
+var target_scroll_y: float = 0.0
+var scroll_tween: Tween
 
 # Detail Inspection Modal
 var detail_modal: PanelContainer
@@ -67,8 +70,10 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	phone_vbox.add_child(status_bar)
 	
 	var scroll = ScrollContainer.new()
+	scroll_container = scroll
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.gui_input.connect(_on_scroll_input)
 	phone_vbox.add_child(scroll)
 	
 	timeline_list = VBoxContainer.new()
@@ -215,8 +220,8 @@ func populate_timeline() -> void:
 		
 		# Timeline Post Card
 		var card = PanelContainer.new()
-		card.custom_minimum_size = Vector2(480, 130)
-		card.pivot_offset = Vector2(240, 65)
+		card.custom_minimum_size = Vector2(480, 185)
+		card.pivot_offset = Vector2(240, 92)
 		
 		# Rank border styling
 		var card_style = StyleBoxFlat.new()
@@ -241,7 +246,27 @@ func populate_timeline() -> void:
 			card_style.border_color = Color("37474f")
 			
 		card.add_theme_stylebox_override("panel", card_style)
+		card.clip_contents = true
+		
+		# Set initial state for animate-in (Loop 19)
+		card.modulate.a = 0.0
+		var target_height = 185.0
+		card.custom_minimum_size = Vector2(480, 0)
+		
 		timeline_list.add_child(card)
+		
+		var tween = card.create_tween().set_parallel(true)
+		var delay = idx * 0.12
+		
+		tween.tween_property(card, "custom_minimum_size:y", target_height, 0.35)\
+			.set_trans(Tween.TRANS_CUBIC)\
+			.set_ease(Tween.EASE_OUT)\
+			.set_delay(delay)
+			
+		tween.tween_property(card, "modulate:a", 1.0, 0.28)\
+			.set_trans(Tween.TRANS_QUAD)\
+			.set_ease(Tween.EASE_OUT)\
+			.set_delay(delay)
 		
 		var card_margin = MarginContainer.new()
 		card_margin.add_theme_constant_override("margin_left", 12)
@@ -283,6 +308,35 @@ func populate_timeline() -> void:
 		decl_lbl.add_theme_font_size_override("font_size", 18)
 		decl_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.8))
 		text_vbox.add_child(decl_lbl)
+		
+		# Comment bubble (Loop 18)
+		var comment_panel = PanelContainer.new()
+		comment_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var comment_style = StyleBoxFlat.new()
+		comment_style.bg_color = Color(DeskTheme.COLOR_MAHOGANY, 0.06)
+		comment_style.corner_radius_top_left = 12
+		comment_style.corner_radius_top_right = 12
+		comment_style.corner_radius_bottom_left = 2 # asymmetrical bubble look
+		comment_style.corner_radius_bottom_right = 12
+		comment_style.content_margin_left = 10
+		comment_style.content_margin_right = 10
+		comment_style.content_margin_top = 6
+		comment_style.content_margin_bottom = 6
+		comment_panel.add_theme_stylebox_override("panel", comment_style)
+		
+		var comment_lbl = Label.new()
+		var actual_profile_id = p["id"]
+		if p["id"] != "player" and Global.opponent_profiles.has(p["id"]):
+			actual_profile_id = Global.opponent_profiles[p["id"]].get("id", p["id"])
+		var comment_text = AIManager.generate_character_comment(actual_profile_id, p["declared_score"], p["actual_score"], p["hours"])
+		
+		comment_lbl.text = "「" + comment_text + "」"
+		comment_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		comment_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		comment_lbl.add_theme_font_size_override("font_size", 15)
+		comment_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.95))
+		comment_panel.add_child(comment_lbl)
+		text_vbox.add_child(comment_panel)
 		
 		# Post actions HBox
 		var act_hbox = HBoxContainer.new()
@@ -578,3 +632,25 @@ func _on_connection_lost() -> void:
 		return
 	next_day_btn.disabled = true
 	ConnectionErrorModal.create_and_show(self)
+
+func _on_scroll_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+			target_scroll_y = max(target_scroll_y - 80, 0)
+			_animate_scroll()
+			accept_event()
+		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+			var max_scroll = max(0, timeline_list.size.y - scroll_container.size.y)
+			target_scroll_y = min(target_scroll_y + 80, max_scroll)
+			_animate_scroll()
+			accept_event()
+
+func _animate_scroll() -> void:
+	if not is_instance_valid(scroll_container) or not is_inside_tree():
+		return
+	if is_instance_valid(scroll_tween):
+		scroll_tween.kill()
+	scroll_tween = create_tween()
+	scroll_tween.tween_property(scroll_container, "scroll_vertical", int(target_scroll_y), 0.25)\
+		.set_trans(Tween.TRANS_CUBIC)\
+		.set_ease(Tween.EASE_OUT)
