@@ -640,15 +640,66 @@ func reveal_gacha_result() -> void:
 	card_slot.add_theme_stylebox_override("panel", card_style)
 	card_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	
+	# Clean up previous stamp (Loop 15)
+	if card_slot.has_node("EraserStamp"):
+		card_slot.get_node("EraserStamp").queue_free()
+		
 	# Bounce zoom card pop entry
 	card_slot.scale = Vector2(0.1, 0.1)
 	var tween = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(card_slot, "scale", Vector2.ONE, 0.35)
 	
+	# Create eraser stamp node (Loop 15)
+	var stamp = PanelContainer.new()
+	stamp.name = "EraserStamp"
+	stamp.custom_minimum_size = Vector2(125, 55)
+	stamp.size = Vector2(125, 55)
+	card_slot.add_child(stamp)
+	
+	stamp.pivot_offset = Vector2(62.5, 27.5)
+	stamp.position = Vector2(120 - 62.5, 160 - 27.5) # Center of the card slot
+	stamp.rotation_degrees = -20.0
+	
+	var stamp_style = StyleBoxFlat.new()
+	stamp_style.bg_color = Color(1.0, 0.9, 0.9, 0.0) # Transparent background
+	stamp_style.border_color = Color("c62828") # Red stamp ink
+	stamp_style.border_width_left = 3
+	stamp_style.border_width_right = 3
+	stamp_style.border_width_top = 3
+	stamp_style.border_width_bottom = 3
+	stamp_style.corner_radius_top_left = 4
+	stamp_style.corner_radius_top_right = 4
+	stamp_style.corner_radius_bottom_left = 4
+	stamp_style.corner_radius_bottom_right = 4
+	stamp.add_theme_stylebox_override("panel", stamp_style)
+	
+	var stamp_lbl = Label.new()
+	stamp_lbl.text = "新 解 放" if is_new else "獲 得 済"
+	stamp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stamp_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	stamp_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	stamp_lbl.add_theme_font_size_override("font_size", 18)
+	stamp_lbl.add_theme_color_override("font_color", Color("c62828"))
+	stamp.add_child(stamp_lbl)
+	
+	stamp.scale = Vector2(3.0, 3.0)
+	stamp.modulate.a = 0.0
+	
+	# Delay stamp animation until card slot finishes pop entry
+	var s_tween = create_tween()
+	s_tween.tween_interval(0.35)
+	s_tween.parallel().tween_property(stamp, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	s_tween.parallel().tween_property(stamp, "modulate:a", 1.0, 0.15)
+	s_tween.tween_callback(func():
+		if has_node("/root/AudioManager"):
+			get_node("/root/AudioManager").play_se(AudioManager.SE_PLACE)
+		DeskTheme.shake_control(card_slot, 6.0, 0.15)
+	)
+	
 	# Confetti burst
 	particles.emitting = true
 	
-	var timer = get_tree().create_timer(0.4)
+	var timer = get_tree().create_timer(0.6)
 	timer.timeout.connect(func():
 		is_pulling = false
 		update_coins_ui()
