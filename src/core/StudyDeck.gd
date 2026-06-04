@@ -275,7 +275,19 @@ func peek_cards(count: int) -> Array[Dictionary]:
 func activate_memo_cards(hand_idx: int) -> bool:
 	if hand.size() > 0 and draw_pile.size() > 0 and hand_idx >= 0 and hand_idx < hand.size():
 		var hand_card = hand[hand_idx]
-		var deck_card = draw_pile.pop_back()
+		var deck_card_raw = draw_pile.pop_back()
+		
+		var deck_card = deck_card_raw.duplicate()
+		# Apply Mech Pencil (シャーペン) points bonus (+3 points to next drawn cards)
+		if next_draw_bonus_points > 0:
+			deck_card["bonus_points"] = 3
+			next_draw_bonus_points -= 1
+		else:
+			deck_card["bonus_points"] = 0
+			
+		if deck_card.get("item_id", "") == "item_amulet":
+			amulet_active = true
+			
 		hand[hand_idx] = deck_card
 		draw_pile.append(hand_card)
 		return true
@@ -334,28 +346,69 @@ func activate_thick_book() -> void:
 func activate_night_note() -> void:
 	if hand.size() > 0:
 		var rand_card = hand[randi() % hand.size()]
-		var dup_card = rand_card.duplicate()
+		var dup_card = {
+			"value": rand_card["value"],
+			"item_id": rand_card.get("item_id", ""),
+			"name": rand_card.get("name", "")
+		}
 		draw_pile.append(dup_card)
 		shuffle_draw_pile()
 
 func activate_cafe_latte() -> Dictionary:
 	if draw_pile.size() == 0 and discard_pile.size() == 0:
 		return {}
-	var card = draw_pile.pop_back()
-	var attempts = 0
-	while would_card_burst(card) and attempts < 10:
-		discard_pile.append(card)
-		if draw_pile.size() == 0:
-			if discard_pile.size() > 0:
-				draw_pile = discard_pile.duplicate()
-				discard_pile.clear()
-				shuffle_draw_pile()
-			else:
+		
+	var hand_values = []
+	for c in hand:
+		hand_values.append(c["value"])
+		
+	var safe_card_index_in_draw = -1
+	for i in range(draw_pile.size()):
+		if not draw_pile[i]["value"] in hand_values:
+			safe_card_index_in_draw = i
+			break
+			
+	# If not found in draw pile, check if we can recycle discard pile to find one
+	if safe_card_index_in_draw == -1:
+		var safe_in_discard = false
+		for c in discard_pile:
+			if not c["value"] in hand_values:
+				safe_in_discard = true
 				break
-		card = draw_pile.pop_back()
-		attempts += 1
-	hand.append(card)
-	return card
+		if safe_in_discard:
+			# Recycle discard pile and shuffle
+			draw_pile.append_array(discard_pile.duplicate())
+			discard_pile.clear()
+			shuffle_draw_pile()
+			# Re-scan draw pile
+			for i in range(draw_pile.size()):
+				if not draw_pile[i]["value"] in hand_values:
+					safe_card_index_in_draw = i
+					break
+					
+	# If still no safe card exists, return empty dictionary
+	if safe_card_index_in_draw == -1:
+		return {}
+		
+	# Extract the safe card
+	var card = draw_pile[safe_card_index_in_draw]
+	draw_pile.remove_at(safe_card_index_in_draw)
+	
+	var card_clone = card.duplicate()
+	
+	# Apply Mech Pencil (シャーペン) points bonus (+3 points to next drawn cards)
+	if next_draw_bonus_points > 0:
+		card_clone["bonus_points"] = 3
+		next_draw_bonus_points -= 1
+	else:
+		card_clone["bonus_points"] = 0
+		
+	if card_clone.get("item_id", "") == "item_amulet":
+		amulet_active = true
+		
+	# Add to hand
+	hand.append(card_clone)
+	return card_clone
 
 # Forget Notebook: Discard the lowest value card in the hand to discard pile.
 func activate_forget_notebook() -> int:

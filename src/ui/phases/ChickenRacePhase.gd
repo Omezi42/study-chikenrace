@@ -522,15 +522,17 @@ func apply_deck_startup_items() -> void:
 	for slot_idx in Global.current_deck.keys():
 		var item = Global.current_deck[slot_idx]
 		if item == "item_eraser" and (Global.is_tutorial_mode or randf() < 0.5):
-			session.player_deck.eraser_charges = 1
+			session.player_deck.eraser_charges += 1
 			if not "item_eraser" in active_used_items:
 				active_used_items.append("item_eraser")
 		elif item == "item_red_sheet" and randf() < 0.3:
 			session.player_deck.red_sheet_active = true
-			active_used_items.append("item_red_sheet")
+			if not "item_red_sheet" in active_used_items:
+				active_used_items.append("item_red_sheet")
 		elif item == "item_mech_pencil" and randf() < 0.4:
-			session.player_deck.next_draw_bonus_points = 2
-			active_used_items.append("item_mech_pencil")
+			session.player_deck.next_draw_bonus_points += 2
+			if not "item_mech_pencil" in active_used_items:
+				active_used_items.append("item_mech_pencil")
 
 func update_ui() -> void:
 	if header_left:
@@ -690,8 +692,16 @@ func _on_draw_pressed() -> void:
 			if is_selecting_card:
 				return
 				
-			# Check burst
-			if session.player_deck.check_burst():
+			# Check burst (including energy drink side effect)
+			var is_energy_burst = false
+			if session.player_deck.energy_drink_active and session.player_deck.hand.size() > 1:
+				if randf() < 0.25:
+					is_energy_burst = true
+					
+			if is_energy_burst:
+				DeskTheme.show_toast(self, "エナジードリンクの副作用！睡魔に耐えきれず寝落ちした！")
+				trigger_burst_sequence()
+			elif session.player_deck.check_burst():
 				trigger_burst_sequence()
 			else:
 				update_ui()

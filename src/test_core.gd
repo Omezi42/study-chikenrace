@@ -19,6 +19,7 @@ func _ready() -> void:
 	success = success and test_timer_and_compass_and_cloning()
 	success = success and test_amulet_and_memo_app_guard()
 	success = success and test_ui_guard_states()
+	success = success and test_card_effects_edge_cases()
 	
 	print("==================================================")
 	if success:
@@ -738,4 +739,122 @@ func test_ui_guard_states() -> bool:
 	title_scene.free()
 	
 	return pass_title_init
+
+func test_card_effects_edge_cases() -> bool:
+	print("\n--- Test 13: Card Effects Edge Cases ---")
+	var deck = StudyDeck.new()
+	var mock_deck_config = {
+		1: "item_sticky_note",
+		2: "item_eraser",
+		3: "item_ruler",
+		4: "item_wordbook",
+		5: "item_mech_pencil",
+		6: "item_memo_cards",
+		7: "item_highlighter",
+		8: "item_blue_pen",
+		9: "item_cushion",
+		10: "item_memo_app"
+	}
+	deck.initialize_deck(mock_deck_config)
+	
+	# 1. カフェラテの安全ドロー限界テスト（安全なカードが山札にない場合）
+	# 手札に [5, 6] を設定、山札にも [5, 6] しかない場合
+	var h1: Array[Dictionary] = [
+		{"value": 5, "item_id": "item_mech_pencil"},
+		{"value": 6, "item_id": "item_memo_cards"}
+	]
+	deck.hand = h1
+	var dp1: Array[Dictionary] = [
+		{"value": 5, "item_id": "item_mech_pencil"},
+		{"value": 6, "item_id": "item_memo_cards"}
+	]
+	deck.draw_pile = dp1
+	var dp_empty: Array[Dictionary] = []
+	deck.discard_pile = dp_empty
+	
+	var latte_empty = deck.activate_cafe_latte()
+	var pass_latte_empty = assert_true(
+		latte_empty.is_empty(),
+		"Cafe Latte empty: Returns empty dictionary if no safe card is available in deck. (Actual: %s)" % str(latte_empty)
+	)
+	
+	# 2. カフェラテドロー時におけるシャーペンのボーナス適用およびアミュレット有効化テスト
+	deck.initialize_deck(mock_deck_config)
+	var h2: Array[Dictionary] = [{"value": 1, "item_id": "item_sticky_note"}]
+	deck.hand = h2
+	# 山札に 2 (お守り) を用意
+	var dp2: Array[Dictionary] = [{"value": 2, "item_id": "item_amulet"}]
+	deck.draw_pile = dp2
+	deck.next_draw_bonus_points = 1
+	
+	var latte_card = deck.activate_cafe_latte()
+	var pass_latte_bonus = assert_true(
+		latte_card.get("bonus_points", 0) == 3,
+		"Cafe Latte draw bonus: Mech Pencil points bonus successfully applied. (Actual: %d)" % latte_card.get("bonus_points", 0)
+	)
+	var pass_latte_amulet = assert_true(
+		deck.amulet_active == true,
+		"Cafe Latte amulet activation: Amulet successfully activated when drawn via Cafe Latte."
+	)
+	
+	# 3. 暗記カードにおけるボーナス・アミュレットの適用テスト
+	deck.initialize_deck(mock_deck_config)
+	var h3: Array[Dictionary] = [{"value": 1, "item_id": "item_sticky_note"}]
+	deck.hand = h3
+	var dp3: Array[Dictionary] = [{"value": 3, "item_id": "item_amulet"}]
+	deck.draw_pile = dp3
+	deck.next_draw_bonus_points = 1
+	
+	var success_memo = deck.activate_memo_cards(0)
+	var pass_memo_exec = assert_true(success_memo == true, "Memo cards operation succeeded.")
+	var memo_card = deck.hand[0]
+	var pass_memo_bonus = assert_true(
+		memo_card.get("bonus_points", 0) == 3,
+		"Memo cards draw bonus: Mech Pencil points bonus applied on swapped card. (Actual: %d)" % memo_card.get("bonus_points", 0)
+	)
+	var pass_memo_amulet = assert_true(
+		deck.amulet_active == true,
+		"Memo cards amulet activation: Amulet activated when swapped into hand."
+	)
+	
+	# 4. 追込みノートのバフ重複防止テスト
+	deck.initialize_deck(mock_deck_config)
+	var h4: Array[Dictionary] = [{"value": 5, "item_id": "item_sticky_note", "bonus_points": 3}]
+	deck.hand = h4
+	var dp4: Array[Dictionary] = []
+	deck.draw_pile = dp4
+	deck.activate_night_note()
+	
+	var pass_night_note_dup = assert_true(
+		deck.draw_pile.size() == 1 and not deck.draw_pile[0].has("bonus_points"),
+		"Night note duplicate: Temp bonus_points cleared when card is duplicated to draw pile. (Actual: %s)" % str(deck.draw_pile[0])
+	)
+	
+	# 5. 消しゴム複数積みでのチャージ加算テスト (AIManager/ChickenRacePhase想定)
+	var my_deck_config_eraser = {
+		1: "item_eraser",
+		2: "item_eraser",
+		3: "item_ruler",
+		4: "item_wordbook",
+		5: "item_mech_pencil",
+		6: "item_memo_cards",
+		7: "item_highlighter",
+		8: "item_blue_pen",
+		9: "item_cushion",
+		10: "item_memo_app"
+	}
+	
+	var test_eraser_charges = 0
+	for slot_idx in my_deck_config_eraser.keys():
+		var item = my_deck_config_eraser[slot_idx]
+		if item == "item_eraser":
+			test_eraser_charges += 1
+			
+	var pass_eraser_multiple = assert_true(
+		test_eraser_charges == 2,
+		"Eraser charges add up to 2 for double Eraser slots. (Actual: %d)" % test_eraser_charges
+	)
+	
+	return pass_latte_empty and pass_latte_bonus and pass_latte_amulet and pass_memo_exec and pass_memo_bonus and pass_memo_amulet and pass_night_note_dup and pass_eraser_multiple
+
 

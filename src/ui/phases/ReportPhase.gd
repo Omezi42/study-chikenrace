@@ -225,8 +225,14 @@ func _on_setup(setup_data: Dictionary) -> void:
 			"チキスタ投稿フェーズです！\n\n一日の終わりに勉強成果を勉強SNS『チキスタ』に投稿します。実際より高い点数を申告してブラフ（嘘）をつくこともできます！\n\nスライダーを少し右に動かして、実点（%d点）より高い点数を申告してみましょう！" % actual_score,
 		)
 		
-	# Automated test fallback: auto-submit after 1.2s to bypass coordinates issues
-	if Global.player_name == "" or Global.player_name == "あなた":
+	# Automated test fallback: auto-submit after 1.2s to bypass coordinates issues in Puppeteer tests
+	var is_test = false
+	if OS.has_feature("web"):
+		var js_window = JavaScriptBridge.get_interface("window")
+		if js_window and js_window.has("is_antigravity_test"):
+			is_test = js_window.is_antigravity_test
+			
+	if is_test:
 		var t = get_tree().create_timer(1.2)
 		t.timeout.connect(func():
 			if is_instance_valid(self) and is_inside_tree() and submit_btn and not submit_btn.disabled:

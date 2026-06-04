@@ -39,6 +39,10 @@ const puppeteer = require('puppeteer');
     console.log("Reloading clean page...");
     await page.goto('http://127.0.0.1:8000', { waitUntil: 'load', timeout: 90000 });
     
+    await page.evaluate(() => {
+      window.is_antigravity_test = true;
+    });
+    
     console.log("Waiting 6 seconds (initial title screen)...");
     await new Promise(resolve => setTimeout(resolve, 6000));
     await page.screenshot({ path: 'screenshot_title.png' });

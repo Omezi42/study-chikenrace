@@ -10,7 +10,7 @@ class ItemEffect extends RefCounted:
 # 1. 付箋
 class StickyNoteEffect extends ItemEffect:
 	func execute(phase: Control, deck: StudyDeck, card: Dictionary) -> void:
-		deck.next_draw_bonus_points = 1
+		deck.next_draw_bonus_points += 1
 		DeskTheme.show_toast(phase, "付箋の効果！次に引く1枚の得点＋3点！")
 
 # 2. 消しゴム
@@ -38,7 +38,7 @@ class WordbookEffect extends ItemEffect:
 # 5. シャーペン
 class MechPencilEffect extends ItemEffect:
 	func execute(phase: Control, deck: StudyDeck, card: Dictionary) -> void:
-		deck.next_draw_bonus_points = 2
+		deck.next_draw_bonus_points += 2
 		DeskTheme.show_toast(phase, "シャーペンの効果！次に引く2枚の得点＋3点！")
 
 # 6. 暗記カード
@@ -166,8 +166,8 @@ class StudyChatEffect extends ItemEffect:
 # 21. 予想問題集
 class ExpectedQuestionsEffect extends ItemEffect:
 	func execute(phase: Control, deck: StudyDeck, card: Dictionary) -> void:
-		deck.next_draw_bonus_points = 3
-		DeskTheme.show_toast(phase, "予想問題集の効果！次に引く3枚の得点＋3点！")
+		deck.next_draw_bonus_points += 3
+		DeskTheme.show_toast(phase, "予想問題集の効果！次に引く3枚 of 得点＋3点！")
 
 # 22. カフェラテ
 class CafeLatteEffect extends ItemEffect:
@@ -203,6 +203,8 @@ class ForgetNotebookEffect extends ItemEffect:
 		var val = deck.activate_forget_notebook()
 		if val > 0:
 			DeskTheme.show_toast(phase, "忘却のノートの効果！不要なカード（%d点）を手札から捨てた！" % val)
+			if phase.has_method("repopulate_hand_visuals"):
+				phase.repopulate_hand_visuals()
 		else:
 			DeskTheme.show_toast(phase, "忘却のノートの効果！手札からカードを捨てた！")
 
