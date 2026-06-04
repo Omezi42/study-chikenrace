@@ -1,10 +1,10 @@
 {
-  "current_loop": 11,
-  "last_commit": "adf3bec",
+  "current_loop": 12,
+  "last_commit": "5cb67fa",
   "scores": {
     "mechanics": 22,
     "cpu_ai": 15,
-    "ui_ux": 22,
+    "ui_ux": 23,
     "balance": 14,
     "robustness": 10,
     "retention": 8
@@ -62,8 +62,13 @@
     },
     {
       "loop": 11,
-      "commit": "adf3bec",
+      "commit": "16b2ca2",
       "description": "チキンレース画面の右ページ右上に付箋風の山札枚数表示UIを追加。山札が残り3枚以下になった際に背景が淡い赤色に変化し「残少!!」と警告する手書き風のエフェクトを実装。"
+    },
+    {
+      "loop": 12,
+      "commit": "5cb67fa",
+      "description": "学末最終成績通知表（ResultScene）での獲得コイン表示において、0から合計獲得数まで1.2秒かけてカタカタと音を立てながら数値が増えていく「コインロールアップ演出」を追加し、結果開示のジュース感を強化。"
     }
   ]
 }

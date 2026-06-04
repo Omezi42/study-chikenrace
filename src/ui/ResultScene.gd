@@ -660,13 +660,50 @@ func trigger_report_card() -> void:
 	var star_text = ""
 	if star_bonus_val > 0:
 		star_text = "\n・★アイテム育成ボーナス：+" + str(star_bonus_val) + "点"
-	breakdown.text = "・レベルボーナス：+" + str(showdown_data["level_bonus"]) + "点" + star_text + "\n" + \
-					"・獲得したコイン：+" + str(showdown_data["coins_earned"]) + "枚\n" + \
-					"・完全犯罪ボーナス：+" + str(showdown_data["perfect_bonus"]) + "枚"
+	breakdown.text = "・レベルボーナス：+" + str(showdown_data["level_bonus"]) + "点" + star_text
 	breakdown.add_theme_font_override("font", DeskTheme.get_font())
 	breakdown.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	breakdown.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.75))
 	report_left_page.add_child(breakdown)
+	
+	# Coin earning rollup section (Loop 12)
+	var coin_hbox = HBoxContainer.new()
+	coin_hbox.alignment = BoxContainer.ALIGNMENT_BEGIN
+	coin_hbox.add_theme_constant_override("separation", 2)
+	report_left_page.add_child(coin_hbox)
+	
+	var coin_icon = Label.new()
+	coin_icon.text = "・獲得したコイン："
+	coin_icon.add_theme_font_override("font", DeskTheme.get_font())
+	coin_icon.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
+	coin_icon.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.75))
+	coin_hbox.add_child(coin_icon)
+	
+	var coin_val_lbl = Label.new()
+	coin_val_lbl.text = "+0枚"
+	coin_val_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	coin_val_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
+	coin_val_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
+	coin_hbox.add_child(coin_val_lbl)
+	
+	var target_coins = showdown_data["coins_earned"] + showdown_data["perfect_bonus"]
+	if target_coins > 0:
+		var tween = create_tween()
+		var update_coin_func = func(current_val: int):
+			if is_instance_valid(coin_val_lbl):
+				coin_val_lbl.text = "+" + str(current_val) + "枚"
+				if showdown_data["perfect_bonus"] > 0:
+					coin_val_lbl.text += " (内 完全犯罪ボーナス: +%d枚)" % showdown_data["perfect_bonus"]
+				
+				var prev_val = coin_val_lbl.get_meta("last_val", 0)
+				if current_val != prev_val:
+					coin_val_lbl.set_meta("last_val", current_val)
+					if has_node("/root/AudioManager"):
+						get_node("/root/AudioManager").play_se(AudioManager.SE_CLICK)
+						
+		tween.tween_method(update_coin_func, 0, target_coins, 1.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	else:
+		coin_val_lbl.text = "+0枚"
 	
 	# 称号スタンプ風UI & アニメーション演出
 	var title_container = VBoxContainer.new()
