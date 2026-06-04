@@ -865,6 +865,9 @@ func trigger_burst_sequence() -> void:
 	burst_prob_label.text = "寝落ちしました！(バースト)"
 	actual_score_label.text = "0点"
 	
+	# 落書き「Zzz...」エフェクトの追加 (Loop 13)
+	_spawn_zzz_scribbles()
+	
 	var timer = get_tree().create_timer(1.2)
 	timer.timeout.connect(func():
 		var has_amulet = false
@@ -882,6 +885,42 @@ func trigger_burst_sequence() -> void:
 		
 		finish_hour_and_transition(final_score, true)
 	)
+
+func _spawn_zzz_scribbles() -> void:
+	# Spawn animated Zzz labels on burst (Loop 13)
+	var zzz_texts = ["Zzz...", "Zzz", "Zzz...!?"]
+	var base_positions = [
+		Vector2(200, 180),
+		Vector2(320, 120),
+		Vector2(150, 80)
+	]
+	var scales = [1.0, 1.4, 1.2]
+	var rotations = [-12.0, 8.0, -5.0]
+	
+	for i in range(zzz_texts.size()):
+		var delay = i * 0.25
+		var z_lbl = Label.new()
+		z_lbl.text = zzz_texts[i]
+		z_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		z_lbl.add_theme_font_size_override("font_size", 42)
+		z_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+		z_lbl.rotation_degrees = rotations[i]
+		z_lbl.pivot_offset = Vector2(50, 20)
+		z_lbl.scale = Vector2.ZERO
+		
+		if is_instance_valid(hand_container):
+			hand_container.add_child(z_lbl)
+			z_lbl.position = base_positions[i]
+			
+			var tween = create_tween()
+			tween.tween_interval(delay)
+			tween.tween_property(z_lbl, "scale", Vector2(scales[i], scales[i]), 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			
+			var target_y = z_lbl.position.y - 45.0
+			tween.parallel().tween_property(z_lbl, "position:y", target_y, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			
+			tween.tween_property(z_lbl, "modulate:a", 0.0, 0.4)
+			tween.tween_callback(z_lbl.queue_free)
 
 func _on_stop_pressed() -> void:
 	if is_animating or has_bursted:

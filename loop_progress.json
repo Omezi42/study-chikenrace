@@ -1,10 +1,10 @@
 {
-  "current_loop": 12,
-  "last_commit": "5cb67fa",
+  "current_loop": 13,
+  "last_commit": "fab333b",
   "scores": {
     "mechanics": 22,
     "cpu_ai": 15,
-    "ui_ux": 23,
+    "ui_ux": 24,
     "balance": 14,
     "robustness": 10,
     "retention": 8
@@ -67,8 +67,13 @@
     },
     {
       "loop": 12,
-      "commit": "5cb67fa",
+      "commit": "e7fdd13",
       "description": "学末最終成績通知表（ResultScene）での獲得コイン表示において、0から合計獲得数まで1.2秒かけてカタカタと音を立てながら数値が増えていく「コインロールアップ演出」を追加し、結果開示のジュース感を強化。"
+    },
+    {
+      "loop": 13,
+      "commit": "fab333b",
+      "description": "チキンレースでのバースト（寝落ち）発生時、手札の上にシャーペンで殴り書きされたような「Zzz...」「Zzz」「Zzz...!?」が時間差でポップアップし、ふわふわ上昇しながら消える落書き風Tweenアニメーションを追加。"
     }
   ]
 }
