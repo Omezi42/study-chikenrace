@@ -208,6 +208,13 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 		
 	Global.coins += coins_earned + perfect_bonus
 	
+	# Update lifetime accumulated statistics
+	Global.total_burst_count += total_bursts.get("player", 0)
+	# Note: total_doubt_successes and total_doubt_failures are already calculated
+	# in real-time within DailyLikesPhase.gd upon each press to prevent double-counting.
+	if perfect_bonus > 0:
+		Global.total_perfect_crimes += 1
+	
 	# Update best score
 	if final_scores["player"] > Global.best_score:
 		Global.best_score = final_scores["player"]
@@ -221,6 +228,7 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 		Global.game_mode
 	)
 	
+	Global.player_title = title
 	if not title in Global.unlocked_titles:
 		Global.unlocked_titles.append(title)
 		

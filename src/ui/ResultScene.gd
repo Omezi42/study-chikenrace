@@ -668,12 +668,63 @@ func trigger_report_card() -> void:
 	breakdown.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.75))
 	report_left_page.add_child(breakdown)
 	
+	# 称号スタンプ風UI & アニメーション演出
+	var title_container = VBoxContainer.new()
+	title_container.alignment = BoxContainer.ALIGNMENT_CENTER
+	title_container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	report_left_page.add_child(title_container)
+	
+	var title_desc = Label.new()
+	title_desc.text = "獲得した称号"
+	title_desc.add_theme_font_override("font", DeskTheme.get_font())
+	title_desc.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
+	title_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
+	title_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_container.add_child(title_desc)
+	
+	var stamp_style = StyleBoxFlat.new()
+	stamp_style.bg_color = Color(1, 0.9, 0.9, 0.3)
+	stamp_style.border_color = Color("c62828")
+	stamp_style.border_width_left = 3
+	stamp_style.border_width_right = 3
+	stamp_style.border_width_top = 3
+	stamp_style.border_width_bottom = 3
+	stamp_style.corner_radius_top_left = 6
+	stamp_style.corner_radius_top_right = 6
+	stamp_style.corner_radius_bottom_left = 6
+	stamp_style.corner_radius_bottom_right = 6
+	stamp_style.content_margin_left = 16
+	stamp_style.content_margin_right = 16
+	stamp_style.content_margin_top = 8
+	stamp_style.content_margin_bottom = 8
+	
+	var stamp_panel = PanelContainer.new()
+	stamp_panel.add_theme_stylebox_override("panel", stamp_style)
+	stamp_panel.pivot_offset = Vector2(100, 25)
+	stamp_panel.rotation_degrees = -6.0
+	title_container.add_child(stamp_panel)
+	
 	var title_lbl = Label.new()
-	title_lbl.text = "獲得した称号:\n【 " + showdown_data["title"] + " 】"
+	title_lbl.text = "【 " + showdown_data["title"] + " 】"
 	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	title_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SUBTITLE)
-	title_lbl.add_theme_color_override("font_color", Color("3f51b5"))
-	report_left_page.add_child(title_lbl)
+	title_lbl.add_theme_font_size_override("font_size", 20)
+	title_lbl.add_theme_color_override("font_color", Color("c62828"))
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stamp_panel.add_child(title_lbl)
+	
+	stamp_panel.scale = Vector2(3.0, 3.0)
+	stamp_panel.modulate.a = 0.0
+	
+	var s_tween = create_tween().set_parallel(false)
+	s_tween.tween_interval(0.4)
+	
+	var s_tween_group = s_tween.tween_parallel()
+	s_tween_group.tween_property(stamp_panel, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	s_tween_group.tween_property(stamp_panel, "modulate.a", 1.0, 0.2)
+	
+	s_tween.tween_callback(func():
+		DeskTheme.shake_control(stamp_panel, 8.0, 0.25)
+	)
 	
 	# If S-grade (250+ points), stamp a huge hanamaru (花丸スタンプ)
 	if my_score >= 250:

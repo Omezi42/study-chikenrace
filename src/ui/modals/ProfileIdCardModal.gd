@@ -23,8 +23,8 @@ func _ready() -> void:
 	add_child(bg_overlay)
 	
 	var modal = PanelContainer.new()
-	modal.custom_minimum_size = Vector2(460, 360)
-	modal.pivot_offset = Vector2(230, 180)
+	modal.custom_minimum_size = Vector2(460, 520)
+	modal.pivot_offset = Vector2(230, 260)
 	
 	var id_style = StyleBoxFlat.new()
 	id_style.bg_color = DeskTheme.COLOR_CRAFT
@@ -134,6 +134,44 @@ func _ready() -> void:
 		save_btn.visible = false
 	)
 	
+	var title_hbox = HBoxContainer.new()
+	title_hbox.add_theme_constant_override("separation", 10)
+	vbox.add_child(title_hbox)
+	
+	var title_lbl_desc = Label.new()
+	title_lbl_desc.text = "現在の称号: "
+	title_lbl_desc.add_theme_font_override("font", DeskTheme.get_font())
+	title_lbl_desc.add_theme_font_size_override("font_size", 16)
+	title_lbl_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
+	title_hbox.add_child(title_lbl_desc)
+	
+	var title_badge_style = StyleBoxFlat.new()
+	title_badge_style.bg_color = Color("e0f2f1") # 淡いティール
+	title_badge_style.border_color = Color("004d40") # 濃いティール
+	title_badge_style.border_width_left = 1
+	title_badge_style.border_width_right = 1
+	title_badge_style.border_width_top = 1
+	title_badge_style.border_width_bottom = 1
+	title_badge_style.corner_radius_top_left = 4
+	title_badge_style.corner_radius_top_right = 4
+	title_badge_style.corner_radius_bottom_left = 4
+	title_badge_style.corner_radius_bottom_right = 4
+	title_badge_style.content_margin_left = 8
+	title_badge_style.content_margin_right = 8
+	title_badge_style.content_margin_top = 2
+	title_badge_style.content_margin_bottom = 2
+	
+	var title_badge_panel = PanelContainer.new()
+	title_badge_panel.add_theme_stylebox_override("panel", title_badge_style)
+	title_hbox.add_child(title_badge_panel)
+	
+	var title_lbl = Label.new()
+	title_lbl.text = Global.player_title if Global.player_title != "" else "ただの凡人"
+	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	title_lbl.add_theme_font_size_override("font_size", 14)
+	title_lbl.add_theme_color_override("font_color", Color("004d40"))
+	title_badge_panel.add_child(title_lbl)
+	
 	var deviation_lbl = Label.new()
 	deviation_lbl.text = "全国偏差値: %.1f (最高: %.1f)" % [Global.deviation_value, Global.max_deviation_value]
 	deviation_lbl.add_theme_font_override("font", DeskTheme.get_font())
@@ -154,6 +192,56 @@ func _ready() -> void:
 	record_lbl.add_theme_font_size_override("font_size", 18)
 	record_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(record_lbl)
+	
+	# --- 累計学習データセクション ---
+	var divider_stats = ColorRect.new()
+	divider_stats.custom_minimum_size = Vector2(0, 1)
+	divider_stats.color = Color(DeskTheme.COLOR_INK, 0.1)
+	vbox.add_child(divider_stats)
+
+	var stats_title = Label.new()
+	stats_title.text = "📊 累計学習データ"
+	stats_title.add_theme_font_override("font", DeskTheme.get_font())
+	stats_title.add_theme_font_size_override("font_size", 16)
+	stats_title.add_theme_color_override("font_color", Color("1a237e"))
+	vbox.add_child(stats_title)
+
+	var stats_grid = GridContainer.new()
+	stats_grid.columns = 2
+	stats_grid.add_theme_constant_override("h_separation", 30)
+	stats_grid.add_theme_constant_override("v_separation", 6)
+	vbox.add_child(stats_grid)
+
+	var total_doubts = Global.total_doubt_successes + Global.total_doubt_failures
+	var doubt_rate_str = "0.0%"
+	if total_doubts > 0:
+		doubt_rate_str = "%.1f%% (%d/%d)" % [
+			float(Global.total_doubt_successes) / total_doubts * 100.0,
+			Global.total_doubt_successes,
+			total_doubts
+		]
+
+	var stats_data = [
+		["累計プレイ回数:", str(Global.play_count) + " 回"],
+		["ダウト成功率:", doubt_rate_str],
+		["累計バースト数:", str(Global.total_burst_count) + " 回"],
+		["完全犯罪達成:", str(Global.total_perfect_crimes) + " 回"]
+	]
+
+	for item in stats_data:
+		var lbl_t = Label.new()
+		lbl_t.text = item[0]
+		lbl_t.add_theme_font_override("font", DeskTheme.get_font())
+		lbl_t.add_theme_font_size_override("font_size", 16)
+		lbl_t.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
+		stats_grid.add_child(lbl_t)
+
+		var lbl_v = Label.new()
+		lbl_v.text = item[1]
+		lbl_v.add_theme_font_override("font", DeskTheme.get_font())
+		lbl_v.add_theme_font_size_override("font_size", 16)
+		lbl_v.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+		stats_grid.add_child(lbl_v)
 	
 	var divider = ColorRect.new()
 	divider.custom_minimum_size = Vector2(0, 2)

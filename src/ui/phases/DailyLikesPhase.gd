@@ -449,8 +449,33 @@ func _on_doubt_pressed(target_id: String, card_node: Control, btn: Button) -> vo
 	local_doubts_count -= 1
 	update_remaining_votes()
 	
-	# Visual Juiciness: Stamp landing zoom, card shake, smartphone shake
-	btn.text = "ダウト済"
+	# Instant doubt outcome validation
+	var is_bluff = false
+	var opp_name = "ライバル"
+	var declared_score = 0
+	var actual_score = 0
+	
+	var day_data = session.match_history.get(session.current_day, {})
+	if day_data.has(target_id):
+		var opp = day_data[target_id]
+		opp_name = opp.get("name", opp.get("username", "ライバル"))
+		declared_score = int(opp.get("declared_score", 0))
+		actual_score = int(opp.get("actual_score", 0))
+		is_bluff = declared_score != actual_score
+		
+	# Display Toast & Save Statistics
+	if is_bluff:
+		DeskTheme.show_toast(self, "ダウト成功！🎉\n%s は嘘をついていた！\n(申告: %d点 / 実際: %d点)" % [opp_name, declared_score, actual_score], 2.5)
+		btn.text = "ダウト成功！🎉"
+		btn.add_theme_color_override("font_disabled_color", DeskTheme.COLOR_GREEN)
+		Global.total_doubt_successes += 1
+	else:
+		DeskTheme.show_toast(self, "ダウト失敗... 😭\n%s は正直に勉強していた！\n(申告: %d点 / 実際: %d点)" % [opp_name, declared_score, actual_score], 2.5)
+		btn.text = "ダウト失敗...😭"
+		btn.add_theme_color_override("font_disabled_color", DeskTheme.COLOR_TENSION)
+		Global.total_doubt_failures += 1
+	Global.save_game()
+	
 	btn.disabled = true
 	
 	# Shake card
@@ -519,7 +544,7 @@ func show_tutorial_finish_modal() -> void:
 	vbox.add_child(title)
 	
 	var body = Label.new()
-	body.text = "お疲れ様でした！『テスト勉強チキンレース』の基本的な遊び方（自習、カバン整理、チキスタへの投稿、嘘とダウトの見極め）をマスターしました。\n\n本番の5日制マッチで、他のライバルたちを実力とブラフで圧倒し、第一志望合格（偏差値アップ）を勝ち取りましょう！"
+	body.text = "お疲れ様でした！『テスト勉強チキンレース』の基本的な遊び方（自習、持ち込みアイテム設定、チキスタへの投稿、嘘とダウトの見極め）をマスターしました。\n\n本番の5日制マッチで、他のライバルたちを実力とブラフで圧倒し、第一志望合格（偏差値アップ）を勝ち取りましょう！"
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_theme_font_override("font", DeskTheme.get_font())
 	body.add_theme_font_size_override("font_size", 18)

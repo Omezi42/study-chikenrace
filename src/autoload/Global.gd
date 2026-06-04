@@ -5,6 +5,7 @@ var _preloaded_font = preload("res://assets/hgrsmp.ttf")
 
 # Player Progression & Saved Stats
 var player_name: String = ""
+var player_title: String = "ただの凡人"
 var coins: int = 100
 var best_score: int = 0
 var play_count: int = 0
@@ -12,6 +13,12 @@ var is_tutorial_mode: bool = false
 var bgm_volume: float = 0.5
 var se_volume: float = 0.5
 var is_muted: bool = false
+
+# Accumulated Lifetime Stats
+var total_doubt_successes: int = 0
+var total_doubt_failures: int = 0
+var total_burst_count: int = 0
+var total_perfect_crimes: int = 0
 
 # Active Game Mode ("cpu", "national", "daily", or "friend")
 var game_mode: String = Constants.MODE_NATIONAL
@@ -113,14 +120,15 @@ func _ready() -> void:
 # Save Game state to local storage JSON
 # 永続化する単純なデータ型の変数のリスト
 const SIMPLE_SAVE_FIELDS = [
-	"player_name", "coins", "best_score", "play_count", 
+	"player_name", "player_title", "coins", "best_score", "play_count", 
 	"unlocked_items", "item_usage_counts", "unlocked_titles", 
 	"deviation_value", "max_deviation_value", "game_mode", 
 	"opponent_profiles", "bgm_volume", "se_volume", "is_muted",
 	"logged_in_user_id", "auth_token", "daily_current_day",
 	"daily_last_played_date", "daily_opponent_ghosts", "daily_my_records",
 	"friend_room_code", "friend_is_host", "friend_member_list",
-	"friend_current_day", "friend_match_history"
+	"friend_current_day", "friend_match_history",
+	"total_doubt_successes", "total_doubt_failures", "total_burst_count", "total_perfect_crimes"
 ]
 
 # Save Game state to local storage JSON
@@ -482,6 +490,7 @@ func _on_auth_completed(success: bool, error_message: String) -> void:
 func _on_cloud_load_completed(success: bool, cloud_data: Dictionary) -> void:
 	if success and cloud_data.size() > 0:
 		if "player_name" in cloud_data: player_name = str(cloud_data["player_name"])
+		if "player_title" in cloud_data: player_title = str(cloud_data["player_title"])
 		if "coins" in cloud_data: coins = max(0, int(cloud_data["coins"]))
 		if "best_score" in cloud_data: best_score = max(0, int(cloud_data["best_score"]))
 		if "play_count" in cloud_data: play_count = max(0, int(cloud_data["play_count"]))

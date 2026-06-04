@@ -95,6 +95,61 @@ func _on_setup(setup_data: Dictionary) -> void:
 	header_left.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	left_inner_vbox.add_child(header_left)
 	
+	# 同室のメンバーの名前一覧を表示する個別付箋風UI
+	var room_members_hbox = HBoxContainer.new()
+	room_members_hbox.alignment = BoxContainer.ALIGNMENT_BEGIN
+	room_members_hbox.add_theme_constant_override("separation", 12)
+	left_inner_vbox.add_child(room_members_hbox)
+	
+	var members = []
+	var player_disp_name = Global.player_name if Global.player_name != "" else "あなた"
+	members.append({"name": "📌 " + player_disp_name, "color": Color("fff9c4"), "angle": 0.8}) # 淡い黄
+	
+	var colors = [Color("bbdefb"), Color("f8bbd0"), Color("c8e6c9")] # 淡い青、淡いピンク、淡い緑
+	var angles = [-1.5, 1.2, -0.6]
+	var color_idx = 0
+	
+	for opp_id in Global.opponent_profiles.keys():
+		var opp = Global.opponent_profiles[opp_id]
+		var opp_name = opp.get("name", "ライバル")
+		var col = colors[color_idx % colors.size()]
+		var ang = angles[color_idx % angles.size()]
+		members.append({"name": "✏️ " + opp_name, "color": col, "angle": ang})
+		color_idx += 1
+		
+	for member in members:
+		var note_label = Label.new()
+		note_label.text = member["name"]
+		note_label.add_theme_font_override("font", DeskTheme.get_font())
+		note_label.add_theme_font_size_override("font_size", 14)
+		note_label.add_theme_color_override("font_color", Color("263238"))
+		
+		var note_style = StyleBoxFlat.new()
+		note_style.bg_color = member["color"]
+		note_style.border_color = Color(DeskTheme.COLOR_INK, 0.15)
+		note_style.border_width_left = 1
+		note_style.border_width_right = 1
+		note_style.border_width_top = 1
+		note_style.border_width_bottom = 1
+		note_style.corner_radius_top_left = 2
+		note_style.corner_radius_top_right = 2
+		note_style.corner_radius_bottom_left = 2
+		note_style.corner_radius_bottom_right = 2
+		note_style.content_margin_left = 8
+		note_style.content_margin_right = 8
+		note_style.content_margin_top = 4
+		note_style.content_margin_bottom = 4
+		note_style.shadow_color = Color(0, 0, 0, 0.08)
+		note_style.shadow_size = 2
+		note_style.shadow_offset = Vector2(1, 1.5)
+		
+		var note_panel = PanelContainer.new()
+		note_panel.add_theme_stylebox_override("panel", note_style)
+		note_panel.add_child(note_label)
+		note_panel.rotation_degrees = member["angle"]
+		note_panel.pivot_offset = Vector2(50, 15)
+		room_members_hbox.add_child(note_panel)
+	
 	var score_title = Label.new()
 	score_title.text = "現在の勉強成果（実点）"
 	score_title.add_theme_font_override("font", DeskTheme.get_font())
