@@ -13,6 +13,7 @@ var phone_panel: PanelContainer
 # Daily state
 var actual_score: int = 0
 var max_bluff_limit: int = 24
+var selected_emote: String = "normal"
 
 func _on_setup(setup_data: Dictionary) -> void:
 	custom_minimum_size = Vector2(550, 780)
@@ -159,6 +160,83 @@ func _on_setup(setup_data: Dictionary) -> void:
 	report_slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	report_slider.value_changed.connect(_on_slider_changed)
 	card_vbox.add_child(report_slider)
+
+	# Emote Selection HBox inside card
+	var emote_title = Label.new()
+	emote_title.text = "表情（ポーカーフェイス）："
+	emote_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	emote_title.add_theme_font_override("font", DeskTheme.get_font())
+	emote_title.add_theme_font_size_override("font_size", 16)
+	emote_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
+	card_vbox.add_child(emote_title)
+
+	var emote_hbox = HBoxContainer.new()
+	emote_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	emote_hbox.add_theme_constant_override("separation", 16)
+	card_vbox.add_child(emote_hbox)
+
+	var emotes = [
+		{"key": "normal", "text": "[普通]"},
+		{"key": "confident", "text": "[自信あり]"},
+		{"key": "anxious", "text": "[不安]"}
+	]
+	
+	var emote_buttons = []
+
+	var emote_btn_style_normal = StyleBoxFlat.new()
+	emote_btn_style_normal.bg_color = Color("eceff1")
+	emote_btn_style_normal.corner_radius_top_left = 6
+	emote_btn_style_normal.corner_radius_top_right = 6
+	emote_btn_style_normal.corner_radius_bottom_left = 6
+	emote_btn_style_normal.corner_radius_bottom_right = 6
+	emote_btn_style_normal.content_margin_left = 12
+	emote_btn_style_normal.content_margin_right = 12
+	emote_btn_style_normal.content_margin_top = 6
+	emote_btn_style_normal.content_margin_bottom = 6
+
+	var emote_btn_style_selected = StyleBoxFlat.new()
+	emote_btn_style_selected.bg_color = Color("1e88e5") # Active blue
+	emote_btn_style_selected.corner_radius_top_left = 6
+	emote_btn_style_selected.corner_radius_top_right = 6
+	emote_btn_style_selected.corner_radius_bottom_left = 6
+	emote_btn_style_selected.corner_radius_bottom_right = 6
+	emote_btn_style_selected.content_margin_left = 12
+	emote_btn_style_selected.content_margin_right = 12
+	emote_btn_style_selected.content_margin_top = 6
+	emote_btn_style_selected.content_margin_bottom = 6
+
+	var update_emote_buttons = func():
+		for btn_data in emote_buttons:
+			var btn = btn_data["btn"]
+			var key = btn_data["key"]
+			if key == selected_emote:
+				btn.add_theme_stylebox_override("normal", emote_btn_style_selected)
+				btn.add_theme_stylebox_override("hover", emote_btn_style_selected)
+				btn.add_theme_stylebox_override("pressed", emote_btn_style_selected)
+				btn.add_theme_color_override("font_color", Color.WHITE)
+			else:
+				btn.add_theme_stylebox_override("normal", emote_btn_style_normal)
+				btn.add_theme_stylebox_override("hover", emote_btn_style_normal)
+				btn.add_theme_stylebox_override("pressed", emote_btn_style_normal)
+				btn.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+
+	for e in emotes:
+		var btn = Button.new()
+		btn.text = e["text"]
+		btn.add_theme_font_override("font", DeskTheme.get_font())
+		btn.add_theme_font_size_override("font_size", 16)
+		emote_hbox.add_child(btn)
+		
+		var key = e["key"]
+		btn.pressed.connect(func():
+			selected_emote = key
+			update_emote_buttons.call()
+			if has_node("/root/AudioManager"):
+				get_node("/root/AudioManager").play_se(AudioManager.SE_CLICK)
+		)
+		emote_buttons.append({"key": key, "btn": btn})
+		
+	update_emote_buttons.call()
 	
 	# Warning Panel inside card
 	warning_panel = PanelContainer.new()
@@ -184,7 +262,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	warning_panel.add_child(warn_margin)
 	
 	warning_text = Label.new()
-	warning_text.text = "⚠️ 申告が実点を超えています！ダウトされる危険性があります。"
+	warning_text.text = "[注意] 申告が実点を超えています！ダウトされる危険性があります。"
 	warning_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	warning_text.add_theme_font_override("font", DeskTheme.get_font())
 	warning_text.add_theme_font_size_override("font_size", 14)
@@ -229,8 +307,10 @@ func _on_setup(setup_data: Dictionary) -> void:
 	var is_test = false
 	if OS.has_feature("web"):
 		var js_window = JavaScriptBridge.get_interface("window")
-		if js_window and js_window.has("is_antigravity_test"):
-			is_test = js_window.is_antigravity_test
+		if js_window:
+			var test_val = js_window.is_antigravity_test
+			if test_val != null and test_val:
+				is_test = true
 			
 	if is_test:
 		var t = get_tree().create_timer(1.2)
@@ -289,7 +369,7 @@ func _on_submit_pressed() -> void:
 	stamp.add_child(stamp_vbox)
 	
 	var stamp_circle = Label.new()
-	stamp_circle.text = "💮 提出済 💮"
+	stamp_circle.text = "[提出済]"
 	stamp_circle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	stamp_circle.add_theme_font_override("font", DeskTheme.get_font())
 	stamp_circle.add_theme_font_size_override("font_size", 22)
@@ -320,8 +400,9 @@ func _on_submit_pressed() -> void:
 	
 	var timer = get_tree().create_timer(0.7)
 	timer.timeout.connect(func():
-		session.submit_player_declaration(final_declared)
+		session.submit_player_declaration(final_declared, selected_emote)
 		finish_phase({
-			"declared_score": final_declared
+			"declared_score": final_declared,
+			"emote": selected_emote
 		})
 	)

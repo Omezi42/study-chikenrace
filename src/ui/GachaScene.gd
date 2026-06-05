@@ -18,6 +18,11 @@ var capsules_container: Control
 var prompt_lbl: Label
 
 var is_pulling: bool = false
+var gacha_skip_btn: Button
+var current_capsule: Control = null
+var current_float_tween: Tween = null
+var skip_triggered: bool = false
+
 
 # Unlocked item list to pull from (14 items in Gacha)
 const GACHA_POOL = [
@@ -423,7 +428,7 @@ func _ready() -> void:
 	btn_hbox.add_child(pull_btn)
 	
 	var odds_btn = Button.new()
-	odds_btn.text = "提供割合 📊"
+	odds_btn.text = "提供割合"
 	odds_btn.custom_minimum_size = Vector2(160, 65)
 	odds_btn.add_theme_font_override("font", DeskTheme.get_font())
 	odds_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
@@ -449,7 +454,18 @@ func _ready() -> void:
 	)
 	btn_hbox.add_child(back_btn)
 	
+	# Skip Button (Top Right)
+	gacha_skip_btn = Button.new()
+	gacha_skip_btn.text = "演出スキップ >>"
+	gacha_skip_btn.custom_minimum_size = Vector2(160, 45)
+	gacha_skip_btn.visible = false
+	gacha_skip_btn.pressed.connect(_on_gacha_skip_pressed)
+	Global.apply_white_button_style(gacha_skip_btn)
+	gacha_skip_btn.position = Vector2(1730, 24)
+	add_child(gacha_skip_btn)
+	
 	update_coins_ui()
+
 
 func update_coins_ui() -> void:
 	coin_lbl.text = "所持コイン: " + str(Global.coins) + " 枚"
@@ -465,12 +481,16 @@ func _on_pull_pressed() -> void:
 	is_pulling = true
 	pull_btn.disabled = true
 	back_btn.disabled = true
+	skip_triggered = false
+	if is_instance_valid(gacha_skip_btn):
+		gacha_skip_btn.visible = true
 	
 	Global.coins -= 50
 	Global.save_game()
 	update_coins_ui()
 	
 	result_lbl.text = "レバーを回している..."
+
 	
 	# Hide previous card if visible
 	if card_slot.scale.x > 0.0:
@@ -498,8 +518,10 @@ func _on_pull_pressed() -> void:
 	
 	var timer = get_tree().create_timer(0.7)
 	timer.timeout.connect(func():
-		spawn_capsule(machine_wrapper.get_parent())
+		if not skip_triggered:
+			spawn_capsule(machine_wrapper.get_parent())
 	)
+
 
 func spawn_capsule(slot_wrapper: Control) -> void:
 	result_lbl.text = "カプセルが出てきた！"
@@ -550,6 +572,8 @@ func spawn_capsule(slot_wrapper: Control) -> void:
 	cap_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	capsule.add_child(cap_btn)
 	
+	current_capsule = capsule
+	
 	# Animate capsule flying out & bouncing in center (complete 360-degree rotation)
 	var cap_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	cap_tween.tween_property(capsule, "position", Vector2(120, 150), 0.5)
@@ -557,6 +581,8 @@ func spawn_capsule(slot_wrapper: Control) -> void:
 	cap_tween.tween_property(capsule, "rotation_degrees", 360.0, 0.5)
 	
 	cap_tween.chain().tween_callback(func():
+		if skip_triggered:
+			return
 		# Spawn Prompt Label directly under slot_wrapper so it doesn't rotate with the capsule
 		prompt_lbl = Label.new()
 		prompt_lbl.text = "タップして開封！"
@@ -569,19 +595,22 @@ func spawn_capsule(slot_wrapper: Control) -> void:
 		slot_wrapper.add_child(prompt_lbl)
 		
 		# Floating animation loop for the label
-		var float_tween = create_tween().set_loops().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		float_tween.tween_property(prompt_lbl, "position:y", 274.0, 0.4)
-		float_tween.tween_property(prompt_lbl, "position:y", 266.0, 0.4)
+		current_float_tween = create_tween().set_loops().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		current_float_tween.tween_property(prompt_lbl, "position:y", 274.0, 0.4)
+		current_float_tween.tween_property(prompt_lbl, "position:y", 266.0, 0.4)
 		
 		cap_btn.pressed.connect(func():
 			if cap_btn.disabled:
 				return
 			cap_btn.disabled = true
-			float_tween.kill()
-			prompt_lbl.queue_free()
+			if is_instance_valid(current_float_tween):
+				current_float_tween.kill()
+			if is_instance_valid(prompt_lbl):
+				prompt_lbl.queue_free()
 			_on_capsule_clicked(capsule, shell_t, shell_b)
 		)
 	)
+
 
 func _on_capsule_clicked(capsule: Control, shell_t: PanelContainer, shell_b: PanelContainer) -> void:
 	capsule.get_child(2).queue_free() # remove button
@@ -707,7 +736,26 @@ func reveal_gacha_result() -> void:
 		is_pulling = false
 		update_coins_ui()
 		back_btn.disabled = false
+		if is_instance_valid(gacha_skip_btn):
+			gacha_skip_btn.visible = false
 	)
+
+func _on_gacha_skip_pressed() -> void:
+	if not is_pulling or skip_triggered:
+		return
+	skip_triggered = true
+	if is_instance_valid(gacha_skip_btn):
+		gacha_skip_btn.visible = false
+	
+	if is_instance_valid(current_capsule):
+		current_capsule.queue_free()
+	if is_instance_valid(prompt_lbl):
+		prompt_lbl.queue_free()
+	if is_instance_valid(current_float_tween):
+		current_float_tween.kill()
+		
+	reveal_gacha_result()
+
 
 func _on_back_pressed() -> void:
 	DeskTheme.animate_click(back_btn, Vector2.ONE, 0.08)
@@ -762,7 +810,7 @@ func _on_odds_pressed() -> void:
 	margin.add_child(vbox)
 	
 	var title_lbl = Label.new()
-	title_lbl.text = "📋 ガチャ提供割合"
+	title_lbl.text = "ガチャ提供割合"
 	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	title_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
@@ -783,7 +831,7 @@ func _on_odds_pressed() -> void:
 	vbox.add_child(text_lbl)
 	
 	var close_btn = Button.new()
-	close_btn.text = "閉じる ✖"
+	close_btn.text = "閉じる ×"
 	close_btn.custom_minimum_size = Vector2(160, 45)
 	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	close_btn.add_theme_font_override("font", DeskTheme.get_font())

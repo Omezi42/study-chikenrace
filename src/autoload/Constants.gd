@@ -9,10 +9,19 @@ const MODE_RANDOM = "random"
 const MODE_CRAM = "cram"
 const MODE_CPU = "cpu"
 const MODE_DAILY = "daily"
+const MODE_OVERNIGHT = "overnight"
+
+# --- 偏差値リーグ定数 ---
+const LEAGUE_S = "S"
+const LEAGUE_A = "A"
+const LEAGUE_B = "B"
+const LEAGUE_C = "C"
+const LEAGUE_F = "F"
 
 # --- ゲーム設定 ---
 const MAX_DAYS = 5
-const SAVE_VERSION = 1
+const SAVE_VERSION = 2
+const SEASON_DURATION_DAYS = 14  # 1シーズン = 2週間
 
 # --- フェーズ名 (GameScene) ---
 const PHASE_START = "PHASE_START"

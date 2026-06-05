@@ -20,6 +20,9 @@ func _ready() -> void:
 	success = success and test_amulet_and_memo_app_guard()
 	success = success and test_ui_guard_states()
 	success = success and test_card_effects_edge_cases()
+	success = success and test_deviation_league_mappings()
+	success = success and test_cram_genius_overnight()
+	success = success and test_full_game_integration_flow()
 	
 	print("==================================================")
 	if success:
@@ -43,6 +46,11 @@ func assert_true(condition: bool, msg: String) -> bool:
 # Test 1: Deck Size & Shuffling
 func test_deck_initialization() -> bool:
 	print("\n--- Test 1: Deck Initialization & Operations ---")
+	var prev_mode = Global.game_mode
+	var prev_tutorial = Global.is_tutorial_mode
+	Global.game_mode = Constants.MODE_CPU
+	Global.is_tutorial_mode = false
+	
 	var deck = StudyDeck.new()
 	var mock_deck_config = {
 		1: "item_sticky_note",
@@ -65,6 +73,9 @@ func test_deck_initialization() -> bool:
 	var pass_draw = assert_true(not first_card.is_empty(), "Successfully drawn card.")
 	var pass_hand = assert_true(deck.hand.size() == 1, "Hand contains 1 card after draw.")
 	var pass_pile = assert_true(deck.draw_pile.size() == 54, "Draw pile decreases to 54 cards.")
+	
+	Global.game_mode = prev_mode
+	Global.is_tutorial_mode = prev_tutorial
 	
 	return pass_size and pass_draw and pass_hand and pass_pile
 
@@ -597,9 +608,24 @@ func test_multiplayer_sync_and_idempotency() -> bool:
 	var pass_idemp_prevented = assert_true(bm.mock_last_sync_revision == prev_sync_rev, "Second upload with same nonce was skipped (idempotent).")
 	
 	bm._sent_nonces.clear()
+	
+	# D. Host checks test
+	var orig_host_id = bm.cached_host_id
+	var orig_logged_in_uuid = bm.logged_in_uuid
+	
+	bm.cached_host_id = "test-host-uuid"
+	bm.logged_in_uuid = "test-host-uuid"
+	var pass_is_host = assert_true(bm.is_current_room_host(), "Correctly identifies host when UUIDs match.")
+	
+	bm.logged_in_uuid = "test-guest-uuid"
+	var pass_is_guest = assert_true(bm.is_current_room_host() == false, "Correctly identifies guest when UUIDs differ.")
+	
+	# Restore
+	bm.cached_host_id = orig_host_id
+	bm.logged_in_uuid = orig_logged_in_uuid
 	bm.is_mock_room = false
 	
-	return pass_schema_int and pass_schema_hours and pass_global_hours and pass_nonce_sending and pass_idemp_prevented
+	return pass_schema_int and pass_schema_hours and pass_global_hours and pass_nonce_sending and pass_idemp_prevented and pass_is_host and pass_is_guest
 
 # Test 10: Timer, Compass and Card Cloning Debug checks
 func test_timer_and_compass_and_cloning() -> bool:
@@ -738,7 +764,44 @@ func test_ui_guard_states() -> bool:
 	)
 	title_scene.free()
 	
-	return pass_title_init
+	# チュートリアルダイアログが他のクリック入力を遮断しないかテスト
+	var test_phase = Control.new()
+	test_phase.set_script(load("res://src/ui/phases/PhaseBase.gd"))
+	Engine.get_main_loop().root.add_child(test_phase)
+	
+	# Manually setup a mock session to satisfy script dependencies if needed
+	var mock_session = GameSession.new()
+	test_phase.session = mock_session
+	
+	var dialog = test_phase.show_tutorial_dialog("テストメッセージ")
+	var pass_dialog_ignore = assert_true(
+		dialog.mouse_filter == Control.MOUSE_FILTER_IGNORE,
+		"Tutorial dialog PanelContainer mouse_filter is IGNORE (does not block button clicks)."
+	)
+	
+	var pass_dialog_margin_ignore = false
+	if dialog.get_child_count() > 0:
+		var margin_node = dialog.get_child(0)
+		if margin_node is MarginContainer:
+			var pass_margin = assert_true(
+				margin_node.mouse_filter == Control.MOUSE_FILTER_IGNORE,
+				"Tutorial dialog MarginContainer mouse_filter is IGNORE."
+			)
+			var pass_vbox = false
+			if margin_node.get_child_count() > 0:
+				var vbox_node = margin_node.get_child(0)
+				if vbox_node is VBoxContainer:
+					pass_vbox = assert_true(
+						vbox_node.mouse_filter == Control.MOUSE_FILTER_IGNORE,
+						"Tutorial dialog VBoxContainer mouse_filter is IGNORE."
+					)
+			pass_dialog_margin_ignore = pass_margin and pass_vbox
+			
+	dialog.free()
+	Engine.get_main_loop().root.remove_child(test_phase)
+	test_phase.free()
+	
+	return pass_title_init and pass_dialog_ignore and pass_dialog_margin_ignore
 
 func test_card_effects_edge_cases() -> bool:
 	print("\n--- Test 13: Card Effects Edge Cases ---")
@@ -856,5 +919,99 @@ func test_card_effects_edge_cases() -> bool:
 	)
 	
 	return pass_latte_empty and pass_latte_bonus and pass_latte_amulet and pass_memo_exec and pass_memo_bonus and pass_memo_amulet and pass_night_note_dup and pass_eraser_multiple
+
+
+# Test 14: Deviation League Mappings (S to F)
+func test_deviation_league_mappings() -> bool:
+	print("\n--- Test 14: Deviation League Mappings ---")
+	
+	var league_s = Global.get_deviation_league(72.0)
+	var pass_s = assert_true(league_s == Constants.LEAGUE_S, "Deviation 72.0 maps to League S. (Actual: %s)" % league_s)
+	
+	var league_a = Global.get_deviation_league(64.5)
+	var pass_a = assert_true(league_a == Constants.LEAGUE_A, "Deviation 64.5 maps to League A. (Actual: %s)" % league_a)
+	
+	var league_b = Global.get_deviation_league(57.0)
+	var pass_b = assert_true(league_b == Constants.LEAGUE_B, "Deviation 57.0 maps to League B. (Actual: %s)" % league_b)
+	
+	var league_c = Global.get_deviation_league(45.0)
+	var pass_c = assert_true(league_c == Constants.LEAGUE_C, "Deviation 45.0 maps to League C. (Actual: %s)" % league_c)
+	
+	var league_f = Global.get_deviation_league(35.0)
+	var pass_f = assert_true(league_f == Constants.LEAGUE_F, "Deviation 35.0 maps to League F. (Actual: %s)" % league_f)
+	
+	return pass_s and pass_a and pass_b and pass_c and pass_f
+
+# Test 15: Overnight Mode Cram Genius Unlock Condition (100 points, Rank 1)
+func test_cram_genius_overnight() -> bool:
+	print("\n--- Test 15: Overnight Mode Cram Genius Unlock ---")
+	
+	var title_overnight_genius = ScoreEvaluator._determine_title(100, 1, 0, 1, 0, 0, Constants.MODE_OVERNIGHT)
+	var pass_overnight_genius = assert_true(
+		title_overnight_genius == Constants.TITLE_CRAM_GENIUS,
+		"Overnight mode: Score 100, Rank 1 -> '%s' (Actual: %s)" % [Constants.TITLE_CRAM_GENIUS, title_overnight_genius]
+	)
+	
+	var title_overnight_low = ScoreEvaluator._determine_title(95, 1, 0, 1, 0, 0, Constants.MODE_OVERNIGHT)
+	var pass_overnight_low = assert_true(
+		title_overnight_low != Constants.TITLE_CRAM_GENIUS,
+		"Overnight mode: Score 95, Rank 1 should NOT unlock Cram Genius (Actual: %s)" % title_overnight_low
+	)
+	
+	return pass_overnight_genius and pass_overnight_low
+
+# Test 16: Full game integration flow simulation
+func test_full_game_integration_flow() -> bool:
+	print("\n--- Test 16: Full Game Integration Flow Simulation ---")
+	var session = GameSession.new()
+	var mock_deck_config = {
+		1: "item_sticky_note",
+		2: "item_eraser",
+		3: "item_ruler",
+		4: "item_wordbook",
+		5: "item_mech_pencil",
+		6: "item_memo_cards",
+		7: "item_highlighter",
+		8: "item_blue_pen",
+		9: "item_cushion",
+		10: "item_memo_app"
+	}
+	
+	Global.game_mode = Constants.MODE_OVERNIGHT
+	session.start_session(mock_deck_config)
+	
+	var pass_start = assert_true(session.current_day == 1, "Session starts at Day 1.")
+	var pass_max_hours = assert_true(session.max_hours_today == 3, "Overnight mode has 3 periods per day.")
+	
+	# Simulate 1st hour
+	session.player_deck.draw_card()
+	session.player_deck.draw_card()
+	var score_h1 = session.player_deck.calculate_hand_score()["total_score"]
+	session.add_player_hour_result(session.player_deck.hand.size(), [], false, score_h1)
+	session.player_deck.reset_for_next_hour()
+	
+	# Simulate 2nd hour
+	session.player_deck.draw_card()
+	var score_h2 = session.player_deck.calculate_hand_score()["total_score"]
+	session.add_player_hour_result(session.player_deck.hand.size(), [], false, score_h2)
+	session.player_deck.reset_for_next_hour()
+	
+	# Simulate 3rd hour
+	session.player_deck.draw_card()
+	var score_h3 = session.player_deck.calculate_hand_score()["total_score"]
+	session.add_player_hour_result(session.player_deck.hand.size(), [], false, score_h3)
+	session.player_deck.reset_for_next_hour()
+	
+	var pass_hours_size = assert_true(session.player_hours_history_today.size() == 3, "All 3 periods simulated.")
+	
+	# Submit declaration
+	session.player_declared_score_today = session.player_actual_score_today + 10 # bluff 10 points
+	session.player_emote_today = "confident"
+	
+	session.end_day()
+	
+	var pass_game_over = assert_true(session.is_game_over(), "Game is over after Day 1 in Overnight mode. (Actual day: %d)" % session.current_day)
+	
+	return pass_start and pass_max_hours and pass_hours_size and pass_game_over
 
 

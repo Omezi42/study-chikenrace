@@ -42,7 +42,7 @@ func _ready() -> void:
 	
 	# Title with Tension Color
 	var title = Label.new()
-	title.text = "⚠️ 通信エラー"
+	title.text = "通信エラー"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TITLE)

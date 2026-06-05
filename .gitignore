@@ -8,3 +8,4 @@
 *.log
 build/
 serve.py
+supabase_config.json

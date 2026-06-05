@@ -58,7 +58,7 @@ func _ready() -> void:
 	margin.add_child(vbox)
 	
 	var header = Label.new()
-	header.text = "生徒手帳 ID CARD 👤"
+	header.text = "生徒手帳 ID CARD"
 	header.add_theme_font_override("font", DeskTheme.get_font())
 	header.add_theme_font_size_override("font_size", 22)
 	header.add_theme_color_override("font_color", Color("1a237e"))
@@ -91,7 +91,7 @@ func _ready() -> void:
 	name_hbox.add_child(name_input)
 	
 	var edit_btn = Button.new()
-	edit_btn.text = "✏️ 変更"
+	edit_btn.text = "変更"
 	edit_btn.custom_minimum_size = Vector2(80, 32)
 	edit_btn.add_theme_font_override("font", DeskTheme.get_font())
 	edit_btn.add_theme_font_size_override("font_size", 14)
@@ -99,7 +99,7 @@ func _ready() -> void:
 	name_hbox.add_child(edit_btn)
 	
 	var save_btn = Button.new()
-	save_btn.text = "💾 保存"
+	save_btn.text = "保存"
 	save_btn.custom_minimum_size = Vector2(80, 32)
 	save_btn.add_theme_font_override("font", DeskTheme.get_font())
 	save_btn.add_theme_font_size_override("font_size", 14)
@@ -200,7 +200,7 @@ func _ready() -> void:
 	vbox.add_child(divider_stats)
 
 	var stats_title = Label.new()
-	stats_title.text = "📊 累計学習データ"
+	stats_title.text = "累計学習データ"
 	stats_title.add_theme_font_override("font", DeskTheme.get_font())
 	stats_title.add_theme_font_size_override("font_size", 16)
 	stats_title.add_theme_color_override("font_color", Color("1a237e"))
@@ -254,7 +254,7 @@ func _ready() -> void:
 	vbox.add_child(btn_hbox)
 	
 	var logout_btn = Button.new()
-	logout_btn.text = "👤 ログアウト"
+	logout_btn.text = "ログアウト"
 	logout_btn.custom_minimum_size = Vector2(160, 45)
 	logout_btn.add_theme_font_override("font", DeskTheme.get_font())
 	logout_btn.add_theme_font_size_override("font_size", 16)
@@ -278,7 +278,7 @@ func _ready() -> void:
 	)
 	
 	var close_btn = Button.new()
-	close_btn.text = "閉じる ✖"
+	close_btn.text = "閉じる ×"
 	close_btn.custom_minimum_size = Vector2(160, 45)
 	close_btn.add_theme_font_override("font", DeskTheme.get_font())
 	close_btn.add_theme_font_size_override("font_size", 16)

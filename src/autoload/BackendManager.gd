@@ -13,13 +13,28 @@ var _http_pool: Array[HTTPRequest] = []
 var _pool_callbacks: Dictionary = {}   # HTTPRequest インスタンス -> Callable
 
 func _init() -> void:
-	_supabase_url = OS.get_environment("SUPABASE_URL")
-	if _supabase_url == "":
-		_supabase_url = ProjectSettings.get_setting("backend/supabase_url", "https://your-project.supabase.co")
+	# Git管理外の設定ファイルからSupabaseキーを安全に読み込む (P0セキュリティ対策)
+	var config_loaded = false
+	if FileAccess.file_exists("res://supabase_config.json"):
+		var file = FileAccess.open("res://supabase_config.json", FileAccess.READ)
+		if file:
+			var json = JSON.new()
+			if json.parse(file.get_as_text()) == OK:
+				var data = json.get_data()
+				if data is Dictionary:
+					_supabase_url = str(data.get("supabase_url", ""))
+					_supabase_key = str(data.get("supabase_key", ""))
+					config_loaded = true
+			file.close()
+			
+	if not config_loaded:
+		_supabase_url = OS.get_environment("SUPABASE_URL")
+		if _supabase_url == "":
+			_supabase_url = ProjectSettings.get_setting("backend/supabase_url", "https://your-project.supabase.co")
 
-	_supabase_key = OS.get_environment("SUPABASE_KEY")
-	if _supabase_key == "":
-		_supabase_key = ProjectSettings.get_setting("backend/supabase_key", "your-supabase-key")
+		_supabase_key = OS.get_environment("SUPABASE_KEY")
+		if _supabase_key == "":
+			_supabase_key = ProjectSettings.get_setting("backend/supabase_key", "your-supabase-key")
 
 func _ready() -> void:
 	# プール内にHTTPRequestノードを事前生成する
@@ -29,6 +44,89 @@ func _ready() -> void:
 		add_child(req)
 		req.request_completed.connect(_on_pool_request_completed.bind(req))
 		_http_pool.append(req)
+
+func _process(delta: float) -> void:
+	if ws_peer:
+		ws_peer.poll()
+		var state = ws_peer.get_ready_state()
+		if state == WebSocketPeer.STATE_OPEN:
+			if not ws_connected:
+				_on_ws_connected()
+			_process_ws_packets()
+			ws_heartbeat_timer += delta
+			if ws_heartbeat_timer >= WS_HEARTBEAT_INTERVAL:
+				_send_ws_heartbeat()
+		elif state == WebSocketPeer.STATE_CLOSED:
+			if ws_connected:
+				_on_ws_disconnected()
+			if ws_room_code != "":
+				ws_reconnect_timer += delta
+				if ws_reconnect_timer >= WS_RECONNECT_INTERVAL:
+					_reconnect_ws()
+
+func connect_realtime_lobby(room_code: String) -> void:
+	if is_mock_room or room_code == "":
+		return
+	ws_room_code = room_code
+	_reconnect_ws()
+
+func disconnect_realtime_lobby() -> void:
+	ws_room_code = ""
+	if ws_peer:
+		ws_peer.close()
+	ws_connected = false
+
+func _reconnect_ws() -> void:
+	ws_reconnect_timer = 0.0
+	ws_peer = WebSocketPeer.new()
+	var raw_url = _get_supabase_url()
+	if raw_url.is_empty() or raw_url == "https://your-project.supabase.co":
+		return
+	var ws_url = raw_url.replace("https://", "wss://").replace("http://", "ws://") + "/realtime/v1/websocket?apikey=" + _get_supabase_key() + "&vsn=1.0.0"
+	var err = ws_peer.connect_to_url(ws_url)
+	if err != OK:
+		push_warning("[Realtime] WebSocket connection failed to start: %d" % err)
+
+func _on_ws_connected() -> void:
+	ws_connected = true
+	ws_heartbeat_timer = 0.0
+	# realtime:public:friend_rooms に Join してルーム変更を監視
+	var join_msg = {
+		"topic": "realtime:public:friend_rooms",
+		"event": "phx_join",
+		"payload": {},
+		"ref": "1"
+	}
+	ws_peer.send_text(JSON.stringify(join_msg))
+	push_warning("[Realtime] WebSocket lobby connected and listening.")
+
+func _on_ws_disconnected() -> void:
+	ws_connected = false
+	push_warning("[Realtime] WebSocket disconnected.")
+
+func _send_ws_heartbeat() -> void:
+	ws_heartbeat_timer = 0.0
+	var msg = {
+		"topic": "phoenix",
+		"event": "heartbeat",
+		"payload": {},
+		"ref": "hb"
+	}
+	ws_peer.send_text(JSON.stringify(msg))
+
+func _process_ws_packets() -> void:
+	while ws_peer.get_available_packet_count() > 0:
+		var packet = ws_peer.get_packet()
+		var text = packet.get_string_from_utf8()
+		var json = JSON.new()
+		if json.parse(text) == OK:
+			var msg = json.get_data()
+			if msg is Dictionary and msg.get("event") == "postgres_changes":
+				var payload = msg.get("payload", {})
+				var record = payload.get("data", {})
+				if record.get("room_code") == ws_room_code:
+					# 変更があったためルーム情報を即時再取得する
+					poll_room_status(ws_room_code)
 
 # プール内で接続待機中（アイドル）のノードを取得する
 func _get_available_request() -> HTTPRequest:
@@ -56,10 +154,28 @@ func _get_supabase_url() -> String:
 func _get_supabase_key() -> String:
 	return _supabase_key
 
+func _validate_response(result: int, response_code: int, body_data: PackedByteArray, context: String) -> Variant:
+	if result != HTTPRequest.RESULT_SUCCESS:
+		push_warning("[%s] Request failed with network error (result: %d)" % [context, result])
+		return null
+	if response_code < 200 or response_code >= 300:
+		push_warning("[%s] Request failed with HTTP %d" % [context, response_code])
+		return null
+	var body_str = body_data.get_string_from_utf8()
+	if body_str.is_empty():
+		return {}
+	var json = JSON.new()
+	if json.parse(body_str) != OK:
+		push_warning("[%s] Failed to parse JSON: %s" % [context, json.get_error_message()])
+		return null
+	return json.get_data()
+
+
 signal auth_completed(success: bool, error_message: String)
 signal save_completed(success: bool)
 signal load_completed(success: bool, data: Dictionary)
 signal daily_scores_loaded(success: bool, scores_array: Array)
+signal random_match_status_updated(status: String, message: String)
 
 signal room_created(success: bool, room_code: String)
 signal room_joined(success: bool, participants: Array)
@@ -72,12 +188,25 @@ var auth_token: String = ""
 var consecutive_network_errors: int = 0
 var _sent_nonces: Dictionary = {} # client_nonce (String) -> status (String)
 
+# WebSocket Realtime variables
+var ws_peer: WebSocketPeer = null
+var ws_connected: bool = false
+var ws_room_code: String = ""
+var ws_heartbeat_timer: float = 0.0
+var ws_reconnect_timer: float = 0.0
+const WS_HEARTBEAT_INTERVAL = 30.0
+const WS_RECONNECT_INTERVAL = 5.0
+
 # Active/Polled Room state cache (for connection recovery & state machine)
 var cached_room_status: String = "waiting"
 var cached_current_day: int = 1
 var cached_participants: Array = []
 var cached_last_sync_revision: int = 0
+var cached_host_id: String = ""
 var cached_day_moves: Dictionary = {} # DayIdx -> Array of normalized moves
+
+func is_current_room_host() -> bool:
+	return logged_in_uuid != "" and logged_in_uuid == cached_host_id
 
 # Offline/Mock state for friend rooms
 var is_mock_room: bool = false
@@ -172,42 +301,55 @@ func _build_friend_move_payload(room_code: String, day_idx: int, move_data: Dict
 # 最大リトライ回数
 const MAX_RETRIES = 3
 
-func _send_request(url: String, method: HTTPClient.Method, body_str: String, auth_required: bool, callback: Callable, retry_count: int = 0) -> void:
-	var req = _get_available_request()
-	if req == null:
-		if retry_count < MAX_RETRIES:
-			var timer = get_tree().create_timer(1.0)
-			timer.timeout.connect(func():
-				_send_request(url, method, body_str, auth_required, callback, retry_count + 1)
-			)
-		else:
-			callback.call(HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray())
-		return
+func _send_request(url: String, method: HTTPClient.Method, body_str: String, auth_required: bool, callback: Callable, _deprecated_retry: int = 0) -> void:
+	_do_send_request_with_retry(url, method, body_str, auth_required, callback)
 
-	var wrapped_callback = func(result: int, response_code: int, headers: PackedStringArray, body_data: PackedByteArray):
-		var is_network_error = result != HTTPRequest.RESULT_SUCCESS
-		var is_server_error = response_code >= 500 and response_code < 600
+func _do_send_request_with_retry(url: String, method: HTTPClient.Method, body_str: String, auth_required: bool, callback: Callable) -> void:
+	for retry_count in range(MAX_RETRIES + 1):
+		var req = _get_available_request()
+		if req == null:
+			if retry_count < MAX_RETRIES:
+				await get_tree().create_timer(1.0).timeout
+				continue
+			else:
+				callback.call(HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray())
+				return
+
+		var completed_state = {"done": false, "data": []}
+
+		var wrapped_callback = func(result: int, response_code: int, headers: PackedStringArray, body_data: PackedByteArray):
+			completed_state["done"] = true
+			completed_state["data"] = [result, response_code, headers, body_data]
+
+		_pool_callbacks[req] = wrapped_callback
+		var err = req.request(url, _get_headers(auth_required), method, body_str)
+		if err != OK:
+			_pool_callbacks.erase(req)
+			if retry_count < MAX_RETRIES:
+				await get_tree().create_timer(1.0).timeout
+				continue
+			else:
+				callback.call(HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray())
+				return
+
+		while not completed_state["done"]:
+			await get_tree().process_frame
+
+		var res = completed_state["data"][0]
+		var res_code = completed_state["data"][1]
+		var res_headers = completed_state["data"][2]
+		var res_body = completed_state["data"][3]
+
+		var is_network_error = res != HTTPRequest.RESULT_SUCCESS
+		var is_server_error = res_code >= 500 and res_code < 600
 
 		if (is_network_error or is_server_error) and retry_count < MAX_RETRIES:
-			push_warning("[BackendManager] Request failed (result: %d, HTTP: %d). Retrying (%d/%d)..." % [result, response_code, retry_count + 1, MAX_RETRIES])
-			var timer = get_tree().create_timer(1.0)
-			timer.timeout.connect(func():
-				_send_request(url, method, body_str, auth_required, callback, retry_count + 1)
-			)
+			push_warning("[BackendManager] Request failed (result: %d, HTTP: %d). Retrying (%d/%d)..." % [res, res_code, retry_count + 1, MAX_RETRIES])
+			await get_tree().create_timer(1.0).timeout
+			continue
 		else:
-			callback.call(result, response_code, headers, body_data)
-
-	_pool_callbacks[req] = wrapped_callback
-	var err = req.request(url, _get_headers(auth_required), method, body_str)
-	if err != OK:
-		_pool_callbacks.erase(req)
-		if retry_count < MAX_RETRIES:
-			var timer = get_tree().create_timer(1.0)
-			timer.timeout.connect(func():
-				_send_request(url, method, body_str, auth_required, callback, retry_count + 1)
-			)
-		else:
-			callback.call(HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray())
+			callback.call(res, res_code, res_headers, res_body)
+			return
 
 # 1. Sign Up (ユーザー登録)
 func signup_user(user_id: String, password: String) -> void:
@@ -726,11 +868,19 @@ func poll_room_status(room_code: String) -> void:
 					cached_current_day = day
 					cached_participants = parts
 					cached_last_sync_revision = last_revision
+					cached_host_id = room.get("host_id", "")
 					
 					mock_participants = parts
 					mock_room_status = status
 					mock_current_day = day
 					mock_last_sync_revision = last_revision
+					
+					if Global.game_mode == Constants.MODE_RANDOM and status == "waiting":
+						if parts.size() >= 4:
+							var host_id = room.get("host_id", "")
+							if host_id == logged_in_uuid:
+								start_friend_game(room_code)
+								
 					room_polled.emit(status, day, parts)
 					return
 			room_polled.emit("waiting", 1, [])
@@ -839,3 +989,140 @@ func _reconnect_loop() -> void:
 			else:
 				is_reconnecting = false
 	)
+
+func join_or_create_random_match() -> void:
+	is_mock_room = false
+	var user_name = Global.player_name if Global.player_name != "" else "あなた"
+	
+	if auth_token == "" or logged_in_uuid == "":
+		random_match_status_updated.emit("error", "オンライン対戦を行うにはログインが必要です。")
+		return
+
+	random_match_status_updated.emit("searching", "対戦ルームを検索中...")
+	
+	# 偏差値リーグに応じたプレフィックス（例: "RAND_A_"）でルームを探す
+	var league = Global.get_deviation_league(Global.deviation_value)
+	var search_prefix = "RAND_" + league + "_"
+	
+	var url = _get_supabase_url() + "/rest/v1/friend_rooms?status=eq.waiting&room_code=like." + search_prefix + "*"
+	_send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
+		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
+			var json = JSON.new()
+			if json.parse(body_data.get_string_from_utf8()) == OK:
+				var rooms = json.get_data()
+				if rooms is Array and rooms.size() > 0:
+					# 見つかった最初のルームにジョインを試みる
+					var target_room = rooms[0]
+					var room_code = target_room.get("room_code", "")
+					random_match_status_updated.emit("joining", "対戦ルームにジョイン中...")
+					
+					var rpc_url = _get_supabase_url() + "/rest/v1/rpc/join_friend_room_safe"
+					var rpc_body = {
+						"p_room_code": room_code,
+						"p_user_id": logged_in_uuid,
+						"p_username": user_name
+					}
+					_send_request(rpc_url, HTTPClient.METHOD_POST, JSON.stringify(rpc_body), true, func(r_res, r_code, r_headers, r_body):
+						if r_res == HTTPRequest.RESULT_SUCCESS and r_code == 200:
+							var r_json = JSON.new()
+							if r_json.parse(r_body.get_string_from_utf8()) == OK:
+								var data = r_json.get_data()
+								if data is Dictionary and not data.has("error"):
+									var parts = data.get("participants", [])
+									Global.friend_room_code = room_code
+									Global.friend_current_day = 1
+									Global.friend_match_history.clear()
+									random_match_status_updated.emit("matched", "マッチング成立！")
+									room_joined.emit(true, parts)
+									return
+						# ジョイン失敗したら新規作成
+						_create_random_match_room(user_name)
+					)
+					return
+		
+		# 待機ルームが見つからなかった場合、またはジョインに失敗した場合は自分がホストになってルームを新規作成する
+		_create_random_match_room(user_name)
+	)
+
+func _create_random_match_room(user_name: String) -> void:
+	random_match_status_updated.emit("creating", "対戦ルームを作成中...")
+	
+	var league = Global.get_deviation_league(Global.deviation_value)
+	var room_code = "RAND_" + league + "_" + str(randi_range(100000, 999999))
+	var url = _get_supabase_url() + "/rest/v1/friend_rooms"
+	var body = {
+		"room_code": room_code,
+		"status": "waiting",
+		"current_day": 1,
+		"participants": [{"user_id": logged_in_uuid, "username": user_name}],
+		"host_id": logged_in_uuid
+	}
+	
+	_send_request(url, HTTPClient.METHOD_POST, JSON.stringify(body), true, func(result, response_code, headers, body_data):
+		if result == HTTPRequest.RESULT_SUCCESS and (response_code == 200 or response_code == 201 or response_code == 204):
+			Global.friend_room_code = room_code
+			Global.friend_current_day = 1
+			Global.friend_match_history.clear()
+			random_match_status_updated.emit("waiting_for_players", "他のプレイヤーを待っています...")
+			room_created.emit(true, room_code)
+		else:
+			random_match_status_updated.emit("error", "対戦ルームの作成に失敗しました。")
+	)
+
+func fetch_participants_deviation(participants: Array) -> void:
+	if auth_token == "" or logged_in_uuid == "":
+		return
+		
+	var uuids = []
+	for p in participants:
+		var uid = p.get("user_id", "")
+		if uid != "" and uid != logged_in_uuid:
+			uuids.append(uid)
+			
+	if uuids.is_empty():
+		return
+		
+	var uuid_str = ""
+	for i in range(uuids.size()):
+		if i > 0:
+			uuid_str += ","
+		uuid_str += uuids[i]
+		
+	var url = _get_supabase_url() + "/rest/v1/saves?user_id=in.(" + uuid_str + ")"
+	_send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
+		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
+			var json = JSON.new()
+			if json.parse(body_data.get_string_from_utf8()) == OK:
+				var saves_arr = json.get_data()
+				if saves_arr is Array:
+					for save in saves_arr:
+						var uid = save.get("user_id", "")
+						var data = save.get("data", {})
+						if typeof(data) == TYPE_STRING:
+							var p_json = JSON.new()
+							if p_json.parse(data) == OK:
+								data = p_json.get_data()
+						var dev_val = 50.0
+						if data is Dictionary and data.has("deviation_value"):
+							dev_val = float(data["deviation_value"])
+						
+						for opp_id in Global.opponent_profiles.keys():
+							if Global.opponent_profiles[opp_id].get("id", "") == uid or opp_id == uid:
+								Global.opponent_profiles[opp_id]["deviation"] = dev_val
+	)
+
+func upload_random_match_result(score: int, rank: int, deviation: float, league: String) -> void:
+	if auth_token == "" or logged_in_uuid == "":
+		return
+	var url = _get_supabase_url() + "/rest/v1/random_match_ratings"
+	var body = {
+		"user_id": logged_in_uuid,
+		"score": score,
+		"rank": rank,
+		"deviation": deviation,
+		"league": league
+	}
+	_send_request(url, HTTPClient.METHOD_POST, JSON.stringify(body), true, func(result, response_code, headers, body_data):
+		pass
+	)
+

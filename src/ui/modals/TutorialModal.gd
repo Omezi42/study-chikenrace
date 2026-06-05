@@ -43,7 +43,7 @@ func _init() -> void:
 	
 	# Title
 	var header_title = Label.new()
-	header_title.text = "テスト勉強チキンレースのあそびかた 📝"
+	header_title.text = "テスト勉強チキンレースのあそびかた"
 	header_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header_title.add_theme_font_override("font", DeskTheme.get_font())
 	header_title.add_theme_font_size_override("font_size", 24)
@@ -72,7 +72,7 @@ func _init() -> void:
 	vbox.add_child(nav_hbox)
 	
 	tutorial_back_btn = Button.new()
-	tutorial_back_btn.text = "◀ 前へ"
+	tutorial_back_btn.text = "前へ"
 	tutorial_back_btn.custom_minimum_size = Vector2(120, 45)
 	tutorial_back_btn.add_theme_font_override("font", DeskTheme.get_font())
 	tutorial_back_btn.add_theme_font_size_override("font_size", 18)
@@ -88,7 +88,7 @@ func _init() -> void:
 	nav_hbox.add_child(tutorial_page_lbl)
 	
 	tutorial_next_btn = Button.new()
-	tutorial_next_btn.text = "次へ ▶"
+	tutorial_next_btn.text = "次へ >"
 	tutorial_next_btn.custom_minimum_size = Vector2(120, 45)
 	tutorial_next_btn.add_theme_font_override("font", DeskTheme.get_font())
 	tutorial_next_btn.add_theme_font_size_override("font_size", 18)
@@ -110,9 +110,9 @@ func update_tutorial_slide() -> void:
 	tutorial_page_lbl.text = "%d / 5" % current_tutorial_page
 	tutorial_back_btn.disabled = (current_tutorial_page == 1)
 	if current_tutorial_page == 5:
-		tutorial_next_btn.text = "閉じる ✖"
+		tutorial_next_btn.text = "閉じる ×"
 	else:
-		tutorial_next_btn.text = "次へ ▶"
+		tutorial_next_btn.text = "次へ >"
 		
 	# Update description text
 	match current_tutorial_page:

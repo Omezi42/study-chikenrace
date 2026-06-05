@@ -25,6 +25,15 @@ const _preloaded_font = preload(FONT_HANDWRITING)
 static func get_font() -> Font:
 	return _preloaded_font
 
+static var _stylebox_cache: Dictionary = {}
+
+static func _get_cached_style(style_id: String, creator: Callable) -> StyleBox:
+	if _stylebox_cache.has(style_id):
+		return _stylebox_cache[style_id]
+	var style = creator.call()
+	_stylebox_cache[style_id] = style
+	return style
+
 # UI Constant Tokens (レイアウト定数)
 const TOOLTIP_OFFSET = Vector2(20, -100)
 const SMARTPHONE_Y_OFFSET_RATIO = 0.175
@@ -177,38 +186,124 @@ static func pulse_vignette(node: Control, base_modulate: Color, alert_level: flo
 
 # Helper to create customized hand-drawn look panel stylebox
 static func create_craft_panel() -> StyleBoxFlat:
-	var style = StyleBoxFlat.new()
-	style.bg_color = COLOR_CRAFT
-	style.border_color = COLOR_INK
-	style.border_width_left = 3
-	style.border_width_right = 3
-	style.border_width_top = 3
-	style.border_width_bottom = 3
-	style.corner_radius_top_left = 8
-	style.corner_radius_top_right = 8
-	style.corner_radius_bottom_left = 8
-	style.corner_radius_bottom_right = 8
-	# Richer shadow to look like stacked pages
-	style.shadow_color = Color(0.12, 0.08, 0.05, 0.25)
-	style.shadow_size = 12
-	style.shadow_offset = Vector2(5, 5)
-	return style
+	var cached = _get_cached_style("craft_panel", func():
+		var style = StyleBoxFlat.new()
+		style.bg_color = COLOR_CRAFT
+		style.border_color = COLOR_INK
+		style.border_width_left = 3
+		style.border_width_right = 3
+		style.border_width_top = 3
+		style.border_width_bottom = 3
+		style.corner_radius_top_left = 8
+		style.corner_radius_top_right = 8
+		style.corner_radius_bottom_left = 8
+		style.corner_radius_bottom_right = 8
+		style.shadow_color = Color(0.12, 0.08, 0.05, 0.25)
+		style.shadow_size = 12
+		style.shadow_offset = Vector2(5, 5)
+		return style
+	)
+	return cached.duplicate()
 
 # Helper to create left page stylebox (no right border, no right rounded corners for binding integration)
 static func create_left_page_style() -> StyleBoxFlat:
-	var style = create_craft_panel()
-	style.corner_radius_top_right = 0
-	style.corner_radius_bottom_right = 0
-	style.border_width_right = 0
-	return style
+	var cached = _get_cached_style("left_page_style", func():
+		var style = create_craft_panel()
+		style.corner_radius_top_right = 0
+		style.corner_radius_bottom_right = 0
+		style.border_width_right = 0
+		return style
+	)
+	return cached.duplicate()
 
 # Helper to create right page stylebox (no left border, no left rounded corners for binding integration)
 static func create_right_page_style() -> StyleBoxFlat:
-	var style = create_craft_panel()
-	style.corner_radius_top_left = 0
-	style.corner_radius_bottom_left = 0
-	style.border_width_left = 0
-	return style
+	var cached = _get_cached_style("right_page_style", func():
+		var style = create_craft_panel()
+		style.corner_radius_top_left = 0
+		style.corner_radius_bottom_left = 0
+		style.border_width_left = 0
+		return style
+	)
+	return cached.duplicate()
+
+# Helper to create sticky note stylebox (yellow, red, green, etc.)
+static func create_sticky_note_style(color_type: String = "yellow") -> StyleBoxFlat:
+	var style_id = "sticky_" + color_type
+	var cached = _get_cached_style(style_id, func():
+		var style = StyleBoxFlat.new()
+		match color_type:
+			"yellow": style.bg_color = Color("fff59d")
+			"red": style.bg_color = Color("ffcdd2")
+			"green": style.bg_color = Color("c8e6c9")
+			"blue": style.bg_color = Color("bbdefb")
+			"purple": style.bg_color = Color("e1bee7")
+			"orange": style.bg_color = Color("ffe0b2")
+			_: style.bg_color = Color("fff59d")
+			
+		style.border_color = Color(COLOR_INK, 0.15)
+		style.border_width_left = 1
+		style.border_width_right = 1
+		style.border_width_top = 1
+		style.border_width_bottom = 1
+		style.corner_radius_top_left = 2
+		style.corner_radius_top_right = 2
+		style.corner_radius_bottom_left = 2
+		style.corner_radius_bottom_right = 2
+		style.content_margin_left = 8
+		style.content_margin_right = 8
+		style.content_margin_top = 6
+		style.content_margin_bottom = 6
+		style.shadow_color = Color(0, 0, 0, 0.08)
+		style.shadow_size = 2
+		style.shadow_offset = Vector2(1, 1.5)
+		return style
+	)
+	return cached.duplicate()
+
+# Helper to create smartphone frame stylebox
+static func create_phone_style() -> StyleBoxFlat:
+	var cached = _get_cached_style("phone_panel", func():
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color("1e2022")
+		style.border_color = Color("37474f")
+		style.border_width_left = 12
+		style.border_width_right = 12
+		style.border_width_top = 24
+		style.border_width_bottom = 24
+		style.corner_radius_top_left = 32
+		style.corner_radius_top_right = 32
+		style.corner_radius_bottom_left = 32
+		style.corner_radius_bottom_right = 32
+		style.shadow_color = Color(0, 0, 0, 0.4)
+		style.shadow_size = 20
+		style.shadow_offset = Vector2(8, 12)
+		return style
+	)
+	return cached.duplicate()
+
+# Helper to create stamp stylebox
+static func create_stamp_style(border_color: Color = Color("e53935"), bg_color: Color = Color(0, 0, 0, 0)) -> StyleBoxFlat:
+	var style_id = "stamp_" + border_color.to_html(false) + "_" + bg_color.to_html(false)
+	var cached = _get_cached_style(style_id, func():
+		var style = StyleBoxFlat.new()
+		style.bg_color = bg_color
+		style.border_color = border_color
+		style.border_width_left = 3
+		style.border_width_right = 3
+		style.border_width_top = 3
+		style.border_width_bottom = 3
+		style.corner_radius_top_left = 6
+		style.corner_radius_top_right = 6
+		style.corner_radius_bottom_left = 6
+		style.corner_radius_bottom_right = 6
+		style.content_margin_left = 16
+		style.content_margin_right = 16
+		style.content_margin_top = 8
+		style.content_margin_bottom = 8
+		return style
+	)
+	return cached.duplicate()
 
 # Helper to overlay notebook ruled lines
 static func add_ruled_lines(parent_node: Control, line_color: Color = Color(0.2, 0.6, 0.8, 0.08)) -> void:
@@ -259,7 +354,7 @@ static func add_spiral_binding_overlay(parent_node: Control, size: Vector2, line
 	binding.add_child(drawer)
 
 # 8. Floating Sticky-Note Toast Message
-static func show_toast(caller_node: Node, text: String, duration: float = 1.8) -> void:
+static func show_toast(caller_node: Node, text: String, duration: float = 1.8, bg_color: Color = Color()) -> void:
 	if not caller_node or not caller_node.is_inside_tree():
 		return
 	var scene_tree = caller_node.get_tree()
@@ -279,11 +374,18 @@ static func show_toast(caller_node: Node, text: String, duration: float = 1.8) -
 	# Styling (like a cute yellow sticky note or craft paper)
 	var style = StyleBoxFlat.new()
 	style.bg_color = COLOR_HIGHLIGHTER # Bright sticky note yellow
-	style.border_color = COLOR_INK
-	style.border_width_left = 2
-	style.border_width_right = 2
-	style.border_width_top = 2
-	style.border_width_bottom = 2
+	if bg_color != Color():
+		style.border_color = bg_color
+		style.border_width_left = 8
+		style.border_width_right = 2
+		style.border_width_top = 2
+		style.border_width_bottom = 2
+	else:
+		style.border_color = COLOR_INK
+		style.border_width_left = 2
+		style.border_width_right = 2
+		style.border_width_top = 2
+		style.border_width_bottom = 2
 	style.corner_radius_top_left = 4
 	style.corner_radius_top_right = 4
 	style.corner_radius_bottom_left = 4
@@ -297,7 +399,7 @@ static func show_toast(caller_node: Node, text: String, duration: float = 1.8) -
 	label.text = text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_override("font", load(FONT_HANDWRITING))
+	label.add_theme_font_override("font", get_font())
 	label.add_theme_font_size_override("font_size", 20)
 	label.add_theme_color_override("font_color", COLOR_INK)
 	panel.add_child(label)
@@ -489,38 +591,65 @@ static func apply_white_button_style(btn: Button) -> void:
 		return
 	
 	# Normal stylebox (white background, ink border)
-	var style_normal = StyleBoxFlat.new()
-	style_normal.bg_color = Color.WHITE
-	style_normal.border_color = COLOR_INK
-	style_normal.border_width_left = 3
-	style_normal.border_width_right = 3
-	style_normal.border_width_top = 3
-	style_normal.border_width_bottom = 3
-	style_normal.corner_radius_top_left = 6
-	style_normal.corner_radius_top_right = 6
-	style_normal.corner_radius_bottom_left = 6
-	style_normal.corner_radius_bottom_right = 6
-	style_normal.shadow_color = Color(0.12, 0.08, 0.05, 0.15)
-	style_normal.shadow_size = 4
-	style_normal.shadow_offset = Vector2(2, 2)
+	var style_normal = _get_cached_style("btn_normal", func():
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color.WHITE
+		style.border_color = COLOR_INK
+		style.border_width_left = 3
+		style.border_width_right = 3
+		style.border_width_top = 3
+		style.border_width_bottom = 3
+		style.corner_radius_top_left = 6
+		style.corner_radius_top_right = 6
+		style.corner_radius_bottom_left = 6
+		style.corner_radius_bottom_right = 6
+		style.shadow_color = Color(0.12, 0.08, 0.05, 0.15)
+		style.shadow_size = 4
+		style.shadow_offset = Vector2(2, 2)
+		return style
+	)
 	
 	# Hover stylebox (very light cream tint)
-	var style_hover = style_normal.duplicate() as StyleBoxFlat
-	style_hover.bg_color = Color("fffde7")
-	style_hover.border_width_left = 4
-	style_hover.border_width_right = 4
-	style_hover.border_width_top = 4
-	style_hover.border_width_bottom = 4
-	style_hover.shadow_size = 6
-	style_hover.shadow_offset = Vector2(3, 3)
+	var style_hover = _get_cached_style("btn_hover", func():
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color("fffde7")
+		style.border_color = COLOR_INK
+		style.border_width_left = 4
+		style.border_width_right = 4
+		style.border_width_top = 4
+		style.border_width_bottom = 4
+		style.corner_radius_top_left = 6
+		style.corner_radius_top_right = 6
+		style.corner_radius_bottom_left = 6
+		style.corner_radius_bottom_right = 6
+		style.shadow_color = Color(0.12, 0.08, 0.05, 0.15)
+		style.shadow_size = 6
+		style.shadow_offset = Vector2(3, 3)
+		return style
+	)
 	
 	# Pressed stylebox (slightly darker grey)
-	var style_pressed = style_normal.duplicate() as StyleBoxFlat
-	style_pressed.bg_color = Color("e0e0e0")
-	style_pressed.shadow_size = 1
-	style_pressed.shadow_offset = Vector2(1, 1)
+	var style_pressed = _get_cached_style("btn_pressed", func():
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color("e0e0e0")
+		style.border_color = COLOR_INK
+		style.border_width_left = 3
+		style.border_width_right = 3
+		style.border_width_top = 3
+		style.border_width_bottom = 3
+		style.corner_radius_top_left = 6
+		style.corner_radius_top_right = 6
+		style.corner_radius_bottom_left = 6
+		style.corner_radius_bottom_right = 6
+		style.shadow_color = Color(0.12, 0.08, 0.05, 0.15)
+		style.shadow_size = 1
+		style.shadow_offset = Vector2(1, 1)
+		return style
+	)
 
-	var style_focus = StyleBoxEmpty.new()
+	var style_focus = _get_cached_style("btn_focus", func():
+		return StyleBoxEmpty.new()
+	)
 	
 	btn.add_theme_stylebox_override("normal", style_normal)
 	btn.add_theme_stylebox_override("hover", style_hover)
@@ -575,7 +704,7 @@ static func show_error_banner(caller_node: Node, text: String, duration: float =
 	label.text = text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_override("font", load(FONT_HANDWRITING))
+	label.add_theme_font_override("font", get_font())
 	label.add_theme_font_size_override("font_size", 18)
 	label.add_theme_color_override("font_color", Color.WHITE)
 	panel.add_child(label)
@@ -648,7 +777,7 @@ static func show_confirm_modal(caller_node: Node, title_text: String, message_te
 	var lbl_title = Label.new()
 	lbl_title.text = title_text
 	lbl_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl_title.add_theme_font_override("font", load(FONT_HANDWRITING))
+	lbl_title.add_theme_font_override("font", get_font())
 	lbl_title.add_theme_font_size_override("font_size", 22)
 	lbl_title.add_theme_color_override("font_color", COLOR_INK)
 	vbox.add_child(lbl_title)
@@ -657,7 +786,7 @@ static func show_confirm_modal(caller_node: Node, title_text: String, message_te
 	lbl_msg.text = message_text
 	lbl_msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl_msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	lbl_msg.add_theme_font_override("font", load(FONT_HANDWRITING))
+	lbl_msg.add_theme_font_override("font", get_font())
 	lbl_msg.add_theme_font_size_override("font_size", 16)
 	lbl_msg.add_theme_color_override("font_color", Color(COLOR_INK, 0.8))
 	vbox.add_child(lbl_msg)
@@ -701,3 +830,48 @@ static func show_confirm_modal(caller_node: Node, title_text: String, message_te
 	modal.scale = Vector2.ZERO
 	var tween = scene_tree.create_tween().bind_node(modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(modal, "scale", Vector2.ONE, 0.3)
+
+static var _active_tooltip: PanelContainer = null
+
+static func show_rich_tooltip(parent: Control, text: String, position: Vector2) -> void:
+	hide_rich_tooltip()
+	
+	var tooltip = PanelContainer.new()
+	tooltip.add_theme_stylebox_override("panel", create_sticky_note_style("yellow"))
+	tooltip.z_index = 100
+	tooltip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_top", 8)
+	margin.add_theme_constant_override("margin_bottom", 8)
+	tooltip.add_child(margin)
+	
+	var lbl = Label.new()
+	lbl.text = text
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.custom_minimum_size = Vector2(220, 0)
+	lbl.add_theme_font_override("font", get_font())
+	lbl.add_theme_font_size_override("font_size", FONT_SIZE_SMALL)
+	lbl.add_theme_color_override("font_color", COLOR_INK)
+	margin.add_child(lbl)
+	
+	parent.add_child(tooltip)
+	tooltip.position = position
+	
+	# 入場アニメーション
+	tooltip.pivot_offset = Vector2.ZERO
+	tooltip.scale = Vector2(0.8, 0.8)
+	tooltip.modulate.a = 0.0
+	var tween = parent.create_tween().bind_node(tooltip)
+	tween.set_parallel(true)
+	tween.tween_property(tooltip, "scale", Vector2.ONE, 0.15).set_ease(Tween.EASE_OUT)
+	tween.tween_property(tooltip, "modulate:a", 1.0, 0.15)
+	
+	_active_tooltip = tooltip
+
+static func hide_rich_tooltip() -> void:
+	if is_instance_valid(_active_tooltip):
+		_active_tooltip.queue_free()
+		_active_tooltip = null

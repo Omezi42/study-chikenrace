@@ -22,21 +22,7 @@ func setup(btn: Button, callback: Callable) -> void:
 	custom_minimum_size = Vector2(500, 440)
 	pivot_offset = Vector2(250, 220)
 	
-	var style = StyleBoxFlat.new()
-	style.bg_color = DeskTheme.COLOR_CRAFT
-	style.border_color = DeskTheme.COLOR_INK
-	style.border_width_left = 4
-	style.border_width_right = 4
-	style.border_width_top = 4
-	style.border_width_bottom = 4
-	style.corner_radius_top_left = 12
-	style.corner_radius_top_right = 12
-	style.corner_radius_bottom_left = 12
-	style.corner_radius_bottom_right = 12
-	style.shadow_color = Color(0, 0, 0, 0.3)
-	style.shadow_size = 15
-	style.shadow_offset = Vector2(6, 6)
-	add_theme_stylebox_override("panel", style)
+	add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	
 	# Viewport center position calculation
 	position = get_viewport_rect().size * 0.5 - pivot_offset
@@ -54,7 +40,7 @@ func setup(btn: Button, callback: Callable) -> void:
 	margin.add_child(vbox)
 	
 	var title = Label.new()
-	title.text = "👤 アカウント接続"
+	title.text = "アカウント接続"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 24)

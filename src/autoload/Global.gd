@@ -1,6 +1,5 @@
 extends Node
 
-const SAVE_PATH = "user://savegame.json"
 var _preloaded_font = preload("res://assets/hgrsmp.ttf")
 
 # Player Progression & Saved Stats
@@ -13,6 +12,12 @@ var is_tutorial_mode: bool = false
 var bgm_volume: float = 0.5
 var se_volume: float = 0.5
 var is_muted: bool = false
+var deck_presets: Dictionary = {
+	"1": {},
+	"2": {},
+	"3": {}
+}
+var selected_preset_idx: int = 1
 
 # Accumulated Lifetime Stats
 var total_doubt_successes: int = 0
@@ -41,6 +46,9 @@ var daily_opponent_ghosts: Dictionary = {}  # DayIndex -> Array of ghosts
 var daily_my_records: Dictionary = {}       # DayIndex -> My record dict
 var daily_fixed_deck: Dictionary = {}       # Generated fixed deck (1-10 -> ItemId)
 var current_season: int = 1                 # 1シーズン=2週間
+var today_missions: Array = []
+var mission_progress: Dictionary = {}
+var last_mission_date: String = ""
 
 # Deviation Values (偏差値)
 var deviation_value: float = 50.0
@@ -106,6 +114,16 @@ var active_showdown_results: Dictionary = {}
 
 func _ready() -> void:
 	load_game()
+	
+	# 自動テスト時、初回起動のチュートリアル強制遷移を回避するために play_count を 1 に補正する
+	if OS.has_feature("web"):
+		var js_window = JavaScriptBridge.get_interface("window")
+		if js_window:
+			var test_val = js_window.is_antigravity_test
+			if test_val != null and test_val:
+				if play_count == 0:
+					play_count = 1
+
 	if has_node("/root/BackendManager"):
 		var bm = get_node("/root/BackendManager")
 		bm.load_completed.connect(_on_cloud_load_completed)
@@ -113,10 +131,8 @@ func _ready() -> void:
 	if logged_in_user_id != "" and auth_token != "":
 		call_deferred("_auto_login")
 		
-	# Calculate current season (1 season = 2 weeks = 14 days = 1,209,600 seconds)
-	# Using an arbitrary epoch (e.g., May 1 2026 roughly)
-	var unix_time = Time.get_unix_time_from_system()
-	current_season = int(unix_time / (14 * 24 * 60 * 60)) + 1
+	# Check for season reset
+	_check_season_reset()
 
 # Save Game state to local storage JSON
 # 永続化する単純なデータ型の変数のリスト
@@ -129,7 +145,9 @@ const SIMPLE_SAVE_FIELDS = [
 	"daily_last_played_date", "daily_opponent_ghosts", "daily_my_records",
 	"friend_room_code", "friend_is_host", "friend_member_list",
 	"friend_current_day", "friend_match_history",
-	"total_doubt_successes", "total_doubt_failures", "total_burst_count", "total_perfect_crimes"
+	"total_doubt_successes", "total_doubt_failures", "total_burst_count", "total_perfect_crimes",
+	"deck_presets", "selected_preset_idx",
+	"today_missions", "mission_progress", "last_mission_date", "current_season"
 ]
 
 # Save Game state to local storage JSON
@@ -145,74 +163,69 @@ func save_game() -> void:
 	validate_current_deck()
 	validate_opponent_profiles()
 	
-	var file = FileAccess.open(SAVE_PATH, FileAccess.WRITE)
-	if file:
-		var json_string = JSON.stringify(save_dict)
-		file.store_string(json_string)
-		file.close()
-		
-	# Silent cloud save if logged in
-	if logged_in_user_id != "" and has_node("/root/BackendManager"):
-		var bm = get_node("/root/BackendManager")
-		if bm.auth_token != "":
-			bm.save_cloud_data(save_dict)
+	if has_node("/root/SaveManager"):
+		get_node("/root/SaveManager").save_game(save_dict)
 
 # Load Game state from local storage JSON
 func load_game() -> void:
-	if not FileAccess.file_exists(SAVE_PATH):
+	var loaded_data = {}
+	if has_node("/root/SaveManager"):
+		loaded_data = get_node("/root/SaveManager").load_game(Callable(self, "_validate_loaded_data_keys"))
+		
+	if loaded_data.is_empty():
+		push_error("セーブファイルの読み込みに失敗しました。デフォルト値で初期化します。")
 		save_game()
 		return
 		
-	var file = FileAccess.open(SAVE_PATH, FileAccess.READ)
-	if file:
-		var json_string = file.get_as_text()
-		file.close()
+	var data = loaded_data
+	var from_version = int(data.get("save_version", 0))
+	if from_version < Constants.SAVE_VERSION:
+		_migrate_save_data(data, from_version)
 		
-		var json = JSON.new()
-		var parse_result = json.parse(json_string)
-		if parse_result == OK:
-			var data = json.get_data()
-			if data is Dictionary:
-				var from_version = int(data.get("save_version", 0))
-				if from_version < Constants.SAVE_VERSION:
-					_migrate_save_data(data, from_version)
-					
-				for field in SIMPLE_SAVE_FIELDS:
-					if field in data:
-						var val = data[field]
-						var current_val = get(field)
-						if current_val is int:
-							set(field, int(val))
-						elif current_val is float:
-							set(field, float(val))
-						elif current_val is bool:
-							set(field, bool(val))
-						else:
-							set(field, val)
-							
-				if "current_deck" in data:
-					var deck_data = data["current_deck"]
-					if deck_data is Dictionary:
-						for key in deck_data.keys():
-							current_deck[int(key)] = str(deck_data[key])
-						
-				if "daily_fixed_deck" in data:
-					var fd_data = data["daily_fixed_deck"]
-					daily_fixed_deck.clear()
-					if fd_data is Dictionary:
-						for k in fd_data.keys():
-							daily_fixed_deck[int(k)] = str(fd_data[k])
-						
-		# Ensure all 10 slots are populated in case of load anomalies
-		validate_current_deck()
-		validate_opponent_profiles()
-		
-		# Apply loaded volumes to AudioManager if available
-		if has_node("/root/AudioManager"):
-			var audio = get_node("/root/AudioManager")
-			audio.bgm_volume = bgm_volume
-			audio.se_volume = se_volume
-			audio.is_muted = is_muted
+	for field in SIMPLE_SAVE_FIELDS:
+		if field in data:
+			var val = data[field]
+			var current_val = get(field)
+			if current_val is int:
+				set(field, int(val))
+			elif current_val is float:
+				set(field, float(val))
+			elif current_val is bool:
+				set(field, bool(val))
+			else:
+				set(field, val)
+				
+	if "current_deck" in data:
+		var deck_data = data["current_deck"]
+		if deck_data is Dictionary:
+			for key in deck_data.keys():
+				current_deck[int(key)] = str(deck_data[key])
+			
+	if "daily_fixed_deck" in data:
+		var fd_data = data["daily_fixed_deck"]
+		daily_fixed_deck.clear()
+		if fd_data is Dictionary:
+			for k in fd_data.keys():
+				daily_fixed_deck[int(k)] = str(fd_data[k])
+			
+	# Ensure all 10 slots are populated in case of load anomalies
+	validate_current_deck()
+	validate_opponent_profiles()
+	
+	# Apply loaded volumes to AudioManager if available
+	if has_node("/root/AudioManager"):
+		var audio = get_node("/root/AudioManager")
+		audio.bgm_volume = bgm_volume
+		audio.se_volume = se_volume
+		audio.is_muted = is_muted
+
+# Validate essential keys in loaded save data
+func _validate_loaded_data_keys(data: Dictionary) -> bool:
+	var essential_keys = ["coins", "unlocked_items", "current_deck"]
+	for k in essential_keys:
+		if not data.has(k):
+			return false
+	return true
 
 
 func get_deck_as_string_keys() -> Dictionary:
@@ -257,7 +270,7 @@ func validate_opponent_profiles() -> void:
 		if not opponent_profiles[key].has("id"):
 			opponent_profiles[key]["id"] = default_ids.get(key, "cpu_sato")
 		if not opponent_profiles[key].has("name") or str(opponent_profiles[key]["name"]) == "":
-			opponent_profiles[key]["name"] = AIManager.CPU_OPPONENTS.get(opponent_profiles[key]["id"], {}).get("name", Localization.JP_RIVAL)
+			opponent_profiles[key]["name"] = AIManager.get_cpu_name(opponent_profiles[key]["id"])
 		if not opponent_profiles[key].has("deviation"):
 			opponent_profiles[key]["deviation"] = 50.0
 
@@ -268,10 +281,8 @@ func get_default_participant_record(participant_id: String, display_name: String
 			name_to_use = player_name if player_name != "" else Localization.JP_YOU
 		elif opponent_profiles.has(participant_id):
 			name_to_use = opponent_profiles[participant_id].get("name", Localization.JP_RIVAL)
-		elif AIManager.CPU_OPPONENTS.has(participant_id):
-			name_to_use = AIManager.CPU_OPPONENTS[participant_id].get("name", Localization.JP_RIVAL)
 		else:
-			name_to_use = Localization.JP_RIVAL
+			name_to_use = AIManager.get_cpu_name(participant_id)
 
 	return {
 		"id": participant_id,
@@ -333,7 +344,8 @@ func normalize_participant_record(record: Variant, participant_id: String, displ
 		"doubts_made": norm_doubts,
 		"doubts_received": norm_received,
 		"is_doubt_exposed": bool(d.get("is_doubt_exposed", false)),
-		"auto_exposed": bool(d.get("auto_exposed", false))
+		"auto_exposed": bool(d.get("auto_exposed", false)),
+		"emote": str(d.get("emote", "normal"))
 	}
 
 func normalize_day_record(day_record: Variant) -> Dictionary:
@@ -354,11 +366,11 @@ func select_random_opponents() -> void:
 	for i in range(3):
 		var target_slot = slots[i]
 		var source_key = selected_keys[i]
-		var profile = AIManager.CPU_OPPONENTS[source_key]
+		var profile = AIManager.get_cpu_info(source_key)
 		
 		opponent_profiles[target_slot] = {
 			"id": source_key,
-			"name": profile["name"],
+			"name": profile.get("name", source_key),
 			"deviation": clamp(deviation_value + randf_range(-6.0, 6.0), 35.0, 80.0)
 		}
 	save_game()
@@ -442,33 +454,26 @@ func get_item_star_bonus_text(item_id: String) -> String:
 		5:    return "★5: 効果値 +30% 【マスター】"
 	return ""
 
+# プレイヤーの偏差値に応じたリーグ分類を取得
+func get_deviation_league(dev_val: float = -1.0) -> String:
+	var val = dev_val if dev_val >= 0 else deviation_value
+	if has_node("/root/DeviationManager"):
+		return get_node("/root/DeviationManager").get_deviation_league(val)
+	return Constants.LEAGUE_C
+
+# 所属リーグの日本語表示名を取得
+func get_deviation_league_name(league: String = "") -> String:
+	var target_league = league
+	if target_league == "":
+		target_league = get_deviation_league()
+	if has_node("/root/DeviationManager"):
+		return get_node("/root/DeviationManager").get_deviation_league_name(target_league)
+	return "C級（凡人）"
+
 # Global helper to perform smooth scene changes with a paper fade overlay
 func change_scene_with_fade(tree: SceneTree, target_scene_path: String, duration: float = 0.35) -> void:
-	# Create CanvasLayer to overlay transition
-	var canvas = CanvasLayer.new()
-	canvas.layer = 128
-	tree.root.add_child(canvas)
-	
-	var fade_rect = ColorRect.new()
-	fade_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	fade_rect.color = Color("eddcc9") # Bright paper color
-	fade_rect.modulate.a = 0.0
-	canvas.add_child(fade_rect)
-	
-	# Fade out current scene
-	var tween = tree.create_tween().bind_node(fade_rect)
-	tween.tween_property(fade_rect, "modulate:a", 1.0, duration)
-	tween.tween_callback(func():
-		# Change scene
-		tree.change_scene_to_file(target_scene_path)
-		
-		# Fade in new scene
-		var tween_in = tree.create_tween().bind_node(fade_rect)
-		tween_in.tween_property(fade_rect, "modulate:a", 0.0, duration)
-		tween_in.tween_callback(func():
-			canvas.queue_free()
-		)
-	)
+	if has_node("/root/UIHelper"):
+		get_node("/root/UIHelper").change_scene_with_fade(tree, target_scene_path, duration)
 
 func _auto_login() -> void:
 	if has_node("/root/BackendManager"):
@@ -568,155 +573,80 @@ func generate_daily_fixed_deck(date_str: String) -> Dictionary:
 		
 	var deck = {}
 	for i in range(1, 11):
-		deck[i] = shuffled[i - 1]
+		if i - 1 < shuffled.size():
+			deck[i] = shuffled[i - 1]
+		else:
+			deck[i] = "item_red_sheet" # フォールバックアイテム
 		
 	return deck
 
 func apply_white_button_style(btn: Button) -> void:
-	if not btn:
-		return
-	
-	var desk_theme = preload("res://src/ui/DeskTheme.gd")
-	
-	# Normal stylebox (white background, ink border)
-	var style_normal = StyleBoxFlat.new()
-	style_normal.bg_color = Color.WHITE
-	style_normal.border_color = desk_theme.COLOR_INK
-	style_normal.border_width_left = 3
-	style_normal.border_width_right = 3
-	style_normal.border_width_top = 3
-	style_normal.border_width_bottom = 3
-	style_normal.corner_radius_top_left = 6
-	style_normal.corner_radius_top_right = 6
-	style_normal.corner_radius_bottom_left = 6
-	style_normal.corner_radius_bottom_right = 6
-	style_normal.shadow_color = Color(0.12, 0.08, 0.05, 0.15)
-	style_normal.shadow_size = 4
-	style_normal.shadow_offset = Vector2(2, 2)
-	
-	# Hover stylebox (very light cream tint)
-	var style_hover = style_normal.duplicate() as StyleBoxFlat
-	style_hover.bg_color = Color("fffde7")
-	style_hover.border_width_left = 4
-	style_hover.border_width_right = 4
-	style_hover.border_width_top = 4
-	style_hover.border_width_bottom = 4
-	style_hover.shadow_size = 6
-	style_hover.shadow_offset = Vector2(3, 3)
-	
-	# Pressed stylebox (slightly darker grey)
-	var style_pressed = style_normal.duplicate() as StyleBoxFlat
-	style_pressed.bg_color = Color("e0e0e0")
-	style_pressed.shadow_size = 1
-	style_pressed.shadow_offset = Vector2(1, 1)
-
-	var style_focus = StyleBoxEmpty.new()
-	
-	btn.add_theme_stylebox_override("normal", style_normal)
-	btn.add_theme_stylebox_override("hover", style_hover)
-	btn.add_theme_stylebox_override("pressed", style_pressed)
-	btn.add_theme_stylebox_override("focus", style_focus)
-	
-	# Text colors
-	btn.add_theme_color_override("font_color", desk_theme.COLOR_INK)
-	btn.add_theme_color_override("font_hover_color", desk_theme.COLOR_INK)
-	btn.add_theme_color_override("font_pressed_color", desk_theme.COLOR_INK)
-	btn.add_theme_color_override("font_focus_color", desk_theme.COLOR_INK)
-	btn.add_theme_color_override("font_hover_pressed_color", desk_theme.COLOR_INK)
-	
-	# Check children for labels
-	for child in btn.get_children():
-		if child is Label:
-			child.add_theme_color_override("font_color", desk_theme.COLOR_INK)
+	if has_node("/root/UIHelper"):
+		get_node("/root/UIHelper").apply_white_button_style(btn)
 
 func _migrate_save_data(data: Dictionary, from_version: int) -> void:
-	# Future migration logic goes here
-	pass
+	var current_v = from_version
+	while current_v < Constants.SAVE_VERSION:
+		match current_v:
+			1:
+				if not data.has("deck_presets"):
+					data["deck_presets"] = {
+						"1": get_deck_as_string_keys(),
+						"2": get_deck_as_string_keys(),
+						"3": get_deck_as_string_keys()
+					}
+					data["selected_preset_idx"] = 1
+				current_v = 2
+	data["save_version"] = Constants.SAVE_VERSION
 
-# --- Loading overlay UI ---
-var loading_overlay: CanvasLayer = null
-
+# --- Loading overlay UI wrappers ---
 func show_loading(text: String = "通信中...") -> void:
-	if is_instance_valid(loading_overlay):
-		var lbl = loading_overlay.get_node_or_null("Panel/Margin/VBox/Label")
-		if lbl:
-			lbl.text = text
-		return
-		
-	loading_overlay = CanvasLayer.new()
-	loading_overlay.layer = 200
-	add_child(loading_overlay)
-	
-	var bg = ColorRect.new()
-	bg.color = Color(0, 0, 0, 0.4)
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	loading_overlay.add_child(bg)
-	
-	var panel = PanelContainer.new()
-	panel.name = "Panel"
-	panel.custom_minimum_size = Vector2(300, 140)
-	panel.pivot_offset = Vector2(150, 70)
-	
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color("f4efe6") # Craft paper color
-	style.border_color = Color("1e2022")
-	style.border_width_left = 3
-	style.border_width_right = 3
-	style.border_width_top = 3
-	style.border_width_bottom = 3
-	style.corner_radius_top_left = 8
-	style.corner_radius_top_right = 8
-	style.corner_radius_bottom_left = 8
-	style.corner_radius_bottom_right = 8
-	style.shadow_color = Color(0.12, 0.08, 0.05, 0.25)
-	style.shadow_size = 12
-	style.shadow_offset = Vector2(5, 5)
-	panel.add_theme_stylebox_override("panel", style)
-	loading_overlay.add_child(panel)
-	
-	var viewport_size = get_viewport().get_visible_rect().size
-	panel.position = viewport_size * 0.5 - panel.pivot_offset
-	
-	var margin = MarginContainer.new()
-	margin.name = "Margin"
-	margin.add_theme_constant_override("margin_left", 20)
-	margin.add_theme_constant_override("margin_right", 20)
-	margin.add_theme_constant_override("margin_top", 15)
-	margin.add_theme_constant_override("margin_bottom", 15)
-	panel.add_child(margin)
-	
-	var vbox = VBoxContainer.new()
-	vbox.name = "VBox"
-	vbox.add_theme_constant_override("separation", 12)
-	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	margin.add_child(vbox)
-	
-	var label = Label.new()
-	label.name = "Label"
-	label.text = text
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_override("font", load("res://assets/hgrsmp.ttf"))
-	label.add_theme_font_size_override("font_size", 20)
-	label.add_theme_color_override("font_color", Color("1e2022"))
-	vbox.add_child(label)
-	
-	var spinner = Control.new()
-	spinner.custom_minimum_size = Vector2(40, 40)
-	spinner.pivot_offset = Vector2(20, 20)
-	vbox.add_child(spinner)
-	
-	var spinner_lbl = Label.new()
-	spinner_lbl.text = "✏️"
-	spinner_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	spinner_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	spinner_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	spinner_lbl.add_theme_font_size_override("font_size", 24)
-	spinner.add_child(spinner_lbl)
-	
-	var spinner_tween = create_tween().set_loops()
-	spinner_tween.tween_property(spinner, "rotation_degrees", 360.0, 1.2).from(0.0)
+	if has_node("/root/UIHelper"):
+		get_node("/root/UIHelper").show_loading(text)
 
 func hide_loading() -> void:
-	if is_instance_valid(loading_overlay):
-		loading_overlay.queue_free()
-		loading_overlay = null
+	if has_node("/root/UIHelper"):
+		get_node("/root/UIHelper").hide_loading()
+
+func show_tutorial_dialog(parent: Control, text: String, pos: Vector2 = Vector2(700, 50), next_callback: Callable = Callable()) -> PanelContainer:
+	if has_node("/root/UIHelper"):
+		return get_node("/root/UIHelper").show_tutorial_dialog(parent, text, pos, next_callback)
+	return null
+
+func _check_season_reset() -> void:
+	var unix_time = Time.get_unix_time_from_system()
+	var calculated_season = int(unix_time / (Constants.SEASON_DURATION_DAYS * 86400)) + 1
+	if calculated_season != current_season:
+		var old_season = current_season
+		current_season = calculated_season
+		
+		# シーズン報酬の付与
+		var reward_coins = _calculate_season_reward()
+		coins += reward_coins
+		
+		# 模試データのリセット
+		daily_current_day = 1
+		daily_last_played_date = ""
+		daily_opponent_ghosts.clear()
+		daily_my_records.clear()
+		daily_fixed_deck.clear()
+		save_game()
+		
+		if has_node("/root/UIHelper"):
+			get_node("/root/UIHelper").show_toast("シーズン" + str(old_season) + "終了！シーズン報酬獲得: " + str(reward_coins) + "コイン")
+
+func _calculate_season_reward() -> int:
+	var league = get_deviation_league(deviation_value)
+	if has_node("/root/BalanceConfig"):
+		var cfg_reward = get_node("/root/BalanceConfig").get_value("rewards.season_reward." + league)
+		if cfg_reward != null:
+			return int(cfg_reward)
+	match league:
+		Constants.LEAGUE_S: return 200
+		Constants.LEAGUE_A: return 100
+		Constants.LEAGUE_B: return 50
+		Constants.LEAGUE_C: return 25
+		Constants.LEAGUE_F: return 10
+	return 10
+
+

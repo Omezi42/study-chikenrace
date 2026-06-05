@@ -29,19 +29,19 @@ const MSG_CONNECTION_LOST = "接続が切断されました。\n自動再接続�
 const MSG_RECONNECT_SUCCESS = "接続復旧しました。\n同期を再開しています..."
 const MSG_TIMELINE_POST = "タイムラインに投稿"
 const MSG_STUDY_REPORT = "今日の勉強報告"
-const MSG_REPORT_SLIDER_WARN = "⚠️ 申告が実点を超えています！ダウトされる危険性があります。"
+const MSG_REPORT_SLIDER_WARN = "[注意] 申告が実点を超えています！ダウトされる危険性があります。"
 
 # UIテキストのキーマップ
 const TEXT_DATA = {
 	"MODE_SELECTION_TITLE": "対戦モード",
-	"MODE_NATIONAL_TITLE": "📝 模試",
+	"MODE_NATIONAL_TITLE": "模試",
 	"MODE_NATIONAL_DESC": "全国のライバルのゴーストと非同期対戦。ダウトはAI判定。(偏差値変動なし)",
-	"MODE_FRIEND_TITLE": "🤝 フレンド戦",
+	"MODE_FRIEND_TITLE": "フレンド戦",
 	"MODE_FRIEND_DESC": "ルームコードを共有して友達と非同期対戦。ダウトは相手が選ぶ！",
-	"MODE_RANDOM_TITLE": "🎲 ランダムマッチ",
+	"MODE_RANDOM_TITLE": "ランダムマッチ",
 	"MODE_RANDOM_DESC": "自動マッチングで見知らぬライバルと同期型対戦。ダウトは対戦相手が選ぶ！偏差値が変動！",
 	
-	"CANCEL_BUTTON": "戻る ✖",
+	"CANCEL_BUTTON": "戻る",
 	"MATCHING_STATUS": "マッチング中...",
 }
 

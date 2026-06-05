@@ -27,6 +27,7 @@ var player_actual_score_today: int = 0
 var player_declared_score_today: int = 0
 var player_hours_history_today: Array = []
 var player_doubts_made_today: Array[String] = []
+var player_emote_today: String = "normal"
 
 var match_history: Dictionary = {}
 
@@ -43,6 +44,7 @@ func start_session(deck_config: Dictionary) -> void:
 	player_declared_score_today = 0
 	player_hours_history_today.clear()
 	player_doubts_made_today.clear()
+	player_emote_today = "normal"
 	match_history.clear()
 
 	player_deck = StudyDeck.new()
@@ -83,7 +85,8 @@ func simulate_cpus_for_day(day_idx: int) -> void:
 
 	for cpu_id in Global.opponent_profiles.keys():
 		var sim = AIManager.simulate_cpu_day(cpu_id, day_idx)
-		var decl = AIManager.calculate_cpu_bluff(cpu_id, sim["actual_score"])
+		var decl = AIManager.calculate_cpu_bluff(cpu_id, sim["actual_score"], day_idx)
+		var cpu_emote = AIManager.select_cpu_emote(cpu_id, decl - sim["actual_score"], sim["actual_score"])
 		day_data[cpu_id] = {
 			"id": cpu_id,
 			"name": Global.opponent_profiles[cpu_id].get("name", Localization.JP_RIVAL),
@@ -93,7 +96,8 @@ func simulate_cpus_for_day(day_idx: int) -> void:
 			"doubts_made": [],
 			"doubts_received": [],
 			"is_doubt_exposed": false,
-			"auto_exposed": false
+			"auto_exposed": false,
+			"emote": cpu_emote
 		}
 
 func add_player_hour_result(draws: int, used_items: Array, bursted: bool, score: int) -> void:
@@ -105,8 +109,9 @@ func add_player_hour_result(draws: int, used_items: Array, bursted: bool, score:
 	})
 	player_actual_score_today += score
 
-func submit_player_declaration(declared_score: int) -> void:
+func submit_player_declaration(declared_score: int, emote: String = "normal") -> void:
 	player_declared_score_today = declared_score
+	player_emote_today = emote
 
 func add_player_doubt(target_id: String) -> void:
 	if not target_id in player_doubts_made_today and player_doubts_made_today.size() < 3:
@@ -127,6 +132,7 @@ func _finalize_day_data() -> void:
 	day_data["player"]["declared_score"] = player_declared_score_today
 	day_data["player"]["hours"] = player_hours_history_today.duplicate(true)
 	day_data["player"]["doubts_made"] = player_doubts_made_today.duplicate(true)
+	day_data["player"]["emote"] = player_emote_today
 
 	var participants: Array[Dictionary] = []
 	for p_id in day_data.keys():
@@ -138,7 +144,8 @@ func _finalize_day_data() -> void:
 		participants.append({
 			"id": p_id,
 			"declared_score": p["declared_score"],
-			"hours": hours_typed
+			"hours": hours_typed,
+			"emote": p.get("emote", "normal")
 		})
 
 	if Global.game_mode not in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
@@ -202,6 +209,7 @@ func _reset_daily_variables() -> void:
 	player_declared_score_today = 0
 	player_hours_history_today.clear()
 	player_doubts_made_today.clear()
+	player_emote_today = "normal"
 
 	if Global.game_mode == Constants.MODE_CRAM:
 		Global.daily_current_day = current_day
@@ -322,6 +330,8 @@ func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 	Global.save_game()
 
 func is_game_over() -> bool:
+	if Global.game_mode == Constants.MODE_OVERNIGHT:
+		return current_day > 1
 	return current_day > Constants.MAX_DAYS
 
 func advance_friend_day() -> void:

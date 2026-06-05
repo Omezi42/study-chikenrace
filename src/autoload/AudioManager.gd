@@ -12,6 +12,9 @@ var bgm_player: AudioStreamPlayer
 var se_players: Array[AudioStreamPlayer] = []
 var max_se_channels: int = 8
 
+# Resource caching dictionary
+var _cached_streams: Dictionary = {}
+
 # Sound settings (0.0 to 1.0)
 var bgm_volume: float = 0.5:
 	set(val):
@@ -22,7 +25,6 @@ var bgm_volume: float = 0.5:
 			if has_node("/root/Global") and is_inside_tree():
 				var global = get_node("/root/Global")
 				global.bgm_volume = bgm_volume
-				global.save_game()
 var se_volume: float = 0.5:
 	set(val):
 		var new_val = clamp(val, 0.0, 1.0)
@@ -31,7 +33,6 @@ var se_volume: float = 0.5:
 			if has_node("/root/Global") and is_inside_tree():
 				var global = get_node("/root/Global")
 				global.se_volume = se_volume
-				global.save_game()
 var is_muted: bool = false:
 	set(val):
 		if is_muted != val:
@@ -40,7 +41,6 @@ var is_muted: bool = false:
 			if has_node("/root/Global") and is_inside_tree():
 				var global = get_node("/root/Global")
 				global.is_muted = is_muted
-				global.save_game()
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS # Keep playing audio during pauses
@@ -53,6 +53,12 @@ func _ready() -> void:
 		se_volume = global.se_volume
 		is_muted = global.is_muted
 	
+	# Cache main streams to avoid runtime loading lag
+	var streams_to_cache = [BGM_MAIN, SE_CLICK, SE_DRAW, SE_PLACE, SE_COMBO, SE_BURST]
+	for path in streams_to_cache:
+		if ResourceLoader.exists(path):
+			_cached_streams[path] = load(path)
+	
 	# Initialize BGM Player
 	bgm_player = AudioStreamPlayer.new()
 	add_child(bgm_player)
@@ -64,10 +70,16 @@ func _ready() -> void:
 		se_players.append(p)
 
 func play_bgm(stream_path: String) -> void:
-	if not ResourceLoader.exists(stream_path):
+	var stream: AudioStream = null
+	if _cached_streams.has(stream_path):
+		stream = _cached_streams[stream_path]
+	elif ResourceLoader.exists(stream_path):
+		stream = load(stream_path)
+		_cached_streams[stream_path] = stream
+		
+	if not stream:
 		return
 		
-	var stream = load(stream_path)
 	if bgm_player.stream == stream and bgm_player.playing:
 		return
 		
@@ -79,11 +91,16 @@ func stop_bgm() -> void:
 	bgm_player.stop()
 
 func play_se(stream_path: String) -> void:
-	if not ResourceLoader.exists(stream_path):
+	var stream: AudioStream = null
+	if _cached_streams.has(stream_path):
+		stream = _cached_streams[stream_path]
+	elif ResourceLoader.exists(stream_path):
+		stream = load(stream_path)
+		_cached_streams[stream_path] = stream
+		
+	if not stream:
 		return
 		
-	var stream = load(stream_path)
-	
 	# Find an available player in the pool
 	var player: AudioStreamPlayer = null
 	for p in se_players:

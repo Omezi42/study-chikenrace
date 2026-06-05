@@ -163,7 +163,7 @@ func _ready() -> void:
 	
 	# Skip button at bottom right
 	skip_btn = Button.new()
-	skip_btn.text = "結果へスキップ ⏭"
+	skip_btn.text = "結果へスキップ >>"
 	skip_btn.custom_minimum_size = Vector2(240, 60)
 	skip_btn.add_theme_font_override("font", DeskTheme.get_font())
 	skip_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
@@ -276,10 +276,8 @@ func reveal_next_day_showdown() -> void:
 		if p_id != "player":
 			if Global.opponent_profiles.has(p_id):
 				name_str = Global.opponent_profiles[p_id].get("name", "ライバル")
-			elif AIManager.CPU_OPPONENTS.has(p_id):
-				name_str = AIManager.CPU_OPPONENTS[p_id].get("name", "ライバル")
 			else:
-				name_str = "ライバル"
+				name_str = AIManager.get_cpu_name(p_id)
 			
 		# Chalk Card Panel
 		var card = PanelContainer.new()
@@ -374,35 +372,22 @@ func reveal_next_day_showdown() -> void:
 		stamp_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		stamp_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
 		
-		var stamp_style = StyleBoxFlat.new()
-		stamp_style.bg_color = Color(1, 1, 1, 0.0) # Transparent bg
-		stamp_style.border_width_left = 2
-		stamp_style.border_width_right = 2
-		stamp_style.border_width_top = 2
-		stamp_style.border_width_bottom = 2
-		stamp_style.corner_radius_top_left = 4
-		stamp_style.corner_radius_top_right = 4
-		stamp_style.corner_radius_bottom_left = 4
-		stamp_style.corner_radius_bottom_right = 4
-		stamp_style.content_margin_left = 12
-		stamp_style.content_margin_right = 12
-		stamp_style.content_margin_top = 4
-		stamp_style.content_margin_bottom = 4
-		
+		var border_color = Color("6bbf59")
 		if declared > actual:
 			if is_exposed:
 				stamp_lbl.text = " 嘘バレ！ "
 				stamp_lbl.add_theme_color_override("font_color", Color("ff6b6b"))
-				stamp_style.border_color = Color("ff6b6b")
+				border_color = Color("ff6b6b")
 			else:
 				stamp_lbl.text = " セーフ "
 				stamp_lbl.add_theme_color_override("font_color", Color("e0b84c"))
-				stamp_style.border_color = Color("e0b84c")
+				border_color = Color("e0b84c")
 		else:
 			stamp_lbl.text = " 正直 "
 			stamp_lbl.add_theme_color_override("font_color", Color("6bbf59"))
-			stamp_style.border_color = Color("6bbf59")
+			border_color = Color("6bbf59")
 			
+		var stamp_style = DeskTheme.create_stamp_style(border_color)
 		stamp_lbl.add_theme_stylebox_override("normal", stamp_style)
 		stamp_container.add_child(stamp_lbl)
 		
@@ -598,9 +583,7 @@ func _get_participant_name(p_id: String) -> String:
 		return "あなた"
 	if Global.opponent_profiles.has(p_id):
 		return Global.opponent_profiles[p_id].get("name", p_id)
-	if AIManager.CPU_OPPONENTS.has(p_id):
-		return AIManager.CPU_OPPONENTS[p_id].get("name", p_id)
-	return p_id
+	return AIManager.get_cpu_name(p_id)
 
 func _on_skip_pressed() -> void:
 	if not is_revealing or skip_btn.disabled:
@@ -644,13 +627,27 @@ func trigger_report_card() -> void:
 	# Display Deviation Value if playing random match
 	if Global.game_mode == Constants.MODE_RANDOM:
 		var deviation_change_lbl = Label.new()
-		deviation_change_lbl.text = "全国ランダムマッチ 偏差値: %.1f (前回: %.1f)\n" % [new_deviation, old_deviation]
+		var old_league = showdown_data.get("old_league", "")
+		var new_league = showdown_data.get("new_league", "")
+		
+		var league_text = "全国ランダムマッチ 偏差値: %.1f (前回: %.1f)\n" % [new_deviation, old_deviation]
+		league_text += "所属リーグ: %s" % Global.get_deviation_league_name(new_league)
+		
+		if old_league != new_league and old_league != "":
+			if showdown_data.get("league_upgraded", false):
+				league_text += " 【昇格！】"
+			elif showdown_data.get("league_downgraded", false):
+				league_text += " 【降格...】"
+		
+		league_text += "\n"
 		if deviation_change >= 0:
-			deviation_change_lbl.text += "➔ 偏差値が %.1f アップしました！ 📈" % deviation_change
+			league_text += "→ 偏差値が %.1f アップしました！" % deviation_change
 			deviation_change_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_BONUS)
 		else:
-			deviation_change_lbl.text += "➔ 偏差値が %.1f ダウンしました... 📉" % abs(deviation_change)
+			league_text += "→ 偏差値が %.1f ダウンしました..." % abs(deviation_change)
 			deviation_change_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+			
+		deviation_change_lbl.text = league_text
 		deviation_change_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		deviation_change_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 		report_left_page.add_child(deviation_change_lbl)
@@ -720,21 +717,7 @@ func trigger_report_card() -> void:
 	title_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_container.add_child(title_desc)
 	
-	var stamp_style = StyleBoxFlat.new()
-	stamp_style.bg_color = Color(1, 0.9, 0.9, 0.3)
-	stamp_style.border_color = Color("c62828")
-	stamp_style.border_width_left = 3
-	stamp_style.border_width_right = 3
-	stamp_style.border_width_top = 3
-	stamp_style.border_width_bottom = 3
-	stamp_style.corner_radius_top_left = 6
-	stamp_style.corner_radius_top_right = 6
-	stamp_style.corner_radius_bottom_left = 6
-	stamp_style.corner_radius_bottom_right = 6
-	stamp_style.content_margin_left = 16
-	stamp_style.content_margin_right = 16
-	stamp_style.content_margin_top = 8
-	stamp_style.content_margin_bottom = 8
+	var stamp_style = DeskTheme.create_stamp_style(Color("c62828"), Color(1, 0.9, 0.9, 0.3))
 	
 	var stamp_panel = PanelContainer.new()
 	stamp_panel.add_theme_stylebox_override("panel", stamp_style)
@@ -753,12 +736,11 @@ func trigger_report_card() -> void:
 	stamp_panel.scale = Vector2(3.0, 3.0)
 	stamp_panel.modulate.a = 0.0
 	
-	var s_tween = create_tween().set_parallel(false)
+	var s_tween = create_tween()
 	s_tween.tween_interval(0.4)
 	
-	var s_tween_group = s_tween.tween_parallel()
-	s_tween_group.tween_property(stamp_panel, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	s_tween_group.tween_property(stamp_panel, "modulate.a", 1.0, 0.2)
+	s_tween.tween_property(stamp_panel, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	s_tween.parallel().tween_property(stamp_panel, "modulate.a", 1.0, 0.2)
 	
 	s_tween.tween_callback(func():
 		DeskTheme.shake_control(stamp_panel, 8.0, 0.25)
@@ -935,26 +917,53 @@ func _on_restart_pressed() -> void:
 
 func _calculate_deviation() -> void:
 	if Global.game_mode == Constants.MODE_RANDOM:
-		var change = 0.0
-		var my_rank = showdown_data.get("my_rank", 3)
-		if my_rank == 1:
-			change = randf_range(3.2, 4.8) + max(0.0, (60.0 - Global.deviation_value) * 0.15)
-		elif my_rank == 2:
-			change = randf_range(0.8, 1.6) + (55.0 - Global.deviation_value) * 0.05
-		elif my_rank == 3:
-			change = -randf_range(0.8, 1.6) - (Global.deviation_value - 45.0) * 0.05
-		elif my_rank == 4:
-			change = -randf_range(3.2, 4.8) - max(0.0, (Global.deviation_value - 40.0) * 0.15)
-		
-		change = clamp(change, -8.0, 8.0)
-		old_deviation = Global.deviation_value
-		new_deviation = clamp(old_deviation + change, 30.0, 90.0)
-		deviation_change = change
+		if not showdown_data.has("deviation_change"):
+			# フォールバック処理 (テストコード実行時など)
+			var change = 0.0
+			var my_rank = showdown_data.get("my_rank", 3)
+			if my_rank == 1:
+				change = randf_range(3.2, 4.8) + max(0.0, (60.0 - Global.deviation_value) * 0.15)
+			elif my_rank == 2:
+				change = randf_range(0.8, 1.6) + (55.0 - Global.deviation_value) * 0.05
+			elif my_rank == 3:
+				change = -randf_range(0.8, 1.6) - (Global.deviation_value - 45.0) * 0.05
+			elif my_rank == 4:
+				change = -randf_range(3.2, 4.8) - max(0.0, (Global.deviation_value - 40.0) * 0.15)
+			
+			change = clamp(change, -8.0, 8.0)
+			var old_dev = Global.deviation_value
+			var new_dev = clamp(old_dev + change, 30.0, 90.0)
+			
+			showdown_data["old_deviation"] = old_dev
+			showdown_data["new_deviation"] = new_dev
+			showdown_data["deviation_change"] = new_dev - old_dev
+			showdown_data["old_league"] = Global.get_deviation_league(old_dev)
+			showdown_data["new_league"] = Global.get_deviation_league(new_dev)
+			showdown_data["league_upgraded"] = false
+			showdown_data["league_downgraded"] = false
+
+		old_deviation = showdown_data.get("old_deviation", Global.deviation_value)
+		new_deviation = showdown_data.get("new_deviation", Global.deviation_value)
+		deviation_change = showdown_data.get("deviation_change", 0.0)
 		
 		Global.deviation_value = snapped(new_deviation, 0.1)
 		if Global.deviation_value > Global.max_deviation_value:
 			Global.max_deviation_value = Global.deviation_value
 		Global.save_game()
+		
+		# サーバーへのスコア/レートアップロード
+		if has_node("/root/BackendManager"):
+			var bm = get_node("/root/BackendManager")
+			bm.upload_random_match_result(
+				showdown_data.get("final_scores", {}).get("player", 0),
+				showdown_data.get("my_rank", 3),
+				new_deviation,
+				Global.get_deviation_league(new_deviation)
+			)
+	else:
+		old_deviation = Global.deviation_value
+		new_deviation = Global.deviation_value
+		deviation_change = 0.0
 
 func _play_chalk_deviation_animation() -> void:
 	if is_instance_valid(skip_btn):
@@ -1003,7 +1012,7 @@ func _play_chalk_deviation_animation() -> void:
 	old_val_box.add_child(old_lbl)
 	
 	var arrow_lbl = Label.new()
-	arrow_lbl.text = "➔"
+	arrow_lbl.text = "→"
 	arrow_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	arrow_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_GIANT)
 	arrow_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_WHITE)
@@ -1025,10 +1034,10 @@ func _play_chalk_deviation_animation() -> void:
 	
 	var change_lbl = Label.new()
 	if deviation_change >= 0:
-		change_lbl.text = "+%.1f アップ！ 📈" % deviation_change
+		change_lbl.text = "+%.1f アップ！" % deviation_change
 		change_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_YELLOW)
 	else:
-		change_lbl.text = "-%.1f ダウン... 📉" % abs(deviation_change)
+		change_lbl.text = "-%.1f ダウン..." % abs(deviation_change)
 		change_lbl.add_theme_color_override("font_color", Color("ff6b6b"))
 	change_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	change_lbl.add_theme_font_override("font", DeskTheme.get_font())

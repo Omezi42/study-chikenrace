@@ -41,7 +41,7 @@ func _ready() -> void:
 	vbox.add_child(header_hbox)
 	
 	var title = Label.new()
-	title.text = "📝 テスト勉強チキンレース 公式ルールブック"
+	title.text = "テスト勉強チキンレース 公式ルールブック"
 	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
@@ -49,7 +49,7 @@ func _ready() -> void:
 	header_hbox.add_child(title)
 	
 	var close_btn = Button.new()
-	close_btn.text = " ✖ 閉じる "
+	close_btn.text = " × 閉じる "
 	close_btn.add_theme_font_override("font", DeskTheme.get_font())
 	close_btn.add_theme_font_size_override("font_size", 18)
 	close_btn.custom_minimum_size = Vector2(100, 36)

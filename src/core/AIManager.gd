@@ -128,40 +128,158 @@ const CPU_OPPONENTS = {
 	}
 }
 
+# 性格別の動的カバン構築ロジック
+static func generate_dynamic_cpu_deck(cpu_type: String) -> Dictionary:
+	var deck = {}
+	# 性格別に好むアイテムの優先度リスト
+	var preferences = []
+	match cpu_type:
+		TYPE_CAUTIOUS: # 慎重派 (守り・仕込み優先)
+			preferences = [
+				"item_eraser", "item_ruler", "item_wordbook", "item_cushion",
+				"item_memo_cards", "item_memo_app", "item_earplugs", "item_sticky_note",
+				"item_blue_pen", "item_highlighter", "item_timer", "item_amulet"
+			]
+		TYPE_BLUFFER: # ブラフ派 (ブラフ・仕込み優先)
+			preferences = [
+				"item_cheat_sheet", "item_copy_answer", "item_study_chat", "item_eraser",
+				"item_ruler", "item_timer", "item_memo_app", "item_wordbook",
+				"item_highlighter", "item_blue_pen"
+			]
+		TYPE_HIGHROLLER: # ハイローラー (押し・リスク優先)
+			preferences = [
+				"item_energy_drink", "item_red_sheet", "item_thick_book", "item_night_note",
+				"item_mech_pencil", "item_highlighter", "item_eraser", "item_ruler",
+				"item_sticky_note", "item_cram_school_print"
+			]
+		TYPE_AGGRESSIVE: # 攻撃派 (押し・手数優先)
+			preferences = [
+				"item_energy_drink", "item_mech_pencil", "item_highlighter", "item_blue_pen",
+				"item_thick_book", "item_night_note", "item_cram_school_print", "item_ruler",
+				"item_sticky_note", "item_expected_questions"
+			]
+		_:
+			preferences = [
+				"item_sticky_note", "item_eraser", "item_ruler", "item_wordbook",
+				"item_mech_pencil", "item_memo_cards", "item_highlighter", "item_blue_pen",
+				"item_cushion", "item_memo_app"
+			]
+
+	# 1から10のスロットに優先度の高いアイテムを割り当て
+	for slot in range(1, 11):
+		if slot - 1 < preferences.size():
+			deck[slot] = preferences[slot - 1]
+		else:
+			deck[slot] = "item_sticky_note"
+	return deck
+
 # Safely retrieve CPU info with fallback for unknown IDs (e.g. ghost data "cpu_0")
 static func _get_cpu_info(actual_id: String) -> Dictionary:
 	if CPU_OPPONENTS.has(actual_id):
-		return CPU_OPPONENTS[actual_id]
+		var base = CPU_OPPONENTS[actual_id]
+		# 固定のdeck定義ではなく、動的に性格に適合したデッキを生成して割り当てる
+		var dynamic_deck = generate_dynamic_cpu_deck(base["type"])
+		return {
+			"name": base["name"],
+			"type": base["type"],
+			"avatar": base["avatar"],
+			"bio": base["bio"],
+			"bluff_tendency": base["bluff_tendency"],
+			"deck": dynamic_deck
+		}
 	# Fallback: determine personality type from ID hash
 	var types = [TYPE_CAUTIOUS, TYPE_AGGRESSIVE, TYPE_BLUFFER, TYPE_HIGHROLLER]
 	var h = abs(actual_id.hash())
 	var type_idx = h % types.size()
+	var selected_type = types[type_idx]
+	var dynamic_deck = generate_dynamic_cpu_deck(selected_type)
 	var fallback_keys = CPU_OPPONENTS.keys()
 	var deck_idx = h % fallback_keys.size()
 	var base = CPU_OPPONENTS[fallback_keys[deck_idx]]
 	return {
 		"name": actual_id,
-		"type": types[type_idx],
+		"type": selected_type,
 		"avatar": base.get("avatar", ""),
 		"bio": "",
 		"bluff_tendency": "不明",
-		"deck": base["deck"].duplicate()
+		"deck": dynamic_deck
 	}
 
+static func get_cpu_info(actual_id: String) -> Dictionary:
+	return AIManager._get_cpu_info(actual_id)
+
+static func get_cpu_name(actual_id: String) -> String:
+	return AIManager._get_cpu_info(actual_id).get("name", actual_id)
+
+# Get current standing of the CPU within the active match (1 to 4)
+# Returns: { "rank": int, "is_losing": bool, "is_winning": bool }
+static func _evaluate_cpu_standing(cpu_id: String, day_idx: int) -> Dictionary:
+	var rank = 2
+	var is_losing = false
+	var is_winning = false
+	
+	var main_loop = Engine.get_main_loop()
+	if not main_loop is SceneTree:
+		return {"rank": rank, "is_losing": is_losing, "is_winning": is_winning}
+		
+	# Find GameScene or GameSession
+	var root = main_loop.root
+	var gamescene = root.get_node_or_null("GameScene")
+	var session = null
+	if gamescene and gamescene.get("session"):
+		session = gamescene.get("session")
+	
+	if not session:
+		# Search in children of root
+		for child in root.get_children():
+			if child.has_method("get") and child.get("session") is GameSession:
+				session = child.get("session")
+				break
+				
+	if session and session is GameSession and day_idx > 1:
+		var total_scores = {}
+		# Collect all participants
+		var participants = ["player"]
+		for o_id in Global.opponent_profiles.keys():
+			participants.append(o_id)
+			
+		for p in participants:
+			total_scores[p] = 0
+			
+		# Sum scores up to day_idx - 1
+		for d in range(1, day_idx):
+			if session.match_history.has(d):
+				var day_data = session.match_history[d]
+				for p in participants:
+					if day_data.has(p) and day_data[p] is Dictionary:
+						# Use actual score
+						total_scores[p] += day_data[p].get("actual_score", 0)
+						
+		# Sort participants by score descending
+		var sorted = total_scores.keys()
+		sorted.sort_custom(func(a, b):
+			return total_scores[a] > total_scores[b]
+		)
+		
+		# Find my rank
+		var my_idx = sorted.find(cpu_id)
+		if my_idx != -1:
+			rank = my_idx + 1
+			# 4位（最下位）の場合は「負けている」
+			if rank == 4:
+				is_losing = true
+			# 1位（首位）の場合は「勝っている」
+			elif rank == 1:
+				is_winning = true
+				
+	return {"rank": rank, "is_losing": is_losing, "is_winning": is_winning}
+
 # Simulate the Chicken Race for one CPU opponent for the entire day (3 periods)
-# Returns a dictionary of day results:
-# {
-#   "actual_score": int,
-#   "hours": [
-#      {"draws": int, "used_items": Array, "bursted": bool, "score": int},
-#      ...
-#   ]
-# }
 static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 	var actual_id = cpu_id
 	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("id"):
 		actual_id = Global.opponent_profiles[cpu_id]["id"]
-	var cpu_info = _get_cpu_info(actual_id)
+	var cpu_info = AIManager._get_cpu_info(actual_id)
 	var cpu_type = cpu_info["type"]
 	var deck_config = cpu_info["deck"]
 	
@@ -185,16 +303,35 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 		deviation = Global.opponent_profiles[cpu_id]["deviation"]
 	var dev_factor = clamp(deviation / 50.0, 0.7, 1.3)
 	
+	# League-based AI strength variation for Random Match
+	if Global and Global.game_mode == Constants.MODE_RANDOM:
+		var league = Global.get_deviation_league(Global.deviation_value)
+		match league:
+			Constants.LEAGUE_S: dev_factor *= 1.15
+			Constants.LEAGUE_A: dev_factor *= 1.05
+			Constants.LEAGUE_B: dev_factor *= 1.0
+			Constants.LEAGUE_C: dev_factor *= 0.9
+			Constants.LEAGUE_F: dev_factor *= 0.8
+	
 	# Apply ±15% fluctuation to risk tolerance, adjusted by deviation
 	risk_tolerance *= randf_range(0.85, 1.15) * dev_factor
 	
-	# 状況評価: 後半戦で負けているか、勝っているか
-	var is_losing = day_idx >= 3 and deviation < 48.0
-	var is_winning = day_idx >= 3 and deviation >= 53.0
+	# Synergy: Energy Drink + Insurance items (Eraser, Red Sheet, Amulet)
+	var has_energy_drink = "item_energy_drink" in deck_config.values()
+	var has_insurance = ("item_eraser" in deck_config.values() or 
+						 "item_red_sheet" in deck_config.values() or 
+						 "item_amulet" in deck_config.values())
+	if has_energy_drink and has_insurance:
+		risk_tolerance *= 1.3
+	
+	# 状況評価: 後半戦（Day2以降）で負けているか、勝っているか
+	var standing = AIManager._evaluate_cpu_standing(cpu_id, day_idx)
+	var is_losing = standing["is_losing"]
+	var is_winning = standing["is_winning"]
 	if is_losing:
-		risk_tolerance *= 1.25
+		risk_tolerance *= 1.35 # 負けている時はさらに強気に
 	elif is_winning:
-		risk_tolerance *= 0.85
+		risk_tolerance *= 0.75 # 勝っている時はより堅実に
 		
 	var hours_result: Array[Dictionary] = []
 	var total_actual_score = 0
@@ -216,7 +353,7 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 		
 		# AI Decides to activate items before starting draw
 		var used_items: Array[String] = []
-		decide_and_apply_cpu_items(deck, deck_config, used_items, day_idx, cpu_id)
+		AIManager.decide_and_apply_cpu_items(deck, deck_config, used_items, day_idx, cpu_id)
 		
 		var draw_count = 0
 		var bursted = false
@@ -232,6 +369,7 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 					var card = deck.activate_cafe_latte()
 					if not card.is_empty():
 						draw_count += 1
+						AIManager._apply_drawn_item_effects_cpu(card, deck, used_items)
 						continue
 			
 			# Decide to draw or stop
@@ -254,6 +392,7 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 				break # Deck empty
 				
 			draw_count += 1
+			AIManager._apply_drawn_item_effects_cpu(card, deck, used_items)
 			
 			# Check for burst
 			if deck.check_burst():
@@ -272,7 +411,7 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 			period_score = deck.calculate_hand_score()["total_score"]
 			
 		hours_result.append({
-			"draws": draw_count,
+			"draws": deck.hand.size(),
 			"used_items": used_items,
 			"bursted": bursted,
 			"score": period_score
@@ -331,24 +470,147 @@ static func decide_and_apply_cpu_items(deck: StudyDeck, deck_config: Dictionary,
 		deck.blue_pen_active = true
 		used_items.append("item_blue_pen")
 
+	# Amulet (お守り)
+	if "item_amulet" in deck_config.values() and randf() < ((0.25 + late_game_boost) * defense_mult):
+		deck.amulet_active = true
+		used_items.append("item_amulet")
+
+	# Cram school print (塾プリント)
+	if "item_cram_school_print" in deck_config.values() and randf() < ((0.3 + late_game_boost) * offense_mult):
+		deck.cram_school_print_active = true
+		used_items.append("item_cram_school_print")
+
+	# Red sheet (赤シート)
+	if "item_red_sheet" in deck_config.values() and randf() < ((0.35 + late_game_boost) * defense_mult):
+		deck.red_sheet_active = true
+		used_items.append("item_red_sheet")
+
+	# Thick book (分厚い参考書)
+	if "item_thick_book" in deck_config.values() and randf() < ((0.3 + late_game_boost) * offense_mult):
+		deck.activate_thick_book()
+		used_items.append("item_thick_book")
+
+	# Sticky note (付箋)
+	if "item_sticky_note" in deck_config.values() and randf() < ((0.4 + late_game_boost) * offense_mult):
+		deck.next_draw_bonus_points = max(deck.next_draw_bonus_points, 1)
+		used_items.append("item_sticky_note")
+
+	# Expected questions (予想問題集)
+	if "item_expected_questions" in deck_config.values() and randf() < ((0.35 + late_game_boost) * offense_mult):
+		deck.next_draw_bonus_points = 3
+		used_items.append("item_expected_questions")
+
+	# Compass (コンパス)
+	if "item_compass" in deck_config.values() and randf() < ((0.25 + late_game_boost) * defense_mult):
+		deck.compass_active = true
+		used_items.append("item_compass")
+
+	# Timer (タイマー)
+	if "item_timer" in deck_config.values() and randf() < (0.25 + late_game_boost):
+		deck.timer_active = true
+		used_items.append("item_timer")
+
+	# Cushion (座布団)
+	if "item_cushion" in deck_config.values() and randf() < 0.2:
+		used_items.append("item_cushion")
+
+	# Earplugs (耳栓)
+	if "item_earplugs" in deck_config.values() and randf() < 0.2:
+		used_items.append("item_earplugs")
+
+	# Study chat (勉強会チャット)
+	if "item_study_chat" in deck_config.values() and randf() < 0.25:
+		used_items.append("item_study_chat")
+
+	# Cheat sheet (ズルいカンペ)
+	if "item_cheat_sheet" in deck_config.values() and randf() < 0.3:
+		used_items.append("item_cheat_sheet")
+
+	# Copy answer (解答写し)
+	if "item_copy_answer" in deck_config.values() and randf() < 0.25:
+		used_items.append("item_copy_answer")
+
+	# Active deck manipulation items (applied if deck has cards and hand has cards)
+	# Forget notebook (忘却のノート)
+	if "item_forget_notebook" in deck_config.values() and deck.hand.size() > 0 and randf() < ((0.3 + late_game_boost) * defense_mult):
+		deck.activate_forget_notebook()
+		used_items.append("item_forget_notebook")
+
+	# Memo cards (暗記カード)
+	if "item_memo_cards" in deck_config.values() and deck.hand.size() > 0 and deck.draw_pile.size() > 0 and randf() < (0.3 + late_game_boost):
+		deck.activate_memo_cards(0)
+		used_items.append("item_memo_cards")
+
+	# Memo app (メモアプリ)
+	if "item_memo_app" in deck_config.values() and randf() < ((0.3 + late_game_boost) * defense_mult):
+		deck.activate_memo_app_draw()
+		deck.activate_memo_app_discard(0)
+		used_items.append("item_memo_app")
+
+# Apply item effects when CPU actually draws the card during simulation
+static func _apply_drawn_item_effects_cpu(card: Dictionary, deck: StudyDeck, used_items: Array[String]) -> void:
+	var item_id = card.get("item_id", "")
+	if item_id == "" or item_id in used_items:
+		return
+		
+	used_items.append(item_id)
+	
+	match item_id:
+		"item_highlighter":
+			deck.highlighter_active = true
+		"item_blue_pen":
+			deck.blue_pen_active = true
+		"item_energy_drink":
+			deck.energy_drink_active = true
+		"item_cram_school_print":
+			deck.cram_school_print_active = true
+		"item_timer":
+			deck.timer_active = true
+		"item_compass":
+			deck.compass_active = true
+		"item_thick_book":
+			deck.activate_thick_book()
+		"item_sticky_note":
+			deck.next_draw_bonus_points = max(deck.next_draw_bonus_points, 1)
+		"item_expected_questions":
+			deck.next_draw_bonus_points = 3
+		"item_forget_notebook":
+			deck.activate_forget_notebook()
+		"item_memo_cards":
+			deck.activate_memo_cards(0)
+		"item_memo_app":
+			var extra_cards = deck.activate_memo_app_draw()
+			for c in extra_cards:
+				AIManager._apply_drawn_item_effects_cpu(c, deck, used_items)
+			deck.activate_memo_app_discard(0)
+
 # AI decides their declared score based on actual score and personality
 # Returns: declared_score (int)
-static func calculate_cpu_bluff(cpu_id: String, actual_score: int) -> int:
+static func calculate_cpu_bluff(cpu_id: String, actual_score: int, day_idx: int = 1) -> int:
 	var actual_id = cpu_id
 	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("id"):
 		actual_id = Global.opponent_profiles[cpu_id]["id"]
-	var cpu_info = _get_cpu_info(actual_id)
+	var cpu_info = AIManager._get_cpu_info(actual_id)
 	var cpu_type = cpu_info["type"]
 	var deck_config = cpu_info["deck"]
 	
 	# Determine limits
 	var base_bluff_limit = 24
 	
-	# Slotted item expansions
+	# 状況評価: 負けているか、勝っているか
+	var standing = AIManager._evaluate_cpu_standing(cpu_id, day_idx)
+	var is_losing = standing["is_losing"]
+	var is_winning = standing["is_winning"]
+
 	if "item_cheat_sheet" in deck_config.values():
 		base_bluff_limit += 16
 	if "item_copy_answer" in deck_config.values():
 		base_bluff_limit += 25
+		
+	if is_losing:
+		base_bluff_limit += 8
+	elif is_winning:
+		base_bluff_limit = max(base_bluff_limit - 6, 8)
 		
 	# Special adjustment for burst (0 points):
 	# If actual score is 0, CPU should bluff much more conservatively to avoid obvious doubt.
@@ -360,10 +622,15 @@ static func calculate_cpu_bluff(cpu_id: String, actual_score: int) -> int:
 	var deviation = 50.0
 	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("deviation"):
 		deviation = Global.opponent_profiles[cpu_id]["deviation"]
-	var dev_bluff_mod = clamp(50.0 / deviation, 0.5, 1.5) # High dev = smaller, smarter bluffs
+	var dev_bluff_mod = clamp(50.0 / deviation, 0.5, 1.5) if deviation > 0.0 else 1.5 # High dev = smaller, smarter bluffs
 	
 	# Apply ±15% fluctuation to bluff probability and base limits, adjusted by deviation
 	var bluff_chance_mod = randf_range(0.85, 1.15) * dev_bluff_mod
+	if is_losing:
+		bluff_chance_mod *= 1.3
+	elif is_winning:
+		bluff_chance_mod *= 0.6
+		
 	match cpu_type:
 		TYPE_CAUTIOUS:
 			# Rarely bluffs (15% chance to bluff small, 1 to 6 points)
@@ -391,11 +658,52 @@ static func calculate_cpu_bluff(cpu_id: String, actual_score: int) -> int:
 # participants: Array of dictionaries:
 # {"id": String, "name": String, "declared_score": int, "hours": Array}
 # Returns: Array of String IDs who this CPU doubted (max 3 per day)
+# 追加: プレイヤーのブラフ傾向を分析する関数
+static func _analyze_player_bluff_history(session: GameSession, day_idx: int) -> Dictionary:
+	var total_lies := 0
+	var total_days_checked := 0
+	var avg_bluff_amount := 0.0
+	
+	if not session:
+		return {
+			"lie_rate": 0.0,
+			"avg_bluff": 0.0,
+			"sample_size": 0
+		}
+	
+	for d in range(1, day_idx):
+		if not session.match_history.has(d):
+			continue
+		var day_data = session.match_history[d]
+		if not day_data.has("player"):
+			continue
+		total_days_checked += 1
+		var p = day_data["player"]
+		var actual = p.get("actual_score", 0)
+		var declared = p.get("declared_score", 0)
+		if declared > actual:
+			total_lies += 1
+			avg_bluff_amount += (declared - actual)
+	
+	if total_lies > 0:
+		avg_bluff_amount /= total_lies
+	
+	var lie_rate = float(total_lies) / max(total_days_checked, 1)
+	return {
+		"lie_rate": lie_rate,           # 0.0〜1.0: 嘘をつく頻度
+		"avg_bluff": avg_bluff_amount,  # 平均盛り量
+		"sample_size": total_days_checked
+	}
+
+# AI Decides who to doubt among active participants
+# participants: Array of dictionaries:
+# {"id": String, "name": String, "declared_score": int, "hours": Array}
+# Returns: Array of String IDs who this CPU doubted (max 3 per day)
 static func make_cpu_doubts(cpu_id: String, participants: Array[Dictionary]) -> Array[String]:
 	var actual_id = cpu_id
 	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("id"):
 		actual_id = Global.opponent_profiles[cpu_id]["id"]
-	var cpu_info = _get_cpu_info(actual_id)
+	var cpu_info = AIManager._get_cpu_info(actual_id)
 	var cpu_type = cpu_info["type"]
 	var doubts: Array[String] = []
 	
@@ -405,21 +713,76 @@ static func make_cpu_doubts(cpu_id: String, participants: Array[Dictionary]) -> 
 	var dev_doubt_mod = clamp(deviation / 50.0, 0.5, 1.5) # High dev = more accurate doubts
 	
 	var threshold = 0.7 # Suspect threshold (0.0 to 1.0)
-	match cpu_type:
-		TYPE_CAUTIOUS: threshold = 0.58
-		TYPE_AGGRESSIVE: threshold = 0.72
-		TYPE_BLUFFER: threshold = 0.82
-		TYPE_HIGHROLLER: threshold = 0.50
+	
+	# BalanceConfigから閾値を取得
+	var bc = Engine.get_main_loop().root.get_node_or_null("BalanceConfig")
+	if bc:
+		var cfg_threshold = bc.get_value("doubt.threshold." + cpu_type)
+		if cfg_threshold != null:
+			threshold = float(cfg_threshold)
+	else:
+		match cpu_type:
+			TYPE_CAUTIOUS: threshold = 0.58
+			TYPE_AGGRESSIVE: threshold = 0.72
+			TYPE_BLUFFER: threshold = 0.82
+			TYPE_HIGHROLLER: threshold = 0.50
 		
-	# Class difficulty doubt modifiers
+	# Class difficulty doubt modifiers (Scales by Deviation League if Random Match)
 	var class_mod = 1.0
 	if Global:
-		match Global.selected_class:
-			"remedial": class_mod = 1.35 # Make CPU dumber/more naive
-			"advanced": class_mod = 0.75 # Make CPU much sharper
+		if Global.game_mode == Constants.MODE_RANDOM:
+			var league = Global.get_deviation_league(Global.deviation_value)
+			if bc:
+				var cfg_class_mod = bc.get_value("doubt.league_mod." + league)
+				if cfg_class_mod != null:
+					class_mod = float(cfg_class_mod)
+			else:
+				match league:
+					Constants.LEAGUE_S: class_mod = 0.65  # 非常に鋭いダウト
+					Constants.LEAGUE_A: class_mod = 0.8
+					Constants.LEAGUE_B: class_mod = 1.0
+					Constants.LEAGUE_C: class_mod = 1.2
+					Constants.LEAGUE_F: class_mod = 1.45  # 鈍いダウト
+		else:
+			if bc:
+				var cfg_class_mod = bc.get_value("doubt.class_mod." + Global.selected_class)
+				if cfg_class_mod != null:
+					class_mod = float(cfg_class_mod)
+			else:
+				match Global.selected_class:
+					"remedial": class_mod = 1.35 # Make CPU dumber/more naive
+					"advanced": class_mod = 0.75 # Make CPU much sharper
 			
 	# Apply ±15% fluctuation to suspect threshold (clamped)
 	threshold = clamp(threshold * randf_range(0.85, 1.15) * class_mod / dev_doubt_mod, 0.1, 0.95)
+	
+	# 状況評価と学習のためにセッションを取得
+	var main_loop = Engine.get_main_loop()
+	var session = null
+	if main_loop is SceneTree:
+		var root = main_loop.root
+		var gamescene = root.get_node_or_null("GameScene")
+		if gamescene and gamescene.get("session"):
+			session = gamescene.get("session")
+		else:
+			for child in root.get_children():
+				if child.has_method("get") and child.get("session") is GameSession:
+					session = child.get("session")
+					break
+	
+	var day_idx = 1
+	if session:
+		day_idx = session.current_day
+		
+	# プレイヤーの過去の嘘つき度合いから閾値を変動させる（学習型ダウト）
+	var history = _analyze_player_bluff_history(session, day_idx)
+	if history["sample_size"] >= 1:
+		if history["lie_rate"] > 0.5:
+			# プレイヤーが嘘つきと学習 → 疑いやすくする (閾値を下げる)
+			threshold *= 0.8
+		elif history["lie_rate"] < 0.2 and history["sample_size"] >= 2:
+			# プレイヤーは正直者 → 疑いにくくする (閾値を上げる)
+			threshold *= 1.2
 		
 	# Sort participants by suspiciousness
 	var suspect_list = []
@@ -427,7 +790,7 @@ static func make_cpu_doubts(cpu_id: String, participants: Array[Dictionary]) -> 
 		if p["id"] == cpu_id:
 			continue
 			
-		var suspiciousness = evaluate_suspiciousness(p["declared_score"], p["hours"] as Array[Dictionary])
+		var suspiciousness = AIManager.evaluate_suspiciousness_with_emote(p["declared_score"], p["hours"] as Array[Dictionary], p.get("emote", "normal"))
 		suspect_list.append({
 			"id": p["id"],
 			"value": suspiciousness
@@ -436,9 +799,15 @@ static func make_cpu_doubts(cpu_id: String, participants: Array[Dictionary]) -> 
 	# Sort descending
 	suspect_list.sort_custom(func(a, b): return a["value"] > b["value"])
 	
-	# Doubt up to 3 above threshold
+	var max_doubts = 3
+	if bc:
+		var cfg_max = bc.get_value("doubt.max_doubts_per_day")
+		if cfg_max != null:
+			max_doubts = int(cfg_max)
+	
+	# Doubt up to max_doubts above threshold
 	for s in suspect_list:
-		if doubts.size() >= 3:
+		if doubts.size() >= max_doubts:
 			break
 		if s["value"] >= threshold:
 			doubts.append(s["id"])
@@ -477,6 +846,78 @@ static func evaluate_suspiciousness(declared_score: int, hours: Array[Dictionary
 		suspiciousness = clamp(suspiciousness + 0.15, 0.0, 1.0)
 		
 	return suspiciousness
+
+# Calculate suspiciousness index taking the player's text-based emote into account
+static func evaluate_suspiciousness_with_emote(declared_score: int, hours: Array[Dictionary], emote: String) -> float:
+	var susp = AIManager.evaluate_suspiciousness(declared_score, hours)
+	
+	match emote:
+		"anxious":
+			# 不安そうな場合は疑わしさを大幅上昇
+			susp = clamp(susp + 0.20, 0.0, 1.0)
+		"confident":
+			# 自信ありの場合：異常高得点（大嘘ハッタリ）なら疑わしさ上昇、低得点（確実な手札）なら減少
+			if declared_score >= 50:
+				susp = clamp(susp + 0.10, 0.0, 1.0)
+			elif declared_score < 40:
+				susp = clamp(susp - 0.15, 0.0, 1.0)
+		"normal":
+			# 普通の場合は補正なし
+			pass
+			
+	return susp
+
+# Select CPU's text emote based on their personality and how much they bluffed
+static func select_cpu_emote(cpu_id: String, bluff_amount: int, actual_score: int) -> String:
+	var actual_id = cpu_id
+	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("id"):
+		actual_id = Global.opponent_profiles[cpu_id]["id"]
+	var cpu_info = AIManager._get_cpu_info(actual_id)
+	var cpu_type = cpu_info["type"]
+	
+	# 正直（ブラフなし）の時
+	if bluff_amount == 0:
+		# 高得点の場合は高確率で自信ありを選択
+		if actual_score >= 35 and (cpu_type == TYPE_HIGHROLLER or cpu_type == TYPE_AGGRESSIVE or cpu_type == TYPE_BLUFFER):
+			if randf() < 0.4:
+				return "confident"
+		return "normal"
+		
+	# ブラフ（嘘）を申告している時
+	var roll = randf()
+	match cpu_type:
+		TYPE_CAUTIOUS:
+			# 慎重派は嘘をつくとかなり不安そうにする
+			return "anxious" if roll < 0.65 else "normal"
+		TYPE_BLUFFER:
+			# ハッタリ屋はポーカーフェイスが上手く、自信ありを装う
+			if roll < 0.45:
+				return "confident"
+			elif roll < 0.90:
+				return "normal"
+			else:
+				return "anxious"
+		TYPE_HIGHROLLER:
+			# ハイローラーはハッタリでも強気
+			if roll < 0.60:
+				return "confident"
+			elif roll < 0.90:
+				return "normal"
+			else:
+				return "anxious"
+		TYPE_AGGRESSIVE:
+			# テンポ押しは、ブラフ量が大きい（12点以上）と焦り出す
+			if bluff_amount >= 12:
+				return "anxious" if roll < 0.55 else "normal"
+			else:
+				if roll < 0.15:
+					return "confident"
+				elif roll < 0.65:
+					return "normal"
+				else:
+					return "anxious"
+					
+	return "normal"
 
 # Generate interactive timeline post comment based on character type and day performance
 static func generate_character_comment(char_id: String, declared_score: int, actual_score: int, hours: Array) -> String:
@@ -574,4 +1015,3 @@ static func generate_character_comment(char_id: String, declared_score: int, act
 				return "今日は途中で力尽きてしまいました……。明日はもっと頑張ります！"
 			else:
 				return "今日の勉強はこれくらいで報告します！明日も競い合いましょう！"
-

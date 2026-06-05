@@ -6,6 +6,9 @@ var draw_pile: Array[Dictionary] = []
 var discard_pile: Array[Dictionary] = []
 var hand: Array[Dictionary] = []
 
+
+
+
 # Active temporary effects for the current hour
 var next_draw_bonus_points: int = 0
 var eraser_charges: int = 0
@@ -26,7 +29,11 @@ func initialize_deck(deck_config: Dictionary) -> void:
 	hand.clear()
 	
 	# For each slot N (1 to 10), insert N copies of the card
-	for slot_idx in range(1, 11):
+	var max_slots = 10
+	if Global.game_mode == Constants.MODE_OVERNIGHT:
+		max_slots = 8 # 一夜漬けモード時は36枚のミニデッキでバースト高確率化
+		
+	for slot_idx in range(1, max_slots + 1):
 		var item_id = deck_config.get(slot_idx, "")
 		if item_id == "" or not item_id in CardData.ITEMS:
 			# Fallback to sticky note
@@ -182,6 +189,11 @@ func get_burst_probability() -> float:
 			
 	return float(burst_cards) / float(total_cards)
 
+# Get burst chance for energy drink (10% per card drawn after 3, first 3 cards are safe)
+func get_energy_drink_burst_chance() -> float:
+	var draw_count = hand.size()
+	return max(0.0, float(draw_count - 3) * 0.10)
+
 # Calculate scores with new simplified mechanics
 func calculate_hand_score() -> Dictionary:
 	var subtotal = 0
@@ -212,8 +224,6 @@ func calculate_hand_score() -> Dictionary:
 		
 	return {
 		"subtotal": subtotal,
-		"combo_bonus": 0,
-		"five_subjects_bonus": 0,
 		"total_score": total_score
 	}
 
@@ -340,7 +350,7 @@ func activate_thick_book() -> void:
 			"item_id": "item_thick_book",
 			"name": "高得点講義"
 		}
-		draw_pile.append(card)
+		_safe_add_to_draw_pile(card)
 	shuffle_draw_pile()
 
 func activate_night_note() -> void:
@@ -351,8 +361,13 @@ func activate_night_note() -> void:
 			"item_id": rand_card.get("item_id", ""),
 			"name": rand_card.get("name", "")
 		}
-		draw_pile.append(dup_card)
+		_safe_add_to_draw_pile(dup_card)
 		shuffle_draw_pile()
+
+func _safe_add_to_draw_pile(card: Dictionary) -> void:
+	draw_pile.append(card)
+
+
 
 func activate_cafe_latte() -> Dictionary:
 	if draw_pile.size() == 0 and discard_pile.size() == 0:

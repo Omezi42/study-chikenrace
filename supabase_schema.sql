@@ -98,6 +98,10 @@ CREATE TABLE IF NOT EXISTS public.friend_room_moves (
     hours_history JSONB NOT NULL DEFAULT '[]'::jsonb,
     doubts_made JSONB NOT NULL DEFAULT '[]'::jsonb,
     doubts_submitted BOOLEAN NOT NULL DEFAULT FALSE,
+    phase TEXT NOT NULL DEFAULT '',
+    revision INT NOT NULL DEFAULT 0,
+    submitted_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    client_nonce TEXT NOT NULL DEFAULT '',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     
     -- Composite unique key to support UPSERT (resolution=merge-duplicates)
@@ -230,3 +234,32 @@ ALTER TABLE public.daily_scores
 ALTER TABLE public.friend_room_moves
     ADD CONSTRAINT chk_actual_score_range CHECK (actual_score >= 0 AND actual_score <= 9999),
     ADD CONSTRAINT chk_declared_score_range CHECK (declared_score >= 0 AND declared_score <= 9999);
+
+---------------------------------------------------------
+-- 8. Random Match Ratings Table (Ratings / Rank History)
+---------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.random_match_ratings (
+    id BIGSERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    score INT NOT NULL,
+    rank INT NOT NULL,
+    deviation DECIMAL(5,2) NOT NULL,
+    league TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- RLS for Random Match Ratings
+ALTER TABLE public.random_match_ratings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read random match ratings"
+    ON public.random_match_ratings FOR SELECT
+    TO anon, authenticated
+    USING (true);
+
+CREATE POLICY "Allow authenticated users to insert ratings"
+    ON public.random_match_ratings FOR INSERT
+    TO authenticated
+    WITH CHECK (auth.uid() = user_id);
+
+ALTER TABLE public.random_match_ratings
+    ADD CONSTRAINT chk_random_match_score_range CHECK (score >= 0 AND score <= 9999);

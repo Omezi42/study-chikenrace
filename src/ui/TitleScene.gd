@@ -8,6 +8,7 @@ var zukan_btn: Button
 var gacha_btn: Button
 var tutorial_btn: Button
 var profile_btn: Button
+var mission_panel: PanelContainer
 
 # Tutorial Slide Viewer Elements
 
@@ -148,13 +149,13 @@ func _ready() -> void:
 	tutorial_btn.pressed.connect(_on_tutorial_pressed)
 	row_hbox2.add_child(tutorial_btn)
 	
-	var ranking_btn = _create_menu_button("🏆 ランキング", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
+	var ranking_btn = _create_menu_button("ランキング", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
 	ranking_btn.pressed.connect(func():
 		LeaderboardModal.create_and_show(self)
 	)
 	row_hbox2.add_child(ranking_btn)
 	
-	var opt_btn = _create_menu_button("⚙️ 設定", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
+	var opt_btn = _create_menu_button("設定", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
 	opt_btn.pressed.connect(func():
 		SettingsModal.create_and_show(self)
 	)
@@ -180,124 +181,6 @@ func _ready() -> void:
 			)
 	)
 	add_child(profile_btn)
-	
-	# Title Background Stationery (Pencil & Eraser) with micro-interactions (Loop 16)
-	var pencil = Control.new()
-	pencil.custom_minimum_size = Vector2(40, 240)
-	pencil.size = Vector2(40, 240)
-	pencil.position = Vector2(180, 480)
-	pencil.rotation_degrees = 35.0
-	pencil.pivot_offset = Vector2(20, 120)
-	add_child(pencil)
-	
-	var p_body = PanelContainer.new()
-	p_body.custom_minimum_size = Vector2(20, 180)
-	p_body.size = Vector2(20, 180)
-	p_body.position = Vector2(10, 0)
-	var p_body_style = StyleBoxFlat.new()
-	p_body_style.bg_color = Color("ffca28") # Yellow pencil body
-	p_body_style.border_color = DeskTheme.COLOR_INK
-	p_body_style.border_width_left = 2
-	p_body_style.border_width_right = 2
-	p_body_style.border_width_top = 2
-	p_body_style.border_width_bottom = 2
-	p_body_style.corner_radius_top_left = 2
-	p_body_style.corner_radius_top_right = 2
-	p_body.add_theme_stylebox_override("panel", p_body_style)
-	pencil.add_child(p_body)
-	
-	var p_tip = PanelContainer.new()
-	p_tip.custom_minimum_size = Vector2(20, 25)
-	p_tip.size = Vector2(20, 25)
-	p_tip.position = Vector2(10, 180)
-	var p_tip_style = StyleBoxFlat.new()
-	p_tip_style.bg_color = Color("ffe082") # Wood tip
-	p_tip_style.border_color = DeskTheme.COLOR_INK
-	p_tip_style.border_width_left = 2
-	p_tip_style.border_width_right = 2
-	p_tip_style.border_width_bottom = 2
-	p_tip_style.corner_radius_bottom_left = 10
-	p_tip_style.corner_radius_bottom_right = 10
-	p_tip.add_theme_stylebox_override("panel", p_tip_style)
-	pencil.add_child(p_tip)
-	
-	var p_lead = ColorRect.new()
-	p_lead.color = DeskTheme.COLOR_INK
-	p_lead.custom_minimum_size = Vector2(6, 6)
-	p_lead.size = Vector2(6, 6)
-	p_lead.position = Vector2(10 - 3, 25 - 6)
-	p_tip.add_child(p_lead)
-	
-	# Eraser Setup
-	var eraser = Control.new()
-	eraser.custom_minimum_size = Vector2(100, 60)
-	eraser.size = Vector2(100, 60)
-	eraser.position = Vector2(1280, 530)
-	eraser.rotation_degrees = -15.0
-	eraser.pivot_offset = Vector2(50, 30)
-	add_child(eraser)
-	
-	var e_body = PanelContainer.new()
-	e_body.custom_minimum_size = Vector2(85, 45)
-	e_body.size = Vector2(85, 45)
-	e_body.position = Vector2(7, 7)
-	var e_body_style = StyleBoxFlat.new()
-	e_body_style.bg_color = Color.WHITE
-	e_body_style.border_color = DeskTheme.COLOR_INK
-	e_body_style.border_width_left = 2
-	e_body_style.border_width_right = 2
-	e_body_style.border_width_top = 2
-	e_body_style.border_width_bottom = 2
-	e_body_style.corner_radius_top_left = 4
-	e_body_style.corner_radius_top_right = 4
-	e_body_style.corner_radius_bottom_left = 4
-	e_body_style.corner_radius_bottom_right = 4
-	e_body.add_theme_stylebox_override("panel", e_body_style)
-	eraser.add_child(e_body)
-	
-	var e_sleeve = PanelContainer.new()
-	e_sleeve.custom_minimum_size = Vector2(50, 45)
-	e_sleeve.size = Vector2(50, 45)
-	e_sleeve.position = Vector2(35, 7) # Covers the right half
-	var e_sleeve_style = StyleBoxFlat.new()
-	e_sleeve_style.bg_color = Color("1565c0") # Blue sleeve
-	e_sleeve_style.border_color = DeskTheme.COLOR_INK
-	e_sleeve_style.border_width_left = 2
-	e_sleeve_style.border_width_right = 2
-	e_sleeve_style.border_width_top = 2
-	e_sleeve_style.border_width_bottom = 2
-	e_sleeve_style.corner_radius_top_right = 4
-	e_sleeve_style.corner_radius_bottom_right = 4
-	e_sleeve.add_theme_stylebox_override("panel", e_sleeve_style)
-	eraser.add_child(e_sleeve)
-	
-	# Setup micro-interactions (jitter rot animation on hover)
-	var setup_stationery_hover = func(ctrl: Control, base_rot: float):
-		ctrl.mouse_filter = Control.MOUSE_FILTER_STOP
-		var active_tween: Tween = null
-		
-		ctrl.mouse_entered.connect(func():
-			if active_tween:
-				active_tween.kill()
-			active_tween = ctrl.create_tween().set_loops().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-			active_tween.tween_property(ctrl, "rotation_degrees", base_rot + 3.0, 0.05)
-			active_tween.tween_property(ctrl, "rotation_degrees", base_rot - 3.0, 0.05)
-			
-			if has_node("/root/AudioManager"):
-				get_node("/root/AudioManager").play_se(AudioManager.SE_CLICK)
-		)
-		
-		ctrl.mouse_exited.connect(func():
-			if active_tween:
-				active_tween.kill()
-				active_tween = null
-			var reset_tween = ctrl.create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-			reset_tween.tween_property(ctrl, "rotation_degrees", base_rot, 0.15)
-		)
-		
-	setup_stationery_hover.call(pencil, 35.0)
-	setup_stationery_hover.call(eraser, -15.0)
-	
 	_reflow_profile_button()
 	
 	if has_node("/root/BackendManager"):
@@ -305,6 +188,56 @@ func _ready() -> void:
 		bm.auth_completed.connect(func(success: bool, err: String):
 			_update_profile_btn_text(profile_btn)
 		)
+		
+	# デイリーミッションパネルを設置 (付箋風)
+	mission_panel = PanelContainer.new()
+	mission_panel.custom_minimum_size = Vector2(340, 240)
+	mission_panel.add_theme_stylebox_override("panel", DeskTheme.create_sticky_note_style("yellow"))
+	
+	var mission_vbox = VBoxContainer.new()
+	mission_vbox.add_theme_constant_override("separation", 10)
+	mission_panel.add_child(mission_vbox)
+	
+	var mission_title = Label.new()
+	mission_title.text = "本日の目標"
+	mission_title.add_theme_font_override("font", DeskTheme.get_font())
+	mission_title.add_theme_font_size_override("font_size", 18)
+	mission_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	mission_vbox.add_child(mission_title)
+	
+	var dmm = get_node_or_null("/root/DailyMissionManager")
+	if dmm:
+		var missions = dmm.get_missions_display()
+		for mission in missions:
+			var m_hbox = HBoxContainer.new()
+			m_hbox.add_theme_constant_override("separation", 5)
+			mission_vbox.add_child(m_hbox)
+			
+			var m_lbl = Label.new()
+			m_lbl.text = "・%s" % mission["desc"]
+			m_lbl.add_theme_font_override("font", DeskTheme.get_font())
+			m_lbl.add_theme_font_size_override("font_size", 14)
+			m_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			m_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			
+			var progress_lbl = Label.new()
+			progress_lbl.text = " (%d/%d)" % [mission["progress"], mission["target"]]
+			progress_lbl.add_theme_font_override("font", DeskTheme.get_font())
+			progress_lbl.add_theme_font_size_override("font_size", 14)
+			
+			if mission["completed"]:
+				m_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
+				progress_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
+				progress_lbl.text = " (達成！)"
+			else:
+				m_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+				progress_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+				
+			m_hbox.add_child(m_lbl)
+			m_hbox.add_child(progress_lbl)
+			
+	add_child(mission_panel)
+	_reflow_mission_panel()
 	
 	# BGM will be deferred until first user interaction (WebGL Audio Autoplay Policy safety)
 	# The _input callback will automatically resume AudioContext and trigger BGM play.
@@ -312,6 +245,7 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		_reflow_profile_button()
+		_reflow_mission_panel()
 
 func _input(event: InputEvent) -> void:
 	if not bgm_started and (event is InputEventMouseButton or event is InputEventKey):
@@ -467,9 +401,9 @@ func show_friend_lobby_selection_modal() -> void:
 func _update_profile_btn_text(btn: Button) -> void:
 	if Global.logged_in_user_id != "":
 		var display_name = Global.player_name if Global.player_name != "" else Global.logged_in_user_id
-		btn.text = "👤 " + display_name
+		btn.text = display_name
 	else:
-		btn.text = "👤 ログイン / 登録"
+		btn.text = "ログイン / 登録"
 
 
 
@@ -478,3 +412,10 @@ func _reflow_profile_button() -> void:
 		return
 	var vp = get_viewport_rect().size
 	profile_btn.position = Vector2(max(vp.x - profile_btn.custom_minimum_size.x - 24.0, 24.0), 24.0)
+
+func _reflow_mission_panel() -> void:
+	if not is_instance_valid(mission_panel) or not is_inside_tree():
+		return
+	var vp = get_viewport_rect().size
+	mission_panel.position = Vector2(24.0, max(vp.y - mission_panel.custom_minimum_size.y - 24.0, 24.0))
+

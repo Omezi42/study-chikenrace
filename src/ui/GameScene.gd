@@ -160,8 +160,8 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 					# For Day 1-4, we can advance immediately without waiting for other's doubts
 					change_phase(Constants.PHASE_DAY_TRANSITION)
 			else:
-				# Check if 5-day cycle is complete (for normal CPU game)
-				if session.current_day > 5:
+				# Check if match is complete (5 days for normal, 1 day for overnight)
+				if session.is_game_over():
 					# Store showdown results globally to persist across scene change
 					Global.active_showdown_results = session.calculate_final_showdown()
 					# Route to Result Scene
@@ -238,7 +238,7 @@ func show_daily_finished_modal() -> void:
 	margin.add_child(vbox)
 	
 	var title = Label.new()
-	title.text = "今日の自習完了！ 🎉"
+	title.text = "今日の自習完了！"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 26)

@@ -1,0 +1,93 @@
+{
+    "chicken_race": {
+        "risk_tolerance": {
+            "cautious": 0.15,
+            "aggressive": 0.38,
+            "bluffer": 0.24,
+            "highroller": 0.48
+        },
+        "risk_fluctuation_min": 0.85,
+        "risk_fluctuation_max": 1.15,
+        "energy_drink_burst_chance": 0.25,
+        "night_note_allnighter_chance": 0.3,
+        "cafe_latte_trigger_prob": 0.4,
+        "cafe_latte_use_chance": 0.75,
+        "losing_risk_mult": 1.35,
+        "winning_risk_mult": 0.75,
+        "insurance_synergy_mult": 1.3
+    },
+    "bluff": {
+        "base_limit": 24,
+        "cheat_sheet_bonus": 16,
+        "copy_answer_bonus": 25,
+        "losing_bonus": 8,
+        "winning_reduction": 6,
+        "burst_cap": 14,
+        "cautious_chance": 0.15,
+        "cautious_min": 1,
+        "cautious_max": 6,
+        "aggressive_chance": 0.45,
+        "aggressive_min": 5,
+        "aggressive_max": 15,
+        "bluffer_chance": 0.85,
+        "bluffer_min": 10,
+        "highroller_chance": 0.40,
+        "highroller_min": 12
+    },
+    "doubt": {
+        "threshold": {
+            "cautious": 0.58,
+            "aggressive": 0.72,
+            "bluffer": 0.82,
+            "highroller": 0.50
+        },
+        "max_doubts_per_day": 3,
+        "expected_score_per_card": 6.5,
+        "cheat_item_suspicion_bonus": 0.15,
+        "emote_anxious_bonus": 0.20,
+        "emote_confident_high_bonus": 0.10,
+        "emote_confident_low_reduction": 0.15,
+        "league_mod": {
+            "S": 0.65,
+            "A": 0.80,
+            "B": 1.0,
+            "C": 1.2,
+            "F": 1.45
+        },
+        "class_mod": {
+            "remedial": 1.35,
+            "advanced": 0.75
+        }
+    },
+    "rewards": {
+        "coins_by_rank": [100, 50, 20, 10],
+        "perfect_crime_bonus": 50,
+        "season_reward": {
+            "S": 200,
+            "A": 100,
+            "B": 50,
+            "C": 25,
+            "F": 10
+        }
+    },
+    "deviation": {
+        "k_factor": 8.0,
+        "min": 30.0,
+        "max": 90.0,
+        "rank_scores": [1.0, 0.6, 0.3, 0.0],
+        "max_change": 8.0
+    },
+    "exposure": {
+        "burst_divisor": 40.0,
+        "burst_exponent": 2.0,
+        "penalty_extra_rate": 0.5,
+        "fail_penalty_base": 10,
+        "fail_penalty_per_day": 2
+    },
+    "star_bonus": {
+        "2": 1,
+        "3": 2,
+        "4": 4,
+        "5": 7
+    }
+}

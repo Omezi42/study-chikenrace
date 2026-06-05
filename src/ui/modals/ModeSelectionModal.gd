@@ -3,8 +3,8 @@ extends RefCounted
 
 static func create_and_show(parent: Node, on_friend_match_pressed: Callable, national_names_pool: Array) -> PanelContainer:
 	var mode_modal = PanelContainer.new()
-	mode_modal.custom_minimum_size = Vector2(720, 620)
-	mode_modal.pivot_offset = Vector2(360, 310)
+	mode_modal.custom_minimum_size = Vector2(720, 720)
+	mode_modal.pivot_offset = Vector2(360, 360)
 	
 	var style = StyleBoxFlat.new()
 	style.bg_color = DeskTheme.COLOR_CRAFT
@@ -136,6 +136,35 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	
 	btn_vbox.add_child(random_btn)
 	
+	# ── ⏱️ 一夜漬けモード (Overnight Mode) ──
+	var overnight_btn = Button.new()
+	overnight_btn.custom_minimum_size = Vector2(660, 100)
+	Global.apply_white_button_style(overnight_btn)
+	
+	var overnight_inner = VBoxContainer.new()
+	overnight_inner.alignment = BoxContainer.ALIGNMENT_CENTER
+	overnight_inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overnight_inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overnight_btn.add_child(overnight_inner)
+	
+	var overnight_title_lbl = Label.new()
+	overnight_title_lbl.text = "一夜漬けモード"
+	overnight_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	overnight_title_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	overnight_title_lbl.add_theme_font_size_override("font_size", 22)
+	overnight_title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	overnight_inner.add_child(overnight_title_lbl)
+	
+	var overnight_desc = Label.new()
+	overnight_desc.text = "1日限りの短期決戦！8枚のミニデッキで3時限の勉強に挑みます。"
+	overnight_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	overnight_desc.add_theme_font_override("font", DeskTheme.get_font())
+	overnight_desc.add_theme_font_size_override("font_size", 14)
+	overnight_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
+	overnight_inner.add_child(overnight_desc)
+	
+	btn_vbox.add_child(overnight_btn)
+	
 	# Cancel Button
 	var cancel_btn = Button.new()
 	cancel_btn.text = Localization.get_text("CANCEL_BUTTON")
@@ -149,6 +178,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	# ── Connect: 📝 模試 ──
 	national_btn.pressed.connect(func():
 		DeskTheme.animate_click(national_btn, Vector2.ONE, 0.08)
+		Global.game_mode = Constants.MODE_NATIONAL
 		_show_difficulty_selection(parent, mode_modal, on_friend_match_pressed, national_names_pool)
 	)
 	
@@ -160,48 +190,24 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 			on_friend_match_pressed.call()
 	)
 	
-	# ── Connect: 🎲 ランダムマッチ ──
 	random_btn.pressed.connect(func():
 		DeskTheme.animate_click(random_btn, Vector2.ONE, 0.08)
+		if not parent.has_node("/root/BackendManager"):
+			return
+		var bm = parent.get_node("/root/BackendManager")
+		if bm.auth_token == "" or bm.logged_in_uuid == "":
+			_show_login_warning(parent, mode_modal, national_names_pool, on_friend_match_pressed)
+			return
+			
 		Global.game_mode = Constants.MODE_RANDOM
-		
-		# Generate random opponents
-		var pool = national_names_pool.duplicate()
-		pool.shuffle()
-		var cpu_pool_keys = AIManager.CPU_OPPONENTS.keys().duplicate()
-		cpu_pool_keys.shuffle()
-		
-		Global.opponent_profiles = {
-			"cpu_sato": {
-				"id": cpu_pool_keys[0],
-				"name": pool[0],
-				"deviation": clamp(Global.deviation_value + randf_range(-5.0, 5.0), 35.0, 80.0)
-			},
-			"cpu_suzuki": {
-				"id": cpu_pool_keys[1],
-				"name": pool[1],
-				"deviation": clamp(Global.deviation_value + randf_range(-3.0, 3.0), 35.0, 80.0)
-			},
-			"cpu_takahashi": {
-				"id": cpu_pool_keys[2],
-				"name": pool[2],
-				"deviation": clamp(Global.deviation_value + randf_range(-8.0, 8.0), 35.0, 80.0)
-			}
-		}
-		
-		random_title_lbl.text = Localization.get_text("MATCHING_STATUS")
-		random_btn.disabled = true
-		
-		# Simulate matching delay for UX
-		var timer = parent.get_tree().create_timer(1.2)
-		timer.timeout.connect(func():
-			Global.save_game()
-			mode_modal.queue_free()
-			if Global.player_name == "":
-				Global.change_scene_with_fade(parent.get_tree(), "res://Profile.tscn")
-			else:
-				Global.change_scene_with_fade(parent.get_tree(), "res://Main.tscn")
-		)
+		_show_matching_lobby(parent, mode_modal, bm, national_names_pool, on_friend_match_pressed)
+	)
+	
+	# ── Connect: ⏱️ 一夜漬けモード ──
+	overnight_btn.pressed.connect(func():
+		DeskTheme.animate_click(overnight_btn, Vector2.ONE, 0.08)
+		Global.game_mode = Constants.MODE_OVERNIGHT
+		_show_difficulty_selection(parent, mode_modal, on_friend_match_pressed, national_names_pool)
 	)
 	
 	cancel_btn.pressed.connect(func():
@@ -246,7 +252,10 @@ static func _show_difficulty_selection(parent: Node, mode_modal: PanelContainer,
 	margin.add_child(vbox)
 	
 	var title = Label.new()
-	title.text = "模試のクラス選択"
+	if Global.game_mode == Constants.MODE_OVERNIGHT:
+		title.text = "一夜漬けのクラス選択"
+	else:
+		title.text = "模試のクラス選択"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 28)
@@ -289,7 +298,7 @@ static func _show_difficulty_selection(parent: Node, mode_modal: PanelContainer,
 		if unlocked:
 			btn_title.text = cls["name"]
 		else:
-			btn_title.text = "🔒 " + cls["name"] + " (必要偏差値: %.1f)" % cls["req"]
+			btn_title.text = "[未開放] " + cls["name"] + " (必要偏差値: %.1f)" % cls["req"]
 		btn_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		btn_title.add_theme_font_override("font", DeskTheme.get_font())
 		btn_title.add_theme_font_size_override("font_size", 20)
@@ -324,7 +333,6 @@ static func _show_difficulty_selection(parent: Node, mode_modal: PanelContainer,
 					dev_min = 58.0
 					dev_max = 80.0
 				
-				Global.game_mode = Constants.MODE_NATIONAL
 				var pool = national_names_pool.duplicate()
 				pool.shuffle()
 				var cpu_pool_keys = AIManager.CPU_OPPONENTS.keys().duplicate()
@@ -380,3 +388,217 @@ static func _show_difficulty_selection(parent: Node, mode_modal: PanelContainer,
 	if parent.get_tree() != null:
 		var tween = parent.get_tree().create_tween().bind_node(diff_modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tween.tween_property(diff_modal, "scale", Vector2.ONE, 0.3)
+
+static func _show_login_warning(parent: Node, mode_modal: PanelContainer, national_names_pool: Array, on_friend_match_pressed: Callable) -> void:
+	mode_modal.queue_free()
+	
+	var warning = PanelContainer.new()
+	warning.custom_minimum_size = Vector2(600, 360)
+	warning.pivot_offset = Vector2(300, 180)
+	warning.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
+	parent.add_child(warning)
+	warning.position = parent.get_viewport_rect().size * 0.5 - warning.pivot_offset
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 30)
+	margin.add_theme_constant_override("margin_right", 30)
+	margin.add_theme_constant_override("margin_top", 30)
+	margin.add_theme_constant_override("margin_bottom", 30)
+	warning.add_child(margin)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 24)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	margin.add_child(vbox)
+	
+	var title = Label.new()
+	title.text = "ログインが必要です"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_override("font", DeskTheme.get_font())
+	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+	vbox.add_child(title)
+	
+	var body = Label.new()
+	body.text = "全国ランダムマッチ（オンライン対人戦）をプレイするには、アカウント登録およびログインが必要です。\n\nログイン画面に移動しますか？"
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.add_theme_font_override("font", DeskTheme.get_font())
+	body.add_theme_font_size_override("font_size", 16)
+	body.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	vbox.add_child(body)
+	
+	var btn_hbox = HBoxContainer.new()
+	btn_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_hbox.add_theme_constant_override("separation", 20)
+	vbox.add_child(btn_hbox)
+	
+	var yes_btn = Button.new()
+	yes_btn.text = "ログイン画面へ"
+	yes_btn.custom_minimum_size = Vector2(180, 45)
+	yes_btn.add_theme_font_override("font", DeskTheme.get_font())
+	yes_btn.add_theme_font_size_override("font_size", 16)
+	Global.apply_white_button_style(yes_btn)
+	btn_hbox.add_child(yes_btn)
+	
+	var no_btn = Button.new()
+	no_btn.text = "戻る"
+	no_btn.custom_minimum_size = Vector2(180, 45)
+	no_btn.add_theme_font_override("font", DeskTheme.get_font())
+	no_btn.add_theme_font_size_override("font_size", 16)
+	Global.apply_white_button_style(no_btn)
+	btn_hbox.add_child(no_btn)
+	
+	yes_btn.pressed.connect(func():
+		DeskTheme.animate_click(yes_btn, Vector2.ONE, 0.08)
+		warning.queue_free()
+		Global.change_scene_with_fade(parent.get_tree(), "res://Profile.tscn")
+	)
+	
+	no_btn.pressed.connect(func():
+		DeskTheme.animate_click(no_btn, Vector2.ONE, 0.08)
+		warning.queue_free()
+		ModeSelectionModal.create_and_show(parent, on_friend_match_pressed, national_names_pool)
+	)
+
+static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: Node, national_names_pool: Array, on_friend_match_pressed: Callable) -> void:
+	mode_modal.queue_free()
+	
+	var lobby = PanelContainer.new()
+	lobby.custom_minimum_size = Vector2(650, 480)
+	lobby.pivot_offset = Vector2(325, 240)
+	lobby.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
+	parent.add_child(lobby)
+	lobby.position = parent.get_viewport_rect().size * 0.5 - lobby.pivot_offset
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 30)
+	margin.add_theme_constant_override("margin_right", 30)
+	margin.add_theme_constant_override("margin_top", 30)
+	margin.add_theme_constant_override("margin_bottom", 30)
+	lobby.add_child(margin)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 24)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	margin.add_child(vbox)
+	
+	var title = Label.new()
+	title.text = "全国ランダムマッチ"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_override("font", DeskTheme.get_font())
+	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	vbox.add_child(title)
+	
+	var status_lbl = Label.new()
+	status_lbl.text = "マッチングサーバーに接続中..."
+	status_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	status_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	status_lbl.add_theme_font_size_override("font_size", 18)
+	status_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
+	vbox.add_child(status_lbl)
+	
+	var members_vbox = VBoxContainer.new()
+	members_vbox.add_theme_constant_override("separation", 8)
+	members_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_child(members_vbox)
+	
+	var cancel_btn = Button.new()
+	cancel_btn.text = "マッチングをキャンセル"
+	cancel_btn.custom_minimum_size = Vector2(240, 50)
+	cancel_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	cancel_btn.add_theme_font_override("font", DeskTheme.get_font())
+	cancel_btn.add_theme_font_size_override("font_size", 18)
+	Global.apply_white_button_style(cancel_btn)
+	vbox.add_child(cancel_btn)
+	
+	# ポーリング用のタイマー
+	var poll_timer = Timer.new()
+	poll_timer.wait_time = 2.0
+	poll_timer.autostart = false
+	lobby.add_child(poll_timer)
+	
+	var on_status_changed: Callable
+	var on_room_polled: Callable
+	
+	var clean_up_lobby = func():
+		poll_timer.stop()
+		if bm.random_match_status_updated.is_connected(on_status_changed):
+			bm.random_match_status_updated.disconnect(on_status_changed)
+		if bm.room_polled.is_connected(on_room_polled):
+			bm.room_polled.disconnect(on_room_polled)
+		lobby.queue_free()
+		
+	cancel_btn.pressed.connect(func():
+		DeskTheme.animate_click(cancel_btn, Vector2.ONE, 0.08)
+		Global.friend_room_code = ""
+		clean_up_lobby.call()
+		ModeSelectionModal.create_and_show(parent, on_friend_match_pressed, national_names_pool)
+	)
+	
+	on_status_changed = func(status: String, message: String):
+		if not is_instance_valid(status_lbl):
+			return
+		status_lbl.text = message
+		if status == "waiting_for_players" or status == "matched":
+			poll_timer.start()
+			
+	bm.random_match_status_updated.connect(on_status_changed)
+	
+	on_room_polled = func(status: String, day: int, participants: Array):
+		if not is_instance_valid(lobby):
+			return
+		for child in members_vbox.get_children():
+			child.queue_free()
+			
+		status_lbl.text = "対戦相手を待っています... (%d/4人)" % participants.size()
+		
+		for p in participants:
+			var p_lbl = Label.new()
+			p_lbl.text = "・%s" % p.get("username", "ライバル")
+			p_lbl.add_theme_font_override("font", DeskTheme.get_font())
+			p_lbl.add_theme_font_size_override("font_size", 16)
+			p_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+			members_vbox.add_child(p_lbl)
+			
+		if participants.size() >= 4 or status == "playing":
+			poll_timer.stop()
+			status_lbl.text = "マッチング完了！ゲームを開始します..."
+			
+			bm.fetch_participants_deviation(participants)
+			
+			Global.game_mode = Constants.MODE_RANDOM
+			Global.friend_room_code = Global.friend_room_code
+			Global.friend_member_list = participants
+			Global.friend_is_host = bm.is_current_room_host()
+			Global.save_game()
+			
+			Global.opponent_profiles.clear()
+			var idx = 0
+			var slots = ["cpu_sato", "cpu_suzuki", "cpu_takahashi"]
+			for p in participants:
+				var uid = p.get("user_id", "")
+				if uid != bm.logged_in_uuid:
+					if idx < slots.size():
+						var slot_id = slots[idx]
+						Global.opponent_profiles[slot_id] = {
+							"id": uid,
+							"name": p.get("username", "ライバル"),
+							"deviation": 50.0
+						}
+						idx += 1
+					
+			var timer = parent.get_tree().create_timer(1.2)
+			timer.timeout.connect(func():
+				clean_up_lobby.call()
+				Global.change_scene_with_fade(parent.get_tree(), "res://Main.tscn")
+			)
+			
+	bm.room_polled.connect(on_room_polled)
+	
+	poll_timer.timeout.connect(func():
+		if Global.friend_room_code != "":
+			bm.poll_room_status(Global.friend_room_code)
+	)
+	
+	bm.join_or_create_random_match()

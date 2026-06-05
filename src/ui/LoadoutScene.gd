@@ -8,6 +8,8 @@ var back_btn: Button
 var select_modal: PanelContainer
 var select_grid: GridContainer
 var active_slot_idx: int = -1
+var search_input: LineEdit
+var role_filter: OptionButton
 
 func _ready() -> void:
 	# 木枠（のっぺりした外側の淵）
@@ -129,6 +131,8 @@ func _ready() -> void:
 	# Populate 10 slots
 	populate_slots()
 	
+	_create_preset_ui(main_vbox)
+	
 	# Back button
 	back_btn = Button.new()
 	back_btn.text = "タイトルに戻る"
@@ -141,6 +145,14 @@ func _ready() -> void:
 	
 	# SELECT MODAL (hidden initially)
 	setup_select_modal()
+
+	if Global.is_tutorial_mode:
+		Global.show_tutorial_dialog(
+			self,
+			"デッキ編成（カバン構築）画面へようこそ！\n\n1〜10の数字スロットに筆記用具アイテムを装備できます。授業中（チキンレース）にその数字のカードを引き当てた瞬間、そのアイテムの効果が自動で発動するよ！\n\nスロットをクリックして自由に付け替えを試してみてね。確認したら『タイトルに戻る』を押して、ゲームを開始しよう！",
+			Vector2(100, 80)
+		)
+
 
 func populate_slots() -> void:
 	for child in slots_grid.get_children():
@@ -257,6 +269,36 @@ func setup_select_modal() -> void:
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
 	
+	# 検索・フィルター用 HBox
+	var filter_hbox = HBoxContainer.new()
+	filter_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	filter_hbox.add_theme_constant_override("separation", 15)
+	vbox.add_child(filter_hbox)
+	
+	search_input = LineEdit.new()
+	search_input.placeholder_text = "アイテム名で検索..."
+	search_input.custom_minimum_size = Vector2(300, 40)
+	search_input.add_theme_font_override("font", DeskTheme.get_font())
+	search_input.add_theme_font_size_override("font_size", 16)
+	search_input.text_changed.connect(func(new_text):
+		populate_select_list(new_text, role_filter.selected)
+	)
+	filter_hbox.add_child(search_input)
+	
+	role_filter = OptionButton.new()
+	role_filter.add_item("すべての系統", 0)
+	role_filter.add_item("守り", 1)
+	role_filter.add_item("押し", 2)
+	role_filter.add_item("ブラフ", 3)
+	role_filter.add_item("仕込み", 4)
+	role_filter.custom_minimum_size = Vector2(160, 40)
+	role_filter.add_theme_font_override("font", DeskTheme.get_font())
+	role_filter.add_theme_font_size_override("font_size", 16)
+	role_filter.item_selected.connect(func(idx):
+		populate_select_list(search_input.text, idx)
+	)
+	filter_hbox.add_child(role_filter)
+	
 	# Scroll for unlocked items
 	var scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -287,15 +329,21 @@ func _on_slot_clicked(slot_num: int) -> void:
 	active_slot_idx = slot_num
 	select_modal.visible = true
 	
+	# Reset search and role filters
+	if search_input:
+		search_input.text = ""
+	if role_filter:
+		role_filter.selected = 0
+	
 	# Spawn unlocked items in modal grid
-	populate_select_list()
+	populate_select_list("", 0)
 	
 	# Smooth modal scale pop-in (zoom) without wobbly overshoot
 	select_modal.scale = Vector2(0.85, 0.85)
 	var tween = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(select_modal, "scale", Vector2.ONE, 0.25)
 
-func populate_select_list() -> void:
+func populate_select_list(filter_text: String = "", filter_role_id: int = 0) -> void:
 	for child in select_grid.get_children():
 		child.queue_free()
 		
@@ -303,6 +351,23 @@ func populate_select_list() -> void:
 		var item = CardData.ITEMS.get(item_id, {})
 		if item.is_empty():
 			continue
+			
+		# Text search filter
+		if filter_text != "" and not filter_text.to_lower() in item["name"].to_lower():
+			continue
+			
+		# Role type filter
+		# filter_role_id: 0="すべての系統", 1="守り", 2="押し", 3="ブラフ", 4="仕込み"
+		if filter_role_id > 0:
+			var role_map = {
+				1: CardData.ROLE_DEFENSE,
+				2: CardData.ROLE_PUSH,
+				3: CardData.ROLE_BLUFF,
+				4: CardData.ROLE_PREP
+			}
+			var target_role = role_map.get(filter_role_id, "")
+			if item["role"] != target_role:
+				continue
 			
 		var item_btn = Button.new()
 		item_btn.text = ""
@@ -369,15 +434,18 @@ func _on_item_selected(item_id: String) -> void:
 			duplicate_slot = int(slot_idx)
 			break
 			
+	var item_info = CardData.ITEMS.get(item_id, {})
+	var item_color = CardData.get_role_color(item_info.get("role", CardData.ROLE_PREP))
+			
 	if duplicate_slot != -1:
 		var prev_item = Global.current_deck[active_slot_idx]
 		Global.current_deck[duplicate_slot] = prev_item
 		Global.current_deck[active_slot_idx] = item_id
-		DeskTheme.show_toast(self, "スロット %d と入れ替えました！" % duplicate_slot)
+		DeskTheme.show_toast(self, "スロット %d と入れ替えました！" % duplicate_slot, 1.8, item_color)
 	else:
 		Global.current_deck[active_slot_idx] = item_id
-		var item_name = CardData.ITEMS.get(item_id, {}).get("name", "アイテム")
-		DeskTheme.show_toast(self, "%s を装備しました！" % item_name)
+		var item_name = item_info.get("name", "アイテム")
+		DeskTheme.show_toast(self, "%s を装備しました！" % item_name, 1.8, item_color)
 		
 	Global.save_game()
 	populate_slots()
@@ -392,3 +460,135 @@ func _on_back_pressed() -> void:
 	timer.timeout.connect(func():
 		Global.change_scene_with_fade(get_tree(), "res://Title.tscn")
 	)
+
+# Preset Management
+var preset_buttons: Array[Button] = []
+
+func _create_preset_ui(parent: Node) -> void:
+	var preset_panel = PanelContainer.new()
+	preset_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	
+	var panel_style = StyleBoxFlat.new()
+	panel_style.bg_color = Color("#fbf8f3") # bright beige paper
+	panel_style.border_width_left = 2
+	panel_style.border_width_right = 2
+	panel_style.border_width_top = 2
+	panel_style.border_width_bottom = 2
+	panel_style.border_color = DeskTheme.COLOR_INK
+	panel_style.corner_radius_top_left = 4
+	panel_style.corner_radius_top_right = 4
+	panel_style.corner_radius_bottom_left = 4
+	panel_style.corner_radius_bottom_right = 4
+	panel_style.content_margin_left = 20
+	panel_style.content_margin_right = 20
+	panel_style.content_margin_top = 10
+	panel_style.content_margin_bottom = 10
+	preset_panel.add_theme_stylebox_override("panel", panel_style)
+	parent.add_child(preset_panel)
+	
+	var hbox = HBoxContainer.new()
+	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	hbox.add_theme_constant_override("separation", 25)
+	preset_panel.add_child(hbox)
+	
+	var label = Label.new()
+	label.text = "デッキプリセット:"
+	label.add_theme_font_override("font", DeskTheme.get_font())
+	label.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
+	label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	hbox.add_child(label)
+	
+	preset_buttons.clear()
+	for i in range(1, 4):
+		var slot_vbox = VBoxContainer.new()
+		slot_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		slot_vbox.add_theme_constant_override("separation", 4)
+		hbox.add_child(slot_vbox)
+		
+		var load_btn = Button.new()
+		load_btn.text = "プリセット %d" % i
+		load_btn.custom_minimum_size = Vector2(130, 40)
+		load_btn.add_theme_font_override("font", DeskTheme.get_font())
+		load_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_MINI)
+		Global.apply_white_button_style(load_btn)
+		load_btn.pressed.connect(func():
+			load_btn.release_focus()
+			DeskTheme.animate_click(load_btn, Vector2.ONE, 0.08)
+			_load_preset(i)
+		)
+		slot_vbox.add_child(load_btn)
+		preset_buttons.append(load_btn)
+		
+		var save_btn = Button.new()
+		save_btn.text = "保存"
+		save_btn.custom_minimum_size = Vector2(80, 25)
+		save_btn.add_theme_font_override("font", DeskTheme.get_font())
+		save_btn.add_theme_font_size_override("font_size", 12)
+		Global.apply_white_button_style(save_btn)
+		save_btn.pressed.connect(func():
+			save_btn.release_focus()
+			DeskTheme.animate_click(save_btn, Vector2.ONE, 0.08)
+			_save_preset(i)
+		)
+		slot_vbox.add_child(save_btn)
+		
+	_update_preset_buttons_highlight()
+
+func _load_preset(preset_idx: int) -> void:
+	var key = str(preset_idx)
+	var preset = Global.deck_presets.get(key, {})
+	if preset.is_empty():
+		# Empty fallback: copy current_deck starting keys or default
+		preset = {
+			"1": "item_sticky_note",
+			"2": "item_eraser",
+			"3": "item_ruler",
+			"4": "item_wordbook",
+			"5": "item_mech_pencil",
+			"6": "item_memo_cards",
+			"7": "item_highlighter",
+			"8": "item_blue_pen",
+			"9": "item_cushion",
+			"10": "item_memo_app"
+		}
+	
+	Global.current_deck.clear()
+	for k in preset.keys():
+		Global.current_deck[int(k)] = preset[k]
+		
+	Global.selected_preset_idx = preset_idx
+	Global.validate_current_deck()
+	Global.save_game()
+	populate_slots()
+	
+	DeskTheme.show_toast(self, "プリセット %d を読み込みました！" % preset_idx, 1.5, Color("#4a90e2"))
+	_update_preset_buttons_highlight()
+
+func _save_preset(preset_idx: int) -> void:
+	var key = str(preset_idx)
+	Global.deck_presets[key] = Global.get_deck_as_string_keys()
+	Global.selected_preset_idx = preset_idx
+	Global.save_game()
+	
+	DeskTheme.show_toast(self, "プリセット %d に現在のデッキを保存しました！" % preset_idx, 1.5, Color("#417505"))
+	_update_preset_buttons_highlight()
+
+func _update_preset_buttons_highlight() -> void:
+	for i in range(preset_buttons.size()):
+		var btn = preset_buttons[i]
+		var idx = i + 1
+		if idx == Global.selected_preset_idx:
+			var active_style = StyleBoxFlat.new()
+			active_style.bg_color = Color("#eddcc9") # highlight paper color
+			active_style.border_color = DeskTheme.COLOR_INK
+			active_style.border_width_left = 3
+			active_style.border_width_right = 3
+			active_style.border_width_top = 3
+			active_style.border_width_bottom = 3
+			active_style.corner_radius_top_left = 6
+			active_style.corner_radius_top_right = 6
+			active_style.corner_radius_bottom_left = 6
+			active_style.corner_radius_bottom_right = 6
+			btn.add_theme_stylebox_override("normal", active_style)
+		else:
+			Global.apply_white_button_style(btn)

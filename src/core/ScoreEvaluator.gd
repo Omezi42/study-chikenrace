@@ -21,6 +21,8 @@ extends RefCounted
 static func calculate_final_showdown(session: GameSession) -> Dictionary:
 	var final_scores := { "player": 0 }
 	var max_days := Constants.MAX_DAYS
+	if Global.game_mode == Constants.MODE_OVERNIGHT:
+		max_days = 1
 	
 	# 参加者IDを動的に収集する
 	for day_idx in range(1, max_days + 1):
@@ -81,14 +83,12 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 					if final_exposed:
 						player_caught_lies_count += 1
 						
-				if final_exposed:
 					var penalty := declared - actual
-					var extra_penalty := int(penalty * 0.5) # 50% extra penalty
-					# double penalty if item_copy_answer is slotted
 					if _has_item(deck_config, "item_copy_answer"):
-						adjustment -= (penalty + extra_penalty * 2)
-					else:
+						var extra_penalty := int(penalty * 0.3) # 30% extra penalty for copy_answer item
 						adjustment -= (penalty + extra_penalty)
+					else:
+						adjustment -= penalty
 						
 					p["is_doubt_exposed"] = true
 					p["auto_exposed"] = auto_exposed
@@ -134,7 +134,6 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 				var doubter_adj := 0
 				if target_lied:
 					var bluff: int = target["declared_score"] - target["actual_score"]
-					# Mitigate point inflation: doubter receives 75% of the bluff amount + 6 points
 					var adjusted_bluff = int(round(bluff * 0.75))
 					doubter_adj += adjusted_bluff + 6 + chat_bonus
 					if p_id == "player":
@@ -233,6 +232,56 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 	if not title in Global.unlocked_titles:
 		Global.unlocked_titles.append(title)
 		
+	# === Step 6.5: Deviation & League calculation (MODE_RANDOM only) ===
+	var old_deviation = Global.deviation_value
+	var new_deviation = old_deviation
+	var deviation_change = 0.0
+	var old_league = Global.get_deviation_league(old_deviation)
+	var new_league = old_league
+	var league_upgraded = false
+	var league_downgraded = false
+ 
+	if Global.game_mode == Constants.MODE_RANDOM:
+		# Elo風レーティング計算
+		var opponent_count = 0
+		var opponent_dev_sum = 0.0
+		for p_id in final_scores.keys():
+			if p_id != "player":
+				if Global.opponent_profiles.has(p_id):
+					opponent_dev_sum += Global.opponent_profiles[p_id].get("deviation", 50.0)
+					opponent_count += 1
+		var avg_opponent_dev = opponent_dev_sum / opponent_count if opponent_count > 0 else 50.0
+ 
+		var K = 8.0 # 変動幅スケーラー
+		var actual_score_factor = 0.0
+		match my_rank:
+			1: actual_score_factor = 1.0
+			2: actual_score_factor = 0.6
+			3: actual_score_factor = 0.3
+			4: actual_score_factor = 0.0
+ 
+		var rating_diff = avg_opponent_dev - old_deviation
+		var expected_score_factor = 1.0 / (pow(10.0, rating_diff / 20.0) + 1.0)
+		deviation_change = K * (actual_score_factor - expected_score_factor)
+		deviation_change = clamp(deviation_change, -8.0, 8.0)
+		
+		new_deviation = clamp(old_deviation + deviation_change, 30.0, 90.0)
+		deviation_change = new_deviation - old_deviation
+		
+		Global.deviation_value = snapped(new_deviation, 0.1)
+		if Global.deviation_value > Global.max_deviation_value:
+			Global.max_deviation_value = Global.deviation_value
+			
+		new_league = Global.get_deviation_league(new_deviation)
+		
+		var leagues_order = [Constants.LEAGUE_F, Constants.LEAGUE_C, Constants.LEAGUE_B, Constants.LEAGUE_A, Constants.LEAGUE_S]
+		var old_idx = leagues_order.find(old_league)
+		var new_idx = leagues_order.find(new_league)
+		if new_idx > old_idx:
+			league_upgraded = true
+		elif new_idx < old_idx:
+			league_downgraded = true
+ 
 	Global.save_game()
 	
 	return {
@@ -244,11 +293,18 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 		"level_bonus": level_bonus,
 		"star_bonus": star_bonus,
 		"title": title,
-		"details": showdown_details
+		"details": showdown_details,
+		"old_deviation": old_deviation,
+		"new_deviation": new_deviation,
+		"deviation_change": deviation_change,
+		"old_league": old_league,
+		"new_league": new_league,
+		"league_upgraded": league_upgraded,
+		"league_downgraded": league_downgraded
 	}
-
+ 
 # === Private Helpers ===
-
+ 
 # Get active item deck for the participant
 static func _get_deck_config(p_id: String) -> Dictionary:
 	if p_id == "player":
@@ -261,11 +317,11 @@ static func _get_deck_config(p_id: String) -> Dictionary:
 	if AIManager.CPU_OPPONENTS.has(p_id):
 		return AIManager.CPU_OPPONENTS[p_id]["deck"]
 	return {}
-
+ 
 # Check if item_id is inside the deck config
 static func _has_item(deck_config: Dictionary, item_id: String) -> bool:
 	return item_id in deck_config.values()
-
+ 
 # Calculate star level point bonuses for player
 static func _calculate_star_bonus_for_player() -> int:
 	var bonus := 0
@@ -278,7 +334,7 @@ static func _calculate_star_bonus_for_player() -> int:
 			4: bonus += 4
 			5: bonus += 7
 	return bonus
-
+ 
 # Determine title unlocked based on match criteria.
 # Uses a table-driven approach: each entry is checked in order, first match wins.
 # This makes the priority explicit and safe to reorder or extend.
@@ -287,13 +343,13 @@ static func _determine_title(
 	lies_count: int, caught_lies: int, doubt_successes: int,
 	game_mode: String = ""
 ) -> String:
-	var is_cram := (game_mode == Constants.MODE_CRAM)
+	var is_cram := (game_mode == Constants.MODE_CRAM or game_mode == Constants.MODE_OVERNIGHT)
 	var max_days := Constants.MAX_DAYS
 	
 	# Title rules table with explicit priorities (higher priority value wins)
 	var rules: Array[Dictionary] = [
 		{"title": Constants.TITLE_DEV_GOD,            "priority": 100, "check": func(): return Global.deviation_value >= 70.0},
-		{"title": Constants.TITLE_CRAM_GENIUS,         "priority": 95,  "check": func(): return is_cram and score >= 150 and my_rank == 1},
+		{"title": Constants.TITLE_CRAM_GENIUS,         "priority": 95,  "check": func(): return is_cram and score >= (100 if game_mode == Constants.MODE_OVERNIGHT else 150) and my_rank == 1},
 		{"title": Constants.TITLE_SAFE_CHAMP,          "priority": 90,  "check": func(): return bursts == 0 and my_rank == 1},
 		{"title": Constants.TITLE_RICH_STUDENT,        "priority": 88,  "check": func(): return Global.coins >= 500 and my_rank == 1},
 		{"title": Constants.TITLE_STORM,               "priority": 85,  "check": func(): return bursts >= 3},
@@ -327,7 +383,14 @@ static func _determine_title(
 			return rule["title"]
 	
 	return Constants.TITLE_AVERAGE
-
+ 
 static func get_auto_exposure_chance(bluff_amount: int) -> float:
 	return pow(float(bluff_amount) / 40.0, 2.0)
+
+static func get_streak_bonus(streak: int) -> int:
+	match streak:
+		2: return 3
+		3: return 7
+		4: return 12
+		_: return 12 + (streak - 4) * 5
 

@@ -198,7 +198,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	var waiting_lbl = Label.new()
 	
 	if is_host:
-		start_btn_lobby.text = "自習を開始する！ ✏️"
+		start_btn_lobby.text = "自習を開始する！"
 		start_btn_lobby.custom_minimum_size = Vector2(260, 50)
 		start_btn_lobby.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		start_btn_lobby.add_theme_font_override("font", DeskTheme.get_font())
@@ -216,7 +216,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		
 	# Exit Button
 	var exit_btn = Button.new()
-	exit_btn.text = "ロビーを出る ✖"
+	exit_btn.text = "ロビーを出る ×"
 	exit_btn.custom_minimum_size = Vector2(160, 45)
 	exit_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	Global.apply_white_button_style(exit_btn)
@@ -229,6 +229,8 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	
 	var start_game_transition = func(final_participants: Array):
 		is_polling_active = false
+		if bm:
+			bm.disconnect_realtime_lobby()
 		Global.game_mode = Constants.MODE_FRIEND
 		Global.friend_room_code = room_code
 		Global.friend_is_host = is_host
@@ -322,6 +324,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 			
 	if bm:
 		bm.room_polled.connect(on_polled)
+		bm.connect_realtime_lobby(room_code)
 		bm.poll_room_status(room_code)
 	else:
 		# Offline fallback polling emulator
@@ -364,8 +367,10 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		exit_btn.release_focus()
 		DeskTheme.animate_click(exit_btn, Vector2.ONE, 0.08)
 		is_polling_active = false
-		if bm and bm.room_polled.is_connected(on_polled):
-			bm.room_polled.disconnect(on_polled)
+		if bm:
+			bm.disconnect_realtime_lobby()
+			if bm.room_polled.is_connected(on_polled):
+				bm.room_polled.disconnect(on_polled)
 		lobby_modal.queue_free()
 	)
 	

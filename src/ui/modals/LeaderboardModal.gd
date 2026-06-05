@@ -50,7 +50,7 @@ func _ready() -> void:
 	board_margin.add_child(board_vbox)
 	
 	var board_title = Label.new()
-	board_title.text = "全国統一模試ランキング 🏆"
+	board_title.text = "全国統一模試ランキング"
 	board_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	board_title.add_theme_font_override("font", DeskTheme.get_font())
 	board_title.add_theme_font_size_override("font_size", 24)
@@ -102,7 +102,7 @@ func _ready() -> void:
 		entry_hbox.add_child(score_lbl)
 		
 	var close_btn = Button.new()
-	close_btn.text = "閉じる ✖"
+	close_btn.text = "閉じる ×"
 	close_btn.custom_minimum_size = Vector2(160, 45)
 	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	close_btn.add_theme_font_override("font", DeskTheme.get_font())

@@ -17,9 +17,14 @@ config/features=PackedStringArray("4.6", "GL Compatibility")
 [autoload]
 
 Global="*res://src/autoload/Global.gd"
+SaveManager="*res://src/autoload/SaveManager.gd"
 AudioManager="*res://src/autoload/AudioManager.gd"
 BackendManager="*res://src/autoload/BackendManager.gd"
 Localization="*res://src/autoload/Localization.gd"
+UIHelper="*res://src/autoload/UIHelper.gd"
+DeviationManager="*res://src/autoload/DeviationManager.gd"
+BalanceConfig="*res://src/autoload/BalanceConfig.gd"
+DailyMissionManager="*res://src/autoload/DailyMissionManager.gd"
 
 [display]
 

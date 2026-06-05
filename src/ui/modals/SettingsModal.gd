@@ -39,7 +39,7 @@ func _ready() -> void:
 	
 	# Title
 	var title = Label.new()
-	title.text = "⚙️ オプション設定"
+	title.text = "オプション設定"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 26)
@@ -115,7 +115,7 @@ func _ready() -> void:
 	
 	# Rules button inside Settings
 	var rule_btn = Button.new()
-	rule_btn.text = "📖 ルールブックを閲覧"
+	rule_btn.text = "ルールブックを閲覧"
 	rule_btn.custom_minimum_size = Vector2(300, 45)
 	rule_btn.add_theme_font_override("font", DeskTheme.get_font())
 	rule_btn.add_theme_font_size_override("font_size", 16)
@@ -126,6 +126,28 @@ func _ready() -> void:
 		RulebookModal.create_and_show(get_parent())
 	)
 	vbox.add_child(rule_btn)
+	
+	# Tutorial Replay Button
+	var tutorial_btn = Button.new()
+	tutorial_btn.text = "チュートリアルを最初からプレイ"
+	tutorial_btn.custom_minimum_size = Vector2(300, 45)
+	tutorial_btn.add_theme_font_override("font", DeskTheme.get_font())
+	tutorial_btn.add_theme_font_size_override("font_size", 16)
+	DeskTheme.apply_white_button_style(tutorial_btn)
+	tutorial_btn.pressed.connect(func():
+		tutorial_btn.release_focus()
+		DeskTheme.animate_click(tutorial_btn, Vector2.ONE, 0.08)
+		show_confirm_dialog(get_parent(), "本当にチュートリアルを最初からプレイしますか？\n（進行状況はリセットされタイトルに戻ります）", func():
+			if has_node("/root/Global"):
+				var global = get_node("/root/Global")
+				global.is_tutorial_mode = true
+				global.play_count = 0
+				global.save_game()
+				queue_free()
+				global.change_scene_with_fade(get_parent().get_tree(), "res://Title.tscn")
+		)
+	)
+	vbox.add_child(tutorial_btn)
 	
 	# Bottom Buttons HBox
 	var bottom_hbox = HBoxContainer.new()
@@ -142,7 +164,7 @@ func _ready() -> void:
 			
 	if is_in_game:
 		var return_btn = Button.new()
-		return_btn.text = "🚪 タイトルへ戻る"
+		return_btn.text = "タイトルへ戻る"
 		return_btn.custom_minimum_size = Vector2(200, 45)
 		return_btn.add_theme_font_override("font", DeskTheme.get_font())
 		return_btn.add_theme_font_size_override("font_size", 18)
@@ -161,7 +183,7 @@ func _ready() -> void:
 	
 	# Close Button
 	var close_btn = Button.new()
-	close_btn.text = " ✖ 閉じる "
+	close_btn.text = " × 閉じる "
 	close_btn.custom_minimum_size = Vector2(200, 45)
 	close_btn.add_theme_font_override("font", DeskTheme.get_font())
 	close_btn.add_theme_font_size_override("font_size", 18)
@@ -169,6 +191,8 @@ func _ready() -> void:
 	close_btn.pressed.connect(func():
 		close_btn.release_focus()
 		DeskTheme.animate_click(close_btn, Vector2.ONE, 0.08)
+		if has_node("/root/Global"):
+			get_node("/root/Global").save_game()
 		var out_tween = create_tween().bind_node(modal).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		out_tween.tween_property(modal, "scale", Vector2.ZERO, 0.2)
 		out_tween.tween_callback(func():
