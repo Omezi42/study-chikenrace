@@ -8,7 +8,6 @@ var zukan_btn: Button
 var gacha_btn: Button
 var tutorial_btn: Button
 var profile_btn: Button
-var mission_panel: PanelContainer
 
 # Tutorial Slide Viewer Elements
 
@@ -188,64 +187,12 @@ func _ready() -> void:
 		bm.auth_completed.connect(func(success: bool, err: String):
 			_update_profile_btn_text(profile_btn)
 		)
-		
-	# デイリーミッションパネルを設置 (付箋風)
-	mission_panel = PanelContainer.new()
-	mission_panel.custom_minimum_size = Vector2(340, 240)
-	mission_panel.add_theme_stylebox_override("panel", DeskTheme.create_sticky_note_style("yellow"))
-	
-	var mission_vbox = VBoxContainer.new()
-	mission_vbox.add_theme_constant_override("separation", 10)
-	mission_panel.add_child(mission_vbox)
-	
-	var mission_title = Label.new()
-	mission_title.text = "本日の目標"
-	mission_title.add_theme_font_override("font", DeskTheme.get_font())
-	mission_title.add_theme_font_size_override("font_size", 18)
-	mission_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	mission_vbox.add_child(mission_title)
-	
-	var dmm = get_node_or_null("/root/DailyMissionManager")
-	if dmm:
-		var missions = dmm.get_missions_display()
-		for mission in missions:
-			var m_hbox = HBoxContainer.new()
-			m_hbox.add_theme_constant_override("separation", 5)
-			mission_vbox.add_child(m_hbox)
-			
-			var m_lbl = Label.new()
-			m_lbl.text = "・%s" % mission["desc"]
-			m_lbl.add_theme_font_override("font", DeskTheme.get_font())
-			m_lbl.add_theme_font_size_override("font_size", 14)
-			m_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			m_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			
-			var progress_lbl = Label.new()
-			progress_lbl.text = " (%d/%d)" % [mission["progress"], mission["target"]]
-			progress_lbl.add_theme_font_override("font", DeskTheme.get_font())
-			progress_lbl.add_theme_font_size_override("font_size", 14)
-			
-			if mission["completed"]:
-				m_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
-				progress_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
-				progress_lbl.text = " (達成！)"
-			else:
-				m_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-				progress_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-				
-			m_hbox.add_child(m_lbl)
-			m_hbox.add_child(progress_lbl)
-			
-	add_child(mission_panel)
-	_reflow_mission_panel()
-	
-	# BGM will be deferred until first user interaction (WebGL Audio Autoplay Policy safety)
+		# BGM will be deferred until first user interaction (WebGL Audio Autoplay Policy safety)
 	# The _input callback will automatically resume AudioContext and trigger BGM play.
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		_reflow_profile_button()
-		_reflow_mission_panel()
 
 func _input(event: InputEvent) -> void:
 	if not bgm_started and (event is InputEventMouseButton or event is InputEventKey):
@@ -413,9 +360,5 @@ func _reflow_profile_button() -> void:
 	var vp = get_viewport_rect().size
 	profile_btn.position = Vector2(max(vp.x - profile_btn.custom_minimum_size.x - 24.0, 24.0), 24.0)
 
-func _reflow_mission_panel() -> void:
-	if not is_instance_valid(mission_panel) or not is_inside_tree():
-		return
-	var vp = get_viewport_rect().size
-	mission_panel.position = Vector2(24.0, max(vp.y - mission_panel.custom_minimum_size.y - 24.0, 24.0))
+
 

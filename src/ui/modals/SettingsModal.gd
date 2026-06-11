@@ -127,28 +127,7 @@ func _ready() -> void:
 	)
 	vbox.add_child(rule_btn)
 	
-	# Tutorial Replay Button
-	var tutorial_btn = Button.new()
-	tutorial_btn.text = "チュートリアルを最初からプレイ"
-	tutorial_btn.custom_minimum_size = Vector2(300, 45)
-	tutorial_btn.add_theme_font_override("font", DeskTheme.get_font())
-	tutorial_btn.add_theme_font_size_override("font_size", 16)
-	DeskTheme.apply_white_button_style(tutorial_btn)
-	tutorial_btn.pressed.connect(func():
-		tutorial_btn.release_focus()
-		DeskTheme.animate_click(tutorial_btn, Vector2.ONE, 0.08)
-		show_confirm_dialog(get_parent(), "本当にチュートリアルを最初からプレイしますか？\n（進行状況はリセットされタイトルに戻ります）", func():
-			if has_node("/root/Global"):
-				var global = get_node("/root/Global")
-				global.is_tutorial_mode = true
-				global.play_count = 0
-				global.save_game()
-				queue_free()
-				global.change_scene_with_fade(get_parent().get_tree(), "res://Title.tscn")
-		)
-	)
-	vbox.add_child(tutorial_btn)
-	
+
 	# Bottom Buttons HBox
 	var bottom_hbox = HBoxContainer.new()
 	bottom_hbox.alignment = BoxContainer.ALIGNMENT_CENTER

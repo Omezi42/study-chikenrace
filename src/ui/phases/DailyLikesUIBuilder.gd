@@ -169,7 +169,6 @@ static func build_layout(phase: DailyLikesPhase) -> void:
 	right_vbox.add_child(next_day_btn)
 	phase.next_day_btn = next_day_btn
 	
-	DeskTheme.animate_entrance(main_hbox, main_hbox.position, Vector2(0, 300), 0.5)
 
 static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int) -> Control:
 	var card = PanelContainer.new()

@@ -11,6 +11,13 @@ var active_slot_idx: int = -1
 var search_input: LineEdit
 var role_filter: OptionButton
 
+# Detail panel elements in select modal
+var detail_panel: PanelContainer
+var detail_icon: TextureRect
+var detail_name: Label
+var detail_role: Label
+var detail_desc: Label
+
 func _ready() -> void:
 	# 木枠（のっぺりした外側の淵）
 	var frame = ColorRect.new()
@@ -167,6 +174,11 @@ func populate_slots() -> void:
 		slot_btn.custom_minimum_size = Vector2(240, 200)
 		slot_btn.pivot_offset = Vector2(120, 100)
 		
+		if item_id != "":
+			slot_btn.tooltip_text = "%s: %s" % [item["name"], item.get("description", "")]
+		else:
+			slot_btn.tooltip_text = "空きスロット (クリックして装備)"
+		
 		# Slight loose tilt angles
 		slot_btn.rotation_degrees = randf_range(-2.0, 2.0)
 		
@@ -243,8 +255,8 @@ func populate_slots() -> void:
 
 func setup_select_modal() -> void:
 	select_modal = PanelContainer.new()
-	select_modal.custom_minimum_size = Vector2(900, 650)
-	select_modal.pivot_offset = Vector2(450, 325)
+	select_modal.custom_minimum_size = Vector2(950, 650)
+	select_modal.pivot_offset = Vector2(475, 325)
 	select_modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	add_child(select_modal)
 	select_modal.position = get_viewport_rect().size * 0.5 - select_modal.pivot_offset
@@ -299,16 +311,91 @@ func setup_select_modal() -> void:
 	)
 	filter_hbox.add_child(role_filter)
 	
-	# Scroll for unlocked items
+	# Main split HBox
+	var main_split = HBoxContainer.new()
+	main_split.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main_split.add_theme_constant_override("separation", 20)
+	vbox.add_child(main_split)
+	
+	# Scroll for unlocked items (Left Side)
 	var scroll = ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vbox.add_child(scroll)
+	main_split.add_child(scroll)
 	
 	select_grid = GridContainer.new()
-	select_grid.columns = 4
+	select_grid.columns = 3 # Reduced columns to fit the detail panel on the right
 	select_grid.add_theme_constant_override("h_separation", DeskTheme.MARGIN_SMALL)
 	select_grid.add_theme_constant_override("v_separation", DeskTheme.MARGIN_SMALL)
 	scroll.add_child(select_grid)
+	
+	# Detail Panel (Right Side)
+	detail_panel = PanelContainer.new()
+	detail_panel.custom_minimum_size = Vector2(320, 0)
+	detail_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	
+	var detail_style = StyleBoxFlat.new()
+	detail_style.bg_color = Color("#fbf9f4") # Bright card background
+	detail_style.border_color = DeskTheme.COLOR_INK
+	detail_style.border_width_left = 3
+	detail_style.border_width_right = 3
+	detail_style.border_width_top = 3
+	detail_style.border_width_bottom = 3
+	detail_style.corner_radius_top_left = 6
+	detail_style.corner_radius_top_right = 6
+	detail_style.corner_radius_bottom_left = 6
+	detail_style.corner_radius_bottom_right = 6
+	detail_style.content_margin_left = 18
+	detail_style.content_margin_right = 18
+	detail_style.content_margin_top = 18
+	detail_style.content_margin_bottom = 18
+	detail_panel.add_theme_stylebox_override("panel", detail_style)
+	main_split.add_child(detail_panel)
+	
+	var detail_vbox = VBoxContainer.new()
+	detail_vbox.add_theme_constant_override("separation", 15)
+	detail_panel.add_child(detail_vbox)
+	
+	var detail_title = Label.new()
+	detail_title.text = "アイテム効果"
+	detail_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	detail_title.add_theme_font_override("font", DeskTheme.get_font())
+	detail_title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_MINI)
+	detail_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.5))
+	detail_vbox.add_child(detail_title)
+	
+	detail_icon = TextureRect.new()
+	detail_icon.custom_minimum_size = Vector2(96, 96)
+	detail_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	detail_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	detail_icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	detail_vbox.add_child(detail_icon)
+	
+	detail_name = Label.new()
+	detail_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	detail_name.add_theme_font_override("font", DeskTheme.get_font())
+	detail_name.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
+	detail_name.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	detail_vbox.add_child(detail_name)
+	
+	detail_role = Label.new()
+	detail_role.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	detail_role.add_theme_font_override("font", DeskTheme.get_font())
+	detail_role.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
+	detail_vbox.add_child(detail_role)
+	
+	var divider = ColorRect.new()
+	divider.custom_minimum_size = Vector2(0, 2)
+	divider.color = Color(DeskTheme.COLOR_INK, 0.2)
+	detail_vbox.add_child(divider)
+	
+	detail_desc = Label.new()
+	detail_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail_desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	detail_desc.add_theme_font_override("font", DeskTheme.get_font())
+	detail_desc.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
+	detail_desc.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	detail_vbox.add_child(detail_desc)
 	
 	var close_btn = Button.new()
 	close_btn.text = "閉じる"
@@ -323,6 +410,33 @@ func setup_select_modal() -> void:
 	)
 	vbox.add_child(close_btn)
 
+func update_detail_panel(item_id: String) -> void:
+	var item = CardData.ITEMS.get(item_id, {})
+	if item.is_empty():
+		detail_icon.texture = null
+		detail_name.text = "選択してください"
+		detail_role.text = ""
+		detail_desc.text = "左側のアイテムリストからホバーまたはクリックすると、ここに詳細な効果が表示されます。"
+		return
+		
+	# Update Icon
+	var img_path = CardData.get_item_image_path(item_id)
+	if img_path != "":
+		detail_icon.texture = load(img_path)
+	else:
+		detail_icon.texture = null
+		
+	# Update Name
+	detail_name.text = item["name"]
+	
+	# Update Role
+	var role_name = CardData.get_role_name(item["role"])
+	detail_role.text = "系統: %s" % role_name
+	detail_role.add_theme_color_override("font_color", CardData.get_role_color(item["role"]))
+	
+	# Update Description
+	detail_desc.text = item["description"]
+
 func _on_slot_clicked(slot_num: int) -> void:
 	if select_modal.visible:
 		return
@@ -334,6 +448,10 @@ func _on_slot_clicked(slot_num: int) -> void:
 		search_input.text = ""
 	if role_filter:
 		role_filter.selected = 0
+	
+	# Show current equipped item details in the panel initially
+	var current_item_id = Global.current_deck.get(slot_num, "")
+	update_detail_panel(current_item_id)
 	
 	# Spawn unlocked items in modal grid
 	populate_select_list("", 0)
@@ -416,6 +534,15 @@ func populate_select_list(filter_text: String = "", filter_role_id: int = 0) -> 
 		name_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
 		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		btn_hbox.add_child(name_lbl)
+		
+		# Connect hover interactions to update the detail panel
+		item_btn.mouse_entered.connect(func():
+			update_detail_panel(item_id)
+			DeskTheme.animate_hover(item_btn, true, Vector2.ONE, 0.12)
+		)
+		item_btn.mouse_exited.connect(func():
+			DeskTheme.animate_hover(item_btn, false, Vector2.ONE, 0.12)
+		)
 		
 		item_btn.pressed.connect(func():
 			item_btn.release_focus()

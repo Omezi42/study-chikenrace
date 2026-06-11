@@ -33,7 +33,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	
 	if Global.is_tutorial_mode and session.current_day == 1:
 		show_tutorial_dialog(
-			"チキスタ投稿フェーズです！\n\n一日の終わりに勉強成果を勉強SNS『チキスタ』に投稿します。実際より高い点数を申告してブラフ（嘘）をつくこともできます！\n\nスライダーを少し右に動かして、実点（%d点）より高い点数を申告してみましょう！" % actual_score,
+			"佐藤くん：「勉強成果の申告（ブラフ入力）フェーズへようこそ！\n\n一日の終わりに、勉強したフリをしてSNS『チキスタ』へ点数を投稿するんだ。実際より高い点数を申告（ブラフ）することもできるよ！\n\n今回は練習のために、スライダーを右に動かして実点（%d点）より多めに申告してみよう！」" % actual_score,
 		)
 		
 	# Automated test fallback: auto-submit after 1.2s to bypass coordinates issues in Puppeteer tests

@@ -55,16 +55,12 @@ func initialize_deck(deck_config: Dictionary) -> void:
 	shuffle_draw_pile()
 	
 	if Global.is_tutorial_mode:
+		draw_pile.clear()
 		var tutorial_cards = [
 			{
-				"value": 5,
-				"item_id": "item_eraser",
-				"name": "消しゴム"
-			},
-			{
-				"value": 8,
-				"item_id": "item_wordbook",
-				"name": "単語帳"
+				"value": 3,
+				"item_id": "item_ruler",
+				"name": "定規"
 			},
 			{
 				"value": 3,
@@ -75,15 +71,17 @@ func initialize_deck(deck_config: Dictionary) -> void:
 				"value": 5,
 				"item_id": "item_sticky_note",
 				"name": "付箋"
+			},
+			{
+				"value": 8,
+				"item_id": "item_wordbook",
+				"name": "単語帳"
 			}
 		]
-		var filtered: Array[Dictionary] = []
-		for card in draw_pile:
-			if card["value"] in [3, 5, 8]:
-				continue
-			filtered.append(card)
-		filtered.append_array(tutorial_cards)
-		draw_pile = filtered
+		cards.clear()
+		for card in tutorial_cards:
+			cards.append(card)
+			draw_pile.append(card)
 	
 	# Reset status effects
 	reset_status_effects()
@@ -252,7 +250,8 @@ func reset_for_next_day() -> void:
 	hand.clear()
 	discard_pile.clear()
 	draw_pile = cards.duplicate()
-	shuffle_draw_pile()
+	if not Global.is_tutorial_mode:
+		shuffle_draw_pile()
 	reset_status_effects()
 
 # Deletion card mechanic: remove a specific card value from the deck

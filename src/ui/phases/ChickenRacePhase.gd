@@ -138,6 +138,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 		Global.is_tutorial_mode = false
 
 	if Global.is_tutorial_mode and session.current_day == 1 and session.current_hour == 1:
+		session.max_hours_today = 2
 		tutorial = ChickenRaceTutorial.new(self)
 		tutorial.start()
 
@@ -186,14 +187,23 @@ func perform_animated_draw(card: Dictionary, on_complete: Callable = Callable())
 	var hand_idx = session.player_deck.hand.find(card)
 	card_ui.set_meta("hand_index", hand_idx)
 	card_ui.z_index = 20
-	card_ui.position.y -= 180
 	hand_container.add_child(card_ui)
+	
+	# Calculate the correct target layout positions for all hand cards
+	arrange_hand_fan()
+	
+	# Record target position and apply animation offset
+	var target_pos = card_ui.position
+	card_ui.position.y -= 180
 	
 	# Play draw sound
 	if has_node("/root/AudioManager"):
 		get_node("/root/AudioManager").play_se(AudioManager.SE_DRAW)
 		
 	ChickenRaceAnimations.animate_draw_card(self, card, card_ui, func():
+		card_ui.position = target_pos
+		card_ui.z_index = 0
+		arrange_hand_fan()
 		is_animating = false
 		if on_complete.is_valid():
 			on_complete.call()
@@ -421,6 +431,9 @@ func reset_phase_for_next_hour() -> void:
 	alert_banner.color.a = 0.0
 	
 	DeskTheme.show_toast(self, "第 %d 時限目の勉強を開始します！" % session.current_hour)
+	
+	if Global.is_tutorial_mode and tutorial and session.current_hour == 2:
+		tutorial.start_hour_2()
 
 func show_hour_result_popup(score: int, is_burst: bool) -> void:
 	ChickenRaceAnimations.show_hour_result_popup(self, score, is_burst)

@@ -25,6 +25,7 @@ var participants_data: Array = []
 var local_doubts_count: int = 3 # 3 doubt votes per day max
 var active_timeline_tweens: Array[Tween] = []
 var likes_skip_btn: Button
+var tutorial_dialog_node: PanelContainer = null
 
 
 func _on_setup(_setup_data: Dictionary) -> void:
@@ -50,9 +51,21 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	
 	if Global.is_tutorial_mode and session.current_day == 1:
 		next_day_btn.text = "チュートリアルを完了する"
-		show_tutorial_dialog(
-			"チキスタ投票・ダウトフェーズです！\n\nライバルの投稿をチェックしましょう。ドロー枚数に対して申告点が高すぎるライバルはブラフの可能性があります！\n\n『詳細確認』でログを調べ、怪しいライバルには『ダウト』を宣言しましょう！成功すれば盛り点分のボーナスを獲得できます。\n確認したらボタンを押してチュートリアルを完了しましょう！",
-			Vector2(780, 20)
+		var viewport_size = get_viewport_rect().size
+		var dialog_pos = Vector2(viewport_size.x * 0.45, viewport_size.y * 0.15)
+		tutorial_dialog_node = show_tutorial_dialog(
+			"佐藤くん：「ここは勉強報告SNS『チキスタ』の画面だよ！\n\nみんなが時限ごとにドローした枚数と、今日の『勉強報告（自己申告した得点）』がタイムラインに流れるんだ。」",
+			dialog_pos,
+			func():
+				tutorial_dialog_node = show_tutorial_dialog(
+					"佐藤くん：「【ブラフとダウト】\nもしドローした枚数に対して、申告している点数が高すぎる人がいたら、嘘（ブラフ）をついているかもしれない！\n\n『詳細確認』で各時限のドロー数を確認し、怪しいと思ったら『ダウト！』を押して暴いてみよう！成功すればボーナス点、失敗すると減点だよ。」",
+					dialog_pos,
+					func():
+						tutorial_dialog_node = show_tutorial_dialog(
+							"佐藤くん：「確認したら、『チュートリアルを完了する』を押して本番に進もう！」",
+							dialog_pos
+						)
+				)
 		)
 
 func collect_participants() -> void:
@@ -146,6 +159,10 @@ func update_remaining_votes() -> void:
 	pass
 
 func _on_inspect_pressed(p: Dictionary) -> void:
+	if tutorial_dialog_node:
+		tutorial_dialog_node.queue_free()
+		tutorial_dialog_node = null
+		
 	DailyLikesUIBuilder.populate_inspect_modal(self, p)
 	
 	# Update ellipsis visibility after layout pass
@@ -174,6 +191,10 @@ func _get_target_deck(p_id: String) -> Dictionary:
 	return {}
 
 func _on_doubt_pressed(target_id: String, card_node: Control, btn: Button) -> void:
+	if tutorial_dialog_node:
+		tutorial_dialog_node.queue_free()
+		tutorial_dialog_node = null
+		
 	if local_doubts_count <= 0:
 		return
 		
@@ -273,6 +294,10 @@ func show_tutorial_finish_modal() -> void:
 	DailyLikesUIBuilder.show_tutorial_finish_modal(self)
 
 func _on_next_day_pressed() -> void:
+	if tutorial_dialog_node:
+		tutorial_dialog_node.queue_free()
+		tutorial_dialog_node = null
+		
 	next_day_btn.disabled = true
 	DeskTheme.animate_click(next_day_btn, Vector2.ONE, 0.08)
 	
