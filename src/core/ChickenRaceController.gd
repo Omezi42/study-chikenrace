@@ -24,13 +24,13 @@ func request_draw() -> void:
 
 func request_stop(draw_times: Array = []) -> void:
 	var final_score = engine.calculate_hand_score()
-	session.add_player_hour_result(session.player_deck.hand.size(), engine.active_used_items, false, final_score, draw_times)
+	session.add_player_hour_result(session.player_deck.hand.size(), engine.active_used_items, false, final_score)
 	emit_signal("stop_triggered", final_score)
 
 func evaluate_burst(draw_times: Array = []) -> void:
 	if engine.check_burst():
 		var final_score = engine.calculate_hand_score()
-		session.add_player_hour_result(session.player_deck.hand.size(), engine.active_used_items, true, final_score, draw_times)
+		session.add_player_hour_result(session.player_deck.hand.size(), engine.active_used_items, true, final_score)
 		emit_signal("burst_triggered", final_score)
 
 func advance_hour() -> void:

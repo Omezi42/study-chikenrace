@@ -39,60 +39,8 @@ func _ready() -> void:
 	root_layer = Control.new()
 	root_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(root_layer)
-	_build_scripted_background()
-
-	# Main layout: Blackboard at center top, report card overlay later
-	blackboard_panel = PanelContainer.new()
-	blackboard_panel.custom_minimum_size = Vector2(1480, 760)
-	
-	var board_style = StyleBoxFlat.new()
-	board_style.bg_color = Color("f7f2e8")
-	board_style.border_color = Color("b59d7a")
-	board_style.border_width_left = 5
-	board_style.border_width_right = 5
-	board_style.border_width_top = 5
-	board_style.border_width_bottom = 5
-	board_style.corner_radius_top_left = 14
-	board_style.corner_radius_top_right = 14
-	board_style.corner_radius_bottom_left = 14
-	board_style.corner_radius_bottom_right = 14
-	board_style.shadow_color = Color(0, 0, 0, 0.18)
-	board_style.shadow_size = 16
-	board_style.shadow_offset = Vector2(6, 8)
-	blackboard_panel.add_theme_stylebox_override("panel", board_style)
-	root_layer.add_child(blackboard_panel)
-	blackboard_panel.pivot_offset = blackboard_panel.custom_minimum_size * 0.5
-	blackboard_panel.position = get_viewport_rect().size * 0.5 - blackboard_panel.custom_minimum_size * 0.5
-	
-	var board_margin = MarginContainer.new()
-	board_margin.add_theme_constant_override("margin_top", DeskTheme.MARGIN_DEFAULT)
-	board_margin.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_DEFAULT)
-	blackboard_panel.add_child(board_margin)
-	
-	blackboard_vbox = VBoxContainer.new()
-	blackboard_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_SMALL)
-	board_margin.add_child(blackboard_vbox)
-	
-	# Result Header
-	scorecard_label = Label.new()
-	scorecard_label.text = "学末最終成績通知表"
-	scorecard_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	scorecard_label.add_theme_font_override("font", DeskTheme.get_font())
-	scorecard_label.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TITLE_LARGE)
-	scorecard_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	blackboard_vbox.add_child(scorecard_label)
-
-	# Title for cumulative score chart
-	chart_title = Label.new()
-	chart_title.text = "累計獲得点数"
-	chart_title.add_theme_font_override("font", DeskTheme.get_font())
-	chart_title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
-	chart_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	blackboard_vbox.add_child(chart_title)
-
-	day_chart_area = Control.new()
-	day_chart_area.custom_minimum_size = Vector2(1320, 180)
-	blackboard_vbox.add_child(day_chart_area)
+	ResultBoardUI.build_background(self)
+	ResultBoardUI.build_blackboard(self)
 	_build_day_chart_shell()
 	
 	# Instantiate dummy session data or retrieve from active session
@@ -121,65 +69,8 @@ func _ready() -> void:
 	# Calculate deviation changes before proceeding
 	_calculate_deviation()
 		
-	# Report Card Overlay Panel (Notebook spread, hidden initially)
-	report_notebook = PanelContainer.new()
-	report_notebook.custom_minimum_size = Vector2(1450, 780)
-	report_notebook.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
-	root_layer.add_child(report_notebook)
-	report_notebook.pivot_offset = report_notebook.custom_minimum_size * 0.5
-	report_notebook.position = get_viewport_rect().size * 0.5 - report_notebook.custom_minimum_size * 0.5
-	report_notebook.visible = false
+	ResultReportUI.build_report_notebook(self)
 	
-	var note_hbox = HBoxContainer.new()
-	note_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	note_hbox.add_theme_constant_override("separation", 60)
-	report_notebook.add_child(note_hbox)
-	
-	# Left Page - Report details
-	var left_p = MarginContainer.new()
-	left_p.add_theme_constant_override("margin_left", DeskTheme.MARGIN_MEDIUM)
-	left_p.add_theme_constant_override("margin_right", DeskTheme.MARGIN_MEDIUM)
-	left_p.add_theme_constant_override("margin_top", DeskTheme.MARGIN_MEDIUM)
-	left_p.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_MEDIUM)
-	note_hbox.add_child(left_p)
-	
-	report_left_page = VBoxContainer.new()
-	report_left_page.custom_minimum_size = Vector2(600, 680)
-	report_left_page.add_theme_constant_override("separation", DeskTheme.MARGIN_SMALL)
-	left_p.add_child(report_left_page)
-	
-	# Right Page - Rankings leaderboard
-	var right_p = MarginContainer.new()
-	right_p.add_theme_constant_override("margin_left", DeskTheme.MARGIN_MEDIUM)
-	right_p.add_theme_constant_override("margin_right", DeskTheme.MARGIN_MEDIUM)
-	right_p.add_theme_constant_override("margin_top", DeskTheme.MARGIN_MEDIUM)
-	right_p.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_MEDIUM)
-	note_hbox.add_child(right_p)
-	
-	report_right_page = VBoxContainer.new()
-	report_right_page.custom_minimum_size = Vector2(600, 680)
-	report_right_page.add_theme_constant_override("separation", DeskTheme.MARGIN_SMALL)
-	right_p.add_child(report_right_page)
-	
-	# Skip button at bottom right
-	skip_btn = Button.new()
-	skip_btn.text = "結果へスキップ >>"
-	skip_btn.custom_minimum_size = Vector2(240, 60)
-	skip_btn.add_theme_font_override("font", DeskTheme.get_font())
-	skip_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
-	skip_btn.pressed.connect(_on_skip_pressed)
-	
-	var skip_style = StyleBoxFlat.new()
-	skip_style.bg_color = Color(DeskTheme.COLOR_MAHOGANY, 0.8)
-	skip_style.corner_radius_top_left = 6
-	skip_style.corner_radius_top_right = 6
-	skip_style.corner_radius_bottom_left = 6
-	skip_style.corner_radius_bottom_right = 6
-	skip_btn.add_theme_stylebox_override("normal", skip_style)
-	skip_btn.add_theme_stylebox_override("hover", skip_style)
-	skip_btn.add_theme_stylebox_override("pressed", skip_style)
-	
-	root_layer.add_child(skip_btn)
 	_reflow_layout()
 	
 	# Start daily reveal animation loop
@@ -187,32 +78,7 @@ func _ready() -> void:
 	current_step_day = 1
 	reveal_next_day_showdown()
 
-func _build_scripted_background() -> void:
-	var bg = ColorRect.new()
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bg.color = Color("214b3b")
-	root_layer.add_child(bg)
 
-	board_frame = ColorRect.new()
-	board_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	board_frame.color = Color("7a5633")
-	board_frame.modulate.a = 0.95
-	root_layer.add_child(board_frame)
-
-	board_inner = ColorRect.new()
-	board_inner.color = Color("1f4d3a")
-	board_inner.modulate.a = 0.98
-	root_layer.add_child(board_inner)
-
-	var grain = ColorRect.new()
-	grain.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	grain.color = Color(0.95, 0.85, 0.65, 0.06)
-	root_layer.add_child(grain)
-
-	var vignette = ColorRect.new()
-	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	vignette.color = Color(0.03, 0.02, 0.01, 0.22)
-	root_layer.add_child(vignette)
 
 func _reflow_layout() -> void:
 	if not is_inside_tree():
