@@ -31,7 +31,7 @@ var game_mode: String = Constants.MODE_NATIONAL
 # Friend Match Room State
 var friend_room_code: String = ""
 var friend_is_host: bool = false
-var friend_member_list: Array = []
+var friend_member_list: Array[Dictionary] = []
 var friend_current_day: int = 1
 var friend_match_history: Dictionary = {}
 
@@ -46,7 +46,7 @@ var daily_opponent_ghosts: Dictionary = {}  # DayIndex -> Array of ghosts
 var daily_my_records: Dictionary = {}       # DayIndex -> My record dict
 var daily_fixed_deck: Dictionary = {}       # Generated fixed deck (1-10 -> ItemId)
 var current_season: int = 1                 # 1シーズン=2週間
-var today_missions: Array = []
+var today_missions: Array[Dictionary] = []
 var mission_progress: Dictionary = {}
 var last_mission_date: String = ""
 
@@ -133,6 +133,10 @@ func _ready() -> void:
 		
 	# Check for season reset
 	_check_season_reset()
+	
+	# Instantiate NetworkStatusUI
+	var network_ui = load("res://src/ui/NetworkStatusUI.gd").new()
+	add_child(network_ui)
 
 # Save Game state to local storage JSON
 # 永続化する単純なデータ型の変数のリスト
@@ -649,4 +653,35 @@ func _calculate_season_reward() -> int:
 		Constants.LEAGUE_F: return 10
 	return 10
 
+func get_season_remaining_days() -> int:
+	var unix_time = Time.get_unix_time_from_system()
+	var current_season_start = (current_season - 1) * Constants.SEASON_DURATION_DAYS * 86400
+	var next_season_start = current_season * Constants.SEASON_DURATION_DAYS * 86400
+	var remaining_seconds = next_season_start - unix_time
+	return max(0, int(remaining_seconds / 86400))
 
+func evaluate_achievements() -> void:
+	var newly_unlocked = []
+	
+	var check_title = func(title_id: String, condition: bool):
+		if condition and not title_id in unlocked_titles:
+			unlocked_titles.append(title_id)
+			newly_unlocked.append(title_id)
+			
+	check_title.call("ただの凡人", true) # Default
+	check_title.call("見破り名人", total_doubt_successes >= 10)
+	check_title.call("名探偵", total_doubt_successes >= 50)
+	check_title.call("チキンキング", total_burst_count >= 5)
+	check_title.call("完全犯罪者", total_perfect_crimes >= 1)
+	check_title.call("ルパン", total_perfect_crimes >= 5)
+	check_title.call("勉強の鬼", play_count >= 20)
+	check_title.call("廃人ゲーマー", play_count >= 50)
+	check_title.call("全国ランカー", max_deviation_value >= 65.0)
+	check_title.call("天才", max_deviation_value >= 70.0)
+	check_title.call("神", max_deviation_value >= 80.0)
+	
+	if newly_unlocked.size() > 0:
+		save_game()
+		if has_node("/root/UIHelper"):
+			for t in newly_unlocked:
+				get_node("/root/UIHelper").show_toast("称号「" + t + "」を獲得！", 3.0, DeskTheme.COLOR_GREEN)

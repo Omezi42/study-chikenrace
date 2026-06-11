@@ -25,7 +25,7 @@ var player_deck: StudyDeck
 
 var player_actual_score_today: int = 0
 var player_declared_score_today: int = 0
-var player_hours_history_today: Array = []
+var player_hours_history_today: Array[Dictionary] = []
 var player_doubts_made_today: Array[String] = []
 var player_emote_today: String = "normal"
 
@@ -101,6 +101,7 @@ func simulate_cpus_for_day(day_idx: int) -> void:
 		}
 
 func add_player_hour_result(draws: int, used_items: Array, bursted: bool, score: int) -> void:
+	# used_items はString配列だが呼び出し元からVariant Arrayが渡される可能性を考慮しキャストを避けるか、安全に扱う
 	player_hours_history_today.append({
 		"draws": draws,
 		"used_items": used_items,
@@ -248,10 +249,10 @@ func _prepare_opponents_for_day(day_idx: int) -> void:
 	else:
 		simulate_cpus_for_day(day_idx)
 
-func _get_backend_manager():
-	var main_loop = Engine.get_main_loop()
+func _get_backend_manager() -> Node:
+	var main_loop: MainLoop = Engine.get_main_loop()
 	if main_loop is SceneTree:
-		return main_loop.root.get_node_or_null("BackendManager")
+		return (main_loop as SceneTree).root.get_node_or_null("BackendManager")
 	return null
 
 func calculate_final_showdown() -> Dictionary:

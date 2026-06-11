@@ -86,7 +86,6 @@ func _ready() -> void:
 	highlighter.show_behind_parent = true
 	top_lbl.add_child(highlighter)
 	
-	# Bottom Text with Tension Color
 	var bottom_lbl = Label.new()
 	bottom_lbl.text = "チキンレース"
 	bottom_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -96,6 +95,14 @@ func _ready() -> void:
 	bottom_lbl.add_theme_constant_override("outline_size", 8)
 	bottom_lbl.add_theme_color_override("font_outline_color", Color.WHITE)
 	logo_vbox.add_child(bottom_lbl)
+
+	var season_lbl = Label.new()
+	season_lbl.text = "シーズン %d 開催中！ (終了まであと %d 日)" % [Global.current_season, Global.get_season_remaining_days()]
+	season_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	season_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	season_lbl.add_theme_font_size_override("font_size", 24)
+	season_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	logo_vbox.add_child(season_lbl)
 
 	
 	# Logo Animations

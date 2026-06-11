@@ -68,6 +68,7 @@ func _ready() -> void:
 		
 	# Calculate deviation changes before proceeding
 	_calculate_deviation()
+	Global.evaluate_achievements()
 		
 	ResultReportUI.build_report_notebook(self)
 	

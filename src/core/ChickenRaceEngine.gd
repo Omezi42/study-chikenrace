@@ -7,7 +7,7 @@ extends RefCounted
 var session: GameSession
 var deck: StudyDeck
 
-var hand_cards: Array = []
+var hand_cards: Array[Dictionary] = []
 var active_used_items: Array[String] = []
 var has_bursted: bool = false
 
@@ -32,7 +32,7 @@ func draw_card() -> Dictionary:
 		
 	hand_cards.append(card)
 	
-	var item_id = card.get("item_id", "")
+	var item_id: String = str(card.get("item_id", ""))
 	if item_id != "" and not item_id in active_used_items:
 		active_used_items.append(item_id)
 		

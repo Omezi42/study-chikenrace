@@ -186,20 +186,39 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	card_style.border_width_top = 1
 	card_style.border_width_bottom = 1
 	
-	if idx == 0:
-		card_style.border_color = Color("ffd700")
-	elif idx == 1:
-		card_style.border_color = Color("c0c0c0")
-	elif idx == 2:
-		card_style.border_color = Color("cd7f32")
+	var is_suspicious = false
+	var suspiciousness = 0.0
+	if p["id"] != "player":
+		suspiciousness = AIManager.evaluate_suspiciousness_with_emote(p["declared_score"], p["hours"], p.get("emote", "normal"))
+		if suspiciousness > 0.65:
+			is_suspicious = true
+	
+	if is_suspicious:
+		card_style.border_color = DeskTheme.COLOR_TENSION
+		card_style.border_width_left = 6
+		card_style.border_width_right = 6
+		card_style.border_width_top = 6
+		card_style.border_width_bottom = 6
+		# Background slightly reddish
+		card_style.bg_color = Color("ffebee")
 	else:
-		card_style.border_color = Color("37474f")
+		if idx == 0:
+			card_style.border_color = Color("ffd700")
+		elif idx == 1:
+			card_style.border_color = Color("c0c0c0")
+		elif idx == 2:
+			card_style.border_color = Color("cd7f32")
+		else:
+			card_style.border_color = Color("37474f")
 		
 	card.add_theme_stylebox_override("panel", card_style)
 	card.clip_contents = true
 	
 	card.modulate.a = 0.0
 	card.custom_minimum_size = Vector2(480, 0)
+	
+	if is_suspicious:
+		DeskTheme.pulse_vignette(card, Color.WHITE, suspiciousness)
 	
 	var card_margin = MarginContainer.new()
 	card_margin.add_theme_constant_override("margin_left", 12)
@@ -227,7 +246,10 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	text_vbox.add_child(header_hbox)
 	
 	var name_lbl = Label.new()
-	name_lbl.text = p["name"]
+	if is_suspicious:
+		name_lbl.text = p["name"] + " (怪しい...)"
+	else:
+		name_lbl.text = p["name"]
 	name_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	name_lbl.add_theme_font_size_override("font_size", 22)
 	name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)

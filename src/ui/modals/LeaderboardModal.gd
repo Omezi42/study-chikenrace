@@ -57,6 +57,14 @@ func _ready() -> void:
 	board_title.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_YELLOW)
 	board_vbox.add_child(board_title)
 	
+	var season_info = Label.new()
+	season_info.text = "シーズン %d (残り %d 日)" % [Global.current_season, Global.get_season_remaining_days()]
+	season_info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	season_info.add_theme_font_override("font", DeskTheme.get_font())
+	season_info.add_theme_font_size_override("font_size", 16)
+	season_info.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_WHITE)
+	board_vbox.add_child(season_info)
+	
 	var leaderboard_scroll = ScrollContainer.new()
 	leaderboard_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	board_vbox.add_child(leaderboard_scroll)

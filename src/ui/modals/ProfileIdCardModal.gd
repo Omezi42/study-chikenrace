@@ -165,12 +165,29 @@ func _ready() -> void:
 	title_badge_panel.add_theme_stylebox_override("panel", title_badge_style)
 	title_hbox.add_child(title_badge_panel)
 	
-	var title_lbl = Label.new()
-	title_lbl.text = Global.player_title if Global.player_title != "" else "ただの凡人"
-	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	title_lbl.add_theme_font_size_override("font_size", 14)
-	title_lbl.add_theme_color_override("font_color", Color("004d40"))
-	title_badge_panel.add_child(title_lbl)
+	var title_dropdown = OptionButton.new()
+	title_dropdown.custom_minimum_size = Vector2(180, 32)
+	title_dropdown.add_theme_font_override("font", DeskTheme.get_font())
+	title_dropdown.add_theme_font_size_override("font_size", 14)
+	
+	var all_titles = Global.unlocked_titles.duplicate()
+	if not "ただの凡人" in all_titles:
+		all_titles.insert(0, "ただの凡人")
+		
+	var selected_id = 0
+	for i in range(all_titles.size()):
+		var t = all_titles[i]
+		title_dropdown.add_item(t, i)
+		if t == Global.player_title:
+			selected_id = i
+			
+	title_dropdown.select(selected_id)
+	title_dropdown.item_selected.connect(func(index: int):
+		Global.player_title = title_dropdown.get_item_text(index)
+		Global.save_game()
+	)
+	
+	title_badge_panel.add_child(title_dropdown)
 	
 	var deviation_lbl = Label.new()
 	deviation_lbl.text = "全国偏差値: %.1f (最高: %.1f)" % [Global.deviation_value, Global.max_deviation_value]
