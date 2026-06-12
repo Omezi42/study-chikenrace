@@ -107,7 +107,7 @@ func show_loading(text: String = "通信中...") -> void:
 	spinner_lbl.add_theme_font_size_override("font_size", 24)
 	spinner.add_child(spinner_lbl)
 	
-	var spinner_tween = create_tween().set_loops()
+	var spinner_tween = spinner.create_tween().set_loops()
 	spinner_tween.tween_property(spinner, "rotation_degrees", 360.0, 1.2).from(0.0)
 
 func hide_loading() -> void:

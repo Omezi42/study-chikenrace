@@ -637,7 +637,21 @@ func _check_season_reset() -> void:
 		save_game()
 		
 		if has_node("/root/UIHelper"):
-			get_node("/root/UIHelper").show_toast("シーズン" + str(old_season) + "終了！シーズン報酬獲得: " + str(reward_coins) + "コイン")
+			get_node("/root/UIHelper").show_toast(get_season_name(old_season) + "終了！シーズン報酬獲得: " + str(reward_coins) + "コイン")
+
+func get_season_name(season_num: int = -1) -> String:
+	if season_num <= 0:
+		season_num = current_season
+	
+	var item_names = []
+	for key in CardData.ITEMS:
+		item_names.append(CardData.ITEMS[key]["name"])
+	
+	if item_names.size() == 0:
+		return "シーズン " + str(season_num)
+	
+	var idx = (season_num - 1) % item_names.size()
+	return item_names[idx] + "シーズン"
 
 func _calculate_season_reward() -> int:
 	var league = get_deviation_league(deviation_value)

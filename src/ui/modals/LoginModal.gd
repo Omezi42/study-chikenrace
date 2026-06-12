@@ -1,38 +1,45 @@
 class_name LoginModal
-extends PanelContainer
+extends CanvasLayer
 
 static func create_and_show(parent: Node, login_btn_ref: Button, on_success_callback: Callable) -> LoginModal:
 	var modal = LoginModal.new()
 	modal.setup(login_btn_ref, on_success_callback)
 	parent.add_child(modal)
-	
-	# Entrance Animation
-	modal.scale = Vector2.ZERO
-	var tween = modal.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(modal, "scale", Vector2.ONE, 0.3)
 	return modal
 
 var login_btn: Button
 var success_callback: Callable
+var modal_panel: PanelContainer
 
 func setup(btn: Button, callback: Callable) -> void:
 	login_btn = btn
 	success_callback = callback
+
+func _ready() -> void:
+	layer = 100
 	
-	custom_minimum_size = Vector2(500, 440)
-	pivot_offset = Vector2(250, 220)
+	# Semi-transparent background overlay
+	var bg_overlay = ColorRect.new()
+	bg_overlay.color = Color(0, 0, 0, 0.4)
+	bg_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(bg_overlay)
 	
-	add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
+	# Modal container
+	modal_panel = PanelContainer.new()
+	modal_panel.custom_minimum_size = Vector2(500, 440)
+	modal_panel.pivot_offset = Vector2(250, 220)
+	modal_panel.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
+	add_child(modal_panel)
 	
-	# Viewport center position calculation
-	position = get_viewport_rect().size * 0.5 - pivot_offset
+	var viewport_size = get_viewport().get_visible_rect().size
+	modal_panel.position = viewport_size * 0.5 - modal_panel.pivot_offset
 	
 	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 30)
 	margin.add_theme_constant_override("margin_right", 30)
 	margin.add_theme_constant_override("margin_top", 30)
 	margin.add_theme_constant_override("margin_bottom", 30)
-	add_child(margin)
+	modal_panel.add_child(margin)
 	
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 18)
@@ -193,3 +200,9 @@ func setup(btn: Button, callback: Callable) -> void:
 			bm.auth_completed.disconnect(on_auth_ref[0])
 		queue_free()
 	)
+
+	# Entrance Animation on the panel itself
+	modal_panel.scale = Vector2.ZERO
+	var tween = modal_panel.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(modal_panel, "scale", Vector2.ONE, 0.3)
+

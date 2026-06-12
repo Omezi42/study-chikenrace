@@ -97,7 +97,7 @@ func _ready() -> void:
 	logo_vbox.add_child(bottom_lbl)
 
 	var season_lbl = Label.new()
-	season_lbl.text = "シーズン %d 開催中！ (終了まであと %d 日)" % [Global.current_season, Global.get_season_remaining_days()]
+	season_lbl.text = "%s 開催中！ (終了まであと %d 日)" % [Global.get_season_name(), Global.get_season_remaining_days()]
 	season_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	season_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	season_lbl.add_theme_font_size_override("font_size", 24)
