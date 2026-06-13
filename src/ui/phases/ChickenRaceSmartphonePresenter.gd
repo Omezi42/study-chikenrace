@@ -121,14 +121,14 @@ func update_active_effects_ui() -> void:
 		var title_lbl = Label.new()
 		title_lbl.text = eff["name"]
 		title_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		title_lbl.add_theme_font_size_override("font_size", 10)
+		title_lbl.add_theme_font_size_override("font_size", 14)
 		title_lbl.add_theme_color_override("font_color", eff["color"])
 		vbox.add_child(title_lbl)
 		
 		var desc_lbl = Label.new()
 		desc_lbl.text = eff["desc"]
 		desc_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		desc_lbl.add_theme_font_size_override("font_size", 9)
+		desc_lbl.add_theme_font_size_override("font_size", 14)
 		desc_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		vbox.add_child(desc_lbl)
 		

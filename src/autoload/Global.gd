@@ -59,6 +59,7 @@ var last_mission_date: String = ""
 var deviation_value: float = 50.0
 var max_deviation_value: float = 50.0
 var selected_class: String = "regular" # "remedial", "regular", "advanced"
+var last_updated_at: float = 0.0
 
 # Opponent profiles for the active match
 var opponent_profiles: Dictionary = {
@@ -144,7 +145,6 @@ func _ready() -> void:
 	add_child(network_ui)
 
 # Save Game state to local storage JSON
-# 永続化する単純なデータ型の変数のリスト
 const SIMPLE_SAVE_FIELDS = [
 	"player_name", "player_title", "coins", "best_score", "play_count", 
 	"unlocked_items", "item_usage_counts", "unlocked_titles", 
@@ -156,14 +156,55 @@ const SIMPLE_SAVE_FIELDS = [
 	"friend_current_day", "friend_match_history",
 	"total_doubt_successes", "total_doubt_failures", "total_burst_count", "total_perfect_crimes",
 	"deck_presets", "deck_preset_names", "selected_preset_idx",
-	"today_missions", "mission_progress", "last_mission_date", "current_season"
+	"today_missions", "mission_progress", "last_mission_date", "current_season",
+	"last_updated_at"
 ]
+
+const OBFUSCATION_KEY = "anti_gravity_chicken_race_key"
+
+func _obfuscate_string(input: String) -> String:
+	if input == "":
+		return ""
+	var result = PackedByteArray()
+	var key_bytes = OBFUSCATION_KEY.to_utf8_buffer()
+	var input_bytes = input.to_utf8_buffer()
+	for i in range(input_bytes.size()):
+		result.append(input_bytes[i] ^ key_bytes[i % key_bytes.size()])
+	return Marshalls.raw_to_base64(result)
+
+func _deobfuscate_string(input: String) -> String:
+	if input == "":
+		return ""
+	var encrypted_bytes = Marshalls.base64_to_raw(input)
+	if encrypted_bytes.size() == 0:
+		return ""
+	var result = PackedByteArray()
+	var key_bytes = OBFUSCATION_KEY.to_utf8_buffer()
+	for i in range(encrypted_bytes.size()):
+		result.append(encrypted_bytes[i] ^ key_bytes[i % key_bytes.size()])
+	return result.get_string_from_utf8()
+
+func get_save_data_dict_for_sync() -> Dictionary:
+	var save_dict = {}
+	for field in SIMPLE_SAVE_FIELDS:
+		if field == "auth_token":
+			save_dict[field] = auth_token # Keep un-obfuscated for cloud sync context if needed, but for sync, it should match SIMPLE_SAVE_FIELDS
+		else:
+			save_dict[field] = get(field)
+	save_dict["current_deck"] = get_deck_as_string_keys()
+	save_dict["daily_fixed_deck"] = get_daily_fixed_deck_as_string_keys()
+	save_dict["save_version"] = Constants.SAVE_VERSION
+	return save_dict
 
 # Save Game state to local storage JSON
 func save_game() -> void:
+	last_updated_at = Time.get_unix_time_from_system()
 	var save_dict = {}
 	for field in SIMPLE_SAVE_FIELDS:
-		save_dict[field] = get(field)
+		if field == "auth_token":
+			save_dict[field] = _obfuscate_string(auth_token)
+		else:
+			save_dict[field] = get(field)
 		
 	# Save deck as string keys because JSON dictionary keys are always strings
 	save_dict["current_deck"] = get_deck_as_string_keys()
@@ -194,6 +235,8 @@ func load_game() -> void:
 	for field in SIMPLE_SAVE_FIELDS:
 		if field in data:
 			var val = data[field]
+			if field == "auth_token":
+				val = _deobfuscate_string(str(val))
 			var current_val = get(field)
 			if current_val is int:
 				set(field, int(val))

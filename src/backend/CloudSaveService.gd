@@ -27,10 +27,8 @@ func save_cloud_data(data_dict: Dictionary) -> void:
 			bm.save_completed.emit(true)
 		else:
 			bm.save_completed.emit(false)
-			if bm.is_inside_tree() and ClassDB.class_exists("DeskTheme"):
-				var DeskTheme = ClassDB.instantiate("DeskTheme")
-				if DeskTheme and DeskTheme.has_method("show_toast"):
-					DeskTheme.show_toast(bm, "クラウドセーブ失敗。ローカルに保存します。")
+			if bm.is_inside_tree():
+				DeskTheme.show_toast(bm, "クラウドセーブ失敗。ローカルに保存します。")
 
 	var custom_headers = bm._get_headers(true)
 	custom_headers.append("Prefer: resolution=merge-duplicates")
@@ -53,15 +51,23 @@ func load_cloud_data() -> void:
 				if data is Array and data.size() > 0:
 					var save_entry = data[0]
 					if save_entry is Dictionary and save_entry.has("data"):
-						bm.load_completed.emit(true, save_entry["data"])
+						var cloud_data = save_entry["data"]
+						if cloud_data is Dictionary:
+							var cloud_time = float(cloud_data.get("last_updated_at", 0.0))
+							var local_time = float(Global.last_updated_at)
+							if local_time > cloud_time:
+								if bm.is_inside_tree():
+									DeskTheme.show_toast(bm, "ローカルのほうが新しいため、クラウドを同期中...", 2.0, DeskTheme.COLOR_GREEN)
+								save_cloud_data(Global.get_save_data_dict_for_sync())
+								bm.load_completed.emit(true, Global.get_save_data_dict_for_sync())
+								return
+						bm.load_completed.emit(true, cloud_data)
 						return
 			bm.load_completed.emit(false, {})
 		else:
 			bm.load_completed.emit(false, {})
-			if bm.is_inside_tree() and ClassDB.class_exists("DeskTheme"):
-				var DeskTheme = ClassDB.instantiate("DeskTheme")
-				if DeskTheme and DeskTheme.has_method("show_toast"):
-					DeskTheme.show_toast(bm, "クラウドロード失敗。ローカルデータを使用します。")
+			if bm.is_inside_tree():
+				DeskTheme.show_toast(bm, "クラウドロード失敗。ローカルデータを使用します。")
 	)
 
 func upload_daily_record(day_idx: int, score: int, record: Dictionary) -> void:
@@ -81,10 +87,8 @@ func upload_daily_record(day_idx: int, score: int, record: Dictionary) -> void:
 
 	bm._send_request(url, HTTPClient.METHOD_POST, JSON.stringify(body), true, func(result, response_code, headers, body_data):
 		if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
-			if bm.is_inside_tree() and ClassDB.class_exists("DeskTheme"):
-				var DeskTheme = ClassDB.instantiate("DeskTheme")
-				if DeskTheme and DeskTheme.has_method("show_toast"):
-					DeskTheme.show_toast(bm, "今日のスコアの保存に失敗しました。")
+			if bm.is_inside_tree():
+				DeskTheme.show_toast(bm, "今日のスコアの保存に失敗しました。")
 	)
 
 func fetch_daily_records(day_idx: int) -> void:

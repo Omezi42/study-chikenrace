@@ -216,8 +216,16 @@ func _do_send_request_with_retry(url: String, method: HTTPClient.Method, body_st
 				callback.call(HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray())
 				return
 
+		var frame_timeout := 1800 # 30 seconds at 60fps
+		var waited_frames := 0
 		while not completed_state["done"]:
 			await get_tree().process_frame
+			waited_frames += 1
+			if waited_frames >= frame_timeout:
+				_pool_callbacks.erase(req)
+				completed_state["done"] = true
+				completed_state["data"] = [HTTPRequest.RESULT_TIMEOUT, 0, PackedStringArray(), PackedByteArray()]
+				break
 
 		var res = completed_state["data"][0]
 		var res_code = completed_state["data"][1]

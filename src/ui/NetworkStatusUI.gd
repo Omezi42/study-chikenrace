@@ -3,7 +3,7 @@ extends CanvasLayer
 
 var badge_panel: PanelContainer
 var status_label: Label
-var icon_rect: Control
+var icon_rect: ColorRect
 
 var is_online: bool = true
 var is_reconnecting: bool = false
@@ -41,28 +41,9 @@ func _ready() -> void:
 	
 	icon_rect = ColorRect.new()
 	icon_rect.custom_minimum_size = Vector2(12, 12)
-	icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon_rect.color = DeskTheme.COLOR_GREEN
+	icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hbox.add_child(icon_rect)
-	
-	# Make icon round
-	var icon_style = StyleBoxFlat.new()
-	icon_style.bg_color = DeskTheme.COLOR_GREEN
-	icon_style.corner_radius_top_left = 6
-	icon_style.corner_radius_top_right = 6
-	icon_style.corner_radius_bottom_left = 6
-	icon_style.corner_radius_bottom_right = 6
-	
-	var icon_container = Panel.new()
-	icon_container.custom_minimum_size = Vector2(12, 12)
-	icon_container.add_theme_stylebox_override("panel", icon_style)
-	icon_container.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	
-	# Replace ColorRect with Panel for roundness
-	hbox.remove_child(icon_rect)
-	icon_rect.queue_free()
-	icon_rect = icon_container # Reusing variable name as it's just a ref, wait it was strongly typed as ColorRect
-	# Actually, let's just make it a Panel
 	
 	status_label = Label.new()
 	status_label.text = "オンライン"
@@ -97,27 +78,13 @@ func _set_online_mode() -> void:
 	is_online = true
 	is_reconnecting = false
 	status_label.text = "オンライン"
-	
-	var style = StyleBoxFlat.new()
-	style.bg_color = DeskTheme.COLOR_GREEN
-	style.corner_radius_top_left = 6
-	style.corner_radius_top_right = 6
-	style.corner_radius_bottom_left = 6
-	style.corner_radius_bottom_right = 6
-	icon_rect.add_theme_stylebox_override("panel", style)
+	icon_rect.color = DeskTheme.COLOR_GREEN
 
 func _set_offline_mode() -> void:
 	is_online = false
 	is_reconnecting = false
 	status_label.text = "オフライン"
-	
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color("9e9e9e") # Gray
-	style.corner_radius_top_left = 6
-	style.corner_radius_top_right = 6
-	style.corner_radius_bottom_left = 6
-	style.corner_radius_bottom_right = 6
-	icon_rect.add_theme_stylebox_override("panel", style)
+	icon_rect.color = Color("9e9e9e")
 
 func _on_connection_lost() -> void:
 	if not is_online:
@@ -125,14 +92,7 @@ func _on_connection_lost() -> void:
 	is_online = false
 	is_reconnecting = true
 	status_label.text = "再接続中..."
-	
-	var style = StyleBoxFlat.new()
-	style.bg_color = DeskTheme.COLOR_TENSION # Red/Pink
-	style.corner_radius_top_left = 6
-	style.corner_radius_top_right = 6
-	style.corner_radius_bottom_left = 6
-	style.corner_radius_bottom_right = 6
-	icon_rect.add_theme_stylebox_override("panel", style)
+	icon_rect.color = DeskTheme.COLOR_TENSION
 
 func _on_reconnect_succeeded() -> void:
 	_set_online_mode()

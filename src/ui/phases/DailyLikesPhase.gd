@@ -237,9 +237,9 @@ func _on_doubt_pressed(target_id: String, card_node: Control, btn: Button) -> vo
 		var penalty = declared_score - actual_score
 		
 		if opp_has_copy:
-			var extra_penalty = int(penalty * 0.3)
+			var extra_penalty = penalty
 			opp_score_change = -(penalty + extra_penalty)
-			opp_details = "・嘘つきペナルティ: -%d 点\n・カンニングのデメリット: -%d 点\n(ペナルティが30%%増加)" % [penalty, extra_penalty]
+			opp_details = "・嘘つきペナルティ: -%d 点\n・解答写しのデメリット: -%d 点\n(ペナルティが2倍に増加)" % [penalty, extra_penalty]
 		else:
 			opp_score_change = -penalty
 			opp_details = "・嘘つきペナルティ: -%d 点" % penalty

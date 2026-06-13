@@ -34,10 +34,8 @@ func create_friend_room() -> void:
 		else:
 			_enable_mock_room(code, host_name)
 			bm.room_created.emit(true, code)
-			if bm.is_inside_tree() and ClassDB.class_exists("DeskTheme"):
-				var DeskTheme = ClassDB.instantiate("DeskTheme")
-				if DeskTheme and DeskTheme.has_method("show_toast"):
-					DeskTheme.show_toast(bm, "接続失敗。オフライン(CPU戦)で開始します。")
+			if bm.is_inside_tree():
+				DeskTheme.show_toast(bm, "接続失敗。オフライン(CPU戦)で開始します。")
 	)
 
 func _enable_mock_room(code: String, host_name: String) -> void:
@@ -85,16 +83,15 @@ func join_friend_room(room_code: String) -> void:
 							bm.room_joined.emit(false, [])
 						else:
 							_join_mock_room(room_code, user_name)
+						return
 					elif data.has("participants"):
 						var parts = data["participants"]
 						if parts is Array:
 							bm.room_joined.emit(true, parts)
 							return
 		_join_mock_room(room_code, user_name)
-		if bm.is_inside_tree() and ClassDB.class_exists("DeskTheme"):
-			var DeskTheme = ClassDB.instantiate("DeskTheme")
-			if DeskTheme and DeskTheme.has_method("show_toast"):
-				DeskTheme.show_toast(bm, "接続失敗。オフライン(CPU戦)として参加します。")
+		if bm.is_inside_tree():
+			DeskTheme.show_toast(bm, "接続失敗。オフライン(CPU戦)として参加します。")
 	)
 
 func _join_mock_room(room_code: String, user_name: String) -> void:
@@ -189,12 +186,9 @@ func upload_friend_move(room_code: String, day_idx: int, move_data: Dictionary) 
 			bm.mock_moves[day_idx].append(my_move)
 
 		bm.mock_last_sync_revision += 1
-		if ClassDB.class_exists("MockDataGenerator"):
-			var MockDataGenerator = ClassDB.instantiate("MockDataGenerator")
-			if MockDataGenerator and MockDataGenerator.has_method("simulate_friend_room_cpus"):
-				MockDataGenerator.simulate_friend_room_cpus(
-					room_code, day_idx, bm.mock_moves, bm.mock_participants, my_move, Global.opponent_profiles
-				)
+		MockDataGenerator.simulate_friend_room_cpus(
+			room_code, day_idx, bm.mock_moves, bm.mock_participants, my_move, Global.opponent_profiles
+		)
 		if nonce != "":
 			bm._sent_nonces[nonce] = "success"
 		return
@@ -213,10 +207,8 @@ func upload_friend_move(room_code: String, day_idx: int, move_data: Dictionary) 
 		else:
 			if nonce != "":
 				bm._sent_nonces[nonce] = "failed"
-			if bm.is_inside_tree() and ClassDB.class_exists("DeskTheme"):
-				var DeskTheme = ClassDB.instantiate("DeskTheme")
-				if DeskTheme and DeskTheme.has_method("show_toast"):
-					DeskTheme.show_toast(bm, "Failed to send friend-room data.")
+			if bm.is_inside_tree():
+				DeskTheme.show_toast(bm, "Failed to send friend-room data.")
 
 	var custom_headers = bm._get_headers(true)
 	custom_headers.append("Prefer: resolution=merge-duplicates")

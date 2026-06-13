@@ -83,15 +83,17 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 					if final_exposed:
 						player_caught_lies_count += 1
 						
+				if final_exposed:
 					var penalty := declared - actual
 					if _has_item(deck_config, "item_copy_answer"):
-						var extra_penalty := int(penalty * 0.3) # 30% extra penalty for copy_answer item
-						adjustment -= (penalty + extra_penalty)
+						# Double penalty: actual - 2 * penalty -> declared - 3 * penalty
+						adjustment -= 3 * penalty
 					else:
-						adjustment -= penalty
+						# Normal penalty: actual - penalty -> declared - 2 * penalty
+						adjustment -= 2 * penalty
 						
-					p["is_doubt_exposed"] = true
-					p["auto_exposed"] = auto_exposed
+				p["is_doubt_exposed"] = final_exposed
+				p["auto_exposed"] = auto_exposed
 					
 			showdown_details[day_idx][p_id] = {
 				"base": base_score,
