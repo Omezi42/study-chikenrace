@@ -299,3 +299,6 @@ func disconnect_realtime_lobby() -> void:
 
 func attempt_reconnect() -> void:
 	realtime_lobby_service.attempt_reconnect()
+
+func leave_or_delete_random_room(room_code: String) -> void:
+	matchmaking_service.leave_or_delete_random_room(room_code)

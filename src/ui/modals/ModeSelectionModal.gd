@@ -357,13 +357,27 @@ static func _show_difficulty_selection(parent: Node, mode_modal: PanelContainer,
 				}
 				Global.save_game()
 				
-				var timer = parent.get_tree().create_timer(0.2)
-				timer.timeout.connect(func():
+				var start_game = func():
 					diff_modal.queue_free()
 					if Global.player_name == "":
 						Global.change_scene_with_fade(parent.get_tree(), "res://Profile.tscn")
 					else:
 						Global.change_scene_with_fade(parent.get_tree(), "res://Main.tscn")
+
+				var timer = parent.get_tree().create_timer(0.2)
+				timer.timeout.connect(func():
+					if Global.game_mode == Constants.MODE_OVERNIGHT:
+						var cram_modal_script = load("res://src/ui/modals/CramDeckPreviewModal.gd")
+						if cram_modal_script:
+							cram_modal_script.create_and_show(parent, start_game)
+						else:
+							start_game.call()
+					else:
+						var select_modal_script = load("res://src/ui/modals/DeckSelectionModal.gd")
+						if select_modal_script:
+							select_modal_script.create_and_show(parent, start_game)
+						else:
+							start_game.call()
 				)
 			)
 			
@@ -531,6 +545,8 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 		
 	cancel_btn.pressed.connect(func():
 		DeskTheme.animate_click(cancel_btn, Vector2.ONE, 0.08)
+		if Global.friend_room_code != "":
+			bm.leave_or_delete_random_room(Global.friend_room_code)
 		Global.friend_room_code = ""
 		clean_up_lobby.call()
 		ModeSelectionModal.create_and_show(parent, on_friend_match_pressed, national_names_pool)

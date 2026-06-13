@@ -340,7 +340,7 @@ func join_or_create_random_match() -> void:
 	var league = Global.get_deviation_league(Global.deviation_value)
 	var search_prefix = "RAND_" + league + "_"
 	
-	var url = bm._get_supabase_url() + "/rest/v1/friend_rooms?status=eq.waiting&room_code=like." + search_prefix + "*"
+	var url = bm._get_supabase_url() + "/rest/v1/friend_rooms?status=eq.waiting&room_code=like." + search_prefix + "%"
 	bm._send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
 			var json = JSON.new()
@@ -399,6 +399,8 @@ func _create_random_match_room(user_name: String) -> void:
 			bm.random_match_status_updated.emit("waiting_for_players", "他のプレイヤーを待っています...")
 			bm.room_created.emit(true, room_code)
 		else:
+			var err_body = body_data.get_string_from_utf8() if body_data is PackedByteArray else ""
+			push_error("[BackendManager] Create room failed! result: %d, code: %d, body: %s" % [result, response_code, err_body])
 			bm.random_match_status_updated.emit("error", "対戦ルームの作成に失敗しました。")
 	)
 
@@ -449,3 +451,17 @@ func generate_simulated_ghosts(day_idx: int) -> Array:
 			}
 		})
 	return ghosts
+
+func leave_or_delete_random_room(room_code: String) -> void:
+	if bm.auth_token == "" or bm.logged_in_uuid == "":
+		return
+	
+	# If we are the host of this room, we delete it.
+	# RLS policy restricts DELETE permission to the host of the room.
+	var url = bm._get_supabase_url() + "/rest/v1/friend_rooms?room_code=eq." + room_code
+	bm._send_request(url, HTTPClient.METHOD_DELETE, "", true, func(result, response_code, headers, body_data):
+		if result == HTTPRequest.RESULT_SUCCESS and (response_code == 200 or response_code == 204):
+			print("[BackendManager] Successfully deleted canceled room: ", room_code)
+		else:
+			print("[BackendManager] Failed to delete room on cancel, HTTP status: ", response_code)
+	)

@@ -20,7 +20,7 @@ const ITEMS = {
 	"item_eraser": {
 		"id": "item_eraser",
 		"name": "消しゴム",
-		"description": "一度だけ寝落ち（バースト）を無効化し、重複したカードを山札に戻してドローを継続する。",
+		"description": "次の一枚のみ寝落ち（バースト）を無効化し、重複したカードを山札に戻してドローを継続する。",
 		"role": ROLE_DEFENSE,
 		"is_initial": true,
 		"is_gacha": false

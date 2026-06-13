@@ -44,16 +44,10 @@ func apply_deck_startup_items(is_tutorial: bool) -> void:
 		var item = Global.current_deck[slot_idx]
 		if item == "item_eraser" and (is_tutorial or randf() < 0.5):
 			deck.eraser_charges += 1
-			if not "item_eraser" in active_used_items:
-				active_used_items.append("item_eraser")
 		elif item == "item_red_sheet" and randf() < 0.3:
 			deck.red_sheet_active = true
-			if not "item_red_sheet" in active_used_items:
-				active_used_items.append("item_red_sheet")
 		elif item == "item_mech_pencil" and randf() < 0.4:
 			deck.next_draw_bonus_points += 2
-			if not "item_mech_pencil" in active_used_items:
-				active_used_items.append("item_mech_pencil")
 
 # Checks for burst status, considering energy drink side effects.
 func check_burst() -> bool:
@@ -76,6 +70,8 @@ func calculate_hand_score() -> int:
 	if has_bursted:
 		var has_amulet = deck.amulet_active
 		if has_amulet:
+			if not "item_amulet" in deck.activated_items:
+				deck.activated_items.append("item_amulet")
 			var score_info = deck.calculate_hand_score()
 			return int(round(score_info["total_score"] * 0.5))
 		return 0

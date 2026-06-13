@@ -320,7 +320,8 @@ static func build_layout(scene: GachaScene) -> void:
 	center_vbox.add_child(btn_hbox)
 	
 	var pull_btn = Button.new()
-	pull_btn.text = "1回引く (50コイン)"
+	var cost = int(BalanceConfig.get_value("rewards.gacha_cost", 50))
+	pull_btn.text = "1回引く (" + str(cost) + "コイン)"
 	pull_btn.custom_minimum_size = Vector2(260, 65)
 	pull_btn.add_theme_font_override("font", DeskTheme.get_font())
 	pull_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)

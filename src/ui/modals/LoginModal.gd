@@ -139,9 +139,10 @@ func _ready() -> void:
 			status_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 			status_lbl.text = "接続成功！"
 			
-			Global.logged_in_user_id = id_input.text.strip_edges()
 			if Global.player_name == "":
-				Global.player_name = Global.logged_in_user_id
+				Global.player_name = id_input.text.strip_edges()
+			if bm:
+				Global.logged_in_user_id = bm.logged_in_uuid
 			Global.save_game()
 			
 			if bm:

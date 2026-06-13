@@ -341,7 +341,10 @@ func trigger_burst_sequence() -> void:
 	var timer = get_tree().create_timer(1.2 / speed_mult)
 	timer.timeout.connect(func():
 		var final_score = engine.calculate_hand_score()
-		session.add_player_hour_result(session.player_deck.hand.size(), engine.active_used_items, true, final_score)
+		var total_used = []
+		total_used.append_array(engine.active_used_items)
+		total_used.append_array(session.player_deck.activated_items)
+		session.add_player_hour_result(session.player_deck.hand.size(), total_used, true, final_score)
 		
 		finish_hour_and_transition(final_score, true)
 	)
@@ -368,7 +371,10 @@ func _on_stop_pressed() -> void:
 	
 	# Save points
 	var final_score = engine.calculate_hand_score()
-	session.add_player_hour_result(session.player_deck.hand.size(), engine.active_used_items, false, final_score)
+	var total_used = []
+	total_used.append_array(engine.active_used_items)
+	total_used.append_array(session.player_deck.activated_items)
+	session.add_player_hour_result(session.player_deck.hand.size(), total_used, false, final_score)
 	
 	fast_forward_cpus_to_end()
 	_update_member_badge_ui("player")
@@ -470,7 +476,7 @@ func update_active_effects_ui() -> void:
 	var active_list = []
 	
 	if deck.eraser_charges > 0:
-		active_list.append({"name": "消しゴムチャージ", "color": DeskTheme.COLOR_ROLE_DEFENSE, "desc": "眠気回避残: %d回" % deck.eraser_charges})
+		active_list.append({"name": "消しゴム効果", "color": DeskTheme.COLOR_ROLE_DEFENSE, "desc": "次の1枚のみ眠気回避"})
 		
 	if deck.red_sheet_active:
 		active_list.append({"name": "赤シート", "color": DeskTheme.COLOR_ROLE_PUSH, "desc": "被り時に自動破棄"})

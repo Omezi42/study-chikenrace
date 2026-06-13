@@ -17,6 +17,11 @@ var deck_presets: Dictionary = {
 	"2": {},
 	"3": {}
 }
+var deck_preset_names: Dictionary = {
+	"1": "プリセット 1",
+	"2": "プリセット 2",
+	"3": "プリセット 3"
+}
 var selected_preset_idx: int = 1
 
 # Accumulated Lifetime Stats
@@ -150,7 +155,7 @@ const SIMPLE_SAVE_FIELDS = [
 	"friend_room_code", "friend_is_host", "friend_member_list",
 	"friend_current_day", "friend_match_history",
 	"total_doubt_successes", "total_doubt_failures", "total_burst_count", "total_perfect_crimes",
-	"deck_presets", "selected_preset_idx",
+	"deck_presets", "deck_preset_names", "selected_preset_idx",
 	"today_missions", "mission_progress", "last_mission_date", "current_season"
 ]
 
@@ -600,6 +605,12 @@ func _migrate_save_data(data: Dictionary, from_version: int) -> void:
 						"3": get_deck_as_string_keys()
 					}
 					data["selected_preset_idx"] = 1
+				if not data.has("deck_preset_names"):
+					data["deck_preset_names"] = {
+						"1": "プリセット 1",
+						"2": "プリセット 2",
+						"3": "プリセット 3"
+					}
 				current_v = 2
 	data["save_version"] = Constants.SAVE_VERSION
 
@@ -673,6 +684,31 @@ func get_season_remaining_days() -> int:
 	var next_season_start = current_season * Constants.SEASON_DURATION_DAYS * 86400
 	var remaining_seconds = next_season_start - unix_time
 	return max(0, int(remaining_seconds / 86400))
+
+func get_cram_season_deck(season_num: int = -1) -> Dictionary:
+	if season_num <= 0:
+		season_num = current_season
+	
+	var all_items = CardData.ITEMS.keys()
+	all_items.sort()
+	
+	var rng = RandomNumberGenerator.new()
+	rng.seed = hash("cram_season_" + str(season_num))
+	
+	var selected_items = []
+	var pool = all_items.duplicate()
+	
+	for i in range(8):
+		if pool.size() == 0:
+			break
+		var idx = rng.randi() % pool.size()
+		selected_items.append(pool[idx])
+		pool.remove_at(idx)
+		
+	var deck = {}
+	for i in range(selected_items.size()):
+		deck[i + 1] = selected_items[i]
+	return deck
 
 func evaluate_achievements() -> void:
 	var newly_unlocked = []

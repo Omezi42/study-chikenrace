@@ -23,8 +23,8 @@ class StickyNoteEffect extends ItemEffect:
 # 2. 消しゴム
 class EraserEffect extends ItemEffect:
 	func execute(phase: Control, deck: StudyDeck, card: Dictionary) -> void:
-		deck.eraser_charges += 1
-		show_item_toast(phase, "item_eraser", "消しゴムの効果！眠気回避（被り無効化）をチャージ！")
+		deck.eraser_charges = 1
+		show_item_toast(phase, "item_eraser", "消しゴムの効果！次の一枚のみ眠気回避（被り無効化）！")
 
 # 3. 定規
 class RulerEffect extends ItemEffect:

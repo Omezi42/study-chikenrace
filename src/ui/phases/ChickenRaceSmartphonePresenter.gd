@@ -66,7 +66,7 @@ func update_active_effects_ui() -> void:
 	var active_list = []
 	
 	if deck.eraser_charges > 0:
-		active_list.append({"name": "消しゴムチャージ", "color": DeskTheme.COLOR_ROLE_DEFENSE, "desc": "眠気回避残: %d回" % deck.eraser_charges})
+		active_list.append({"name": "消しゴム効果", "color": DeskTheme.COLOR_ROLE_DEFENSE, "desc": "次の1枚のみ眠気回避"})
 		
 	if deck.red_sheet_active:
 		active_list.append({"name": "赤シート", "color": DeskTheme.COLOR_ROLE_PUSH, "desc": "被り時に自動破棄"})

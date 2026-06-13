@@ -71,13 +71,15 @@ func _ready() -> void:
 
 func update_coins_ui() -> void:
 	coin_lbl.text = "所持コイン: " + str(Global.coins) + " 枚"
-	if Global.coins < 50:
+	var cost = int(BalanceConfig.get_value("rewards.gacha_cost", 50))
+	if Global.coins < cost:
 		pull_btn.disabled = true
 	else:
 		pull_btn.disabled = false
 
 func _on_pull_pressed() -> void:
-	if is_pulling or Global.coins < 50:
+	var cost = int(BalanceConfig.get_value("rewards.gacha_cost", 50))
+	if is_pulling or Global.coins < cost:
 		return
 		
 	is_pulling = true
@@ -87,7 +89,7 @@ func _on_pull_pressed() -> void:
 	if is_instance_valid(gacha_skip_btn):
 		gacha_skip_btn.visible = true
 	
-	Global.coins -= 50
+	Global.coins -= cost
 	Global.save_game()
 	update_coins_ui()
 	

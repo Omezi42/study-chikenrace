@@ -60,8 +60,9 @@
         }
     },
     "rewards": {
-        "coins_by_rank": [100, 50, 20, 10],
+        "coins_by_rank": [80, 40, 15, 5],
         "perfect_crime_bonus": 50,
+        "gacha_cost": 100,
         "season_reward": {
             "S": 200,
             "A": 100,

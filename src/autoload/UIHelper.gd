@@ -3,6 +3,9 @@ extends Node
 var loading_overlay: CanvasLayer = null
 
 # Global helper to perform smooth scene changes with a paper fade overlay
+func show_toast(text: String, duration: float = 1.8, bg_color: Color = Color()) -> void:
+	DeskTheme.show_toast(self, text, duration, bg_color)
+
 func change_scene_with_fade(tree: SceneTree, target_scene_path: String, duration: float = 0.35) -> void:
 	# Create CanvasLayer to overlay transition
 	var canvas = CanvasLayer.new()

@@ -18,6 +18,13 @@ var detail_name: Label
 var detail_role: Label
 var detail_desc: Label
 
+# Preset UI components
+var preset_buttons: Array[Button] = []
+var active_preset_label: Label
+var preset_name_edit: LineEdit
+var save_preset_btn: Button
+var rename_preset_btn: Button
+
 func _ready() -> void:
 	# 木枠（のっぺりした外側の淵）
 	var frame = ColorRect.new()
@@ -171,8 +178,8 @@ func populate_slots() -> void:
 		
 		# Slotted sticky note panel
 		var slot_btn = Button.new()
-		slot_btn.custom_minimum_size = Vector2(240, 200)
-		slot_btn.pivot_offset = Vector2(120, 100)
+		slot_btn.custom_minimum_size = Vector2(250, 215)
+		slot_btn.pivot_offset = Vector2(125, 107.5)
 		
 		if item_id != "":
 			slot_btn.tooltip_text = "%s: %s" % [item["name"], item.get("description", "")]
@@ -185,7 +192,7 @@ func populate_slots() -> void:
 		var note_style = StyleBoxFlat.new()
 		note_style.bg_color = DeskTheme.COLOR_CRAFT
 		note_style.border_color = CardData.get_role_color(item["role"])
-		note_style.border_width_top = 28 # Top sticky binding part
+		note_style.border_width_top = 32 # Top sticky binding part
 		note_style.border_width_left = 2
 		note_style.border_width_right = 2
 		note_style.border_width_bottom = 2
@@ -201,7 +208,7 @@ func populate_slots() -> void:
 		
 		var vbox = VBoxContainer.new()
 		vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-		vbox.add_theme_constant_override("separation", 6)
+		vbox.add_theme_constant_override("separation", 8)
 		vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot_btn.add_child(vbox)
@@ -210,7 +217,7 @@ func populate_slots() -> void:
 		num_lbl.text = "スロット " + str(i)
 		num_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		num_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		num_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_MINI)
+		num_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
 		num_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.5))
 		vbox.add_child(num_lbl)
 		
@@ -220,25 +227,25 @@ func populate_slots() -> void:
 			if img_path != "":
 				var img_rect = TextureRect.new()
 				img_rect.texture = load(img_path)
-				img_rect.custom_minimum_size = Vector2(64, 64)
+				img_rect.custom_minimum_size = Vector2(80, 80)
 				img_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 				img_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 				img_rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 				vbox.add_child(img_rect)
 			else:
 				var spacer = Control.new()
-				spacer.custom_minimum_size = Vector2(64, 20)
+				spacer.custom_minimum_size = Vector2(80, 20)
 				vbox.add_child(spacer)
 		else:
 			var spacer = Control.new()
-			spacer.custom_minimum_size = Vector2(64, 40)
+			spacer.custom_minimum_size = Vector2(80, 50)
 			vbox.add_child(spacer)
 			
 		var name_lbl = Label.new()
 		name_lbl.text = item["name"]
 		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		name_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
+		name_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		vbox.add_child(name_lbl)
 		
@@ -255,8 +262,8 @@ func populate_slots() -> void:
 
 func setup_select_modal() -> void:
 	select_modal = PanelContainer.new()
-	select_modal.custom_minimum_size = Vector2(950, 650)
-	select_modal.pivot_offset = Vector2(475, 325)
+	select_modal.custom_minimum_size = Vector2(1080, 700)
+	select_modal.pivot_offset = Vector2(540, 350)
 	select_modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	add_child(select_modal)
 	select_modal.position = get_viewport_rect().size * 0.5 - select_modal.pivot_offset
@@ -277,7 +284,7 @@ func setup_select_modal() -> void:
 	title.text = "アイテムの入れ替え"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
-	title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SUBTITLE)
+	title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TITLE)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
 	
@@ -331,7 +338,7 @@ func setup_select_modal() -> void:
 	
 	# Detail Panel (Right Side)
 	detail_panel = PanelContainer.new()
-	detail_panel.custom_minimum_size = Vector2(320, 0)
+	detail_panel.custom_minimum_size = Vector2(380, 0)
 	detail_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	
 	var detail_style = StyleBoxFlat.new()
@@ -345,27 +352,27 @@ func setup_select_modal() -> void:
 	detail_style.corner_radius_top_right = 6
 	detail_style.corner_radius_bottom_left = 6
 	detail_style.corner_radius_bottom_right = 6
-	detail_style.content_margin_left = 18
-	detail_style.content_margin_right = 18
-	detail_style.content_margin_top = 18
-	detail_style.content_margin_bottom = 18
+	detail_style.content_margin_left = 24
+	detail_style.content_margin_right = 24
+	detail_style.content_margin_top = 24
+	detail_style.content_margin_bottom = 24
 	detail_panel.add_theme_stylebox_override("panel", detail_style)
 	main_split.add_child(detail_panel)
 	
 	var detail_vbox = VBoxContainer.new()
-	detail_vbox.add_theme_constant_override("separation", 15)
+	detail_vbox.add_theme_constant_override("separation", 20)
 	detail_panel.add_child(detail_vbox)
 	
 	var detail_title = Label.new()
 	detail_title.text = "アイテム効果"
 	detail_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	detail_title.add_theme_font_override("font", DeskTheme.get_font())
-	detail_title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_MINI)
+	detail_title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
 	detail_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.5))
 	detail_vbox.add_child(detail_title)
 	
 	detail_icon = TextureRect.new()
-	detail_icon.custom_minimum_size = Vector2(96, 96)
+	detail_icon.custom_minimum_size = Vector2(120, 120)
 	detail_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	detail_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	detail_icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -374,14 +381,14 @@ func setup_select_modal() -> void:
 	detail_name = Label.new()
 	detail_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	detail_name.add_theme_font_override("font", DeskTheme.get_font())
-	detail_name.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
+	detail_name.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_LARGE)
 	detail_name.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	detail_vbox.add_child(detail_name)
 	
 	detail_role = Label.new()
 	detail_role.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	detail_role.add_theme_font_override("font", DeskTheme.get_font())
-	detail_role.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
+	detail_role.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	detail_vbox.add_child(detail_role)
 	
 	var divider = ColorRect.new()
@@ -393,7 +400,7 @@ func setup_select_modal() -> void:
 	detail_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail_desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	detail_desc.add_theme_font_override("font", DeskTheme.get_font())
-	detail_desc.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
+	detail_desc.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	detail_desc.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	detail_vbox.add_child(detail_desc)
 	
@@ -489,7 +496,7 @@ func populate_select_list(filter_text: String = "", filter_role_id: int = 0) -> 
 			
 		var item_btn = Button.new()
 		item_btn.text = ""
-		item_btn.custom_minimum_size = Vector2(180, 70)
+		item_btn.custom_minimum_size = Vector2(210, 85)
 		
 		# Role colors on border
 		var btn_style = StyleBoxFlat.new()
@@ -514,7 +521,7 @@ func populate_select_list(filter_text: String = "", filter_role_id: int = 0) -> 
 		
 		var btn_hbox = HBoxContainer.new()
 		btn_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-		btn_hbox.add_theme_constant_override("separation", 8)
+		btn_hbox.add_theme_constant_override("separation", 10)
 		btn_hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		btn_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		item_btn.add_child(btn_hbox)
@@ -523,7 +530,7 @@ func populate_select_list(filter_text: String = "", filter_role_id: int = 0) -> 
 		if img_path != "":
 			var icon_rect = TextureRect.new()
 			icon_rect.texture = load(img_path)
-			icon_rect.custom_minimum_size = Vector2(36, 36)
+			icon_rect.custom_minimum_size = Vector2(48, 48)
 			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			btn_hbox.add_child(icon_rect)
@@ -531,7 +538,7 @@ func populate_select_list(filter_text: String = "", filter_role_id: int = 0) -> 
 		var name_lbl = Label.new()
 		name_lbl.text = item["name"]
 		name_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		name_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
+		name_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		btn_hbox.add_child(name_lbl)
 		
@@ -589,8 +596,6 @@ func _on_back_pressed() -> void:
 	)
 
 # Preset Management
-var preset_buttons: Array[Button] = []
-
 func _create_preset_ui(parent: Node) -> void:
 	var preset_panel = PanelContainer.new()
 	preset_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -606,35 +611,35 @@ func _create_preset_ui(parent: Node) -> void:
 	panel_style.corner_radius_top_right = 4
 	panel_style.corner_radius_bottom_left = 4
 	panel_style.corner_radius_bottom_right = 4
-	panel_style.content_margin_left = 20
-	panel_style.content_margin_right = 20
-	panel_style.content_margin_top = 10
-	panel_style.content_margin_bottom = 10
+	panel_style.content_margin_left = 24
+	panel_style.content_margin_right = 24
+	panel_style.content_margin_top = 16
+	panel_style.content_margin_bottom = 16
 	preset_panel.add_theme_stylebox_override("panel", panel_style)
 	parent.add_child(preset_panel)
 	
-	var hbox = HBoxContainer.new()
-	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	hbox.add_theme_constant_override("separation", 25)
-	preset_panel.add_child(hbox)
+	var main_vbox = VBoxContainer.new()
+	main_vbox.add_theme_constant_override("separation", 12)
+	preset_panel.add_child(main_vbox)
+	
+	# 上段: 切り替えタブ (HBoxContainer)
+	var tabs_hbox = HBoxContainer.new()
+	tabs_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	tabs_hbox.add_theme_constant_override("separation", 15)
+	main_vbox.add_child(tabs_hbox)
 	
 	var label = Label.new()
-	label.text = "デッキプリセット:"
+	label.text = "プリセット選択:"
 	label.add_theme_font_override("font", DeskTheme.get_font())
 	label.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
 	label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	hbox.add_child(label)
+	tabs_hbox.add_child(label)
 	
 	preset_buttons.clear()
 	for i in range(1, 4):
-		var slot_vbox = VBoxContainer.new()
-		slot_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-		slot_vbox.add_theme_constant_override("separation", 4)
-		hbox.add_child(slot_vbox)
-		
 		var load_btn = Button.new()
-		load_btn.text = "プリセット %d" % i
-		load_btn.custom_minimum_size = Vector2(130, 40)
+		load_btn.text = Global.deck_preset_names.get(str(i), "プリセット %d" % i)
+		load_btn.custom_minimum_size = Vector2(160, 40)
 		load_btn.add_theme_font_override("font", DeskTheme.get_font())
 		load_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_MINI)
 		Global.apply_white_button_style(load_btn)
@@ -643,29 +648,81 @@ func _create_preset_ui(parent: Node) -> void:
 			DeskTheme.animate_click(load_btn, Vector2.ONE, 0.08)
 			_load_preset(i)
 		)
-		slot_vbox.add_child(load_btn)
+		tabs_hbox.add_child(load_btn)
 		preset_buttons.append(load_btn)
 		
-		var save_btn = Button.new()
-		save_btn.text = "保存"
-		save_btn.custom_minimum_size = Vector2(80, 25)
-		save_btn.add_theme_font_override("font", DeskTheme.get_font())
-		save_btn.add_theme_font_size_override("font_size", 12)
-		Global.apply_white_button_style(save_btn)
-		save_btn.pressed.connect(func():
-			save_btn.release_focus()
-			DeskTheme.animate_click(save_btn, Vector2.ONE, 0.08)
-			_save_preset(i)
-		)
-		slot_vbox.add_child(save_btn)
-		
+	# 下段: 選択中プリセットの操作エリア
+	var actions_hbox = HBoxContainer.new()
+	actions_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	actions_hbox.add_theme_constant_override("separation", 20)
+	main_vbox.add_child(actions_hbox)
+	
+	active_preset_label = Label.new()
+	active_preset_label.text = "選択中: プリセット 1"
+	active_preset_label.add_theme_font_override("font", DeskTheme.get_font())
+	active_preset_label.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
+	active_preset_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	actions_hbox.add_child(active_preset_label)
+	
+	save_preset_btn = Button.new()
+	save_preset_btn.text = "現在の編成を保存"
+	save_preset_btn.custom_minimum_size = Vector2(160, 36)
+	save_preset_btn.add_theme_font_override("font", DeskTheme.get_font())
+	save_preset_btn.add_theme_font_size_override("font_size", 12)
+	Global.apply_white_button_style(save_preset_btn)
+	save_preset_btn.pressed.connect(func():
+		save_preset_btn.release_focus()
+		DeskTheme.animate_click(save_preset_btn, Vector2.ONE, 0.08)
+		_save_preset(Global.selected_preset_idx)
+	)
+	actions_hbox.add_child(save_preset_btn)
+	
+	var name_change_label = Label.new()
+	name_change_label.text = "名前変更:"
+	name_change_label.add_theme_font_override("font", DeskTheme.get_font())
+	name_change_label.add_theme_font_size_override("font_size", 12)
+	name_change_label.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
+	actions_hbox.add_child(name_change_label)
+	
+	preset_name_edit = LineEdit.new()
+	preset_name_edit.custom_minimum_size = Vector2(150, 36)
+	preset_name_edit.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	preset_name_edit.placeholder_text = "プリセット名"
+	preset_name_edit.add_theme_font_override("font", DeskTheme.get_font())
+	preset_name_edit.add_theme_font_size_override("font_size", 12)
+	preset_name_edit.text_submitted.connect(func(new_name):
+		_rename_active_preset(new_name)
+	)
+	actions_hbox.add_child(preset_name_edit)
+	
+	rename_preset_btn = Button.new()
+	rename_preset_btn.text = "適用"
+	rename_preset_btn.custom_minimum_size = Vector2(60, 36)
+	rename_preset_btn.add_theme_font_override("font", DeskTheme.get_font())
+	rename_preset_btn.add_theme_font_size_override("font_size", 12)
+	Global.apply_white_button_style(rename_preset_btn)
+	rename_preset_btn.pressed.connect(func():
+		rename_preset_btn.release_focus()
+		DeskTheme.animate_click(rename_preset_btn, Vector2.ONE, 0.08)
+		_rename_active_preset(preset_name_edit.text)
+	)
+	actions_hbox.add_child(rename_preset_btn)
+	
 	_update_preset_buttons_highlight()
+
+func _rename_active_preset(new_name: String) -> void:
+	var clean_name = new_name.strip_edges()
+	if clean_name != "":
+		var idx_str = str(Global.selected_preset_idx)
+		Global.deck_preset_names[idx_str] = clean_name
+		Global.save_game()
+		DeskTheme.show_toast(self, "名前を「%s」に変更しました！" % clean_name, 1.2, Color("#4a90e2"))
+		_update_preset_buttons_highlight()
 
 func _load_preset(preset_idx: int) -> void:
 	var key = str(preset_idx)
 	var preset = Global.deck_presets.get(key, {})
 	if preset.is_empty():
-		# Empty fallback: copy current_deck starting keys or default
 		preset = {
 			"1": "item_sticky_note",
 			"2": "item_eraser",
@@ -688,7 +745,8 @@ func _load_preset(preset_idx: int) -> void:
 	Global.save_game()
 	populate_slots()
 	
-	DeskTheme.show_toast(self, "プリセット %d を読み込みました！" % preset_idx, 1.5, Color("#4a90e2"))
+	var preset_name = Global.deck_preset_names.get(str(preset_idx), "プリセット %d" % preset_idx)
+	DeskTheme.show_toast(self, "%s を読み込みました！" % preset_name, 1.5, Color("#4a90e2"))
 	_update_preset_buttons_highlight()
 
 func _save_preset(preset_idx: int) -> void:
@@ -697,13 +755,21 @@ func _save_preset(preset_idx: int) -> void:
 	Global.selected_preset_idx = preset_idx
 	Global.save_game()
 	
-	DeskTheme.show_toast(self, "プリセット %d に現在のデッキを保存しました！" % preset_idx, 1.5, Color("#417505"))
+	var preset_name = Global.deck_preset_names.get(str(preset_idx), "プリセット %d" % preset_idx)
+	DeskTheme.show_toast(self, "%s に現在のデッキを保存しました！" % preset_name, 1.5, Color("#417505"))
 	_update_preset_buttons_highlight()
 
 func _update_preset_buttons_highlight() -> void:
+	var active_name = Global.deck_preset_names.get(str(Global.selected_preset_idx), "プリセット %d" % Global.selected_preset_idx)
+	if active_preset_label:
+		active_preset_label.text = "選択中: %s" % active_name
+	if preset_name_edit and not preset_name_edit.has_focus():
+		preset_name_edit.text = active_name
+		
 	for i in range(preset_buttons.size()):
 		var btn = preset_buttons[i]
 		var idx = i + 1
+		btn.text = Global.deck_preset_names.get(str(idx), "プリセット %d" % idx)
 		if idx == Global.selected_preset_idx:
 			var active_style = StyleBoxFlat.new()
 			active_style.bg_color = Color("#eddcc9") # highlight paper color
@@ -717,5 +783,7 @@ func _update_preset_buttons_highlight() -> void:
 			active_style.corner_radius_bottom_left = 6
 			active_style.corner_radius_bottom_right = 6
 			btn.add_theme_stylebox_override("normal", active_style)
+			btn.add_theme_stylebox_override("hover", active_style)
+			btn.add_theme_stylebox_override("pressed", active_style)
 		else:
 			Global.apply_white_button_style(btn)

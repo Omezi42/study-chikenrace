@@ -22,6 +22,7 @@ const NATIONAL_NAMES = [
 ]
 
 func _ready() -> void:
+	Global.is_tutorial_mode = false
 	# Mahogany background
 	var bg_color = ColorRect.new()
 	bg_color.color = DeskTheme.COLOR_MAHOGANY

@@ -194,17 +194,17 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 			break
 			
 	# === Step 6: Coin Rewards ===
+	var coins_by_rank = BalanceConfig.get_value("rewards.coins_by_rank", [100, 50, 20, 10])
 	var coins_earned := 0
-	match my_rank:
-		1: coins_earned = 100
-		2: coins_earned = 50
-		3: coins_earned = 20
-		4: coins_earned = 10
+	if my_rank >= 1 and my_rank <= coins_by_rank.size():
+		coins_earned = int(coins_by_rank[my_rank - 1])
+	else:
+		coins_earned = 10
 		
 	# Perfect Crime Bonus (lied at least once and never got caught)
 	var perfect_bonus := 0
 	if player_lies_count > 0 and player_caught_lies_count == 0:
-		perfect_bonus = 50
+		perfect_bonus = int(BalanceConfig.get_value("rewards.perfect_crime_bonus", 50))
 		
 	Global.coins += coins_earned + perfect_bonus
 	

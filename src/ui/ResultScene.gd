@@ -50,7 +50,10 @@ func _ready() -> void:
 	else:
 		# Fallback simulation for testing/standalone play
 		var dummy_session = GameSession.new()
-		dummy_session.start_session(Global.current_deck)
+		var starting_deck = Global.current_deck
+		if Global.game_mode == Constants.MODE_OVERNIGHT:
+			starting_deck = Global.get_cram_season_deck()
+		dummy_session.start_session(starting_deck)
 		for day in range(1, 6):
 			dummy_session.current_day = day
 			dummy_session.player_actual_score_today = randi_range(30, 60)
@@ -330,15 +333,16 @@ func _build_day_chart_shell() -> void:
 		row.add_child(hbox)
 		
 		var name_lbl = Label.new()
-		name_lbl.text = _get_participant_name(p_id)
-		name_lbl.custom_minimum_size = Vector2(120, 0)
+		var bar_color = Color("6bbf59") if p_id == "player" else Color("3f51b5")
+		name_lbl.text = "● " + _get_participant_name(p_id)
+		name_lbl.custom_minimum_size = Vector2(150, 0)
 		name_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		name_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TINY)
-		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+		name_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
+		name_lbl.add_theme_color_override("font_color", bar_color)
 		hbox.add_child(name_lbl)
 		
 		var bar_wrap = PanelContainer.new()
-		bar_wrap.custom_minimum_size = Vector2(1000, 22)
+		bar_wrap.custom_minimum_size = Vector2(970, 22)
 		var style = StyleBoxFlat.new()
 		style.bg_color = Color("efe7d8")
 		style.border_color = Color("b59d7a")
@@ -355,7 +359,7 @@ func _build_day_chart_shell() -> void:
 		
 		var fill = ColorRect.new()
 		fill.name = "fill"
-		fill.color = Color("6bbf59") if p_id == "player" else Color("3f51b5")
+		fill.color = bar_color
 		fill.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 		fill.size = Vector2(1, 22)
 		bar_wrap.add_child(fill)
@@ -365,7 +369,7 @@ func _build_day_chart_shell() -> void:
 		score_lbl.text = "0 点"
 		score_lbl.custom_minimum_size = Vector2(80, 0)
 		score_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		score_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TINY)
+		score_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
 		score_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		hbox.add_child(score_lbl)
 		
@@ -690,11 +694,12 @@ func trigger_report_card() -> void:
 		bar_row.add_theme_constant_override("separation", 4)
 		graph_area.add_child(bar_row)
 
+		var bar_color = Color("6bbf59") if r["id"] == "player" else Color("3f51b5")
 		var bar_name = Label.new()
-		bar_name.text = "%s" % r["name"]
+		bar_name.text = "● %s" % r["name"]
 		bar_name.add_theme_font_override("font", DeskTheme.get_font())
-		bar_name.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TINY)
-		bar_name.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.9))
+		bar_name.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
+		bar_name.add_theme_color_override("font_color", bar_color)
 		bar_row.add_child(bar_name)
 
 		var bar_back = PanelContainer.new()

@@ -273,19 +273,29 @@ func _ready() -> void:
 	right_inner_title.visible = false
 	right_margin.add_child(right_inner_title)
 	
-	# Title Detail Stamp Visual
+	# Title Detail Stamp Visual (HBox to support icon and text)
 	title_detail_stamp = PanelContainer.new()
-	title_detail_stamp.custom_minimum_size = Vector2(300, 120)
+	title_detail_stamp.custom_minimum_size = Vector2(320, 120)
 	title_detail_stamp.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	right_inner_title.add_child(title_detail_stamp)
 	
+	var stamp_hbox = HBoxContainer.new()
+	stamp_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	stamp_hbox.add_theme_constant_override("separation", 10)
+	title_detail_stamp.add_child(stamp_hbox)
+	
+	var title_detail_icon = TextureRect.new()
+	title_detail_icon.name = "title_icon"
+	title_detail_icon.custom_minimum_size = Vector2(32, 32)
+	title_detail_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	title_detail_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	stamp_hbox.add_child(title_detail_icon)
+	
 	title_detail_name = Label.new()
-	title_detail_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_detail_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title_detail_name.add_theme_font_override("font", DeskTheme.get_font())
 	title_detail_name.add_theme_font_size_override("font_size", 24)
 	title_detail_name.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	title_detail_stamp.add_child(title_detail_name)
+	stamp_hbox.add_child(title_detail_name)
 	
 	# Title Condition & Status
 	var title_desc_vbox = VBoxContainer.new()
@@ -306,10 +316,22 @@ func _ready() -> void:
 	title_detail_desc.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	title_desc_vbox.add_child(title_detail_desc)
 	
+	# Status HBox with icon and label
+	var status_hbox = HBoxContainer.new()
+	status_hbox.add_theme_constant_override("separation", 8)
+	title_desc_vbox.add_child(status_hbox)
+	
+	var status_icon = TextureRect.new()
+	status_icon.name = "status_icon"
+	status_icon.custom_minimum_size = Vector2(24, 24)
+	status_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	status_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	status_hbox.add_child(status_icon)
+	
 	title_detail_status = Label.new()
 	title_detail_status.add_theme_font_override("font", DeskTheme.get_font())
 	title_detail_status.add_theme_font_size_override("font_size", 16)
-	title_desc_vbox.add_child(title_detail_status)
+	status_hbox.add_child(title_detail_status)
 	
 	# Back button (Common)
 	back_btn = Button.new()
@@ -511,19 +533,42 @@ func populate_titles() -> void:
 		var btn = Button.new()
 		btn.custom_minimum_size = Vector2(200, 75)
 		
+		var btn_style = StyleBoxFlat.new()
 		if is_unlocked:
-			btn.text = title
-			btn.add_theme_stylebox_override("normal", DeskTheme.create_stamp_style(Color("c62828"), Color(1, 0.95, 0.95, 0.5)))
+			btn_style = DeskTheme.create_stamp_style(Color("c62828"), Color(1, 0.95, 0.95, 0.5))
 			btn.add_theme_color_override("font_color", Color("c62828"))
 		else:
-			btn.text = "？？？"
-			var locked_style = DeskTheme.create_craft_panel()
-			btn.modulate = Color(0.6, 0.6, 0.6, 0.5)
-			btn.add_theme_stylebox_override("normal", locked_style)
+			btn_style = DeskTheme.create_craft_panel()
+			btn.modulate = Color(0.6, 0.6, 0.6, 0.6)
 			btn.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
 			
-		btn.add_theme_font_override("font", DeskTheme.get_font())
-		btn.add_theme_font_size_override("font_size", 14)
+		btn.add_theme_stylebox_override("normal", btn_style)
+		btn.text = "" # Use custom hbox layout to support image + text without emoji text
+		
+		var btn_hbox = HBoxContainer.new()
+		btn_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		btn_hbox.add_theme_constant_override("separation", 6)
+		btn_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn_hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		btn.add_child(btn_hbox)
+		
+		var icon_rect = TextureRect.new()
+		icon_rect.custom_minimum_size = Vector2(24, 24)
+		icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		
+		if is_unlocked:
+			icon_rect.texture = load("res://assets/王冠.png")
+		else:
+			icon_rect.texture = load("res://assets/lock_icon.png")
+		btn_hbox.add_child(icon_rect)
+		
+		var lbl = Label.new()
+		lbl.text = title if is_unlocked else "？？？"
+		lbl.add_theme_font_override("font", DeskTheme.get_font())
+		lbl.add_theme_font_size_override("font_size", 16)
+		lbl.add_theme_color_override("font_color", Color("c62828") if is_unlocked else Color(0.5, 0.5, 0.5))
+		btn_hbox.add_child(lbl)
 		
 		btn.pressed.connect(func():
 			btn.release_focus()
@@ -539,13 +584,25 @@ func select_title(title: String) -> void:
 	title_detail_name.text = title if is_unlocked else "？？？？？"
 	title_detail_desc.text = TITLE_DESCRIPTIONS.get(title, "？？？")
 	
+	var stamp_hbox = title_detail_stamp.get_child(0)
+	var title_detail_icon: TextureRect = stamp_hbox.get_node("title_icon")
+	var status_icon: TextureRect = title_detail_status.get_parent().get_node("status_icon")
+	
 	if is_unlocked:
+		title_detail_icon.texture = load("res://assets/王冠.png")
+		title_detail_icon.visible = true
+		status_icon.texture = load("res://assets/check_icon.png")
+		
 		title_detail_stamp.modulate = Color.WHITE
 		title_detail_stamp.add_theme_stylebox_override("panel", DeskTheme.create_stamp_style(Color("c62828"), Color(1, 0.95, 0.95, 0.5)))
 		title_detail_name.add_theme_color_override("font_color", Color("c62828"))
 		title_detail_status.text = "獲得ステータス: 獲得済み"
 		title_detail_status.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	else:
+		title_detail_icon.texture = load("res://assets/lock_icon.png")
+		title_detail_icon.visible = true
+		status_icon.texture = load("res://assets/lock_icon.png")
+		
 		var locked_style = DeskTheme.create_craft_panel()
 		title_detail_stamp.modulate = Color(0.6, 0.6, 0.6, 0.5)
 		title_detail_stamp.add_theme_stylebox_override("panel", locked_style)

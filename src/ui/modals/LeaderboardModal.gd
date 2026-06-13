@@ -135,35 +135,40 @@ func _ready() -> void:
 
 func get_mock_exam_leaderboard() -> Array:
 	var default_leaderboard = [
-		{"name": "伝説のガリ勉 (偏差値 74)", "score": 240},
-		{"name": "エナドリ極振りの狂人 (偏差値 69)", "score": 215},
-		{"name": "佐藤くん (本気) (偏差値 65)", "score": 195},
-		{"name": "絶対合格マン (偏差値 62)", "score": 178},
-		{"name": "脳筋野球部 (偏差値 58)", "score": 158},
-		{"name": "鈴木さん (本番) (偏差値 54)", "score": 142},
-		{"name": "一夜漬けの達人 (偏差値 50)", "score": 120}
+		{"name": "伝説のガリ勉 (偏差値 74)", "deviation": 74.0, "score": 960},
+		{"name": "エナドリ極振りの狂人 (偏差値 69)", "deviation": 69.0, "score": 860},
+		{"name": "佐藤くん (本気) (偏差値 65)", "deviation": 65.0, "score": 780},
+		{"name": "絶対合格マン (偏差値 62)", "deviation": 62.0, "score": 710},
+		{"name": "脳筋野球部 (偏差値 58)", "deviation": 58.0, "score": 630},
+		{"name": "鈴木さん (本番) (偏差値 54)", "deviation": 54.0, "score": 570},
+		{"name": "一夜漬けの達人 (偏差値 50)", "deviation": 50.0, "score": 480},
+		{"name": "復習の鬼 (偏差値 48)", "deviation": 48.0, "score": 440},
+		{"name": "単語帳マニア (偏差値 46)", "deviation": 46.0, "score": 380},
+		{"name": "居眠り常習犯 (偏差値 44)", "deviation": 44.0, "score": 340},
+		{"name": "赤点スレスレ君 (偏差値 41)", "deviation": 41.0, "score": 280},
+		{"name": "部活一筋マン (偏差値 39)", "deviation": 39.0, "score": 240},
+		{"name": "ゲーム三昧 (偏差値 36)", "deviation": 36.0, "score": 180},
+		{"name": "白紙提出 of the year (偏差値 30)", "deviation": 30.0, "score": 80}
 	]
 	
 	var player_best = Global.best_score
-	var player_inserted = false
 	var name_to_use = Global.player_name if Global.player_name != "" else "あなた"
 	var player_lbl = "%s (偏差値 %.1f)" % [name_to_use, Global.max_deviation_value]
 	
-	var final_list = []
-	for entry in default_leaderboard:
-		if player_best > entry["score"] and not player_inserted:
-			final_list.append({"name": player_lbl + " (あなた)", "score": player_best, "is_player": true})
-			player_inserted = true
-		final_list.append(entry)
-		
-	if not player_inserted:
-		var placed = false
-		for i in range(final_list.size()):
-			if player_best > final_list[i]["score"]:
-				final_list.insert(i, {"name": player_lbl + " (あなた)", "score": player_best, "is_player": true})
-				placed = true
-				break
-		if not placed:
-			final_list.append({"name": player_lbl + " (あなた)", "score": player_best, "is_player": true})
-			
-	return final_list.slice(0, 7)
+	var player_entry = {
+		"name": player_lbl + " (あなた)",
+		"deviation": Global.max_deviation_value,
+		"score": player_best,
+		"is_player": true
+	}
+	
+	var final_list = default_leaderboard.duplicate()
+	final_list.append(player_entry)
+	
+	final_list.sort_custom(func(a, b):
+		if a["deviation"] != b["deviation"]:
+			return a["deviation"] > b["deviation"]
+		return a["score"] > b["score"]
+	)
+	
+	return final_list.slice(0, 15)

@@ -310,7 +310,13 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 			# Wait a split second to make sure parts contains CPUs if filled
 			var fetch_timer = parent.get_tree().create_timer(0.5)
 			fetch_timer.timeout.connect(func():
-				start_game_transition.call(parts)
+				var start_game = func():
+					start_game_transition.call(parts)
+				var select_modal_script = load("res://src/ui/modals/DeckSelectionModal.gd")
+				if select_modal_script:
+					select_modal_script.create_and_show(parent, start_game)
+				else:
+					start_game.call()
 			)
 			return
 			
@@ -344,23 +350,31 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		start_btn_lobby.pressed.connect(func():
 			start_btn_lobby.release_focus()
 			DeskTheme.animate_click(start_btn_lobby, Vector2.ONE, 0.08)
-			if bm:
-				# Set status to playing and fill remaining slots
-				bm.start_friend_game(room_code)
-				# Quick fetch final list to transition
-				var trans_timer = parent.get_tree().create_timer(0.5)
-				trans_timer.timeout.connect(func():
-					start_game_transition.call(bm.mock_participants if bm.is_mock_room else bm.mock_participants)
-				)
+			
+			var do_launch = func():
+				if bm:
+					# Set status to playing and fill remaining slots
+					bm.start_friend_game(room_code)
+					# Quick fetch final list to transition
+					var trans_timer = parent.get_tree().create_timer(0.5)
+					trans_timer.timeout.connect(func():
+						start_game_transition.call(bm.mock_participants if bm.is_mock_room else bm.mock_participants)
+					)
+				else:
+					# Offline mock start
+					var final_parts = [
+						{"user_id": "player", "username": Global.player_name if Global.player_name != "" else "あなた"},
+						{"user_id": "cpu_sato", "username": "佐藤くん (CPU)"},
+						{"user_id": "cpu_suzuki", "username": "鈴木さん (CPU)"},
+						{"user_id": "cpu_takahashi", "username": "高橋くん (CPU)"}
+					]
+					start_game_transition.call(final_parts)
+					
+			var select_modal_script = load("res://src/ui/modals/DeckSelectionModal.gd")
+			if select_modal_script:
+				select_modal_script.create_and_show(parent, do_launch)
 			else:
-				# Offline mock start
-				var final_parts = [
-					{"user_id": "player", "username": Global.player_name if Global.player_name != "" else "あなた"},
-					{"user_id": "cpu_sato", "username": "佐藤くん (CPU)"},
-					{"user_id": "cpu_suzuki", "username": "鈴木さん (CPU)"},
-					{"user_id": "cpu_takahashi", "username": "高橋くん (CPU)"}
-				]
-				start_game_transition.call(final_parts)
+				do_launch.call()
 		)
 		
 	exit_btn.pressed.connect(func():

@@ -41,7 +41,10 @@ func _ready() -> void:
 	add_child(phase_layer)
 	
 	session = GameSession.new()
-	session.start_session(Global.current_deck)
+	var starting_deck = Global.current_deck
+	if Global.game_mode == Constants.MODE_OVERNIGHT:
+		starting_deck = Global.get_cram_season_deck()
+	session.start_session(starting_deck)
 	
 	# Start loop with ChickenRacePhase directly
 	change_phase(Constants.PHASE_CHICKEN_RACE)

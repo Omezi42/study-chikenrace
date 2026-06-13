@@ -20,6 +20,7 @@ var cram_school_print_active: bool = false
 var timer_active: bool = false
 var compass_active: bool = false
 var amulet_active: bool = false
+var activated_items: Array[String] = []
 
 # Initialize the 55-card deck based on a slots configuration (1-10)
 func initialize_deck(deck_config: Dictionary) -> void:
@@ -117,21 +118,29 @@ func draw_card(max_depth: int = 5) -> Dictionary:
 	# Safe draw: if card causes a burst, discard it and draw another (one time)
 	if red_sheet_active and would_card_burst(card):
 		red_sheet_active = false
+		if not "item_red_sheet" in activated_items:
+			activated_items.append("item_red_sheet")
 		discard_pile.append(original_card)
 		return draw_card(max_depth - 1) # Recursive draw
 		
 	# Apply Eraser (消しゴム) charges
 	if would_card_burst(card) and eraser_charges > 0:
-		eraser_charges -= 1
+		eraser_charges = 0
+		if not "item_eraser" in activated_items:
+			activated_items.append("item_eraser")
 		# Put back to draw pile, shuffle, and draw again
 		draw_pile.append(original_card)
 		shuffle_draw_pile()
 		return draw_card(max_depth - 1)
+	elif eraser_charges > 0:
+		eraser_charges = 0
 		
 	# Apply Mech Pencil (シャーペン) points bonus (+3 points to next drawn cards)
 	if next_draw_bonus_points > 0:
 		card["bonus_points"] = 3
 		next_draw_bonus_points -= 1
+		if not "item_mech_pencil" in activated_items:
+			activated_items.append("item_mech_pencil")
 	else:
 		card["bonus_points"] = 0
 		
@@ -237,6 +246,7 @@ func reset_status_effects() -> void:
 	timer_active = false
 	compass_active = false
 	amulet_active = false
+	activated_items.clear()
 
 # End of period (hour): Move hand to discard pile, keep draw and discard piles as is for day-long counting
 func reset_for_next_hour() -> void:

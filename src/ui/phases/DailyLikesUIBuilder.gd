@@ -60,13 +60,13 @@ static func build_layout(phase: DailyLikesPhase) -> void:
 	right_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_LARGE)
 	main_hbox.add_child(right_vbox)
 	
-	var detail_wrapper = Control.new()
+	var detail_wrapper = CenterContainer.new()
 	detail_wrapper.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail_wrapper.custom_minimum_size = Vector2(0, 420)
+	detail_wrapper.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right_vbox.add_child(detail_wrapper)
 	
 	var detail_modal = PanelContainer.new()
-	detail_modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	detail_modal.custom_minimum_size = Vector2(720, 380)
 	detail_modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	detail_wrapper.add_child(detail_modal)
 	phase.detail_modal = detail_modal
@@ -98,7 +98,7 @@ static func build_layout(phase: DailyLikesPhase) -> void:
 	detail_body.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
 	detail_body.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
 	detail_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail_body.custom_minimum_size = Vector2(0, 200)
+	detail_body.custom_minimum_size = Vector2(0, 80)
 	detail_vbox.add_child(detail_body)
 	phase.detail_body = detail_body
 	
@@ -351,10 +351,15 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 	for h_idx in range(p["hours"].size()):
 		var h = p["hours"][h_idx]
 		
-		var row = HBoxContainer.new()
-		row.alignment = BoxContainer.ALIGNMENT_BEGIN
-		row.add_theme_constant_override("separation", 15)
+		var row = VBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
 		phase.detail_log_vbox.add_child(row)
+		
+		# 1行目: 時限ラベルと枚数・状態テキスト
+		var line1 = HBoxContainer.new()
+		line1.alignment = BoxContainer.ALIGNMENT_BEGIN
+		line1.add_theme_constant_override("separation", 10)
+		row.add_child(line1)
 		
 		var hour_lbl = Label.new()
 		hour_lbl.text = " %d時限目 " % (h_idx + 1)
@@ -375,15 +380,57 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 		hour_style.corner_radius_bottom_right = 4
 		hour_style.content_margin_left = 6
 		hour_lbl.add_theme_stylebox_override("normal", hour_style)
-		row.add_child(hour_lbl)
+		line1.add_child(hour_lbl)
+		
+		var count_lbl = Label.new()
+		var count_text = "(%d枚ドロー)" % h["draws"]
+		var text_color = Color(DeskTheme.COLOR_INK, 0.6)
+		var status_icon_tex: Texture = null
+		
+		if p["id"] == "player":
+			if h.get("bursted", false):
+				count_text = "寝落ち [0点] (%d枚)" % h["draws"]
+				text_color = DeskTheme.COLOR_TENSION
+				status_icon_tex = load("res://assets/sleep_icon.png")
+			else:
+				count_text = "実点: %d点 (%d枚)" % [h.get("score", 0), h["draws"]]
+				text_color = DeskTheme.COLOR_GREEN
+				status_icon_tex = load("res://assets/pencil_icon.png")
+		else:
+			text_color = DeskTheme.COLOR_INK
+				
+		count_lbl.text = count_text
+		count_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		count_lbl.add_theme_font_size_override("font_size", 16)
+		count_lbl.add_theme_color_override("font_color", text_color)
+		
+		if status_icon_tex:
+			var stat_rect = TextureRect.new()
+			stat_rect.texture = status_icon_tex
+			stat_rect.custom_minimum_size = Vector2(20, 20)
+			stat_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			stat_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			line1.add_child(stat_rect)
+			
+		line1.add_child(count_lbl)
+		
+		# 2行目: ドローしたカードと使用したアイテム (少しインデントを入れる)
+		var line2_margin = MarginContainer.new()
+		line2_margin.add_theme_constant_override("margin_left", 15)
+		row.add_child(line2_margin)
+		
+		var line2 = HBoxContainer.new()
+		line2.alignment = BoxContainer.ALIGNMENT_BEGIN
+		line2.add_theme_constant_override("separation", 15)
+		line2_margin.add_child(line2)
 		
 		var cards_hbox = HBoxContainer.new()
 		cards_hbox.add_theme_constant_override("separation", 3)
-		row.add_child(cards_hbox)
+		line2.add_child(cards_hbox)
 		
 		for c_i in range(h["draws"]):
 			var mini_card = PanelContainer.new()
-			mini_card.custom_minimum_size = Vector2(16, 22)
+			mini_card.custom_minimum_size = Vector2(18, 24)
 			
 			var m_style = StyleBoxFlat.new()
 			m_style.bg_color = DeskTheme.COLOR_CRAFT
@@ -397,32 +444,16 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 			m_style.corner_radius_bottom_left = 2
 			m_style.corner_radius_bottom_right = 2
 			mini_card.add_theme_stylebox_override("panel", m_style)
+			
+			# Mini card is now blank as requested (suit symbol removed)
+			pass
+			
 			cards_hbox.add_child(mini_card)
 			
-		var count_lbl = Label.new()
-		var count_text = "(%d枚ドロー)" % h["draws"]
-		var text_color = Color(DeskTheme.COLOR_INK, 0.6)
-		
-		if p["id"] == "player":
-			if h.get("bursted", false):
-				count_text += " [寝落ち (0点)]"
-				text_color = DeskTheme.COLOR_TENSION
-			else:
-				count_text += " [実点: %d点]" % h.get("score", 0)
-				text_color = DeskTheme.COLOR_GREEN
-		else:
-			text_color = DeskTheme.COLOR_INK
-				
-		count_lbl.text = count_text
-		count_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		count_lbl.add_theme_font_size_override("font_size", 16)
-		count_lbl.add_theme_color_override("font_color", text_color)
-		row.add_child(count_lbl)
-		
 		if h["used_items"].size() > 0:
 			var items_hbox = HBoxContainer.new()
 			items_hbox.add_theme_constant_override("separation", 8)
-			row.add_child(items_hbox)
+			line2.add_child(items_hbox)
 			
 			for item_id in h["used_items"]:
 				var item = CardData.ITEMS.get(item_id, {"name": "不明", "role": CardData.ROLE_PREP})

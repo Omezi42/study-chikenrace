@@ -119,7 +119,8 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 	for h in range(total_periods):
 		deck.reset_status_effects()
 		var used_items: Array[String] = []
-		decide_and_apply_cpu_items(deck, deck_config, used_items, day_idx, cpu_id)
+		var potential_items: Array[String] = []
+		decide_and_apply_cpu_items(deck, deck_config, potential_items, day_idx, cpu_id)
 		
 		var draw_count = 0
 		var bursted = false
@@ -163,11 +164,29 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 			if deck.amulet_active:
 				var mock_score = deck.calculate_hand_score()["total_score"]
 				period_score = int(round(mock_score * 0.5))
+				if not "item_amulet" in used_items:
+					used_items.append("item_amulet")
 			else:
 				period_score = 0
 		else:
 			period_score = deck.calculate_hand_score()["total_score"]
 			
+		# Merge potential_items and deck.activated_items
+		if deck.hand.size() > 0:
+			for item in potential_items:
+				if not item in used_items:
+					if item == "item_eraser" and not "item_eraser" in deck.activated_items:
+						continue
+					if item == "item_red_sheet" and not "item_red_sheet" in deck.activated_items:
+						continue
+					if item == "item_amulet":
+						continue
+					used_items.append(item)
+			
+			for item in deck.activated_items:
+				if not item in used_items:
+					used_items.append(item)
+					
 		hours_result.append({
 			"draws": deck.hand.size(),
 			"used_items": used_items,
@@ -183,7 +202,7 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 		"hours": hours_result
 	}
 
-static func decide_and_apply_cpu_items(deck: StudyDeck, deck_config: Dictionary, used_items: Array[String], day_idx: int, cpu_id: String) -> void:
+static func decide_and_apply_cpu_items(deck: StudyDeck, deck_config: Dictionary, potential_items: Array[String], day_idx: int, cpu_id: String) -> void:
 	var deviation = 50.0
 	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("deviation"):
 		deviation = Global.opponent_profiles[cpu_id]["deviation"]
@@ -197,88 +216,88 @@ static func decide_and_apply_cpu_items(deck: StudyDeck, deck_config: Dictionary,
 	
 	if "item_eraser" in deck_config.values() and randf() < ((0.3 + late_game_boost) * defense_mult):
 		deck.eraser_charges = 1
-		used_items.append("item_eraser")
+		potential_items.append("item_eraser")
 		
 	if "item_wordbook" in deck_config.values() and randf() < ((0.15 + late_game_boost) * defense_mult):
-		used_items.append("item_wordbook")
+		potential_items.append("item_wordbook")
 	elif "item_ruler" in deck_config.values() and randf() < ((0.15 + late_game_boost) * defense_mult):
-		used_items.append("item_ruler")
+		potential_items.append("item_ruler")
 		
 	if "item_mech_pencil" in deck_config.values() and randf() < ((0.22 + late_game_boost) * offense_mult):
 		deck.next_draw_bonus_points = 2
-		used_items.append("item_mech_pencil")
+		potential_items.append("item_mech_pencil")
 		
 	if "item_energy_drink" in deck_config.values() and randf() < ((0.18 + late_game_boost) * offense_mult):
 		deck.energy_drink_active = true
-		used_items.append("item_energy_drink")
+		potential_items.append("item_energy_drink")
 		
 	if "item_highlighter" in deck_config.values() and randf() < ((0.18 + late_game_boost) * offense_mult):
 		deck.highlighter_active = true
-		used_items.append("item_highlighter")
-
+		potential_items.append("item_highlighter")
+ 
 	if "item_blue_pen" in deck_config.values() and randf() < ((0.18 + late_game_boost) * defense_mult):
 		deck.blue_pen_active = true
-		used_items.append("item_blue_pen")
-
+		potential_items.append("item_blue_pen")
+ 
 	if "item_amulet" in deck_config.values() and randf() < ((0.25 + late_game_boost) * defense_mult):
 		deck.amulet_active = true
-		used_items.append("item_amulet")
-
+		potential_items.append("item_amulet")
+ 
 	if "item_cram_school_print" in deck_config.values() and randf() < ((0.3 + late_game_boost) * offense_mult):
 		deck.cram_school_print_active = true
-		used_items.append("item_cram_school_print")
-
+		potential_items.append("item_cram_school_print")
+ 
 	if "item_red_sheet" in deck_config.values() and randf() < ((0.35 + late_game_boost) * defense_mult):
 		deck.red_sheet_active = true
-		used_items.append("item_red_sheet")
-
+		potential_items.append("item_red_sheet")
+ 
 	if "item_thick_book" in deck_config.values() and randf() < ((0.3 + late_game_boost) * offense_mult):
 		deck.activate_thick_book()
-		used_items.append("item_thick_book")
-
+		potential_items.append("item_thick_book")
+ 
 	if "item_sticky_note" in deck_config.values() and randf() < ((0.4 + late_game_boost) * offense_mult):
 		deck.next_draw_bonus_points = max(deck.next_draw_bonus_points, 1)
-		used_items.append("item_sticky_note")
-
+		potential_items.append("item_sticky_note")
+ 
 	if "item_expected_questions" in deck_config.values() and randf() < ((0.35 + late_game_boost) * offense_mult):
 		deck.next_draw_bonus_points = 3
-		used_items.append("item_expected_questions")
-
+		potential_items.append("item_expected_questions")
+ 
 	if "item_compass" in deck_config.values() and randf() < ((0.25 + late_game_boost) * defense_mult):
 		deck.compass_active = true
-		used_items.append("item_compass")
-
+		potential_items.append("item_compass")
+ 
 	if "item_timer" in deck_config.values() and randf() < (0.25 + late_game_boost):
 		deck.timer_active = true
-		used_items.append("item_timer")
-
+		potential_items.append("item_timer")
+ 
 	if "item_cushion" in deck_config.values() and randf() < 0.2:
-		used_items.append("item_cushion")
-
+		potential_items.append("item_cushion")
+ 
 	if "item_earplugs" in deck_config.values() and randf() < 0.2:
-		used_items.append("item_earplugs")
-
+		potential_items.append("item_earplugs")
+ 
 	if "item_study_chat" in deck_config.values() and randf() < 0.25:
-		used_items.append("item_study_chat")
-
+		potential_items.append("item_study_chat")
+ 
 	if "item_cheat_sheet" in deck_config.values() and randf() < 0.3:
-		used_items.append("item_cheat_sheet")
-
+		potential_items.append("item_cheat_sheet")
+ 
 	if "item_copy_answer" in deck_config.values() and randf() < 0.25:
-		used_items.append("item_copy_answer")
-
+		potential_items.append("item_copy_answer")
+ 
 	if "item_forget_notebook" in deck_config.values() and deck.hand.size() > 0 and randf() < ((0.3 + late_game_boost) * defense_mult):
 		deck.activate_forget_notebook()
-		used_items.append("item_forget_notebook")
-
+		potential_items.append("item_forget_notebook")
+ 
 	if "item_memo_cards" in deck_config.values() and deck.hand.size() > 0 and deck.draw_pile.size() > 0 and randf() < (0.3 + late_game_boost):
 		deck.activate_memo_cards(0)
-		used_items.append("item_memo_cards")
-
+		potential_items.append("item_memo_cards")
+ 
 	if "item_memo_app" in deck_config.values() and randf() < ((0.3 + late_game_boost) * defense_mult):
 		deck.activate_memo_app_draw()
 		deck.activate_memo_app_discard(0)
-		used_items.append("item_memo_app")
+		potential_items.append("item_memo_app")
 
 static func _apply_drawn_item_effects_cpu(card: Dictionary, deck: StudyDeck, used_items: Array[String]) -> void:
 	var item_id = card.get("item_id", "")
