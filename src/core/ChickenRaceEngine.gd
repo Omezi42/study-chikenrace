@@ -56,7 +56,7 @@ func check_burst() -> bool:
 		
 	# Energy drink side effect
 	var is_energy_burst = false
-	if deck.energy_drink_active and deck.hand.size() > 1:
+	if deck.energy_drink_active and hand_cards.size() > 1:
 		var burst_chance = deck.get_energy_drink_burst_chance()
 		if burst_chance > 0 and randf() < burst_chance:
 			is_energy_burst = true

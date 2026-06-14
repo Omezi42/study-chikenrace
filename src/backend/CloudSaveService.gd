@@ -58,8 +58,9 @@ func load_cloud_data() -> void:
 							if local_time > cloud_time:
 								if bm.is_inside_tree():
 									DeskTheme.show_toast(bm, "ローカルのほうが新しいため、クラウドを同期中...", 2.0, DeskTheme.COLOR_GREEN)
-								save_cloud_data(Global.get_save_data_dict_for_sync())
-								bm.load_completed.emit(true, Global.get_save_data_dict_for_sync())
+								var sync_data = Global.get_save_data_dict_for_sync()
+								save_cloud_data(sync_data.duplicate(true))
+								bm.load_completed.emit(true, sync_data.duplicate(true))
 								return
 						bm.load_completed.emit(true, cloud_data)
 						return

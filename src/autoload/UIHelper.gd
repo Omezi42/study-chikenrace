@@ -2,6 +2,9 @@ extends Node
 
 var loading_overlay: CanvasLayer = null
 
+func _ready() -> void:
+	get_tree().node_added.connect(_on_node_added)
+
 # Global helper to perform smooth scene changes with a paper fade overlay
 func show_toast(text: String, duration: float = 1.8, bg_color: Color = Color()) -> void:
 	DeskTheme.show_toast(self, text, duration, bg_color)
@@ -257,3 +260,143 @@ func apply_white_button_style(btn: Button) -> void:
 	for child in btn.get_children():
 		if child is Label:
 			child.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+
+func _on_node_added(node: Node) -> void:
+	if node is Control:
+		call_deferred("_apply_improved_typography", node)
+
+func _apply_improved_typography(node: Node) -> void:
+	if not is_instance_valid(node):
+		return
+		
+	var root = get_tree().root
+	var global = root.get_node_or_null("Global")
+	var use_handwriting = global.use_handwriting_font if global else true
+	var current_font = DeskTheme.get_font()
+
+	if node is Label:
+		if current_font:
+			node.add_theme_font_override("font", current_font)
+		else:
+			node.remove_theme_font_override("font")
+			
+		var font_color = node.get_theme_color("font_color")
+		if font_color == Color(0,0,0,0) or font_color == null:
+			font_color = DeskTheme.COLOR_INK
+			
+		var font_size = node.get_theme_font_size("font_size")
+		var outline_sz = 0
+		if font_size > 0:
+			if font_size > 24:
+				outline_sz = 2
+			elif font_size > 18:
+				outline_sz = 1
+			else:
+				outline_sz = 0
+			
+		# Only use outlines when text color is light (e.g. value >= 0.7) and needs contrast,
+		# or if the text is very large. Otherwise, clear the outline or keep it extremely subtle.
+		if outline_sz > 0:
+			if font_color.v < 0.4:
+				# Dark text: Use a very soft, semi-transparent light outline only if necessary, or none.
+				node.add_theme_color_override("font_outline_color", Color(1.0, 1.0, 1.0, 0.4))
+			else:
+				# Light text: Use a dark outline for readability on light backgrounds
+				node.add_theme_color_override("font_outline_color", Color("1e2022", 0.8))
+			node.add_theme_constant_override("outline_size", outline_sz)
+		else:
+			node.remove_theme_constant_override("outline_size")
+		
+		node.add_theme_color_override("font_shadow_color", Color(0.1, 0.08, 0.05, 0.15))
+		node.add_theme_constant_override("shadow_offset_x", 1)
+		node.add_theme_constant_override("shadow_offset_y", 1)
+		node.add_theme_constant_override("shadow_outline_size", 1)
+
+	elif node is RichTextLabel:
+		if current_font:
+			node.add_theme_font_override("normal_font", current_font)
+			node.add_theme_font_override("bold_font", current_font)
+			node.add_theme_font_override("italics_font", current_font)
+			node.add_theme_font_override("bold_italics_font", current_font)
+			node.add_theme_font_override("mono_font", current_font)
+		else:
+			node.remove_theme_font_override("normal_font")
+			node.remove_theme_font_override("bold_font")
+			node.remove_theme_font_override("italics_font")
+			node.remove_theme_font_override("bold_italics_font")
+			node.remove_theme_font_override("mono_font")
+
+		var font_size = node.get_theme_font_size("font_size")
+		var outline_sz = 0
+		if font_size > 0:
+			if font_size > 24:
+				outline_sz = 2
+			elif font_size > 18:
+				outline_sz = 1
+			else:
+				outline_sz = 0
+
+		if outline_sz > 0:
+			node.add_theme_color_override("font_outline_color", Color(1.0, 1.0, 1.0, 0.4))
+			node.add_theme_constant_override("outline_size", outline_sz)
+		else:
+			node.remove_theme_constant_override("outline_size")
+		node.add_theme_color_override("font_shadow_color", Color(0.1, 0.08, 0.05, 0.15))
+		node.add_theme_constant_override("shadow_offset_x", 1)
+		node.add_theme_constant_override("shadow_offset_y", 1)
+
+	elif node is Button:
+		if current_font:
+			node.add_theme_font_override("font", current_font)
+		else:
+			node.remove_theme_font_override("font")
+		
+		var font_size = node.get_theme_font_size("font_size")
+		var outline_sz = 0
+		if font_size > 0:
+			if font_size > 24:
+				outline_sz = 2
+			elif font_size > 18:
+				outline_sz = 1
+			else:
+				outline_sz = 0
+
+		if outline_sz > 0:
+			node.add_theme_color_override("font_outline_color", Color(1.0, 1.0, 1.0, 0.4))
+			node.add_theme_constant_override("outline_size", outline_sz)
+		else:
+			node.remove_theme_constant_override("outline_size")
+		
+	elif node is LineEdit:
+		if current_font:
+			node.add_theme_font_override("font", current_font)
+		else:
+			node.remove_theme_font_override("font")
+		
+		var font_size = node.get_theme_font_size("font_size")
+		var outline_sz = 0
+		if font_size > 0:
+			if font_size > 24:
+				outline_sz = 2
+			elif font_size > 18:
+				outline_sz = 1
+			else:
+				outline_sz = 0
+
+		if outline_sz > 0:
+			node.add_theme_color_override("font_outline_color", Color(1.0, 1.0, 1.0, 0.4))
+			node.add_theme_constant_override("outline_size", outline_sz)
+		else:
+			node.remove_theme_constant_override("outline_size")
+
+func refresh_typography() -> void:
+	var root = get_tree().root
+	_apply_to_subtree(root)
+
+func _apply_to_subtree(node: Node) -> void:
+	if not is_instance_valid(node):
+		return
+	if node is Control:
+		_apply_improved_typography(node)
+	for child in node.get_children():
+		_apply_to_subtree(child)

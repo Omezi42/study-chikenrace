@@ -118,7 +118,7 @@ const ITEMS = {
 	"item_red_sheet": {
 		"id": "item_red_sheet",
 		"name": "赤シート",
-		"description": "次の一枚に限り、バーストするカードであればドローを無効化して捨てる（安全ドロー）。",
+		"description": "次の一枚に限り、バーストするカードであってもそのまま手札に加える（バースト無効）。",
 		"role": ROLE_PUSH,
 		"is_initial": false,
 		"is_gacha": true
@@ -265,7 +265,7 @@ static func get_item_short_effect(item_id: String) -> String:
 		"item_cheat_sheet": return "本日のブラフ上限+16点"
 		"item_compass": return "山札の被り札枚数表示"
 		"item_energy_drink": return "得点2倍(25%眠気バースト)"
-		"item_red_sheet": return "次の被り札を自動破棄"
+		"item_red_sheet": return "次の被り札をバースト無効"
 		"item_thick_book": return "山札に+15点札を3枚追加"
 		"item_amulet": return "バースト時得点の50%維持"
 		"item_night_note": return "本日4時限目をプレイ可能"
@@ -278,3 +278,14 @@ static func get_item_short_effect(item_id: String) -> String:
 		"item_cram_school_print": return "この時限の最終得点+10点"
 		"item_forget_notebook": return "手札最小値カードを捨てる"
 	return ""
+
+static func get_reaction_text(prob: float) -> String:
+	if prob <= 0.15:
+		return "落ち着いている"
+	elif prob <= 0.40:
+		return "少し緊張している..."
+	elif prob <= 0.70:
+		return "冷や汗をかいている..."
+	else:
+		return "手が震えている！"
+

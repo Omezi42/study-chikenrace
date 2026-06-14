@@ -3,35 +3,59 @@ extends Node
 var _preloaded_font = preload("res://assets/hgrsmp.ttf")
 
 # Player Progression & Saved Stats
-var player_name: String = ""
-var player_title: String = "ただの凡人"
-var coins: int = 100
-var best_score: int = 0
-var play_count: int = 0
+var player_name: String:
+	get: return PlayerState.player_name
+	set(val): PlayerState.player_name = val
+var player_title: String:
+	get: return PlayerState.player_title
+	set(val): PlayerState.player_title = val
+var coins: int:
+	get: return PlayerState.coins
+	set(val): PlayerState.coins = val
+var best_score: int:
+	get: return PlayerState.best_score
+	set(val): PlayerState.best_score = val
+var play_count: int:
+	get: return PlayerState.play_count
+	set(val): PlayerState.play_count = val
 var is_tutorial_mode: bool = false
-var bgm_volume: float = 0.5
-var se_volume: float = 0.5
-var is_muted: bool = false
-var deck_presets: Dictionary = {
-	"1": {},
-	"2": {},
-	"3": {}
-}
-var deck_preset_names: Dictionary = {
-	"1": "プリセット 1",
-	"2": "プリセット 2",
-	"3": "プリセット 3"
-}
-var selected_preset_idx: int = 1
+var bgm_volume: float:
+	get: return SettingsState.bgm_volume
+	set(val): SettingsState.bgm_volume = val
+var se_volume: float:
+	get: return SettingsState.se_volume
+	set(val): SettingsState.se_volume = val
+var is_muted: bool:
+	get: return SettingsState.is_muted
+	set(val): SettingsState.is_muted = val
+var deck_presets: Dictionary:
+	get: return PlayerState.deck_presets
+	set(val): PlayerState.deck_presets = val
+var deck_preset_names: Dictionary:
+	get: return PlayerState.deck_preset_names
+	set(val): PlayerState.deck_preset_names = val
+var selected_preset_idx: int:
+	get: return PlayerState.selected_preset_idx
+	set(val): PlayerState.selected_preset_idx = val
 
 # Accumulated Lifetime Stats
-var total_doubt_successes: int = 0
-var total_doubt_failures: int = 0
-var total_burst_count: int = 0
-var total_perfect_crimes: int = 0
+var total_doubt_successes: int:
+	get: return PlayerState.total_doubt_successes
+	set(val): PlayerState.total_doubt_successes = val
+var total_doubt_failures: int:
+	get: return PlayerState.total_doubt_failures
+	set(val): PlayerState.total_doubt_failures = val
+var total_burst_count: int:
+	get: return PlayerState.total_burst_count
+	set(val): PlayerState.total_burst_count = val
+var total_perfect_crimes: int:
+	get: return PlayerState.total_perfect_crimes
+	set(val): PlayerState.total_perfect_crimes = val
 
-# Active Game Mode ("cpu", "national", "daily", or "friend")
-var game_mode: String = Constants.MODE_NATIONAL
+# Active Game Mode
+var game_mode: String:
+	get: return MatchState.game_mode
+	set(val): MatchState.game_mode = val
 
 # Friend Match Room State
 var friend_room_code: String = ""
@@ -47,76 +71,60 @@ var auth_token: String = ""
 # Daily Exam State
 var daily_current_day: int = 1
 var daily_last_played_date: String = ""
-var daily_opponent_ghosts: Dictionary = {}  # DayIndex -> Array of ghosts
-var daily_my_records: Dictionary = {}       # DayIndex -> My record dict
-var daily_fixed_deck: Dictionary = {}       # Generated fixed deck (1-10 -> ItemId)
-var current_season: int = 1                 # 1シーズン=2週間
+var daily_opponent_ghosts: Dictionary = {}
+var daily_my_records: Dictionary = {}
+var daily_fixed_deck: Dictionary = {}
+var current_season: int = 1
 var today_missions: Array[Dictionary] = []
 var mission_progress: Dictionary = {}
 var last_mission_date: String = ""
 
-# Deviation Values (偏差値)
-var deviation_value: float = 50.0
-var max_deviation_value: float = 50.0
-var selected_class: String = "regular" # "remedial", "regular", "advanced"
+# Deviation Values
+var deviation_value: float:
+	get: return PlayerState.deviation_value
+	set(val): PlayerState.deviation_value = val
+var max_deviation_value: float:
+	get: return PlayerState.max_deviation_value
+	set(val): PlayerState.max_deviation_value = val
+var selected_class: String:
+	get: return PlayerState.selected_class
+	set(val): PlayerState.selected_class = val
 var last_updated_at: float = 0.0
 
-# Opponent profiles for the active match
-var opponent_profiles: Dictionary = {
-	"cpu_sato": {
-		"id": "cpu_sato",
-		"name": "佐藤くん",
-		"deviation": 51.5
-	},
-	"cpu_suzuki": {
-		"id": "cpu_suzuki",
-		"name": "鈴木さん",
-		"deviation": 48.0
-	},
-	"cpu_takahashi": {
-		"id": "cpu_takahashi",
-		"name": "高橋くん",
-		"deviation": 54.2
-	}
-}
+# Opponent profiles
+var opponent_profiles: Dictionary:
+	get: return MatchState.opponent_profiles
+	set(val): MatchState.opponent_profiles = val
 
-# Cards unlocked by player (default 10 starting items)
-var unlocked_items: Array[String] = [
-	"item_sticky_note",
-	"item_eraser",
-	"item_ruler",
-	"item_wordbook",
-	"item_mech_pencil",
-	"item_memo_cards",
-	"item_highlighter",
-	"item_blue_pen",
-	"item_cushion",
-	"item_memo_app"
-]
+# Cards unlocked by player
+var unlocked_items: Array[String]:
+	get: return PlayerState.unlocked_items
+	set(val): PlayerState.unlocked_items = val
 
-# Track usage of items (ID -> usage count)
-var item_usage_counts: Dictionary = {}
+# Track usage of items
+var item_usage_counts: Dictionary:
+	get: return PlayerState.item_usage_counts
+	set(val): PlayerState.item_usage_counts = val
 
-# Current Deck (which items are slotted into 1 to 10 slots)
-# Defaults to mapping slots 1-10 to our 10 starting items
-var current_deck: Dictionary = {
-	1: "item_sticky_note",
-	2: "item_eraser",
-	3: "item_ruler",
-	4: "item_wordbook",
-	5: "item_mech_pencil",
-	6: "item_memo_cards",
-	7: "item_highlighter",
-	8: "item_blue_pen",
-	9: "item_cushion",
-	10: "item_memo_app"
-}
+# Current Deck
+var current_deck: Dictionary:
+	get: return PlayerState.current_deck
+	set(val): PlayerState.current_deck = val
 
 # Unlocked titles
-var unlocked_titles: Array[String] = []
+var unlocked_titles: Array[String]:
+	get: return PlayerState.unlocked_titles
+	set(val): PlayerState.unlocked_titles = val
 
-# Showdown results to pass between scenes
-var active_showdown_results: Dictionary = {}
+# Showdown results
+var active_showdown_results: Dictionary:
+	get: return MatchState.active_showdown_results
+	set(val): MatchState.active_showdown_results = val
+
+# Font setting
+var use_handwriting_font: bool:
+	get: return SettingsState.use_handwriting_font
+	set(val): SettingsState.use_handwriting_font = val
 
 func _ready() -> void:
 	load_game()
@@ -149,7 +157,7 @@ const SIMPLE_SAVE_FIELDS = [
 	"player_name", "player_title", "coins", "best_score", "play_count", 
 	"unlocked_items", "item_usage_counts", "unlocked_titles", 
 	"deviation_value", "max_deviation_value", "selected_class", "game_mode", 
-	"opponent_profiles", "bgm_volume", "se_volume", "is_muted",
+	"opponent_profiles", "bgm_volume", "se_volume", "is_muted", "use_handwriting_font",
 	"logged_in_user_id", "auth_token", "daily_current_day",
 	"daily_last_played_date", "daily_opponent_ghosts", "daily_my_records",
 	"friend_room_code", "friend_is_host", "friend_member_list",
@@ -190,7 +198,11 @@ func get_save_data_dict_for_sync() -> Dictionary:
 		if field == "auth_token":
 			save_dict[field] = auth_token # Keep un-obfuscated for cloud sync context if needed, but for sync, it should match SIMPLE_SAVE_FIELDS
 		else:
-			save_dict[field] = get(field)
+			var val = get(field)
+			if val is Array or val is Dictionary:
+				save_dict[field] = val.duplicate(true)
+			else:
+				save_dict[field] = val
 	save_dict["current_deck"] = get_deck_as_string_keys()
 	save_dict["daily_fixed_deck"] = get_daily_fixed_deck_as_string_keys()
 	save_dict["save_version"] = Constants.SAVE_VERSION
@@ -200,17 +212,37 @@ func get_save_data_dict_for_sync() -> Dictionary:
 func save_game() -> void:
 	last_updated_at = Time.get_unix_time_from_system()
 	var save_dict = {}
-	for field in SIMPLE_SAVE_FIELDS:
-		if field == "auth_token":
-			save_dict[field] = _obfuscate_string(auth_token)
+	
+	# Collect data from states
+	var player_data = PlayerState.save_data_to_dict()
+	var settings_data = SettingsState.save_data_to_dict()
+	var match_data = MatchState.save_data_to_dict()
+	
+	# Merge into save_dict
+	for k in player_data.keys():
+		save_dict[k] = player_data[k]
+	for k in settings_data.keys():
+		if k == "auth_token":
+			save_dict[k] = _obfuscate_string(auth_token)
 		else:
-			save_dict[field] = get(field)
+			save_dict[k] = settings_data[k]
+	for k in match_data.keys():
+		save_dict[k] = match_data[k]
 		
-	# Save deck as string keys because JSON dictionary keys are always strings
-	save_dict["current_deck"] = get_deck_as_string_keys()
+	# Collect other Global persistent fields
+	for field in SIMPLE_SAVE_FIELDS:
+		if not field in save_dict:
+			var val = get(field)
+			if val is Array or val is Dictionary:
+				save_dict[field] = val.duplicate(true)
+			else:
+				save_dict[field] = val
+				
+	save_dict["current_deck"] = PlayerState.get_deck_as_string_keys()
 	save_dict["daily_fixed_deck"] = get_daily_fixed_deck_as_string_keys()
 	save_dict["save_version"] = Constants.SAVE_VERSION
-	validate_current_deck()
+	
+	PlayerState.validate_current_deck()
 	validate_opponent_profiles()
 	
 	if has_node("/root/SaveManager"):
@@ -232,8 +264,18 @@ func load_game() -> void:
 	if from_version < Constants.SAVE_VERSION:
 		_migrate_save_data(data, from_version)
 		
+	# Populate states
+	PlayerState.load_data_from_dict(data)
+	SettingsState.load_data_from_dict(data)
+	MatchState.load_data_from_dict(data)
+	
+	# Load other Global fields
 	for field in SIMPLE_SAVE_FIELDS:
-		if field in data:
+		if field in data and not field in ["player_name", "player_title", "coins", "best_score", "play_count", 
+										  "unlocked_items", "item_usage_counts", "unlocked_titles", 
+										  "deviation_value", "max_deviation_value", "selected_class", "game_mode", 
+										  "opponent_profiles", "bgm_volume", "se_volume", "is_muted", "use_handwriting_font",
+										  "deck_presets", "deck_preset_names", "selected_preset_idx", "current_deck"]:
 			var val = data[field]
 			if field == "auth_token":
 				val = _deobfuscate_string(str(val))
@@ -244,15 +286,14 @@ func load_game() -> void:
 				set(field, float(val))
 			elif current_val is bool:
 				set(field, bool(val))
+			elif current_val is Array:
+				current_val.clear()
+				if val is Array:
+					for item in val:
+						current_val.append(item)
 			else:
 				set(field, val)
 				
-	if "current_deck" in data:
-		var deck_data = data["current_deck"]
-		if deck_data is Dictionary:
-			for key in deck_data.keys():
-				current_deck[int(key)] = str(deck_data[key])
-			
 	if "daily_fixed_deck" in data:
 		var fd_data = data["daily_fixed_deck"]
 		daily_fixed_deck.clear()
@@ -260,16 +301,15 @@ func load_game() -> void:
 			for k in fd_data.keys():
 				daily_fixed_deck[int(k)] = str(fd_data[k])
 			
-	# Ensure all 10 slots are populated in case of load anomalies
-	validate_current_deck()
+	PlayerState.validate_current_deck()
 	validate_opponent_profiles()
 	
 	# Apply loaded volumes to AudioManager if available
 	if has_node("/root/AudioManager"):
 		var audio = get_node("/root/AudioManager")
-		audio.bgm_volume = bgm_volume
-		audio.se_volume = se_volume
-		audio.is_muted = is_muted
+		audio.bgm_volume = SettingsState.bgm_volume
+		audio.se_volume = SettingsState.se_volume
+		audio.is_muted = SettingsState.is_muted
 
 # Validate essential keys in loaded save data
 func _validate_loaded_data_keys(data: Dictionary) -> bool:

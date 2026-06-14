@@ -151,7 +151,7 @@ func _ready() -> void:
 	
 	var left_margin = MarginContainer.new()
 	left_margin.add_theme_constant_override("margin_left", DeskTheme.MARGIN_DEFAULT)
-	left_margin.add_theme_constant_override("margin_right", DeskTheme.MARGIN_DEFAULT)
+	left_margin.add_theme_constant_override("margin_right", DeskTheme.MARGIN_LARGE * 1.8) # 30 -> 63 to avoid ring overlap
 	left_margin.add_theme_constant_override("margin_top", DeskTheme.MARGIN_DEFAULT)
 	left_margin.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_DEFAULT)
 	left_vbox.add_child(left_margin)
@@ -169,7 +169,7 @@ func _ready() -> void:
 	
 	# Scroll for Items
 	left_scroll_item = ScrollContainer.new()
-	left_scroll_item.custom_minimum_size = Vector2(680, 680)
+	left_scroll_item.custom_minimum_size = Vector2(650, 680) # Sized down slightly for margin room
 	left_scroll_item.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	left_inner.add_child(left_scroll_item)
 	
@@ -180,7 +180,7 @@ func _ready() -> void:
 	
 	# Scroll for Titles
 	left_scroll_title = ScrollContainer.new()
-	left_scroll_title.custom_minimum_size = Vector2(680, 680)
+	left_scroll_title.custom_minimum_size = Vector2(650, 680) # Sized down slightly for margin room
 	left_scroll_title.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	left_scroll_title.visible = false
 	left_inner.add_child(left_scroll_title)
@@ -200,18 +200,22 @@ func _ready() -> void:
 	
 	var right_vbox = VBoxContainer.new()
 	right_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_MEDIUM)
+	right_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right_page.add_child(right_vbox)
 	
 	var right_margin = MarginContainer.new()
-	right_margin.add_theme_constant_override("margin_left", DeskTheme.MARGIN_LARGE)
+	right_margin.add_theme_constant_override("margin_left", DeskTheme.MARGIN_LARGE * 1.8) # 35 -> 63 to avoid ring overlap
 	right_margin.add_theme_constant_override("margin_right", DeskTheme.MARGIN_LARGE)
 	right_margin.add_theme_constant_override("margin_top", DeskTheme.MARGIN_LARGE)
 	right_margin.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_LARGE)
+	right_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right_vbox.add_child(right_margin)
 	
 	# Inner container for item details
 	right_inner_item = VBoxContainer.new()
 	right_inner_item.add_theme_constant_override("separation", DeskTheme.MARGIN_MEDIUM)
+	right_inner_item.alignment = BoxContainer.ALIGNMENT_CENTER
+	right_inner_item.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right_margin.add_child(right_inner_item)
 	
 	# Card Visual Container
@@ -270,6 +274,8 @@ func _ready() -> void:
 	# Inner container for title details
 	right_inner_title = VBoxContainer.new()
 	right_inner_title.add_theme_constant_override("separation", DeskTheme.MARGIN_MEDIUM)
+	right_inner_title.alignment = BoxContainer.ALIGNMENT_CENTER
+	right_inner_title.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right_inner_title.visible = false
 	right_margin.add_child(right_inner_title)
 	
@@ -292,13 +298,17 @@ func _ready() -> void:
 	stamp_hbox.add_child(title_detail_icon)
 	
 	title_detail_name = Label.new()
+	title_detail_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_detail_name.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title_detail_name.add_theme_font_override("font", DeskTheme.get_font())
 	title_detail_name.add_theme_font_size_override("font_size", 24)
 	title_detail_name.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	title_detail_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stamp_hbox.add_child(title_detail_name)
 	
 	# Title Condition & Status
 	var title_desc_vbox = VBoxContainer.new()
+	title_desc_vbox.name = "title_desc_vbox"
 	title_desc_vbox.add_theme_constant_override("separation", 15)
 	right_inner_title.add_child(title_desc_vbox)
 	
@@ -332,6 +342,21 @@ func _ready() -> void:
 	title_detail_status.add_theme_font_override("font", DeskTheme.get_font())
 	title_detail_status.add_theme_font_size_override("font_size", 16)
 	status_hbox.add_child(title_detail_status)
+
+	# Change title button (dynamic)
+	var change_title_btn = Button.new()
+	change_title_btn.name = "change_title_btn"
+	change_title_btn.text = "この称号を設定する"
+	change_title_btn.custom_minimum_size = Vector2(240, 50)
+	change_title_btn.add_theme_font_override("font", DeskTheme.get_font())
+	change_title_btn.add_theme_font_size_override("font_size", 16)
+	Global.apply_white_button_style(change_title_btn)
+	# Teal styling to make it feel premium
+	var premium_style = DeskTheme.create_stamp_style(Color("004d40"), Color("e0f2f1"))
+	change_title_btn.add_theme_stylebox_override("normal", premium_style)
+	change_title_btn.add_theme_color_override("font_color", Color("004d40"))
+	change_title_btn.visible = false
+	title_desc_vbox.add_child(change_title_btn)
 	
 	# Back button (Common)
 	back_btn = Button.new()
@@ -349,6 +374,11 @@ func _ready() -> void:
 	right_vbox.add_child(back_btn)
 	
 	# Initial setup
+	# Ensure "ただの凡人" is in Global.unlocked_titles if it's not already
+	if not Constants.TITLE_AVERAGE in Global.unlocked_titles:
+		Global.unlocked_titles.append(Constants.TITLE_AVERAGE)
+		Global.save_game()
+		
 	_switch_tab("item")
 	
 	# Apply notebook visual details
@@ -398,105 +428,129 @@ func populate_catalog() -> void:
 		
 	# Render items
 	for item_id in CardData.ITEMS.keys():
-		var item = CardData.ITEMS[item_id]
-		if item_id == "item_forget_notebook":
-			continue
-			
 		var is_unlocked = item_id in Global.unlocked_items
+		var item = CardData.ITEMS[item_id]
 		
-		# Create list button
 		var btn = Button.new()
-		btn.custom_minimum_size = Vector2(620, 65)
+		btn.custom_minimum_size = Vector2(0, 90)
 		
 		var btn_style = StyleBoxFlat.new()
-		btn_style.bg_color = DeskTheme.COLOR_CRAFT
-		btn_style.border_width_left = 6
-		btn_style.border_width_right = 1
-		btn_style.border_width_top = 1
-		btn_style.border_width_bottom = 1
-		btn_style.corner_radius_top_left = 4
-		btn_style.corner_radius_bottom_left = 4
-		
 		if is_unlocked:
-			btn_style.border_color = CardData.get_role_color(item["role"])
-			btn.text = ""
-			
-			var btn_hbox = HBoxContainer.new()
-			btn_hbox.alignment = BoxContainer.ALIGNMENT_BEGIN
-			btn_hbox.add_theme_constant_override("separation", 10)
-			btn_hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-			btn_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			btn.add_child(btn_hbox)
-			
-			var space = Control.new()
-			space.custom_minimum_size = Vector2(8, 0)
-			btn_hbox.add_child(space)
-			
-			var img_path = CardData.get_item_image_path(item_id)
-			if img_path != "":
-				var icon_rect = TextureRect.new()
-				icon_rect.texture = load(img_path)
-				icon_rect.custom_minimum_size = Vector2(40, 40)
-				icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-				icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-				btn_hbox.add_child(icon_rect)
-			
-			var name_lbl = Label.new()
-			name_lbl.text = item["name"]
-			name_lbl.add_theme_font_override("font", DeskTheme.get_font())
-			name_lbl.add_theme_font_size_override("font_size", 20)
-			name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-			btn_hbox.add_child(name_lbl)
-			
-			btn.pressed.connect(func():
-				btn.release_focus()
-				DeskTheme.animate_click(btn, Vector2.ONE, 0.08)
-				select_item(item_id)
-			)
+			btn_style = DeskTheme.create_white_panel()
 		else:
-			btn_style.border_color = Color.GRAY
-			btn.text = "  ？？？ (未解放)"
-			btn.add_theme_color_override("font_color", Color.GRAY)
-			btn.disabled = true
+			btn_style = DeskTheme.create_craft_panel()
+			btn.modulate = Color(0.6, 0.6, 0.6, 0.6)
 			
 		btn.add_theme_stylebox_override("normal", btn_style)
-		btn.add_theme_stylebox_override("disabled", btn_style)
-		btn.add_theme_font_override("font", DeskTheme.get_font())
-		btn.add_theme_font_size_override("font_size", 22)
-		btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		
+		var margin_container = MarginContainer.new()
+		margin_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		margin_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		margin_container.add_theme_constant_override("margin_left", 20)
+		margin_container.add_theme_constant_override("margin_right", 15)
+		btn.add_child(margin_container)
+		
+		var hbox = HBoxContainer.new()
+		hbox.add_theme_constant_override("separation", 15)
+		hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		margin_container.add_child(hbox)
+		
+		# Thumbnail
+		var thumb_rect = PanelContainer.new()
+		thumb_rect.custom_minimum_size = Vector2(70, 70)
+		thumb_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		
+		var thumb_style = StyleBoxFlat.new()
+		thumb_style.bg_color = DeskTheme.COLOR_CRAFT if is_unlocked else Color(0.3, 0.3, 0.3, 0.3)
+		thumb_style.corner_radius_top_left = 6
+		thumb_style.corner_radius_top_right = 6
+		thumb_style.corner_radius_bottom_left = 6
+		thumb_style.corner_radius_bottom_right = 6
+		thumb_rect.add_theme_stylebox_override("panel", thumb_style)
+		
+		hbox.add_child(thumb_rect)
+		
+		var thumb_tex = TextureRect.new()
+		thumb_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		thumb_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		thumb_tex.custom_minimum_size = Vector2(60, 60)
+		thumb_tex.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		thumb_tex.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		thumb_rect.add_child(thumb_tex)
+		
+		if is_unlocked:
+			var path = CardData.get_item_image_path(item_id)
+			if path != "" and ResourceLoader.exists(path):
+				thumb_tex.texture = load(path)
+		else:
+			thumb_tex.texture = load("res://assets/lock_icon.png")
+			
+		# Text Container
+		var info_vbox = VBoxContainer.new()
+		info_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		info_vbox.add_theme_constant_override("separation", 4)
+		hbox.add_child(info_vbox)
+		
+		var name_lbl = Label.new()
+		name_lbl.text = item["name"] if is_unlocked else "？？？？"
+		name_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		name_lbl.add_theme_font_size_override("font_size", 18)
+		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK if is_unlocked else Color(0.5, 0.5, 0.5))
+		info_vbox.add_child(name_lbl)
+		
+		var type_lbl = Label.new()
+		type_lbl.text = CardData.get_role_name(item["role"]) if is_unlocked else "？？？"
+		type_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		type_lbl.add_theme_font_size_override("font_size", 13)
+		type_lbl.add_theme_color_override("font_color", CardData.get_role_color(item["role"]) if is_unlocked else Color(0.5, 0.5, 0.5))
+		info_vbox.add_child(type_lbl)
+		
+		# Star rating indicator
+		var catalog_star_hbox = HBoxContainer.new()
+		catalog_star_hbox.add_theme_constant_override("separation", 2)
+		info_vbox.add_child(catalog_star_hbox)
+		if is_unlocked:
+			for star in range(item.get("stars", 1)):
+				var s_tex = TextureRect.new()
+				s_tex.texture = load("res://assets/star_icon.png")
+				s_tex.custom_minimum_size = Vector2(16, 16)
+				s_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				s_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				catalog_star_hbox.add_child(s_tex)
+				
+		btn.pressed.connect(func():
+			btn.release_focus()
+			DeskTheme.animate_click(btn, Vector2.ONE, 0.08)
+			select_item(item_id)
+		)
 		
 		list_container.add_child(btn)
 
 func select_item(item_id: String) -> void:
 	selected_item_id = item_id
 	var item = CardData.ITEMS[item_id]
+	var is_unlocked = item_id in Global.unlocked_items
 	
-	card_title.text = item["name"]
-	card_description.text = item["description"]
-	card_role_lbl.text = "系統: " + CardData.get_role_name(item["role"])
-	card_role_lbl.add_theme_color_override("font_color", CardData.get_role_color(item["role"]))
+	card_title.text = item["name"] if is_unlocked else "？？？？"
+	card_description.text = item["description"] if is_unlocked else "ガチャでこの参考書アイテムを獲得すると解放されます。"
+	card_role_lbl.text = "【分類】 " + CardData.get_role_name(item["role"]) if is_unlocked else "【分類】 ？？？"
+	card_role_lbl.add_theme_color_override("font_color", CardData.get_role_color(item["role"]) if is_unlocked else Color(0.5, 0.5, 0.5))
 	
-	# Usage count
-	var usage = int(Global.item_usage_counts.get(item_id, 0))
-	usage_count_lbl.text = "通算使用回数: " + str(usage) + " 回"
+	var uses = Global.item_usage_counts.get(item_id, 0)
+	usage_count_lbl.text = "これまでの使用回数: %d 回" % uses if is_unlocked else ""
 	
-	# Star level and requirements
-	var stars = Global.get_item_stars(item_id)
 	for child in stars_container.get_children():
 		child.queue_free()
 		
-	# Spawn 5 star symbols
-	for i in range(1, 6):
-		var star_lbl = Label.new()
-		if i <= stars:
-			star_lbl.text = "★"
-			star_lbl.add_theme_color_override("font_color", Color("ffd700")) # Active Gold
-		else:
-			star_lbl.text = "☆"
-			star_lbl.add_theme_color_override("font_color", Color.GRAY)
-		star_lbl.add_theme_font_size_override("font_size", 30)
-		stars_container.add_child(star_lbl)
-		
+	if is_unlocked:
+		for i in range(item.get("stars", 1)):
+			var s_icon = TextureRect.new()
+			s_icon.texture = load("res://assets/star_icon.png")
+			s_icon.custom_minimum_size = Vector2(24, 24)
+			s_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			s_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			stars_container.add_child(s_icon)
+			
 	# Slide & flip card visual on select
 	var card_style = StyleBoxFlat.new()
 	card_style.bg_color = DeskTheme.COLOR_CRAFT
@@ -514,7 +568,7 @@ func select_item(item_id: String) -> void:
 	var tex_path = CardData.get_item_image_path(item_id)
 	card_panel.scale = Vector2.ONE
 	DeskTheme.animate_card_flip(card_panel, 0.3, func():
-		if tex_path != "" and ResourceLoader.exists(tex_path):
+		if is_unlocked and tex_path != "" and ResourceLoader.exists(tex_path):
 			item_texture.texture = load(tex_path)
 			item_texture.visible = true
 			card_title.visible = false
@@ -545,12 +599,18 @@ func populate_titles() -> void:
 		btn.add_theme_stylebox_override("normal", btn_style)
 		btn.text = "" # Use custom hbox layout to support image + text without emoji text
 		
+		var margin_container = MarginContainer.new()
+		margin_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		margin_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		margin_container.add_theme_constant_override("margin_left", 12)
+		margin_container.add_theme_constant_override("margin_right", 12)
+		btn.add_child(margin_container)
+		
 		var btn_hbox = HBoxContainer.new()
 		btn_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 		btn_hbox.add_theme_constant_override("separation", 6)
 		btn_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		btn_hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		btn.add_child(btn_hbox)
+		margin_container.add_child(btn_hbox)
 		
 		var icon_rect = TextureRect.new()
 		icon_rect.custom_minimum_size = Vector2(24, 24)
@@ -564,10 +624,12 @@ func populate_titles() -> void:
 		btn_hbox.add_child(icon_rect)
 		
 		var lbl = Label.new()
-		lbl.text = title if is_unlocked else "？？？"
+		lbl.text = title if is_unlocked else "？？？？？"
 		lbl.add_theme_font_override("font", DeskTheme.get_font())
 		lbl.add_theme_font_size_override("font_size", 16)
 		lbl.add_theme_color_override("font_color", Color("c62828") if is_unlocked else Color(0.5, 0.5, 0.5))
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		btn_hbox.add_child(lbl)
 		
 		btn.pressed.connect(func():
@@ -588,6 +650,8 @@ func select_title(title: String) -> void:
 	var title_detail_icon: TextureRect = stamp_hbox.get_node("title_icon")
 	var status_icon: TextureRect = title_detail_status.get_parent().get_node("status_icon")
 	
+	var change_btn = right_inner_title.get_node("title_desc_vbox/change_title_btn")
+	
 	if is_unlocked:
 		title_detail_icon.texture = load("res://assets/王冠.png")
 		title_detail_icon.visible = true
@@ -596,8 +660,20 @@ func select_title(title: String) -> void:
 		title_detail_stamp.modulate = Color.WHITE
 		title_detail_stamp.add_theme_stylebox_override("panel", DeskTheme.create_stamp_style(Color("c62828"), Color(1, 0.95, 0.95, 0.5)))
 		title_detail_name.add_theme_color_override("font_color", Color("c62828"))
-		title_detail_status.text = "獲得ステータス: 獲得済み"
-		title_detail_status.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
+		
+		# Show current title status
+		if Global.player_title == title:
+			title_detail_status.text = "獲得ステータス: 設定中"
+			title_detail_status.add_theme_color_override("font_color", Color("004d40"))
+			change_btn.visible = false
+		else:
+			title_detail_status.text = "獲得ステータス: 獲得済み"
+			title_detail_status.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
+			change_btn.visible = true
+			# Reconnect signal clean
+			if change_btn.pressed.is_connected(self._on_change_title_pressed):
+				change_btn.pressed.disconnect(self._on_change_title_pressed)
+			change_btn.pressed.connect(self._on_change_title_pressed.bind(title))
 	else:
 		title_detail_icon.texture = load("res://assets/lock_icon.png")
 		title_detail_icon.visible = true
@@ -609,6 +685,23 @@ func select_title(title: String) -> void:
 		title_detail_name.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
 		title_detail_status.text = "獲得ステータス: 未獲得"
 		title_detail_status.add_theme_color_override("font_color", Color("d32f2f"))
+		change_btn.visible = false
+
+func _on_change_title_pressed(title: String) -> void:
+	Global.player_title = title
+	Global.save_game()
+	
+	if has_node("/root/UIHelper"):
+		get_node("/root/UIHelper").show_toast("称号を「" + title + "」に変更しました！", 2.0, DeskTheme.COLOR_GREEN)
+		
+	# Refresh UI
+	select_title(title)
+	# Also update left progress count label just in case
+	var unlocked_count = 0
+	for t in ALL_TITLES:
+		if t in Global.unlocked_titles:
+			unlocked_count += 1
+	left_title_label.text = "称号ギャラリー (%d / %d)" % [unlocked_count, ALL_TITLES.size()]
 
 func _on_back_pressed() -> void:
 	DeskTheme.animate_click(back_btn, Vector2.ONE, 0.08)

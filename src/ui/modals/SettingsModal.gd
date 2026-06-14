@@ -17,8 +17,8 @@ func _ready() -> void:
 	add_child(bg_overlay)
 	
 	var modal = PanelContainer.new()
-	modal.custom_minimum_size = Vector2(500, 480)
-	modal.pivot_offset = Vector2(250, 240)
+	modal.custom_minimum_size = Vector2(500, 520)
+	modal.pivot_offset = Vector2(250, 260)
 	modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	add_child(modal)
 	
@@ -112,6 +112,30 @@ func _ready() -> void:
 		audio.is_muted = pressed
 	)
 	mute_hbox.add_child(mute_check)
+	
+	# Font Switch Checkbox HBox
+	var font_hbox = HBoxContainer.new()
+	font_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_child(font_hbox)
+	
+	var font_label = Label.new()
+	font_label.text = "手書き風フォントを使用する: "
+	font_label.add_theme_font_override("font", DeskTheme.get_font())
+	font_label.add_theme_font_size_override("font_size", 16)
+	font_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	font_hbox.add_child(font_label)
+	
+	var font_check = CheckButton.new()
+	var global_singleton = get_node_or_null("/root/Global")
+	font_check.button_pressed = global_singleton.use_handwriting_font if global_singleton else true
+	font_check.toggled.connect(func(pressed):
+		if global_singleton:
+			global_singleton.use_handwriting_font = pressed
+			global_singleton.save_game()
+			if has_node("/root/UIHelper"):
+				get_node("/root/UIHelper").refresh_typography()
+	)
+	font_hbox.add_child(font_check)
 	
 	# Rules button inside Settings
 	var rule_btn = Button.new()

@@ -17,6 +17,9 @@ var detail_icon: TextureRect
 var detail_name: Label
 var detail_role: Label
 var detail_desc: Label
+var equip_btn: Button
+var selected_item_to_equip: String = ""
+
 
 # Preset UI components
 var preset_buttons: Array[Button] = []
@@ -321,13 +324,14 @@ func setup_select_modal() -> void:
 	# Main split HBox
 	var main_split = HBoxContainer.new()
 	main_split.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	main_split.add_theme_constant_override("separation", 20)
+	main_split.add_theme_constant_override("separation", DeskTheme.MARGIN_LARGE) # 20 -> 35
 	vbox.add_child(main_split)
 	
 	# Scroll for unlocked items (Left Side)
 	var scroll = ScrollContainer.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	main_split.add_child(scroll)
 	
 	select_grid = GridContainer.new()
@@ -360,7 +364,7 @@ func setup_select_modal() -> void:
 	main_split.add_child(detail_panel)
 	
 	var detail_vbox = VBoxContainer.new()
-	detail_vbox.add_theme_constant_override("separation", 20)
+	detail_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_MEDIUM) # 20 -> 25
 	detail_panel.add_child(detail_vbox)
 	
 	var detail_title = Label.new()
@@ -404,6 +408,21 @@ func setup_select_modal() -> void:
 	detail_desc.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	detail_vbox.add_child(detail_desc)
 	
+	equip_btn = Button.new()
+	equip_btn.text = "このアイテムを装備"
+	equip_btn.custom_minimum_size = Vector2(200, 50)
+	equip_btn.add_theme_font_override("font", DeskTheme.get_font())
+	equip_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
+	Global.apply_white_button_style(equip_btn)
+	equip_btn.visible = false
+	equip_btn.pressed.connect(func():
+		equip_btn.release_focus()
+		DeskTheme.animate_click(equip_btn, Vector2.ONE, 0.08)
+		if selected_item_to_equip != "":
+			_on_item_selected(selected_item_to_equip)
+	)
+	detail_vbox.add_child(equip_btn)
+	
 	var close_btn = Button.new()
 	close_btn.text = "閉じる"
 	close_btn.custom_minimum_size = Vector2(200, 55)
@@ -423,7 +442,10 @@ func update_detail_panel(item_id: String) -> void:
 		detail_icon.texture = null
 		detail_name.text = "選択してください"
 		detail_role.text = ""
-		detail_desc.text = "左側のアイテムリストからホバーまたはクリックすると、ここに詳細な効果が表示されます。"
+		detail_desc.text = "左側のアイテムリストからクリックすると、ここに詳細な効果が表示されます。"
+		selected_item_to_equip = ""
+		if equip_btn:
+			equip_btn.visible = false
 		return
 		
 	# Update Icon
@@ -443,6 +465,13 @@ func update_detail_panel(item_id: String) -> void:
 	
 	# Update Description
 	detail_desc.text = item["description"]
+
+	# Update equip button state
+	selected_item_to_equip = item_id
+	if equip_btn:
+		equip_btn.visible = true
+		equip_btn.text = "このアイテムを装備"
+
 
 func _on_slot_clicked(slot_num: int) -> void:
 	if select_modal.visible:
@@ -472,6 +501,7 @@ func populate_select_list(filter_text: String = "", filter_role_id: int = 0) -> 
 	for child in select_grid.get_children():
 		child.queue_free()
 		
+	var items_to_show = []
 	for item_id in Global.unlocked_items:
 		var item = CardData.ITEMS.get(item_id, {})
 		if item.is_empty():
@@ -482,7 +512,6 @@ func populate_select_list(filter_text: String = "", filter_role_id: int = 0) -> 
 			continue
 			
 		# Role type filter
-		# filter_role_id: 0="すべての系統", 1="守り", 2="押し", 3="ブラフ", 4="仕込み"
 		if filter_role_id > 0:
 			var role_map = {
 				1: CardData.ROLE_DEFENSE,
@@ -493,14 +522,50 @@ func populate_select_list(filter_text: String = "", filter_role_id: int = 0) -> 
 			var target_role = role_map.get(filter_role_id, "")
 			if item["role"] != target_role:
 				continue
+		items_to_show.append(item)
+		
+	# Sort items:
+	# 1. Currently equipped in active_slot_idx first
+	# 2. Then by role order (defense -> push -> bluff -> prep)
+	# 3. Then by item ID
+	var role_order = {
+		CardData.ROLE_DEFENSE: 0,
+		CardData.ROLE_PUSH: 1,
+		CardData.ROLE_BLUFF: 2,
+		CardData.ROLE_PREP: 3
+	}
+	var current_equipped_id = Global.current_deck.get(active_slot_idx, "")
+	
+	items_to_show.sort_custom(func(a, b):
+		var a_equipped = (a["id"] == current_equipped_id)
+		var b_equipped = (b["id"] == current_equipped_id)
+		if a_equipped != b_equipped:
+			return a_equipped # true (equipped) comes first
 			
+		var a_role_priority = role_order.get(a["role"], 99)
+		var b_role_priority = role_order.get(b["role"], 99)
+		if a_role_priority != b_role_priority:
+			return a_role_priority < b_role_priority
+			
+		return a["id"] < b["id"]
+	)
+	
+	for item in items_to_show:
+		var item_id = item["id"]
+		var is_currently_equipped = (item_id == current_equipped_id)
+		
 		var item_btn = Button.new()
 		item_btn.text = ""
 		item_btn.custom_minimum_size = Vector2(210, 85)
 		
 		# Role colors on border
 		var btn_style = StyleBoxFlat.new()
-		btn_style.bg_color = DeskTheme.COLOR_CRAFT
+		# Highlight background if currently equipped
+		if is_currently_equipped:
+			btn_style.bg_color = Color("f0eada") # Distinct background color for equipped item
+		else:
+			btn_style.bg_color = DeskTheme.COLOR_CRAFT
+			
 		btn_style.border_color = CardData.get_role_color(item["role"])
 		btn_style.border_width_left = 3
 		btn_style.border_width_right = 3
@@ -511,6 +576,13 @@ func populate_select_list(filter_text: String = "", filter_role_id: int = 0) -> 
 		btn_style.corner_radius_bottom_left = 4
 		btn_style.corner_radius_bottom_right = 4
 		
+		# Give equipped a slightly thicker border or different border color to stand out
+		if is_currently_equipped:
+			btn_style.border_width_left = 5
+			btn_style.border_width_right = 5
+			btn_style.border_width_top = 5
+			btn_style.border_width_bottom = 5
+		
 		var btn_hover = btn_style.duplicate() as StyleBoxFlat
 		btn_hover.bg_color = Color("e5dec9") # slightly darker craft
 		
@@ -519,18 +591,25 @@ func populate_select_list(filter_text: String = "", filter_role_id: int = 0) -> 
 		item_btn.add_theme_stylebox_override("pressed", btn_hover)
 		item_btn.add_theme_stylebox_override("focus", btn_style)
 		
+		# VBox inside button to handle item content and "Equipped" badge
+		var btn_vbox = VBoxContainer.new()
+		btn_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		btn_vbox.add_theme_constant_override("separation", 2)
+		btn_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		btn_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		item_btn.add_child(btn_vbox)
+		
 		var btn_hbox = HBoxContainer.new()
 		btn_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 		btn_hbox.add_theme_constant_override("separation", 10)
-		btn_hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		btn_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		item_btn.add_child(btn_hbox)
+		btn_vbox.add_child(btn_hbox)
 		
 		var img_path = CardData.get_item_image_path(item_id)
 		if img_path != "":
 			var icon_rect = TextureRect.new()
 			icon_rect.texture = load(img_path)
-			icon_rect.custom_minimum_size = Vector2(48, 48)
+			icon_rect.custom_minimum_size = Vector2(40, 40)
 			icon_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			btn_hbox.add_child(icon_rect)
@@ -542,9 +621,17 @@ func populate_select_list(filter_text: String = "", filter_role_id: int = 0) -> 
 		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		btn_hbox.add_child(name_lbl)
 		
-		# Connect hover interactions to update the detail panel
+		if is_currently_equipped:
+			var eq_lbl = Label.new()
+			eq_lbl.text = "[ 装備中 ]"
+			eq_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			eq_lbl.add_theme_font_override("font", DeskTheme.get_font())
+			eq_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
+			eq_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
+			btn_vbox.add_child(eq_lbl)
+		
+		# Connect hover interactions
 		item_btn.mouse_entered.connect(func():
-			update_detail_panel(item_id)
 			DeskTheme.animate_hover(item_btn, true, Vector2.ONE, 0.12)
 		)
 		item_btn.mouse_exited.connect(func():
@@ -554,7 +641,7 @@ func populate_select_list(filter_text: String = "", filter_role_id: int = 0) -> 
 		item_btn.pressed.connect(func():
 			item_btn.release_focus()
 			DeskTheme.animate_click(item_btn, Vector2.ONE, 0.08)
-			_on_item_selected(item_id)
+			update_detail_panel(item_id)
 		)
 		select_grid.add_child(item_btn)
 
@@ -619,13 +706,13 @@ func _create_preset_ui(parent: Node) -> void:
 	parent.add_child(preset_panel)
 	
 	var main_vbox = VBoxContainer.new()
-	main_vbox.add_theme_constant_override("separation", 12)
+	main_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_SMALL) # 12 -> 20
 	preset_panel.add_child(main_vbox)
 	
 	# 上段: 切り替えタブ (HBoxContainer)
 	var tabs_hbox = HBoxContainer.new()
 	tabs_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	tabs_hbox.add_theme_constant_override("separation", 15)
+	tabs_hbox.add_theme_constant_override("separation", DeskTheme.MARGIN_SMALL) # 15 -> 20
 	main_vbox.add_child(tabs_hbox)
 	
 	var label = Label.new()

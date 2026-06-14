@@ -435,7 +435,7 @@ static func build_odds_modal(scene: GachaScene) -> void:
 	panel.position = viewport_size * 0.5 - panel.pivot_offset
 	
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 20)
+	vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_DEFAULT) # 20 -> 30
 	panel.add_child(vbox)
 	
 	var title = Label.new()
@@ -447,12 +447,12 @@ static func build_odds_modal(scene: GachaScene) -> void:
 	vbox.add_child(title)
 	
 	var scroll = ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(460, 320)
+	scroll.custom_minimum_size = Vector2(440, 320) # 460 -> 440 to avoid border cluttering
 	vbox.add_child(scroll)
 	
 	var items_vbox = VBoxContainer.new()
 	items_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	items_vbox.add_theme_constant_override("separation", 8)
+	items_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_TINY) # 8 -> 15
 	scroll.add_child(items_vbox)
 	
 	var total_weight = 0

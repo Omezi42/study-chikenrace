@@ -24,7 +24,7 @@ class StickyNoteEffect extends ItemEffect:
 class EraserEffect extends ItemEffect:
 	func execute(phase: Control, deck: StudyDeck, card: Dictionary) -> void:
 		deck.eraser_charges = 1
-		show_item_toast(phase, "item_eraser", "消しゴムの効果！次の一枚のみ眠気回避（被り無効化）！")
+		show_item_toast(phase, "item_eraser", "消しゴムの効果！次に被ったカードを山札に戻して引き直す！")
 
 # 3. 定規
 class RulerEffect extends ItemEffect:
@@ -109,12 +109,12 @@ class CompassEffect extends ItemEffect:
 			for idx in indices:
 				idx_strs.append(str(idx) + "枚目")
 			var show_limit = min(3, idx_strs.size())
-			var msg = "コンパスの効果！山札の上から " + ", ".join(idx_strs.slice(0, show_limit)) + " に被り札を探知！"
+			var msg = "コンパスの効果！山札の上から " + ", ".join(idx_strs.slice(0, show_limit)) + " にコンパスカードを探知！"
 			if indices.size() > 3:
 				msg += " (他 %d 枚)" % (indices.size() - 3)
 			show_item_toast(phase, "item_compass", msg)
 		else:
-			show_item_toast(phase, "item_compass", "コンパスの効果！山札に被りカードはありません！")
+			show_item_toast(phase, "item_compass", "コンパスの効果！山札にコンパスカードはありません！")
 
 # 13. エナジードリンク
 class EnergyDrinkEffect extends ItemEffect:
@@ -131,7 +131,7 @@ class EnergyDrinkEffect extends ItemEffect:
 class RedSheetEffect extends ItemEffect:
 	func execute(phase: Control, deck: StudyDeck, card: Dictionary) -> void:
 		deck.red_sheet_active = true
-		show_item_toast(phase, "item_red_sheet", "赤シートの効果！バースト札を一度だけ自動で捨てる！")
+		show_item_toast(phase, "item_red_sheet", "赤シートの効果！次に被ったカードをバーストせずにそのまま引く！")
 
 # 15. 分厚い参考書
 class ThickBookEffect extends ItemEffect:

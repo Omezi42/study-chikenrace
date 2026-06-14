@@ -3,6 +3,7 @@ extends Control
 
 # UI Elements
 var start_btn: Button
+var quick_start_btn: Button
 var loadout_btn: Button
 var zukan_btn: Button
 var gacha_btn: Button
@@ -44,7 +45,7 @@ func _ready() -> void:
 	
 	var center_vbox = VBoxContainer.new()
 	center_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	center_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_LARGE)
+	center_vbox.add_theme_constant_override("separation", 48) # 35 -> 48
 	center_container.add_child(center_vbox)
 	
 	# Title Logo Container (Larger & Static)
@@ -117,22 +118,27 @@ func _ready() -> void:
 	# Buttons VBox
 	var btn_vbox = VBoxContainer.new()
 	btn_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	btn_vbox.add_theme_constant_override("separation", DeskTheme.FONT_SIZE_SMALL)
+	btn_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_DEFAULT) # 18 -> 30
 	center_vbox.add_child(btn_vbox)
 	
-	start_btn = _create_menu_button("ゲーム開始", Vector2(360, 70), DeskTheme.FONT_SIZE_LARGE)
-	start_btn.pivot_offset = Vector2(180, 35)
+	quick_start_btn = _create_quick_start_button("今すぐ遊ぶ (3分)", Vector2(360, 75), DeskTheme.FONT_SIZE_LARGE)
+	quick_start_btn.pivot_offset = Vector2(180, 37.5)
+	quick_start_btn.pressed.connect(_on_quick_start_pressed)
+	btn_vbox.add_child(quick_start_btn)
+	
+	# Loop scale animation for Quick Start Button
+	var quick_tween = create_tween().set_loops().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	quick_tween.tween_property(quick_start_btn, "scale", Vector2(1.06, 1.06), 0.5)
+	quick_tween.tween_property(quick_start_btn, "scale", Vector2.ONE, 0.5)
+	
+	start_btn = _create_menu_button("モード選択", Vector2(360, 60), DeskTheme.FONT_SIZE_NORMAL)
+	start_btn.pivot_offset = Vector2(180, 30)
 	start_btn.pressed.connect(_on_start_pressed)
 	btn_vbox.add_child(start_btn)
 	
-	# Loop scale animation for Start Button
-	var start_tween = create_tween().set_loops().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	start_tween.tween_property(start_btn, "scale", Vector2(1.05, 1.05), 0.6)
-	start_tween.tween_property(start_btn, "scale", Vector2.ONE, 0.6)
-	
 	var row_hbox = HBoxContainer.new()
 	row_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	row_hbox.add_theme_constant_override("separation", DeskTheme.MARGIN_SMALL)
+	row_hbox.add_theme_constant_override("separation", DeskTheme.MARGIN_DEFAULT) # SMALL -> DEFAULT
 	btn_vbox.add_child(row_hbox)
 	
 	loadout_btn = _create_menu_button("デッキ編成", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
@@ -149,7 +155,7 @@ func _ready() -> void:
 	
 	var row_hbox2 = HBoxContainer.new()
 	row_hbox2.alignment = BoxContainer.ALIGNMENT_CENTER
-	row_hbox2.add_theme_constant_override("separation", DeskTheme.MARGIN_SMALL)
+	row_hbox2.add_theme_constant_override("separation", DeskTheme.MARGIN_DEFAULT) # SMALL -> DEFAULT
 	btn_vbox.add_child(row_hbox2)
 	
 	tutorial_btn = _create_menu_button("あそびかた", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
@@ -213,6 +219,35 @@ func start_bgm() -> void:
 	bgm_started = true
 	if has_node("/root/AudioManager"):
 		get_node("/root/AudioManager").play_bgm(AudioManager.BGM_MAIN)
+
+func _on_quick_start_pressed() -> void:
+	if is_transitioning:
+		return
+	is_transitioning = true
+	DeskTheme.animate_click(quick_start_btn, Vector2.ONE, 0.08)
+	
+	# Default player name if not entered
+	if Global.player_name == "":
+		Global.player_name = "プレイヤー"
+		
+	# Overnight cram study mode setup (3-minute gameplay)
+	Global.game_mode = Constants.MODE_OVERNIGHT
+	Global.opponent_profiles = {
+		"cpu_sato": {"name": "佐藤くん", "deviation": 51.5},
+		"cpu_suzuki": {"name": "鈴木さん", "deviation": 48.0},
+		"cpu_takahashi": {"name": "高橋くん", "deviation": 54.2}
+	}
+	
+	# If tutorial is not completed, force tutorial mode
+	if not PlayerState.is_tutorial_completed:
+		Global.is_tutorial_mode = true
+	else:
+		Global.is_tutorial_mode = false
+		
+	var timer = get_tree().create_timer(0.2)
+	timer.timeout.connect(func():
+		Global.change_scene_with_fade(get_tree(), "res://Main.tscn")
+	)
 
 func _on_start_pressed() -> void:
 	if is_transitioning:
@@ -338,6 +373,65 @@ func _create_menu_button(btn_text: String, min_size: Vector2, font_size: int) ->
 	btn.add_child(lbl)
 	
 	# Connect micro-animations
+	btn.mouse_entered.connect(func():
+		DeskTheme.animate_hover(btn, true, Vector2.ONE, 0.12)
+	)
+	btn.mouse_exited.connect(func():
+		DeskTheme.animate_hover(btn, false, Vector2.ONE, 0.12)
+	)
+	btn.pressed.connect(func():
+		btn.release_focus()
+	)
+	
+	return btn
+
+func _create_quick_start_button(btn_text: String, min_size: Vector2, font_size: int) -> Button:
+	var btn = Button.new()
+	btn.custom_minimum_size = min_size
+	
+	var style_normal = StyleBoxFlat.new()
+	style_normal.bg_color = DeskTheme.COLOR_HIGHLIGHTER
+	style_normal.border_color = DeskTheme.COLOR_INK
+	style_normal.border_width_left = 3
+	style_normal.border_width_right = 3
+	style_normal.border_width_top = 3
+	style_normal.border_width_bottom = 3
+	style_normal.corner_radius_top_left = 8
+	style_normal.corner_radius_top_right = 8
+	style_normal.corner_radius_bottom_left = 8
+	style_normal.corner_radius_bottom_right = 8
+	style_normal.shadow_color = Color(0.12, 0.08, 0.05, 0.3)
+	style_normal.shadow_size = 5
+	style_normal.shadow_offset = Vector2(3, 3)
+	
+	var style_hover = style_normal.duplicate() as StyleBoxFlat
+	style_hover.bg_color = Color("ffffa1")
+	style_hover.shadow_size = 7
+	style_hover.shadow_offset = Vector2(4, 4)
+	
+	var style_pressed = style_normal.duplicate() as StyleBoxFlat
+	style_pressed.bg_color = Color("eedc66")
+	style_pressed.shadow_size = 1
+	style_pressed.shadow_offset = Vector2(1, 1)
+	
+	var style_focus = StyleBoxEmpty.new()
+	
+	btn.add_theme_stylebox_override("normal", style_normal)
+	btn.add_theme_stylebox_override("hover", style_hover)
+	btn.add_theme_stylebox_override("pressed", style_pressed)
+	btn.add_theme_stylebox_override("focus", style_focus)
+	
+	var lbl = Label.new()
+	lbl.text = btn_text
+	lbl.add_theme_font_override("font", DeskTheme.get_font())
+	lbl.add_theme_font_size_override("font_size", font_size)
+	lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.add_child(lbl)
+	
 	btn.mouse_entered.connect(func():
 		DeskTheme.animate_hover(btn, true, Vector2.ONE, 0.12)
 	)

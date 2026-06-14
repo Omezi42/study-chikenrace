@@ -98,42 +98,41 @@ func shuffle_draw_pile() -> void:
 		draw_pile[j] = temp
 
 # Draw the top card
-func draw_card(max_depth: int = 5) -> Dictionary:
-	if max_depth <= 0:
-		return {} # Recursion guard
-		
-	if draw_pile.size() == 0:
-		if discard_pile.size() > 0:
-			# Recycle discard pile
-			draw_pile = discard_pile.duplicate()
-			discard_pile.clear()
-			shuffle_draw_pile()
-		else:
-			return {} # No cards available
-
-	var original_card = draw_pile.pop_back()
-	var card = original_card.duplicate()
+func draw_card() -> Dictionary:
+	var original_card: Dictionary = {}
+	var card: Dictionary = {}
 	
-	# Apply Red Sheet (赤シート) effect if active
-	# Safe draw: if card causes a burst, discard it and draw another (one time)
-	if red_sheet_active and would_card_burst(card):
-		red_sheet_active = false
-		if not "item_red_sheet" in activated_items:
-			activated_items.append("item_red_sheet")
-		discard_pile.append(original_card)
-		return draw_card(max_depth - 1) # Recursive draw
+	while true:
+		if draw_pile.size() == 0:
+			if discard_pile.size() > 0:
+				# Recycle discard pile
+				draw_pile = discard_pile.duplicate()
+				discard_pile.clear()
+				shuffle_draw_pile()
+			else:
+				return {} # No cards available
+
+		original_card = draw_pile.pop_back()
+		card = original_card.duplicate()
 		
-	# Apply Eraser (消しゴム) charges
-	if would_card_burst(card) and eraser_charges > 0:
-		eraser_charges = 0
-		if not "item_eraser" in activated_items:
-			activated_items.append("item_eraser")
-		# Put back to draw pile, shuffle, and draw again
-		draw_pile.append(original_card)
-		shuffle_draw_pile()
-		return draw_card(max_depth - 1)
-	elif eraser_charges > 0:
-		eraser_charges = 0
+		# Apply Red Sheet (赤シート) effect if active
+		if red_sheet_active and would_card_burst(card):
+			red_sheet_active = false
+			if not "item_red_sheet" in activated_items:
+				activated_items.append("item_red_sheet")
+			card["red_sheet_exempt"] = true
+			
+		# Apply Eraser (消しゴム) charges
+		if would_card_burst(card) and eraser_charges > 0:
+			eraser_charges -= 1
+			if not "item_eraser" in activated_items:
+				activated_items.append("item_eraser")
+			# Put back to draw pile, shuffle, and draw again
+			draw_pile.append(original_card)
+			shuffle_draw_pile()
+			continue
+			
+		break
 		
 	# Apply Mech Pencil (シャーペン) points bonus (+3 points to next drawn cards)
 	if next_draw_bonus_points > 0:
@@ -155,6 +154,8 @@ func would_card_burst(card: Dictionary) -> bool:
 	if card.get("value", 0) == 0:
 		return false
 	for c in hand:
+		if c.get("red_sheet_exempt", false):
+			continue
 		if c["value"] == card["value"]:
 			return true
 	return false
@@ -163,6 +164,8 @@ func would_card_burst(card: Dictionary) -> bool:
 func check_burst() -> bool:
 	var values = []
 	for card in hand:
+		if card.get("red_sheet_exempt", false):
+			continue
 		var val = card.get("value", 0)
 		if val == 0:
 			continue
@@ -179,6 +182,8 @@ func get_burst_probability() -> float:
 	# Calculate how many cards in the draw/discard piles would cause a burst
 	var hand_values = []
 	for card in hand:
+		if card.get("red_sheet_exempt", false):
+			continue
 		hand_values.append(card["value"])
 		
 	var total_cards = draw_pile.size() + discard_pile.size()
@@ -331,24 +336,24 @@ func activate_memo_app_discard(hand_idx: int) -> Dictionary:
 	return {}
 
 func activate_compass() -> int:
+	var count = 0
 	var hand_values = []
 	for c in hand:
-		hand_values.append(c["value"])
-	var count = 0
+		hand_values.append(c.get("value"))
 	for c in draw_pile:
-		if c["value"] in hand_values:
+		if c.get("value") in hand_values:
 			count += 1
 	return count
 
 func activate_compass_indices() -> Array[int]:
+	var indices: Array[int] = []
 	var hand_values = []
 	for c in hand:
-		hand_values.append(c["value"])
-	var indices: Array[int] = []
+		hand_values.append(c.get("value"))
 	var n = draw_pile.size()
 	for i in range(n):
 		var card = draw_pile[n - 1 - i]
-		if card["value"] in hand_values:
+		if card.get("value") in hand_values:
 			indices.append(i + 1)
 	return indices
 

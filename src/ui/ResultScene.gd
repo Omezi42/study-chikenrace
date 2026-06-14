@@ -11,6 +11,7 @@ var report_left_page: VBoxContainer
 var report_right_page: VBoxContainer
 var share_btn: Button
 var restart_btn: Button
+var play_again_btn: Button
 var skip_btn: Button
 var root_layer: Control
 var board_frame: ColorRect
@@ -611,7 +612,7 @@ func trigger_report_card() -> void:
 	s_tween.tween_interval(0.4)
 	
 	s_tween.tween_property(stamp_panel, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	s_tween.parallel().tween_property(stamp_panel, "modulate.a", 1.0, 0.2)
+	s_tween.parallel().tween_property(stamp_panel, "modulate:a", 1.0, 0.2)
 	
 	s_tween.tween_callback(func():
 		DeskTheme.shake_control(stamp_panel, 8.0, 0.25)
@@ -741,16 +742,25 @@ func trigger_report_card() -> void:
 	
 	share_btn = Button.new()
 	share_btn.text = "Xでシェア"
-	share_btn.custom_minimum_size = Vector2(260, 65)
+	share_btn.custom_minimum_size = Vector2(240, 65)
 	share_btn.add_theme_font_override("font", DeskTheme.get_font())
 	share_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	Global.apply_white_button_style(share_btn)
 	share_btn.pressed.connect(_on_share_pressed)
 	act_hbox.add_child(share_btn)
 	
+	play_again_btn = Button.new()
+	play_again_btn.text = "もう1回遊ぶ"
+	play_again_btn.custom_minimum_size = Vector2(240, 65)
+	play_again_btn.add_theme_font_override("font", DeskTheme.get_font())
+	play_again_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
+	Global.apply_white_button_style(play_again_btn)
+	play_again_btn.pressed.connect(_on_play_again_pressed)
+	act_hbox.add_child(play_again_btn)
+	
 	restart_btn = Button.new()
 	restart_btn.text = "タイトルへ"
-	restart_btn.custom_minimum_size = Vector2(260, 65)
+	restart_btn.custom_minimum_size = Vector2(240, 65)
 	restart_btn.add_theme_font_override("font", DeskTheme.get_font())
 	restart_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	Global.apply_white_button_style(restart_btn)
@@ -785,6 +795,21 @@ func _on_restart_pressed() -> void:
 	var timer = get_tree().create_timer(0.2)
 	timer.timeout.connect(func():
 		Global.change_scene_with_fade(get_tree(), "res://Title.tscn")
+	)
+
+func _on_play_again_pressed() -> void:
+	if play_again_btn.disabled:
+		return
+	play_again_btn.disabled = true
+	play_again_btn.release_focus()
+	DeskTheme.animate_click(play_again_btn, Vector2.ONE, 0.08)
+	
+	# Clear active results in global
+	Global.set("active_showdown_results", {})
+	
+	var timer = get_tree().create_timer(0.2)
+	timer.timeout.connect(func():
+		Global.change_scene_with_fade(get_tree(), "res://Main.tscn")
 	)
 
 func _calculate_deviation() -> void:
@@ -824,8 +849,9 @@ func _calculate_deviation() -> void:
 		Global.save_game()
 		
 		# サーバーへのスコア/レートアップロード
-		if has_node("/root/BackendManager"):
-			var bm = get_node("/root/BackendManager")
+		var root = Engine.get_main_loop().root
+		if root and root.has_node("BackendManager"):
+			var bm = root.get_node("BackendManager")
 			bm.upload_random_match_result(
 				showdown_data.get("final_scores", {}).get("player", 0),
 				showdown_data.get("my_rank", 3),

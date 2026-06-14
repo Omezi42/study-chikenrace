@@ -61,6 +61,9 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 	var cpu_type = cpu_info["type"]
 	var deck_config = cpu_info["deck"]
 	
+	if Global and (Global.game_mode == Constants.MODE_CRAM or Global.game_mode == Constants.MODE_OVERNIGHT):
+		deck_config = Global.get_cram_season_deck()
+	
 	var deck = StudyDeck.new()
 	deck.initialize_deck(deck_config)
 	deck.shuffle_draw_pile()
@@ -124,9 +127,12 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 		
 		var draw_count = 0
 		var bursted = false
+		var max_burst_prob = 0.0
 		
 		while true:
 			var burst_prob = deck.get_burst_probability()
+			if burst_prob > max_burst_prob:
+				max_burst_prob = burst_prob
 			
 			if "item_cafe_latte" in deck_config.values() and not "item_cafe_latte" in used_items:
 				if burst_prob >= 0.4 and randf() < 0.75:
@@ -173,6 +179,11 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 			
 		# Merge potential_items and deck.activated_items
 		if deck.hand.size() > 0:
+			var hand_item_ids = []
+			for card in deck.hand:
+				if card.has("item_id"):
+					hand_item_ids.append(card["item_id"])
+					
 			for item in potential_items:
 				if not item in used_items:
 					if item == "item_eraser" and not "item_eraser" in deck.activated_items:
@@ -181,6 +192,12 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 						continue
 					if item == "item_amulet":
 						continue
+					
+					# Passives are allowed, but draw-activated items must be in hand
+					var is_passive = item in ["item_cushion", "item_earplugs", "item_study_chat", "item_cheat_sheet", "item_copy_answer", "item_night_note"]
+					if not is_passive and not item in hand_item_ids:
+						continue
+						
 					used_items.append(item)
 			
 			for item in deck.activated_items:
@@ -191,7 +208,8 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 			"draws": deck.hand.size(),
 			"used_items": used_items,
 			"bursted": bursted,
-			"score": period_score
+			"score": period_score,
+			"reaction": CardData.get_reaction_text(max_burst_prob)
 		})
 		
 		total_actual_score += period_score

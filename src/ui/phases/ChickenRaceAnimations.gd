@@ -224,3 +224,101 @@ static func show_peek_sticky(phase: ChickenRacePhase, peeked: Array) -> void:
 	tween.tween_property(active_peek_sticky, "scale", Vector2.ONE, 0.3 / phase.speed_mult)
 	
 	phase.active_peek_sticky = active_peek_sticky
+
+static func update_compass_sticky(phase: ChickenRacePhase) -> void:
+	var deck = phase.session.player_deck
+	if not deck.compass_active:
+		if phase.active_compass_sticky:
+			phase.active_compass_sticky.queue_free()
+			phase.active_compass_sticky = null
+		return
+
+	if not phase.active_compass_sticky:
+		var active_compass_sticky = PanelContainer.new()
+		active_compass_sticky.custom_minimum_size = Vector2(280, 150)
+		active_compass_sticky.pivot_offset = Vector2(140, 75)
+		active_compass_sticky.rotation_degrees = -2.0
+		
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color("e0f7fa") # 明るい水色系
+		style.border_color = DeskTheme.COLOR_ROLE_PREP
+		style.border_width_left = 2
+		style.border_width_right = 2
+		style.border_width_top = 2
+		style.border_width_bottom = 2
+		style.corner_radius_top_left = 4
+		style.corner_radius_top_right = 4
+		style.corner_radius_bottom_left = 4
+		style.corner_radius_bottom_right = 4
+		style.shadow_color = Color(0, 0, 0, 0.15)
+		style.shadow_size = 6
+		style.shadow_offset = Vector2(3, 3)
+		active_compass_sticky.add_theme_stylebox_override("panel", style)
+		
+		phase.add_child(active_compass_sticky)
+		var sticky_viewport_size = phase.get_viewport_rect().size
+		active_compass_sticky.position = Vector2(
+			max(sticky_viewport_size.x - active_compass_sticky.custom_minimum_size.x - 40.0, 0.0),
+			max(sticky_viewport_size.y - active_compass_sticky.custom_minimum_size.y - 60.0, 0.0)
+		)
+		
+		var margin = MarginContainer.new()
+		margin.add_theme_constant_override("margin_left", 12)
+		margin.add_theme_constant_override("margin_right", 12)
+		margin.add_theme_constant_override("margin_top", 12)
+		margin.add_theme_constant_override("margin_bottom", 12)
+		active_compass_sticky.add_child(margin)
+		
+		var vbox = VBoxContainer.new()
+		vbox.add_theme_constant_override("separation", 6)
+		margin.add_child(vbox)
+		
+		var title = Label.new()
+		title.text = "コンパスの探知メモ"
+		title.add_theme_font_override("font", DeskTheme.get_font())
+		title.add_theme_font_size_override("font_size", 16)
+		title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+		vbox.add_child(title)
+		
+		var list_vbox = VBoxContainer.new()
+		list_vbox.name = "ListVBox"
+		list_vbox.add_theme_constant_override("separation", 3)
+		vbox.add_child(list_vbox)
+		
+		phase.active_compass_sticky = active_compass_sticky
+		phase.set_mouse_filter_recursive(active_compass_sticky, Control.MOUSE_FILTER_IGNORE)
+		
+		# 出現演出
+		active_compass_sticky.scale = Vector2(0.5, 0.5)
+		var tween_appear = phase.create_tween().bind_node(active_compass_sticky).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween_appear.tween_property(active_compass_sticky, "scale", Vector2.ONE, 0.3 / phase.speed_mult)
+
+	# 更新
+	var list_vbox = phase.active_compass_sticky.find_child("ListVBox", true, false)
+	if list_vbox:
+		for child in list_vbox.get_children():
+			child.queue_free()
+			
+		var indices = deck.activate_compass_indices()
+		
+		var desc_lbl = Label.new()
+		desc_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		desc_lbl.add_theme_font_size_override("font_size", 14)
+		desc_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+		
+		if indices.size() > 0:
+			desc_lbl.text = "山札に眠る「コンパス」の位置："
+			list_vbox.add_child(desc_lbl)
+			
+			var idx_lbl = Label.new()
+			idx_lbl.add_theme_font_override("font", DeskTheme.get_font())
+			idx_lbl.add_theme_font_size_override("font_size", 15)
+			idx_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_ROLE_PREP)
+			var idx_strs = []
+			for idx in indices:
+				idx_strs.append("・上から %d 枚目" % idx)
+			idx_lbl.text = "\n".join(idx_strs)
+			list_vbox.add_child(idx_lbl)
+		else:
+			desc_lbl.text = "探知結果：\n山札に「コンパス」カードは\nありません。"
+			list_vbox.add_child(desc_lbl)

@@ -92,12 +92,22 @@ func _get_available_request() -> HTTPRequest:
 	for req in _http_pool:
 		if req.get_http_client_status() == HTTPClient.STATUS_DISCONNECTED:
 			return req
-	var fallback = HTTPRequest.new()
-	add_child(fallback)
-	fallback.request_completed.connect(_on_pool_request_completed.bind(fallback))
-	_http_pool.append(fallback)
-	push_warning("[BackendManager] HTTP pool exhausted, growing pool to %d." % _http_pool.size())
-	return fallback
+			
+	const MAX_POOL_SIZE = 24
+	if _http_pool.size() < MAX_POOL_SIZE:
+		var fallback = HTTPRequest.new()
+		add_child(fallback)
+		fallback.request_completed.connect(_on_pool_request_completed.bind(fallback))
+		_http_pool.append(fallback)
+		push_warning("[BackendManager] HTTP pool exhausted, growing pool to %d." % _http_pool.size())
+		return fallback
+	else:
+		push_error("[BackendManager] HTTP pool limit reached (%d). Force reusing oldest active request." % MAX_POOL_SIZE)
+		var oldest_req = _http_pool[0]
+		oldest_req.cancel()
+		if _pool_callbacks.has(oldest_req):
+			_pool_callbacks.erase(oldest_req)
+		return oldest_req
 
 func _on_pool_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray, req: HTTPRequest) -> void:
 	if _pool_callbacks.has(req):

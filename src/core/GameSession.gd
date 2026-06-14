@@ -53,6 +53,9 @@ func start_session(deck_config: Dictionary) -> void:
 	if Global.game_mode == Constants.MODE_CRAM:
 		current_day = max(Global.daily_current_day, 1)
 		max_hours_today = 1
+	elif Global.game_mode == Constants.MODE_OVERNIGHT:
+		current_day = 1
+		max_hours_today = 3
 		for d in range(1, current_day + 1):
 			match_history[d] = {}
 			var day_str = str(d)
@@ -100,13 +103,14 @@ func simulate_cpus_for_day(day_idx: int) -> void:
 			"emote": cpu_emote
 		}
 
-func add_player_hour_result(draws: int, used_items: Array, bursted: bool, score: int) -> void:
+func add_player_hour_result(draws: int, used_items: Array, bursted: bool, score: int, reaction: String = "") -> void:
 	# used_items はString配列だが呼び出し元からVariant Arrayが渡される可能性を考慮しキャストを避けるか、安全に扱う
 	player_hours_history_today.append({
 		"draws": draws,
 		"used_items": used_items,
 		"bursted": bursted,
-		"score": score
+		"score": score,
+		"reaction": reaction
 	})
 	player_actual_score_today += score
 
@@ -162,6 +166,25 @@ func _finalize_day_data() -> void:
 		if day_data.has(target_id) and day_data[target_id] is Dictionary:
 			day_data[target_id]["doubts_received"].append("player")
 
+	# Pre-calculate auto-exposure and doubt exposure for deterministic results
+	for p_id in day_data.keys():
+		var p = day_data[p_id]
+		if not (p is Dictionary):
+			continue
+		var is_liar = p.get("declared_score", 0) > p.get("actual_score", 0)
+		var exposed_by_doubt = p.get("doubts_received", []).size() > 0 and is_liar
+		if exposed_by_doubt:
+			p["is_doubt_exposed"] = true
+
+		var auto_exposed = false
+		if is_liar and not p.get("is_doubt_exposed", false):
+			var bluff_amount = int(p.get("declared_score", 0)) - int(p.get("actual_score", 0))
+			var exposure_chance = ScoreEvaluator.get_auto_exposure_chance(bluff_amount)
+			if randf() < exposure_chance:
+				auto_exposed = true
+				p["auto_exposed"] = true
+				p["is_doubt_exposed"] = true
+
 	for hour in player_hours_history_today:
 		for item in hour.get("used_items", []):
 			Global.add_item_usage(str(item), 1)
@@ -171,7 +194,7 @@ func _save_and_upload_day() -> void:
 		return
 	var day_data: Dictionary = match_history[current_day]
 
-	if Global.game_mode == Constants.MODE_CRAM:
+	if Global.game_mode == Constants.MODE_CRAM or Global.game_mode == Constants.MODE_OVERNIGHT:
 		Global.daily_my_records[str(current_day)] = Global.normalize_participant_record(day_data.get("player", {}), "player", Global.player_name)
 		Global.daily_last_played_date = Time.get_date_string_from_system()
 
@@ -212,7 +235,7 @@ func _reset_daily_variables() -> void:
 	player_doubts_made_today.clear()
 	player_emote_today = "normal"
 
-	if Global.game_mode == Constants.MODE_CRAM:
+	if Global.game_mode == Constants.MODE_CRAM or Global.game_mode == Constants.MODE_OVERNIGHT:
 		Global.daily_current_day = current_day
 	elif Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
 		Global.friend_current_day = current_day
@@ -229,7 +252,7 @@ func _calculate_max_hours() -> void:
 			break
 
 func _prepare_opponents_for_day(day_idx: int) -> void:
-	if Global.game_mode == Constants.MODE_CRAM:
+	if Global.game_mode == Constants.MODE_CRAM or Global.game_mode == Constants.MODE_OVERNIGHT:
 		var next_day_str = str(day_idx)
 		if not Global.daily_opponent_ghosts.has(next_day_str):
 			var bm = _get_backend_manager()

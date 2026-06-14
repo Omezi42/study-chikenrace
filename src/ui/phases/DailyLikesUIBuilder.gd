@@ -60,13 +60,13 @@ static func build_layout(phase: DailyLikesPhase) -> void:
 	right_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_LARGE)
 	main_hbox.add_child(right_vbox)
 	
-	var detail_wrapper = CenterContainer.new()
+	var detail_wrapper = Control.new()
 	detail_wrapper.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail_wrapper.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	detail_wrapper.custom_minimum_size = Vector2(700, 380)
 	right_vbox.add_child(detail_wrapper)
 	
 	var detail_modal = PanelContainer.new()
-	detail_modal.custom_minimum_size = Vector2(720, 380)
+	detail_modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	detail_modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	detail_wrapper.add_child(detail_modal)
 	phase.detail_modal = detail_modal
@@ -86,7 +86,7 @@ static func build_layout(phase: DailyLikesPhase) -> void:
 	var detail_title = Label.new()
 	detail_title.text = "ライバル詳細ログ"
 	detail_title.add_theme_font_override("font", DeskTheme.get_font())
-	detail_title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_LARGE)
+	detail_title.add_theme_font_size_override("font_size", 24)
 	detail_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	detail_vbox.add_child(detail_title)
 	phase.detail_title = detail_title
@@ -95,7 +95,7 @@ static func build_layout(phase: DailyLikesPhase) -> void:
 	detail_body.text = "タイムラインの「詳細確認」を押すと、ライバルが今日引いたドロー数と使用したアイテムのログがここに表示されます。"
 	detail_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail_body.add_theme_font_override("font", DeskTheme.get_font())
-	detail_body.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
+	detail_body.add_theme_font_size_override("font_size", 18)
 	detail_body.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
 	detail_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_body.custom_minimum_size = Vector2(0, 80)
@@ -364,8 +364,10 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 		var hour_lbl = Label.new()
 		hour_lbl.text = " %d時限目 " % (h_idx + 1)
 		hour_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		hour_lbl.add_theme_font_size_override("font_size", 16)
+		hour_lbl.add_theme_font_size_override("font_size", 18)
 		hour_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+		hour_lbl.add_theme_constant_override("outline_size", 3)
+		hour_lbl.add_theme_color_override("font_outline_color", Color.WHITE)
 		
 		var hour_style = StyleBoxFlat.new()
 		hour_style.bg_color = Color(DeskTheme.COLOR_MAHOGANY, 0.08)
@@ -384,7 +386,7 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 		
 		var count_lbl = Label.new()
 		var count_text = "(%d枚ドロー)" % h["draws"]
-		var text_color = Color(DeskTheme.COLOR_INK, 0.6)
+		var text_color = Color(DeskTheme.COLOR_INK, 0.8) # Sightly higher contrast ink
 		var status_icon_tex: Texture = null
 		
 		if p["id"] == "player":
@@ -401,8 +403,10 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 				
 		count_lbl.text = count_text
 		count_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		count_lbl.add_theme_font_size_override("font_size", 16)
+		count_lbl.add_theme_font_size_override("font_size", 18)
 		count_lbl.add_theme_color_override("font_color", text_color)
+		count_lbl.add_theme_constant_override("outline_size", 3)
+		count_lbl.add_theme_color_override("font_outline_color", Color.WHITE)
 		
 		if status_icon_tex:
 			var stat_rect = TextureRect.new()
@@ -413,6 +417,16 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 			line1.add_child(stat_rect)
 			
 		line1.add_child(count_lbl)
+		
+		if h.has("reaction") and h["reaction"] != "":
+			var react_lbl = Label.new()
+			react_lbl.text = " [%s]" % h["reaction"]
+			react_lbl.add_theme_font_override("font", DeskTheme.get_font())
+			react_lbl.add_theme_font_size_override("font_size", 16)
+			react_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
+			react_lbl.add_theme_constant_override("outline_size", 2)
+			react_lbl.add_theme_color_override("font_outline_color", Color.WHITE)
+			line1.add_child(react_lbl)
 		
 		# 2行目: ドローしたカードと使用したアイテム (少しインデントを入れる)
 		var line2_margin = MarginContainer.new()
@@ -450,44 +464,47 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 			
 			cards_hbox.add_child(mini_card)
 			
-		if h["used_items"].size() > 0:
+		if h.has("used_items") and h["used_items"].size() > 0:
 			var items_hbox = HBoxContainer.new()
 			items_hbox.add_theme_constant_override("separation", 8)
 			line2.add_child(items_hbox)
 			
+			var shown_roles = []
 			for item_id in h["used_items"]:
+				if item_id == "item_sticky_note":
+					continue
 				var item = CardData.ITEMS.get(item_id, {"name": "不明", "role": CardData.ROLE_PREP})
-				var img_path = CardData.get_item_image_path(item_id)
-				var tex_rect = TextureRect.new()
-				tex_rect.custom_minimum_size = Vector2(32, 32)
-				tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-				tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				var role = item["role"]
+				if role in shown_roles:
+					continue
+				shown_roles.append(role)
 				
-				if img_path != "" and ResourceLoader.exists(img_path):
-					tex_rect.texture = load(img_path)
-					
-				var role_name = CardData.get_role_name(item["role"])
-				tex_rect.tooltip_text = "【%s】(%s)\n%s" % [item["name"], role_name, item.get("description", "")]
+				var role_name = CardData.get_role_name(role)
+				var label = Label.new()
+				label.text = " %s系 " % role_name
+				label.add_theme_font_override("font", DeskTheme.get_font())
+				label.add_theme_font_size_override("font_size", 12)
+				label.add_theme_color_override("font_color", Color.WHITE)
 				
 				var badge = PanelContainer.new()
 				var b_style = StyleBoxFlat.new()
-				b_style.bg_color = Color.WHITE
-				b_style.border_color = CardData.get_role_color(item["role"])
-				b_style.border_width_left = 1.5
-				b_style.border_width_right = 1.5
-				b_style.border_width_top = 1.5
-				b_style.border_width_bottom = 1.5
-				b_style.corner_radius_top_left = 6
-				b_style.corner_radius_top_right = 6
-				b_style.corner_radius_bottom_left = 6
-				b_style.corner_radius_bottom_right = 6
-				b_style.content_margin_left = 2
-				b_style.content_margin_right = 2
+				b_style.bg_color = CardData.get_role_color(role)
+				b_style.border_color = CardData.get_role_color(role).darkened(0.2)
+				b_style.border_width_left = 1
+				b_style.border_width_right = 1
+				b_style.border_width_top = 1
+				b_style.border_width_bottom = 1
+				b_style.corner_radius_top_left = 4
+				b_style.corner_radius_top_right = 4
+				b_style.corner_radius_bottom_left = 4
+				b_style.corner_radius_bottom_right = 4
+				b_style.content_margin_left = 4
+				b_style.content_margin_right = 4
 				b_style.content_margin_top = 2
 				b_style.content_margin_bottom = 2
 				badge.add_theme_stylebox_override("panel", b_style)
 				
-				badge.add_child(tex_rect)
+				badge.add_child(label)
 				items_hbox.add_child(badge)
 				
 	DeskTheme.shake_control(phase.detail_modal, 4.0, 0.2)

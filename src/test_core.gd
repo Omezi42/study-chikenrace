@@ -378,7 +378,8 @@ func test_game_session_states() -> bool:
 		
 		session.player_actual_score_today = 30
 		session.player_declared_score_today = 35
-		session.player_hours_history_today = [{"draws": 6, "used_items": [], "bursted": false, "score": 30}]
+		var mock_hours_day: Array[Dictionary] = [{"draws": 6, "used_items": [], "bursted": false, "score": 30}]
+		session.player_hours_history_today = mock_hours_day
 		var mock_doubts: Array[String] = ["cpu_suzuki"]
 		session.player_doubts_made_today = mock_doubts
 		session.current_hour = 3

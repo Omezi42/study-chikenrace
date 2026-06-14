@@ -54,6 +54,7 @@ func update_ui() -> void:
 			phase.deck_warning_lbl.visible = false
 			if sticky_style:
 				sticky_style.bg_color = Color("fff59d")
+		
 
 func update_active_effects_ui() -> void:
 	if not phase.active_effects_hbox:
@@ -69,7 +70,7 @@ func update_active_effects_ui() -> void:
 		active_list.append({"name": "消しゴム効果", "color": DeskTheme.COLOR_ROLE_DEFENSE, "desc": "次の1枚のみ眠気回避"})
 		
 	if deck.red_sheet_active:
-		active_list.append({"name": "赤シート", "color": DeskTheme.COLOR_ROLE_PUSH, "desc": "被り時に自動破棄"})
+		active_list.append({"name": "赤シート", "color": DeskTheme.COLOR_ROLE_PUSH, "desc": "被り時にバースト無効"})
 		
 	if deck.next_draw_bonus_points > 0:
 		active_list.append({"name": "シャーペン", "color": DeskTheme.COLOR_ROLE_PUSH, "desc": "ドロー得点+3点残: %d枚" % deck.next_draw_bonus_points})
@@ -86,9 +87,6 @@ func update_active_effects_ui() -> void:
 	if deck.timer_active:
 		active_list.append({"name": "タイマー", "color": DeskTheme.COLOR_ROLE_PREP, "desc": "眠気確率%を表示中"})
 		
-	if deck.compass_active:
-		active_list.append({"name": "コンパス", "color": DeskTheme.COLOR_ROLE_PREP, "desc": "山札の被りカードを探知中"})
-		
 	if deck.amulet_active:
 		active_list.append({"name": "お守り", "color": DeskTheme.COLOR_ROLE_DEFENSE, "desc": "寝落ち時に得点の50%キープ"})
 		
@@ -96,7 +94,9 @@ func update_active_effects_ui() -> void:
 		active_list.append({"name": "塾プリント", "color": DeskTheme.COLOR_ROLE_PUSH, "desc": "時限の最終得点＋10点"})
 		
 	for eff in active_list:
-		var badge = PanelContainer.new()
+		var badge = Button.new()
+		badge.text = ""
+		
 		var style = StyleBoxFlat.new()
 		style.bg_color = DeskTheme.COLOR_CRAFT
 		style.border_color = eff["color"]
@@ -108,14 +108,20 @@ func update_active_effects_ui() -> void:
 		style.corner_radius_top_right = 4
 		style.corner_radius_bottom_left = 4
 		style.corner_radius_bottom_right = 4
-		style.content_margin_left = 6
-		style.content_margin_right = 6
-		style.content_margin_top = 2
-		style.content_margin_bottom = 2
-		badge.add_theme_stylebox_override("panel", style)
+		
+		var style_hover = style.duplicate() as StyleBoxFlat
+		style_hover.bg_color = Color("e5dec9")
+		
+		badge.add_theme_stylebox_override("normal", style)
+		badge.add_theme_stylebox_override("hover", style_hover)
+		badge.add_theme_stylebox_override("pressed", style_hover)
+		badge.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 		
 		var vbox = VBoxContainer.new()
+		vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 		vbox.add_theme_constant_override("separation", 1)
+		vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		badge.add_child(vbox)
 		
 		var title_lbl = Label.new()
@@ -132,4 +138,23 @@ func update_active_effects_ui() -> void:
 		desc_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		vbox.add_child(desc_lbl)
 		
+		badge.custom_minimum_size = Vector2(160, 50)
+		
+		badge.mouse_entered.connect(func():
+			DeskTheme.animate_hover(badge, true, Vector2.ONE, 0.1)
+		)
+		badge.mouse_exited.connect(func():
+			DeskTheme.animate_hover(badge, false, Vector2.ONE, 0.1)
+		)
+		badge.pressed.connect(func():
+			badge.release_focus()
+			DeskTheme.animate_click(badge, Vector2.ONE, 0.08)
+			if is_instance_valid(phase.detail_title_label) and is_instance_valid(phase.detail_role_label) and is_instance_valid(phase.detail_desc_label):
+				phase.detail_title_label.text = eff["name"]
+				phase.detail_role_label.text = "現在発動中"
+				phase.detail_role_label.add_theme_color_override("font_color", eff["color"])
+				phase.detail_desc_label.text = eff["desc"]
+		)
+		
 		phase.active_effects_hbox.add_child(badge)
+

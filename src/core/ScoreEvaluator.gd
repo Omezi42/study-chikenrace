@@ -67,15 +67,9 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 			var doubts_on_me: Array = p.get("doubts_received", [])
 			var exposed_by_doubt: bool = doubts_on_me.size() > 0 and is_liar
 			
-			# System auto-exposure if liar is not doubted by other players
-			var auto_exposed := false
-			if is_liar and not exposed_by_doubt:
-				var bluff_amount := declared - actual
-				var exposure_chance: float = get_auto_exposure_chance(bluff_amount)
-				if randf() < exposure_chance:
-					auto_exposed = true
-					
-			var final_exposed: bool = exposed_by_doubt or auto_exposed
+			# System auto-exposure if liar is not doubted by other players (pre-calculated during day end)
+			var auto_exposed: bool = p.get("auto_exposed", false)
+			var final_exposed: bool = p.get("is_doubt_exposed", false)
 			
 			if is_liar:
 				if p_id == "player":

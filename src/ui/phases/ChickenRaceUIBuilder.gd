@@ -13,7 +13,7 @@ static func build_ui(phase: ChickenRacePhase) -> void:
 	
 	# LEFT PAGE (Notebook Stats)
 	var left_page = PanelContainer.new()
-	left_page.custom_minimum_size = Vector2(650, 750)
+	left_page.custom_minimum_size = Vector2(650, 850)
 	left_page.add_theme_stylebox_override("panel", DeskTheme.create_left_page_style())
 	main_hbox.add_child(left_page)
 	phase.left_page = left_page
@@ -194,7 +194,7 @@ static func build_ui(phase: ChickenRacePhase) -> void:
 	
 	# RIGHT PAGE (Desk Self-study Area)
 	var right_page = PanelContainer.new()
-	right_page.custom_minimum_size = Vector2(730, 750)
+	right_page.custom_minimum_size = Vector2(730, 850)
 	right_page.add_theme_stylebox_override("panel", DeskTheme.create_right_page_style())
 	main_hbox.add_child(right_page)
 	phase.right_page = right_page
@@ -307,7 +307,7 @@ static func build_ui(phase: ChickenRacePhase) -> void:
 	
 	DeskTheme.add_ruled_lines(left_page)
 	DeskTheme.add_ruled_lines(right_page)
-	DeskTheme.add_spiral_binding(main_hbox, 750.0)
+	DeskTheme.add_spiral_binding(main_hbox, 850.0)
 	
 	var viewport_size = phase.get_viewport_rect().size
 	main_hbox.pivot_offset = main_hbox.custom_minimum_size * 0.5

@@ -22,6 +22,8 @@ var gacha_skip_btn: Button
 var current_capsule: Control = null
 var current_float_tween: Tween = null
 var skip_triggered: bool = false
+var result_detail_panel: PanelContainer
+
 
 
 # Unlocked item list to pull from (14 items in Gacha)
@@ -100,6 +102,11 @@ func _on_pull_pressed() -> void:
 	if card_slot.scale.x > 0.0:
 		var fade_out = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		fade_out.tween_property(card_slot, "scale", Vector2.ZERO, 0.2)
+		if is_instance_valid(result_detail_panel):
+			var detail_fade = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			detail_fade.tween_property(result_detail_panel, "scale", Vector2.ZERO, 0.2)
+			detail_fade.tween_callback(func(): result_detail_panel.queue_free())
+
 	
 	# Animate rotary lever rotation
 	var lever_tween = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
@@ -288,13 +295,13 @@ func reveal_gacha_result() -> void:
 	# Create eraser stamp node (Loop 15)
 	var stamp = PanelContainer.new()
 	stamp.name = "EraserStamp"
-	stamp.custom_minimum_size = Vector2(125, 55)
-	stamp.size = Vector2(125, 55)
+	stamp.custom_minimum_size = Vector2(110, 44)
+	stamp.size = Vector2(110, 44)
 	card_slot.add_child(stamp)
 	
-	stamp.pivot_offset = Vector2(62.5, 27.5)
-	stamp.position = Vector2(120 - 62.5, 160 - 27.5) # Center of the card slot
-	stamp.rotation_degrees = -20.0
+	stamp.pivot_offset = Vector2(55, 22)
+	stamp.position = Vector2(240 - 110 - 5, 320 - 44 - 5) # Bottom-right of the card slot with tight margins to avoid overlapping the center illustration
+	stamp.rotation_degrees = -15.0
 	
 	var stamp_style = StyleBoxFlat.new()
 	stamp_style.bg_color = Color(1.0, 0.9, 0.9, 0.0) # Transparent background
@@ -314,7 +321,7 @@ func reveal_gacha_result() -> void:
 	stamp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	stamp_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	stamp_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	stamp_lbl.add_theme_font_size_override("font_size", 18)
+	stamp_lbl.add_theme_font_size_override("font_size", 15)
 	stamp_lbl.add_theme_color_override("font_color", Color("c62828"))
 	stamp.add_child(stamp_lbl)
 	
@@ -334,6 +341,9 @@ func reveal_gacha_result() -> void:
 	
 	# Confetti burst
 	particles.emitting = true
+	
+	# Show item detail panel on the right side of the card
+	show_result_detail_panel(drawn_item_id, is_new)
 	
 	var timer = get_tree().create_timer(0.6)
 	timer.timeout.connect(func():
@@ -384,3 +394,99 @@ func pick_gacha_item() -> String:
 
 func _on_odds_pressed() -> void:
 	GachaUIBuilder.build_odds_modal(self)
+
+func show_result_detail_panel(item_id: String, is_new: bool) -> void:
+	if is_instance_valid(result_detail_panel):
+		result_detail_panel.queue_free()
+		
+	var item = CardData.ITEMS.get(item_id, {})
+	if item.is_empty():
+		return
+		
+	result_detail_panel = PanelContainer.new()
+	result_detail_panel.custom_minimum_size = Vector2(340, 320)
+	result_detail_panel.size = Vector2(340, 320)
+	result_detail_panel.position = Vector2(320, 60) # Right of card_slot which is at (60, 60)
+	result_detail_panel.pivot_offset = Vector2(170, 160)
+	
+	var detail_style = StyleBoxFlat.new()
+	detail_style.bg_color = Color("#fbf9f4")
+	detail_style.border_color = CardData.get_role_color(item["role"])
+	detail_style.border_width_left = 3
+	detail_style.border_width_right = 3
+	detail_style.border_width_top = 3
+	detail_style.border_width_bottom = 3
+	detail_style.corner_radius_top_left = 8
+	detail_style.corner_radius_top_right = 8
+	detail_style.corner_radius_bottom_left = 8
+	detail_style.corner_radius_bottom_right = 8
+	detail_style.content_margin_left = 20
+	detail_style.content_margin_right = 20
+	detail_style.content_margin_top = 20
+	detail_style.content_margin_bottom = 20
+	result_detail_panel.add_theme_stylebox_override("panel", detail_style)
+	
+	card_slot.get_parent().add_child(result_detail_panel)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	result_detail_panel.add_child(vbox)
+	
+	var title_lbl = Label.new()
+	title_lbl.text = "アイテム効果詳細"
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	title_lbl.add_theme_font_size_override("font_size", 13)
+	title_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.5))
+	vbox.add_child(title_lbl)
+	
+	var name_lbl = Label.new()
+	name_lbl.text = item["name"]
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	name_lbl.add_theme_font_size_override("font_size", 20)
+	name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	vbox.add_child(name_lbl)
+	
+	var role_lbl = Label.new()
+	var role_name = CardData.get_role_name(item["role"])
+	role_lbl.text = "系統: %s" % role_name
+	role_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	role_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	role_lbl.add_theme_font_size_override("font_size", 14)
+	role_lbl.add_theme_color_override("font_color", CardData.get_role_color(item["role"]))
+	vbox.add_child(role_lbl)
+	
+	var divider = ColorRect.new()
+	divider.custom_minimum_size = Vector2(0, 2)
+	divider.color = Color(DeskTheme.COLOR_INK, 0.15)
+	vbox.add_child(divider)
+	
+	var desc_lbl = Label.new()
+	desc_lbl.text = item["description"]
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_lbl.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	desc_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	desc_lbl.add_theme_font_size_override("font_size", 14)
+	desc_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	vbox.add_child(desc_lbl)
+	
+	var bonus_lbl = Label.new()
+	if is_new:
+		bonus_lbl.text = "★ 新しくカバンに編成可能になりました！"
+		bonus_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
+	else:
+		bonus_lbl.text = "★ 重複ボーナス: 使用可能回数 +10回！"
+		bonus_lbl.add_theme_color_override("font_color", Color("388e3c"))
+	bonus_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	bonus_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	bonus_lbl.add_theme_font_size_override("font_size", 12)
+	vbox.add_child(bonus_lbl)
+	
+	result_detail_panel.scale = Vector2.ZERO
+	result_detail_panel.modulate.a = 0.0
+	
+	var tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(result_detail_panel, "scale", Vector2.ONE, 0.4)
+	tween.tween_property(result_detail_panel, "modulate:a", 1.0, 0.3)
+

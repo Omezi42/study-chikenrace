@@ -22,6 +22,7 @@ var header_left: Label
 var deck_sticky: PanelContainer
 var deck_count_lbl: Label
 var deck_warning_lbl: Label
+var active_compass_sticky: PanelContainer = null
 
 # Card explanation panel
 var card_detail_box: PanelContainer
@@ -47,6 +48,7 @@ var has_bursted: bool:
 var active_used_items: Array:
 	get: return engine.active_used_items if engine else []
 var active_peek_sticky: PanelContainer = null
+var current_max_burst_prob: float = 0.0
 
 enum RaceState {
 	SETUP,
@@ -148,6 +150,7 @@ func apply_deck_startup_items() -> void:
 
 func update_ui() -> void:
 	smartphone_presenter.update_ui()
+	ChickenRaceAnimations.update_compass_sticky(self)
 
 func perform_animated_draw(card: Dictionary, on_complete: Callable = Callable()) -> void:
 	is_animating = true
@@ -224,10 +227,15 @@ func _on_draw_pressed() -> void:
 	if is_animating or has_bursted:
 		return
 		
-	# Clear active peek sticky if exists on next draw
+	# Clear active peek sticky & compass sticky if exists on next draw
 	if active_peek_sticky:
 		active_peek_sticky.queue_free()
 		active_peek_sticky = null
+	if active_compass_sticky:
+		active_compass_sticky.queue_free()
+		active_compass_sticky = null
+	if session.player_deck.compass_active:
+		session.player_deck.compass_active = false
 		
 	is_animating = true
 	draw_btn.disabled = true
@@ -241,6 +249,10 @@ func _on_draw_pressed() -> void:
 		stop_btn.disabled = false
 		DeskTheme.show_toast(self, "山札が空になりました！休憩（ストップ）しましょう。")
 		return
+		
+	var prob = engine.deck.get_burst_probability()
+	if prob > current_max_burst_prob:
+		current_max_burst_prob = prob
 		
 	# Advance CPU simulation states
 	advance_cpu_simulations()
@@ -317,6 +329,9 @@ func trigger_burst_sequence() -> void:
 	if active_peek_sticky:
 		active_peek_sticky.queue_free()
 		active_peek_sticky = null
+	if active_compass_sticky:
+		active_compass_sticky.queue_free()
+		active_compass_sticky = null
 	
 	# Trigger Shake & red flash vignette
 	DeskTheme.shake_control(self, 15.0, 0.5)
@@ -344,7 +359,8 @@ func trigger_burst_sequence() -> void:
 		var total_used = []
 		total_used.append_array(engine.active_used_items)
 		total_used.append_array(session.player_deck.activated_items)
-		session.add_player_hour_result(session.player_deck.hand.size(), total_used, true, final_score)
+		var reaction = CardData.get_reaction_text(current_max_burst_prob)
+		session.add_player_hour_result(session.player_deck.hand.size(), total_used, true, final_score, reaction)
 		
 		finish_hour_and_transition(final_score, true)
 	)
@@ -365,6 +381,9 @@ func _on_stop_pressed() -> void:
 	if active_peek_sticky:
 		active_peek_sticky.queue_free()
 		active_peek_sticky = null
+	if active_compass_sticky:
+		active_compass_sticky.queue_free()
+		active_compass_sticky = null
 		
 	# Click animation
 	DeskTheme.animate_click(stop_btn, Vector2.ONE, 0.08)
@@ -374,7 +393,8 @@ func _on_stop_pressed() -> void:
 	var total_used = []
 	total_used.append_array(engine.active_used_items)
 	total_used.append_array(session.player_deck.activated_items)
-	session.add_player_hour_result(session.player_deck.hand.size(), total_used, false, final_score)
+	var reaction = CardData.get_reaction_text(current_max_burst_prob)
+	session.add_player_hour_result(session.player_deck.hand.size(), total_used, false, final_score, reaction)
 	
 	fast_forward_cpus_to_end()
 	_update_member_badge_ui("player")
@@ -394,6 +414,9 @@ func finish_hour_and_transition(final_score: int, is_burst: bool) -> void:
 	if active_peek_sticky:
 		active_peek_sticky.queue_free()
 		active_peek_sticky = null
+	if active_compass_sticky:
+		active_compass_sticky.queue_free()
+		active_compass_sticky = null
 		
 	draw_btn.disabled = true
 	stop_btn.disabled = true
@@ -414,6 +437,7 @@ func finish_hour_and_transition(final_score: int, is_burst: bool) -> void:
 
 func reset_phase_for_next_hour() -> void:
 	is_animating = false
+	current_max_burst_prob = 0.0
 	engine.reset_for_hour()
 
 	
@@ -479,7 +503,7 @@ func update_active_effects_ui() -> void:
 		active_list.append({"name": "消しゴム効果", "color": DeskTheme.COLOR_ROLE_DEFENSE, "desc": "次の1枚のみ眠気回避"})
 		
 	if deck.red_sheet_active:
-		active_list.append({"name": "赤シート", "color": DeskTheme.COLOR_ROLE_PUSH, "desc": "被り時に自動破棄"})
+		active_list.append({"name": "赤シート", "color": DeskTheme.COLOR_ROLE_PUSH, "desc": "被り時にバースト無効"})
 		
 	if deck.next_draw_bonus_points > 0:
 		active_list.append({"name": "シャーペン", "color": DeskTheme.COLOR_ROLE_PUSH, "desc": "ドロー得点+3点残: %d枚" % deck.next_draw_bonus_points})

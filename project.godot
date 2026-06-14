@@ -16,6 +16,9 @@ config/features=PackedStringArray("4.6", "GL Compatibility")
 
 [autoload]
 
+PlayerState="*res://src/autoload/PlayerState.gd"
+SettingsState="*res://src/autoload/SettingsState.gd"
+MatchState="*res://src/autoload/MatchState.gd"
 Global="*res://src/autoload/Global.gd"
 SaveManager="*res://src/autoload/SaveManager.gd"
 AudioManager="*res://src/autoload/AudioManager.gd"
@@ -25,6 +28,7 @@ UIHelper="*res://src/autoload/UIHelper.gd"
 DeviationManager="*res://src/autoload/DeviationManager.gd"
 BalanceConfig="*res://src/autoload/BalanceConfig.gd"
 DailyMissionManager="*res://src/autoload/DailyMissionManager.gd"
+ClickEffectManager="*res://src/autoload/ClickEffectManager.gd"
 
 [display]
 

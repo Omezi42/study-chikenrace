@@ -63,6 +63,7 @@ func _ready() -> void:
 	confirm_btn.custom_minimum_size = Vector2(260, 65)
 	confirm_btn.add_theme_font_override("font", DeskTheme.get_font())
 	confirm_btn.add_theme_font_size_override("font_size", 22)
+	Global.apply_white_button_style(confirm_btn)
 	confirm_btn.pressed.connect(_on_confirm_pressed)
 	vbox.add_child(confirm_btn)
 	

@@ -3,11 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cr2301kfld502"
-valid=false
+path="res://.godot/imported/sleep_icon.png-e260bd9aeffcea8dbcf809d8822d393c.ctex"
+metadata={
+"vram_texture": false
+}
 
 [deps]
 
 source_file="res://assets/sleep_icon.png"
+dest_files=["res://.godot/imported/sleep_icon.png-e260bd9aeffcea8dbcf809d8822d393c.ctex"]
 
 [params]
 

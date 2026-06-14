@@ -23,6 +23,11 @@ const FONT_HANDWRITING = "res://assets/hgrsmp.ttf"
 const _preloaded_font = preload(FONT_HANDWRITING)
 
 static func get_font() -> Font:
+	var root = Engine.get_main_loop().root
+	if root and root.has_node("Global"):
+		var global = root.get_node("Global")
+		if not global.use_handwriting_font:
+			return null
 	return _preloaded_font
 
 static var _stylebox_cache: Dictionary = {}
@@ -201,9 +206,39 @@ static func create_craft_panel() -> StyleBoxFlat:
 		style.shadow_color = Color(0.12, 0.08, 0.05, 0.25)
 		style.shadow_size = 12
 		style.shadow_offset = Vector2(5, 5)
+		style.content_margin_left = 20
+		style.content_margin_right = 20
+		style.content_margin_top = 20
+		style.content_margin_bottom = 20
 		return style
 	)
 	return cached.duplicate()
+
+# Helper to create white panel stylebox
+static func create_white_panel() -> StyleBoxFlat:
+	var cached = _get_cached_style("white_panel", func():
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color.WHITE
+		style.border_color = COLOR_INK
+		style.border_width_left = 3
+		style.border_width_right = 3
+		style.border_width_top = 3
+		style.border_width_bottom = 3
+		style.corner_radius_top_left = 8
+		style.corner_radius_top_right = 8
+		style.corner_radius_bottom_left = 8
+		style.corner_radius_bottom_right = 8
+		style.shadow_color = Color(0.12, 0.08, 0.05, 0.25)
+		style.shadow_size = 12
+		style.shadow_offset = Vector2(5, 5)
+		style.content_margin_left = 20
+		style.content_margin_right = 20
+		style.content_margin_top = 20
+		style.content_margin_bottom = 20
+		return style
+	)
+	return cached.duplicate()
+
 
 # Helper to create left page stylebox (no right border, no right rounded corners for binding integration)
 static func create_left_page_style() -> StyleBoxFlat:
@@ -322,6 +357,7 @@ static func add_spiral_binding(hbox: HBoxContainer, height: float = 750.0) -> vo
 		return
 	var binding_control = Control.new()
 	binding_control.custom_minimum_size = Vector2(0, height) # Width 0 so pages touch
+	binding_control.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	binding_control.clip_contents = false
 	hbox.add_child(binding_control)
 	
@@ -330,6 +366,7 @@ static func add_spiral_binding(hbox: HBoxContainer, height: float = 750.0) -> vo
 		
 	var drawer = SpiralDrawer.new()
 	drawer.custom_minimum_size = Vector2(0, height)
+	drawer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	drawer.clip_contents = false
 	drawer.center_x = 0.0
 	binding_control.add_child(drawer)
