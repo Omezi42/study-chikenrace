@@ -24,6 +24,9 @@ var deck_count_lbl: Label
 var deck_warning_lbl: Label
 var active_compass_sticky: PanelContainer = null
 
+# Decision Panel (Phase 2)
+var decision_panel: DecisionPanel
+
 # Card explanation panel
 var card_detail_box: PanelContainer
 var detail_title_label: Label
@@ -119,11 +122,121 @@ func _on_setup(setup_data: Dictionary) -> void:
 		session.player_deck.reset_for_next_day()
 	
 	if has_node("/root/BackendManager"):
-		var bm = get_node("/root/BackendManager")
-		if not bm.connection_lost.is_connected(_on_connection_lost):
+		var bm = get_node_or_null("/root/BackendManager")
+		if bm and not bm.connection_lost.is_connected(_on_connection_lost):
 			bm.connection_lost.connect(_on_connection_lost)
 	
-	ChickenRaceUIBuilder.build_ui(self)
+	# TSCNシーンのインスタンス化
+	var ui_scene = load("res://src/ui/phases/ChickenRacePhase.tscn").instantiate()
+	add_child(ui_scene)
+	
+	# コントロールのバインド
+	left_page = ui_scene.get_node_or_null("MainHBox/LeftPage")
+	header_left = ui_scene.get_node_or_null("MainHBox/LeftPage/LeftVBox/LeftMargin/LeftInnerVBox/HeaderLabel")
+	actual_score_label = ui_scene.get_node_or_null("MainHBox/LeftPage/LeftVBox/LeftMargin/LeftInnerVBox/ActualScoreLabel")
+	draw_history_container = ui_scene.get_node_or_null("MainHBox/LeftPage/LeftVBox/LeftMargin/LeftInnerVBox/DrawHistoryContainer")
+	card_detail_box = ui_scene.get_node_or_null("MainHBox/LeftPage/LeftVBox/LeftMargin/LeftInnerVBox/CardDetailBox")
+	
+	right_page = ui_scene.get_node_or_null("MainHBox/RightPage")
+	var stats_hbox = ui_scene.get_node_or_null("MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox/StatsHBox")
+	if stats_hbox:
+		stats_hbox.visible = false # 旧バースト率表示は隠す
+		led_indicator = stats_hbox.get_node_or_null("LedIndicator")
+		burst_prob_label = stats_hbox.get_node_or_null("BurstProbLabel")
+	
+	hand_container = ui_scene.get_node_or_null("MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox/HandContainer")
+	draw_btn = ui_scene.get_node_or_null("MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox/ActionButtons/DrawButton")
+	stop_btn = ui_scene.get_node_or_null("MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox/ActionButtons/StopButton")
+	
+	decision_panel = DecisionPanel.new()
+	var right_inner_vbox = ui_scene.get_node_or_null("MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox")
+	if right_inner_vbox:
+		right_inner_vbox.add_child(decision_panel)
+		right_inner_vbox.move_child(decision_panel, 0) # 一番上に配置
+	
+	# スタイルの動的適用
+	left_page.add_theme_stylebox_override("panel", DeskTheme.create_left_page_style())
+	right_page.add_theme_stylebox_override("panel", DeskTheme.create_right_page_style())
+	
+	var detail_style = StyleBoxFlat.new()
+	detail_style.bg_color = DeskTheme.COLOR_CRAFT
+	detail_style.border_color = Color(DeskTheme.COLOR_INK, 0.5)
+	detail_style.border_width_left = 2
+	detail_style.border_width_right = 2
+	detail_style.border_width_top = 2
+	detail_style.border_width_bottom = 2
+	detail_style.corner_radius_top_left = 6
+	detail_style.corner_radius_top_right = 6
+	detail_style.corner_radius_bottom_left = 6
+	detail_style.corner_radius_bottom_right = 6
+	detail_style.content_margin_left = 15
+	detail_style.content_margin_right = 15
+	detail_style.content_margin_top = 10
+	detail_style.content_margin_bottom = 10
+	detail_style.shadow_color = Color(0, 0, 0, 0.2)
+	detail_style.shadow_size = 4
+	detail_style.shadow_offset = Vector2(2, 2)
+	card_detail_box.add_theme_stylebox_override("panel", detail_style)
+	
+	var detail_vbox = VBoxContainer.new()
+	detail_vbox.add_theme_constant_override("separation", 6)
+	card_detail_box.add_child(detail_vbox)
+	
+	var detail_header_hbox = HBoxContainer.new()
+	detail_header_hbox.alignment = BoxContainer.ALIGNMENT_BEGIN
+	detail_header_hbox.add_theme_constant_override("separation", 10)
+	detail_vbox.add_child(detail_header_hbox)
+	
+	detail_title_label = Label.new()
+	detail_title_label.text = "カード説明"
+	detail_title_label.add_theme_font_override("font", DeskTheme.get_font())
+	detail_title_label.add_theme_font_size_override("font_size", 20)
+	detail_title_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	detail_header_hbox.add_child(detail_title_label)
+	
+	detail_role_label = Label.new()
+	detail_role_label.text = ""
+	detail_role_label.add_theme_font_override("font", DeskTheme.get_font())
+	detail_role_label.add_theme_font_size_override("font_size", 16)
+	detail_header_hbox.add_child(detail_role_label)
+	
+	detail_desc_label = Label.new()
+	detail_desc_label.text = "カードをクリックすると効果の説明が表示されます。"
+	detail_desc_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail_desc_label.add_theme_font_override("font", DeskTheme.get_font())
+	detail_desc_label.add_theme_font_size_override("font_size", 14)
+	detail_desc_label.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
+	detail_desc_label.custom_minimum_size = Vector2(360, 50)
+	detail_vbox.add_child(detail_desc_label)
+	
+	active_effects_hbox = HBoxContainer.new()
+	active_effects_hbox.alignment = BoxContainer.ALIGNMENT_BEGIN
+	active_effects_hbox.add_theme_constant_override("separation", 8)
+	if right_inner_vbox:
+		right_inner_vbox.add_child(active_effects_hbox)
+		right_inner_vbox.move_child(active_effects_hbox, 2)
+	
+	alert_banner = ColorRect.new()
+	alert_banner.custom_minimum_size = Vector2(650, 50)
+	alert_banner.color = Color(DeskTheme.COLOR_TENSION, 0.0)
+	alert_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if right_inner_vbox:
+		right_inner_vbox.add_child(alert_banner)
+	
+	alert_label = Label.new()
+	alert_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	alert_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	alert_label.add_theme_font_override("font", DeskTheme.get_font())
+	alert_label.add_theme_font_size_override("font_size", 22)
+	alert_label.add_theme_color_override("font_color", Color.WHITE)
+	alert_banner.add_child(alert_label)
+	alert_label.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	
+	# ボタンへのシグナル接続とスタイル適用
+	draw_btn.pressed.connect(_on_draw_pressed)
+	stop_btn.pressed.connect(_on_stop_pressed)
+	Global.apply_white_button_style(draw_btn)
+	Global.apply_white_button_style(stop_btn)
 	
 	apply_deck_startup_items()
 	init_cpu_simulation_states()
@@ -151,6 +264,31 @@ func apply_deck_startup_items() -> void:
 func update_ui() -> void:
 	smartphone_presenter.update_ui()
 	ChickenRaceAnimations.update_compass_sticky(self)
+	_update_decision_panel()
+
+func _update_decision_panel() -> void:
+	if not is_instance_valid(decision_panel):
+		return
+	var score = engine.calculate_hand_score() if engine else 0
+	var prob = engine.deck.get_burst_probability() if engine else 0.0
+	var deck_count = engine.deck.cards.size() if engine else 0
+	var hand_count = session.player_deck.hand.size()
+	
+	var expected_val = 0.0
+	if engine and engine.deck.cards.size() > 0:
+		var safe_points_sum = 0
+		var safe_count = 0
+		for c in engine.deck.cards:
+			if not engine.deck.will_card_burst(c):
+				safe_points_sum += c.get("value", 0)
+				safe_count += 1
+		if safe_count > 0:
+			var safe_prob = 1.0 - prob
+			var avg_safe_score = float(safe_points_sum) / safe_count
+			# expected delta = (avg_safe_score) * safe_prob + (-score) * prob
+			expected_val = (avg_safe_score * safe_prob) - (score * prob)
+			
+	decision_panel.update_info(score, prob, deck_count, hand_count, expected_val)
 
 func perform_animated_draw(card: Dictionary, on_complete: Callable = Callable()) -> void:
 	is_animating = true
@@ -201,7 +339,8 @@ func perform_animated_draw(card: Dictionary, on_complete: Callable = Callable())
 	
 	# Play draw sound
 	if has_node("/root/AudioManager"):
-		get_node("/root/AudioManager").play_se(AudioManager.SE_DRAW)
+		var am = get_node_or_null("/root/AudioManager")
+		if am: am.play_se(AudioManager.SE_DRAW)
 		
 	ChickenRaceAnimations.animate_draw_card(self, card, card_ui, func():
 		card_ui.position = target_pos
@@ -268,6 +407,13 @@ func _on_draw_pressed() -> void:
 			if is_selecting_card or has_bursted:
 				return
 				
+			# テンション演出（危険域に達した時の緊張感）
+			if engine.deck.get_burst_probability() >= 0.4:
+				DeskTheme.shake_control(self, 6.0, 0.3)
+				if has_node("/root/AudioManager"):
+					var am = get_node_or_null("/root/AudioManager")
+					if am: am.play_se(AudioManager.SE_PLACE) # SE_TENSIONの代用
+					
 			# Check burst (including energy drink side effect) via engine
 			if engine.check_burst():
 				trigger_burst_sequence()
@@ -323,7 +469,8 @@ func trigger_burst_sequence() -> void:
 	_update_member_badge_ui("player")
 	
 	if has_node("/root/AudioManager"):
-		get_node("/root/AudioManager").play_se(AudioManager.SE_BURST)
+		var am = get_node_or_null("/root/AudioManager")
+		if am: am.play_se(AudioManager.SE_BURST)
 	
 	# Clear peek sticky on burst
 	if active_peek_sticky:
@@ -388,18 +535,45 @@ func _on_stop_pressed() -> void:
 	# Click animation
 	DeskTheme.animate_click(stop_btn, Vector2.ONE, 0.08)
 	
-	# Save points
-	var final_score = engine.calculate_hand_score()
-	var total_used = []
-	total_used.append_array(engine.active_used_items)
-	total_used.append_array(session.player_deck.activated_items)
-	var reaction = CardData.get_reaction_text(current_max_burst_prob)
-	session.add_player_hour_result(session.player_deck.hand.size(), total_used, false, final_score, reaction)
+	# ドラマティックストップ演出（提出スタンプ表示）
+	var stamp = Label.new()
+	stamp.text = "提出！"
+	stamp.add_theme_font_override("font", DeskTheme.get_font())
+	stamp.add_theme_font_size_override("font_size", 100)
+	stamp.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+	stamp.rotation_degrees = -15
+	var vp_size = get_viewport_rect().size
+	stamp.position = Vector2(vp_size.x * 0.4, vp_size.y * 0.4)
+	stamp.z_index = 100
+	add_child(stamp)
 	
-	fast_forward_cpus_to_end()
-	_update_member_badge_ui("player")
+	var stamp_tween = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	stamp.scale = Vector2(3.0, 3.0)
+	stamp.modulate.a = 0.0
+	stamp_tween.tween_property(stamp, "scale", Vector2.ONE, 0.3)
+	stamp_tween.parallel().tween_property(stamp, "modulate:a", 1.0, 0.2)
+	DeskTheme.shake_control(self, 10.0, 0.4)
+	if has_node("/root/AudioManager"):
+		var am = get_node_or_null("/root/AudioManager")
+		if am: am.play_se(AudioManager.SE_PLACE)
 	
-	finish_hour_and_transition(final_score, false)
+	var wait_timer = get_tree().create_timer(1.0 / speed_mult)
+	wait_timer.timeout.connect(func():
+		if is_instance_valid(stamp):
+			stamp.queue_free()
+		# Save points
+		var final_score = engine.calculate_hand_score()
+		var total_used = []
+		total_used.append_array(engine.active_used_items)
+		total_used.append_array(session.player_deck.activated_items)
+		var reaction = CardData.get_reaction_text(current_max_burst_prob)
+		session.add_player_hour_result(session.player_deck.hand.size(), total_used, false, final_score, reaction)
+		
+		fast_forward_cpus_to_end()
+		_update_member_badge_ui("player")
+		
+		finish_hour_and_transition(final_score, false)
+	)
 
 
 func finish_hour_and_transition(final_score: int, is_burst: bool) -> void:
@@ -622,7 +796,8 @@ func _on_card_selected_from_hand(hand_idx: int, card: Dictionary) -> void:
 	card_selection_mode_active = ""
 	
 	if has_node("/root/AudioManager"):
-		get_node("/root/AudioManager").play_se(AudioManager.SE_PLACE)
+		var am = get_node_or_null("/root/AudioManager")
+		if am: am.play_se(AudioManager.SE_PLACE)
 	
 	alert_banner.color.a = 0.0
 	alert_label.text = ""
@@ -666,3 +841,11 @@ func fast_forward_cpus_to_end() -> void:
 
 func _update_member_badge_ui(member_id: String) -> void:
 	cpu_presenter._update_member_badge_ui(member_id)
+
+func _exit_tree() -> void:
+	# Tweenのリークを防ぐため、実行中のTweenを停止
+	var tree = get_tree()
+	if tree:
+		for tween in tree.get_processed_tweens():
+			if tween and tween.get_bound_node() == self or tween.get_bound_node() in get_children():
+				tween.kill()

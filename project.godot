@@ -29,6 +29,7 @@ DeviationManager="*res://src/autoload/DeviationManager.gd"
 BalanceConfig="*res://src/autoload/BalanceConfig.gd"
 DailyMissionManager="*res://src/autoload/DailyMissionManager.gd"
 ClickEffectManager="*res://src/autoload/ClickEffectManager.gd"
+AnalyticsManager="*res://src/autoload/AnalyticsManager.gd"
 
 [display]
 

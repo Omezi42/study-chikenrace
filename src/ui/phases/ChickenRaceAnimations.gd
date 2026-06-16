@@ -88,7 +88,21 @@ static func show_hour_result_popup(phase: ChickenRacePhase, score: int, is_burst
 
 static func play_burst_animation(phase: ChickenRacePhase, duplicate_values: Array) -> void:
 	var speed_mult = phase.speed_mult
-	DeskTheme.shake_control(phase, 15.0, 0.5)
+	DeskTheme.shake_control(phase, 20.0, 0.6)
+	
+	# 赤フラッシュ演出を追加
+	var flash = ColorRect.new()
+	flash.color = Color(1.0, 0.0, 0.0, 0.4)
+	flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	phase.add_child(flash)
+	var flash_tween = phase.create_tween()
+	flash_tween.tween_property(flash, "modulate:a", 0.0, 0.45 / speed_mult)
+	flash_tween.tween_callback(flash.queue_free)
+	
+	# バーストSEの再生
+	if phase.has_node("/root/AudioManager"):
+		phase.get_node("/root/AudioManager").play_se(AudioManager.SE_BURST)
+	
 	phase.led_indicator.color = DeskTheme.COLOR_TENSION
 	phase.burst_prob_label.text = "寝落ちしました！(バースト)"
 	phase.actual_score_label.text = "0点"

@@ -1,6 +1,7 @@
 # SettingsState.gd
 extends Node
 
+
 signal settings_changed
 
 var bgm_volume: float = 0.5

@@ -342,11 +342,93 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	return card
 
 static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> void:
-	phase.detail_title.text = p["name"] + " の勉強時間割ログ"
+	phase.detail_title.text = "【推理カード】 " + p["name"]
 	phase.detail_body.visible = false
 	
 	for child in phase.detail_log_vbox.get_children():
 		child.queue_free()
+		
+	# 1. 相手のサマリー情報のカード化
+	var summary_card = PanelContainer.new()
+	var summary_style = DeskTheme.create_craft_panel()
+	summary_style.bg_color = Color("eceff1")
+	summary_card.add_theme_stylebox_override("panel", summary_style)
+	phase.detail_log_vbox.add_child(summary_card)
+	
+	var summary_margin = MarginContainer.new()
+	summary_margin.add_theme_constant_override("margin_left", 15)
+	summary_margin.add_theme_constant_override("margin_right", 15)
+	summary_margin.add_theme_constant_override("margin_top", 15)
+	summary_margin.add_theme_constant_override("margin_bottom", 15)
+	summary_card.add_child(summary_margin)
+	
+	var summary_vbox = VBoxContainer.new()
+	summary_vbox.add_theme_constant_override("separation", 10)
+	summary_margin.add_child(summary_vbox)
+	
+	# サマリー情報の集計
+	var total_draws = 0
+	for h in p["hours"]:
+		total_draws += h.get("draws", 0)
+	var bluff_rate = 0.0
+	if p["id"] != "player":
+		bluff_rate = AIManager.evaluate_suspiciousness_with_emote(p["declared_score"], p["hours"], p.get("emote", "normal")) * 100.0
+		
+	var info_grid = GridContainer.new()
+	info_grid.columns = 2
+	info_grid.add_theme_constant_override("h_separation", 30)
+	info_grid.add_theme_constant_override("v_separation", 10)
+	summary_vbox.add_child(info_grid)
+	
+	var labels = [
+		["申告:", str(p["declared_score"]) + " 点"],
+		["引いた合計枚数:", str(total_draws) + " 枚"]
+	]
+	
+	if p["id"] != "player":
+		labels.append(["過去傾向:", "ブラフ率 約" + str(int(bluff_rate)) + "%"])
+		
+	for pair in labels:
+		var lbl_title = Label.new()
+		lbl_title.text = pair[0]
+		lbl_title.add_theme_font_override("font", DeskTheme.get_font())
+		lbl_title.add_theme_font_size_override("font_size", 18)
+		lbl_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
+		info_grid.add_child(lbl_title)
+		
+		var lbl_val = Label.new()
+		lbl_val.text = pair[1]
+		lbl_val.add_theme_font_override("font", DeskTheme.get_font())
+		lbl_val.add_theme_font_size_override("font_size", 22)
+		if "ブラフ率" in pair[0] and bluff_rate > 65.0:
+			lbl_val.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+		else:
+			lbl_val.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+		info_grid.add_child(lbl_val)
+	
+	if p["id"] != "player":
+		var doubt_btn = Button.new()
+		doubt_btn.text = "ダウト！"
+		doubt_btn.custom_minimum_size = Vector2(0, 50)
+		doubt_btn.add_theme_font_override("font", DeskTheme.get_font())
+		doubt_btn.add_theme_font_size_override("font_size", 24)
+		doubt_btn.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+		DeskTheme.apply_white_button_style(doubt_btn)
+		
+		if p["id"] in phase.session.player_doubts_made_today:
+			doubt_btn.text = "ダウト済"
+			doubt_btn.disabled = true
+			
+		# カードUI上のダウトボタン押下処理 (timeline_card引数にはnullを渡すが、UI構築時点での引数としては適宜対応)
+		# 既存の_on_doubt_pressedは引数として(target_id, card_node, btn)を取る
+		# timeline_card側ではなく、このモーダルから呼ばれた場合はcard_nodeはsummary_cardにする
+		doubt_btn.pressed.connect(phase._on_doubt_pressed.bind(p["id"], summary_card, doubt_btn))
+		summary_vbox.add_child(doubt_btn)
+		
+	var separator = ColorRect.new()
+	separator.custom_minimum_size = Vector2(0, 2)
+	separator.color = Color(DeskTheme.COLOR_INK, 0.2)
+	phase.detail_log_vbox.add_child(separator)
 		
 	for h_idx in range(p["hours"].size()):
 		var h = p["hours"][h_idx]

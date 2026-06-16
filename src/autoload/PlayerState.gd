@@ -1,6 +1,7 @@
 # PlayerState.gd
 extends Node
 
+
 signal data_changed
 
 var player_name: String = ""

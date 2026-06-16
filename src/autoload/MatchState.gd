@@ -1,6 +1,7 @@
 # MatchState.gd
 extends Node
 
+
 var game_mode: String = "national"
 var active_showdown_results: Dictionary = {}
 

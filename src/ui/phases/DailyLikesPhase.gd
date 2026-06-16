@@ -34,8 +34,8 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	local_doubts_count = max_doubts - session.player_doubts_made_today.size()
 	
 	if has_node("/root/BackendManager"):
-		var bm = get_node("/root/BackendManager")
-		if not bm.connection_lost.is_connected(_on_connection_lost):
+		var bm = get_node_or_null("/root/BackendManager")
+		if bm and not bm.connection_lost.is_connected(_on_connection_lost):
 			bm.connection_lost.connect(_on_connection_lost)
 	
 	DailyLikesUIBuilder.build_layout(self)
@@ -341,3 +341,11 @@ func _animate_scroll() -> void:
 	scroll_tween.tween_property(scroll_container, "scroll_vertical", int(target_scroll_y), 0.25)\
 		.set_trans(Tween.TRANS_CUBIC)\
 		.set_ease(Tween.EASE_OUT)
+
+func _exit_tree() -> void:
+	# Tweenのリークを防ぐため、実行中のTweenを停止
+	var tree = get_tree()
+	if tree:
+		for tween in tree.get_processed_tweens():
+			if tween and tween.get_bound_node() == self or tween.get_bound_node() in get_children():
+				tween.kill()
