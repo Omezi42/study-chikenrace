@@ -3,16 +3,20 @@ extends RefCounted
 
 static func build_layout(phase: ReportPhase) -> void:
 	_build_smartphone_ui(phase)
-	_build_notebook_ui(phase)
+	# _build_notebook_ui(phase) # Do not build notebook UI as requested
 
 static func _build_smartphone_ui(phase: ReportPhase) -> void:
-	var target_parent = phase.smartphone_pane if is_instance_valid(phase.smartphone_pane) else phase
+	# Force targeting the main phase instead of smartphone_pane to center it on screen
+	var target_parent = phase
 
-	# SMARTPHONE CONTAINER (Phone UI Frame) - Centered in target_parent
+	# SMARTPHONE CONTAINER (Phone UI Frame) - Centered manually
 	var phone_panel = PanelContainer.new()
-	phone_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	phone_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	phone_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	phone_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	phone_panel.custom_minimum_size = Vector2(420, 800)
+	phone_panel.size = Vector2(420, 800)
+	# 1500 x 850 base screen size, centering gives: X=(1500-420)/2=540, Y=(850-800)/2=25
+	phone_panel.position = Vector2(540, 25)
+	phone_panel.pivot_offset = Vector2(210, 400)
 	
 	var phone_style = StyleBoxFlat.new()
 	phone_style.bg_color = DeskTheme.COLOR_INK
@@ -361,7 +365,7 @@ static func show_stamp_animation(phase: ReportPhase) -> void:
 	phase.phone_panel.add_child(stamp)
 	
 	stamp.pivot_offset = Vector2(80, 45)
-	stamp.position = Vector2(275 - 80, 390 - 45)
+	stamp.position = Vector2(210 - 80, 400 - 45)
 	stamp.rotation_degrees = -15.0
 	
 	var stamp_style = StyleBoxFlat.new()

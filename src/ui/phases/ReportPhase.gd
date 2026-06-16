@@ -75,11 +75,29 @@ func _on_submit_pressed() -> void:
 	
 	ReportUIBuilder.show_stamp_animation(self)
 	
-	var timer = get_tree().create_timer(0.7)
+	# Wait for stamp impact, then slide the phone to the left margin
+	var timer = get_tree().create_timer(0.4)
 	timer.timeout.connect(func():
-		session.submit_player_declaration(final_declared, selected_emote)
-		finish_phase({
-			"declared_score": final_declared,
-			"emote": selected_emote
-		})
+		if not is_instance_valid(phone_panel):
+			session.submit_player_declaration(final_declared, selected_emote)
+			finish_phase({
+				"declared_score": final_declared,
+				"emote": selected_emote
+			})
+			return
+			
+		# Reset anchors to PRESET_TOP_LEFT so position is fully controllable via Tween
+		phone_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+		
+		var slide_tween = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		# Slide from center (X=540) to left margin (X=20). Y remains 25.
+		slide_tween.tween_property(phone_panel, "position", Vector2(20, 25), 0.45)
+		
+		slide_tween.finished.connect(func():
+			session.submit_player_declaration(final_declared, selected_emote)
+			finish_phase({
+				"declared_score": final_declared,
+				"emote": selected_emote
+			})
+		)
 	)

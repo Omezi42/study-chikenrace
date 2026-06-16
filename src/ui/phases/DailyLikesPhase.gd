@@ -28,7 +28,7 @@ var likes_skip_btn: Button
 var tutorial_dialog_node: PanelContainer = null
 
 
-func _on_setup(_setup_data: Dictionary) -> void:
+func _on_setup(setup_data: Dictionary) -> void:
 	custom_minimum_size = Vector2(1500, 850)
 	var max_doubts = 3
 	local_doubts_count = max_doubts - session.player_doubts_made_today.size()
@@ -47,7 +47,8 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	update_remaining_votes()
 	
 	# Entrance slide in
-	if is_instance_valid(phone_panel):
+	var from_report = setup_data.get("from_report", false)
+	if is_instance_valid(phone_panel) and not from_report:
 		DeskTheme.animate_entrance(phone_panel, phone_panel.position, Vector2(0, 300), 0.5)
 	DeskTheme.animate_entrance(self, self.position, Vector2(0, 300), 0.5)
 	

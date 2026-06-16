@@ -33,7 +33,7 @@ func arrange_hand_fan() -> void:
 	var radius = 350.0
 	
 	var center_x = phase.hand_container.custom_minimum_size.x / 2.0
-	var base_y = 180.0
+	var base_y = 20.0
 	
 	for idx in range(count):
 		var child = children[idx] as Control

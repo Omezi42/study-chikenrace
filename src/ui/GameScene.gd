@@ -165,7 +165,7 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 					bm.upload_friend_move(Global.friend_room_code, session.current_day, mid_move)
 				change_phase(Constants.PHASE_WAITING, {"day": session.current_day, "final_wait": false})
 			else:
-				change_phase(Constants.PHASE_DAILY_LIKES)
+				change_phase(Constants.PHASE_DAILY_LIKES, {"from_report": true})
 				
 		Constants.PHASE_DAILY_LIKES:
 			# Day ends. Compute AIs and compile doubts.
