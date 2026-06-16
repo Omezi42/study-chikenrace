@@ -912,3 +912,15 @@ static func hide_rich_tooltip() -> void:
 	if is_instance_valid(_active_tooltip):
 		_active_tooltip.queue_free()
 		_active_tooltip = null
+
+static func flash_highlight(node: Control) -> Tween:
+	if not node or not node.is_inside_tree():
+		return null
+	var tween = node.create_tween().set_loops()
+	var original_scale = node.scale
+	var original_modulate = node.modulate
+	tween.tween_property(node, "scale", original_scale * 1.05, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(node, "scale", original_scale, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.parallel().tween_property(node, "modulate", Color("fff176"), 0.45)
+	tween.parallel().tween_property(node, "modulate", original_modulate, 0.45)
+	return tween

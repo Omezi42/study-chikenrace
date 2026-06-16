@@ -27,9 +27,13 @@ var active_timeline_tweens: Array[Tween] = []
 var likes_skip_btn: Button
 var tutorial_dialog_node: PanelContainer = null
 
+var active_tweens: Array[Tween] = []
+var restored_nodes: Dictionary = {}
+
 
 func _on_setup(setup_data: Dictionary) -> void:
 	custom_minimum_size = Vector2(1500, 850)
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	var max_doubts = 3
 	local_doubts_count = max_doubts - session.player_doubts_made_today.size()
 	
@@ -38,7 +42,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 		if bm and not bm.connection_lost.is_connected(_on_connection_lost):
 			bm.connection_lost.connect(_on_connection_lost)
 	
-	DailyLikesUIBuilder.build_layout(self)
+	DailyLikesUIBuilder.build_layout(self, setup_data)
 
 	
 	# Fetch participants data
@@ -54,24 +58,36 @@ func _on_setup(setup_data: Dictionary) -> void:
 	
 	if Global.is_tutorial_mode and session.current_day == 1:
 		next_day_btn.text = "テストを開始する"
+		next_day_btn.disabled = true
+		clear_highlights()
 		var viewport_size = get_viewport_rect().size
-		var dialog_pos = Vector2(viewport_size.x * 0.45, viewport_size.y * 0.15)
+		var dialog_pos = Vector2(viewport_size.x - 620, viewport_size.y - 220)
 		tutorial_dialog_node = show_tutorial_dialog(
-			"よし！今日の勉強報告SNS『チキスタ』の時間だ！\n\nみんなが今日どれくらい勉強したか、ここに自己申告の得点をアップするんだぜ。",
-			dialog_pos,
-			func():
-				tutorial_dialog_node = show_tutorial_dialog(
-					"引いたドロー枚数に対して、申告点数が高すぎるヤツは怪しいぞ！ウソ（ブラフ）を言ってるかもしれない。\n\n詳細を確認して、ウソだと思ったら『ダウト！』で突っ込んでやろう。見事暴けばボーナス点だけど、無実のヤツを疑うと減点だからな！",
-					dialog_pos,
-					func():
-						tutorial_dialog_node = show_tutorial_dialog(
-							"説明はこんな感じかな！\n準備ができたら『テストを開始する』を押して、本番のテストに挑戦してみようぜ！",
-							dialog_pos
-						)
-				)
+			"友達のドロー回数に対して点数が高すぎる場合は嘘の可能性があります。見破ればボーナスです。怪しい友達に『ダウト！』を押してみましょう。",
+			dialog_pos
 		)
+		highlight_rival_doubt_buttons()
 
 func collect_participants() -> void:
+	if Global.is_tutorial_mode:
+		var day = session.current_day
+		if not session.match_history.has(day):
+			session.match_history[day] = {}
+		var sato_hours: Array[Dictionary] = [
+			{"draws": 1, "used_items": [], "bursted": false, "score": 6, "reaction": "余裕"},
+			{"draws": 1, "used_items": [], "bursted": false, "score": 4, "reaction": "順調"},
+			{"draws": 0, "used_items": [], "bursted": false, "score": 0, "reaction": "休憩"}
+		]
+		session.match_history[day]["cpu_sato"] = {
+			"id": "cpu_sato",
+			"name": "佐藤くん",
+			"username": "佐藤くん",
+			"declared_score": 18,
+			"actual_score": 10,
+			"hours": sato_hours,
+			"emote": "wink"
+		}
+		
 	participants_data.clear()
 	var day_data = session.match_history[session.current_day]
 	
@@ -293,6 +309,19 @@ func _on_doubt_pressed(target_id: String, card_node: Control, btn: Button) -> vo
 		opp_details
 	)
 
+func _on_doubt_modal_closed() -> void:
+	if Global.is_tutorial_mode and session.current_day == 1:
+		clear_highlights()
+		var viewport_size = get_viewport_rect().size
+		var dialog_pos = Vector2(viewport_size.x - 620, viewport_size.y - 220)
+		tutorial_dialog_node = show_tutorial_dialog(
+			"基本ルールは以上です。本番のテスト（ゲーム）を開始して勝利を目指しましょう！",
+			dialog_pos
+		)
+		if is_instance_valid(next_day_btn):
+			next_day_btn.disabled = false
+			highlight(next_day_btn)
+
 func show_tutorial_finish_modal() -> void:
 	DailyLikesUIBuilder.show_tutorial_finish_modal(self)
 
@@ -348,3 +377,36 @@ func _animate_scroll() -> void:
 func _exit_tree() -> void:
 	if is_instance_valid(scroll_tween):
 		scroll_tween.kill()
+	clear_highlights()
+
+func highlight(node: Control) -> void:
+	if not node or not node.is_inside_tree():
+		return
+	if not restored_nodes.has(node):
+		restored_nodes[node] = {
+			"scale": node.scale,
+			"modulate": node.modulate
+		}
+	var tween = DeskTheme.flash_highlight(node)
+	if tween:
+		active_tweens.append(tween)
+
+func clear_highlights() -> void:
+	for tween in active_tweens:
+		if is_instance_valid(tween):
+			tween.kill()
+	active_tweens.clear()
+	for node in restored_nodes.keys():
+		if is_instance_valid(node):
+			node.scale = restored_nodes[node]["scale"]
+			node.modulate = restored_nodes[node]["modulate"]
+	restored_nodes.clear()
+
+func highlight_rival_doubt_buttons() -> void:
+	var t = get_tree().create_timer(0.4)
+	t.timeout.connect(func():
+		for card in timeline_list.get_children():
+			var btn = card.find_child("DoubtButton", true, false)
+			if btn and not btn.disabled:
+				highlight(btn)
+	)

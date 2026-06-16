@@ -31,7 +31,7 @@ func _ready() -> void:
 	
 	# Title
 	title_lbl = Label.new()
-	title_lbl.text = "一夜漬け: 今シーズンのミニデッキ (8枚)"
+	title_lbl.text = "通常プレイ: 今シーズンのミニデッキ (8枚)"
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	title_lbl.add_theme_font_size_override("font_size", 32)
@@ -40,7 +40,7 @@ func _ready() -> void:
 	
 	# Subtitle / Info
 	var info_lbl = Label.new()
-	info_lbl.text = "このモードではカスタムデッキではなく、シーズンごとに固定された以下の8枚 of アイテム構成で戦います。\n(Slotの番号と同じ枚数のカードがデッキに入ります。例: Slot 8にはそのアイテムが8枚)"
+	info_lbl.text = "このモードではカスタムデッキではなく、シーズンごとに固定された以下の8枚のアイテム構成で戦います。\n(Slotの番号と同じ枚数のカードがデッキに入ります。例: Slot 8にはそのアイテムが8枚)"
 	info_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	info_lbl.add_theme_font_size_override("font_size", 14)

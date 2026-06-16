@@ -18,6 +18,9 @@ var best_score: int:
 var play_count: int:
 	get: return PlayerState.play_count
 	set(val): PlayerState.play_count = val
+var is_tutorial_completed: bool:
+	get: return PlayerState.is_tutorial_completed
+	set(val): PlayerState.is_tutorial_completed = val
 var is_tutorial_mode: bool = false
 var bgm_volume: float:
 	get: return SettingsState.bgm_volume
@@ -165,7 +168,7 @@ const SIMPLE_SAVE_FIELDS = [
 	"total_doubt_successes", "total_doubt_failures", "total_burst_count", "total_perfect_crimes",
 	"deck_presets", "deck_preset_names", "selected_preset_idx",
 	"today_missions", "mission_progress", "last_mission_date", "current_season",
-	"total_wins", "exam_wins_progress", "grade_stage",
+	"total_wins", "exam_wins_progress", "grade_stage", "is_tutorial_completed",
 	"last_updated_at"
 ]
 
@@ -185,9 +188,14 @@ func _obfuscate_string(input: String) -> String:
 func _deobfuscate_string(input: String) -> String:
 	if input == "":
 		return ""
+	var regex = RegEx.new()
+	regex.compile("^[A-Za-z0-9+/]+={0,2}$")
+	var result_match = regex.search(input)
+	if not result_match or input.length() % 4 != 0:
+		return input
 	var encrypted_bytes = Marshalls.base64_to_raw(input)
 	if encrypted_bytes.size() == 0:
-		return ""
+		return input
 	var result = PackedByteArray()
 	var key_bytes = OBFUSCATION_KEY.to_utf8_buffer()
 	for i in range(encrypted_bytes.size()):
@@ -235,7 +243,9 @@ func save_game() -> void:
 	for field in SIMPLE_SAVE_FIELDS:
 		if not field in save_dict:
 			var val = get(field)
-			if val is Array or val is Dictionary:
+			if field == "auth_token":
+				save_dict[field] = _obfuscate_string(str(val))
+			elif val is Array or val is Dictionary:
 				save_dict[field] = val.duplicate(true)
 			else:
 				save_dict[field] = val
@@ -277,7 +287,8 @@ func load_game() -> void:
 										  "unlocked_items", "item_usage_counts", "unlocked_titles", 
 										  "deviation_value", "max_deviation_value", "selected_class", "game_mode", 
 										  "opponent_profiles", "bgm_volume", "se_volume", "is_muted", "use_handwriting_font",
-										  "deck_presets", "deck_preset_names", "selected_preset_idx", "current_deck"]:
+										  "deck_presets", "deck_preset_names", "selected_preset_idx", "current_deck",
+										  "is_tutorial_completed"]:
 			var val = data[field]
 			if field == "auth_token":
 				val = _deobfuscate_string(str(val))

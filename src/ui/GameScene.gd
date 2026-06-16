@@ -37,26 +37,17 @@ func _ready() -> void:
 	bg_texture.modulate = Color.WHITE
 	add_child(bg_texture)
 	
-	# Layout for persistent 2-pane structure
-	var main_hbox = HBoxContainer.new()
-	main_hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	main_hbox.add_theme_constant_override("separation", 20)
-	main_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	add_child(main_hbox)
-	
-	# Left: Smartphone Pane (30% approx)
-	smartphone_pane = Control.new()
-	smartphone_pane.custom_minimum_size = Vector2(400, 850)
-	smartphone_pane.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	smartphone_pane.size_flags_stretch_ratio = 0.3
-	main_hbox.add_child(smartphone_pane)
-	
-	# Right: Notebook Pane (70% approx)
+	# Notebook Pane (Add first so it is rendered behind smartphone_pane)
 	notebook_pane = Control.new()
-	notebook_pane.custom_minimum_size = Vector2(1000, 850)
-	notebook_pane.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	notebook_pane.size_flags_stretch_ratio = 0.7
-	main_hbox.add_child(notebook_pane)
+	notebook_pane.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	notebook_pane.mouse_filter = Control.MOUSE_FILTER_PASS
+	add_child(notebook_pane)
+	
+	# Layout for persistent 2-pane structure - Add smartphone_pane after notebook_pane to make it topmost
+	smartphone_pane = Control.new()
+	smartphone_pane.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	smartphone_pane.mouse_filter = Control.MOUSE_FILTER_PASS
+	add_child(smartphone_pane)
 	
 	# Global references for phases to attach to
 	phase_layer = notebook_pane # notebook_pane is the layer for phases
@@ -75,9 +66,16 @@ func change_phase(phase_type: String, setup_data: Dictionary = {}) -> void:
 	var old_node = active_phase_node
 	active_phase_node = null
 	
+	# If a phone panel is passed in setup_data, detach it from the outgoing phase to preserve it
+	var passed_phone = setup_data.get("phone_panel", null)
+	if is_instance_valid(passed_phone):
+		if passed_phone.get_parent() == old_node:
+			old_node.remove_child(passed_phone)
+	
 	if is_instance_valid(smartphone_pane):
 		for child in smartphone_pane.get_children():
-			child.queue_free()
+			if child != passed_phone:
+				child.queue_free()
 	
 	# 同期状態機械の更新
 	var target_state = GameSession.SessionPhaseState.LOBBY

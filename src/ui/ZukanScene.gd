@@ -16,24 +16,24 @@ const ALL_TITLES: Array[String] = [
 
 const TITLE_DESCRIPTIONS: Dictionary = {
 	Constants.TITLE_DEV_GOD: "偏差値70以上を達成して試合を終える",
-	Constants.TITLE_CRAM_GENIUS: "一夜漬け/模試モードでスコア100/150以上かつ1位を獲得する",
+	Constants.TITLE_CRAM_GENIUS: "通常プレイ/模試（5日制）でスコア100/150以上かつ1位を獲得する",
 	Constants.TITLE_SAFE_CHAMP: "バースト回数0で1位を獲得する",
 	Constants.TITLE_RICH_STUDENT: "500コイン以上を所持して1位を獲得する",
 	Constants.TITLE_STORM: "1試合で3回以上バーストする",
-	Constants.TITLE_OVERACHIEVER: "嘘を一度もつかずに高得点（一夜漬け150点、通常200点以上）を達成する",
+	Constants.TITLE_OVERACHIEVER: "嘘を一度もつかずに高得点（通常150点、5日制200点以上）を達成する",
 	Constants.TITLE_SNIPER: "嘘を一度もつかずに、他プレイヤーへのダウトを2回以上成功させる",
-	Constants.TITLE_CHIKEN_HERO: "バースト回数1回以下で超高得点（一夜漬け180点、通常250点以上）を達成する",
+	Constants.TITLE_CHIKEN_HERO: "バースト回数1回以下で超高得点（通常180点、5日制250点以上）を達成する",
 	Constants.TITLE_POKER_FACE: "すべての日に嘘を申告し、かつ一度もダウトで見破られない",
 	Constants.TITLE_STATIONERY_MASTER: "参考書アイテムを24種類以上解放する",
 	Constants.TITLE_SPEED_RUNNER: "試合を合計50回以上プレイする",
 	Constants.TITLE_WOLF_BOY: "嘘が他プレイヤーに見破られた回数が3回以上になる",
 	Constants.TITLE_DOUBT_SPAMMER: "他プレイヤーへのダウトが4回以上成功する",
 	Constants.TITLE_LIE_DETECTOR: "他プレイヤーへのダウトが3回以上成功する",
-	Constants.TITLE_CHARISMA: "2回以上嘘をつき、一度も見破られずに高得点（一夜漬け150点、通常200点以上）を達成する",
-	Constants.TITLE_TODAI: "1試合で高スコア（一夜漬け200点、通常300点以上）を達成する",
+	Constants.TITLE_CHARISMA: "2回以上嘘をつき、一度も見破られずに高得点（通常50点、5日制200点以上）を達成する",
+	Constants.TITLE_TODAI: "1試合で高スコア（通常200点、5日制300点以上）を達成する",
 	Constants.TITLE_LUCKY_SEVEN: "最終スコアの1の位が7の状態で1位を獲得する",
 	Constants.TITLE_RED_FAIL: "最終スコアが50点以下で終わる",
-	Constants.TITLE_CRAM_HONEST: "嘘を一度もつかずにそこそこの得点（一夜漬け120点、通常180点以上）を達成する",
+	Constants.TITLE_CRAM_HONEST: "嘘を一度もつかずにそこそこの得点（通常120点、5日制180点以上）を達成する",
 	Constants.TITLE_SAFETY_FIRST: "1試合で一度もバーストしない",
 	Constants.TITLE_EASY_TARGET: "ダウト成功0かつ嘘見破られ1回以上で終わる",
 	Constants.TITLE_DEBT_KING: "所持コイン10以下で最下位（4位）になる",
@@ -483,7 +483,7 @@ func populate_catalog() -> void:
 			if path != "" and ResourceLoader.exists(path):
 				thumb_tex.texture = load(path)
 		else:
-			thumb_tex.texture = load("res://assets/lock_icon.png")
+			thumb_tex.texture = load("res://assets/icons/lock.svg")
 			
 		# Text Container
 		var info_vbox = VBoxContainer.new()
@@ -618,9 +618,9 @@ func populate_titles() -> void:
 		icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		
 		if is_unlocked:
-			icon_rect.texture = load("res://assets/王冠.png")
+			icon_rect.texture = load("res://assets/icons/crown.svg")
 		else:
-			icon_rect.texture = load("res://assets/lock_icon.png")
+			icon_rect.texture = load("res://assets/icons/lock.svg")
 		btn_hbox.add_child(icon_rect)
 		
 		var lbl = Label.new()
@@ -653,7 +653,7 @@ func select_title(title: String) -> void:
 	var change_btn = right_inner_title.get_node("title_desc_vbox/change_title_btn")
 	
 	if is_unlocked:
-		title_detail_icon.texture = load("res://assets/王冠.png")
+		title_detail_icon.texture = load("res://assets/icons/crown.svg")
 		title_detail_icon.visible = true
 		status_icon.texture = load("res://assets/check_icon.png")
 		
@@ -675,9 +675,9 @@ func select_title(title: String) -> void:
 				change_btn.pressed.disconnect(self._on_change_title_pressed)
 			change_btn.pressed.connect(self._on_change_title_pressed.bind(title))
 	else:
-		title_detail_icon.texture = load("res://assets/lock_icon.png")
+		title_detail_icon.texture = load("res://assets/icons/lock.svg")
 		title_detail_icon.visible = true
-		status_icon.texture = load("res://assets/lock_icon.png")
+		status_icon.texture = load("res://assets/icons/lock.svg")
 		
 		var locked_style = DeskTheme.create_craft_panel()
 		title_detail_stamp.modulate = Color(0.6, 0.6, 0.6, 0.5)

@@ -102,12 +102,6 @@ var deck_preset_names: Dictionary = {
 }
 var selected_preset_idx: int = 1
 
-func get_grade_rank() -> int:
-	# 学年500人規模と仮定して、偏差値から概算の順位を出す
-	# 偏差値75で約1位、偏差値50で約250位、偏差値25で約500位
-	var rank = int((75.0 - deviation_value) * 10.0)
-	return clampi(rank, 1, 500)
-
 func validate_current_deck() -> void:
 	var assigned: Array[String] = []
 	for i in range(1, 11):
@@ -231,24 +225,7 @@ func record_match_result(is_win: bool) -> Dictionary:
 	
 	if is_win:
 		total_wins += 1
-		# すでに試験戦だった場合、勝利で進級！
-		if is_next_match_exam():
-			# 進級処理
-			var old_stage = grade_stage
-			grade_stage = clampi(grade_stage + 1, 0, GRADE_STAGE_NAMES.size() - 1)
-			exam_wins_progress = 0 # リセット
-			player_level += 1
-			
-			# 報酬
-			var bonus = 150 + (grade_stage * 50)
-			coins += bonus
-			
-			report["level_up"] = true
-			report["new_grade"] = GRADE_STAGE_NAMES[clampi(grade_stage, 0, GRADE_STAGE_NAMES.size() - 1)]
-			report["reward_coins"] = bonus
-		else:
-			# 通常勝利：進捗を進める
-			exam_wins_progress += 1
+		# 進級システム無効化のため、単に total_wins のみカウントアップ
 			
 	# 保存
 	data_changed.emit()

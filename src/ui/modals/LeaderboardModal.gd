@@ -141,7 +141,7 @@ func get_mock_exam_leaderboard() -> Array:
 		{"name": "絶対合格マン (偏差値 62)", "deviation": 62.0, "score": 710},
 		{"name": "脳筋野球部 (偏差値 58)", "deviation": 58.0, "score": 630},
 		{"name": "鈴木さん (本番) (偏差値 54)", "deviation": 54.0, "score": 570},
-		{"name": "一夜漬けの達人 (偏差値 50)", "deviation": 50.0, "score": 480},
+		{"name": "短期集中の達人 (偏差値 50)", "deviation": 50.0, "score": 480},
 		{"name": "復習の鬼 (偏差値 48)", "deviation": 48.0, "score": 440},
 		{"name": "単語帳マニア (偏差値 46)", "deviation": 46.0, "score": 380},
 		{"name": "居眠り常習犯 (偏差値 44)", "deviation": 44.0, "score": 340},

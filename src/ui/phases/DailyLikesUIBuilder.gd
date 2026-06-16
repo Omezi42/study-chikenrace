@@ -1,34 +1,74 @@
 class_name DailyLikesUIBuilder
 extends RefCounted
 
-static func build_layout(phase: DailyLikesPhase) -> void:
+static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) -> void:
 	var phone_target = phase.smartphone_pane if is_instance_valid(phase.smartphone_pane) else phase
 	var notebook_target = phase
 	
-	# SMARTPHONE CONTAINER
-	var phone_panel = PanelContainer.new()
-	phone_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	phone_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	phone_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# SMARTPHONE CONTAINER (Try to reuse the one passed from ReportPhase)
+	var phone_panel = setup_data.get("phone_panel", null) if setup_data else null
+	var is_reused = is_instance_valid(phone_panel)
 	
-	var phone_style = StyleBoxFlat.new()
-	phone_style.bg_color = DeskTheme.COLOR_INK
-	phone_style.border_color = Color("37474f")
-	phone_style.border_width_left = 12
-	phone_style.border_width_right = 12
-	phone_style.border_width_top = 32
-	phone_style.border_width_bottom = 32
-	phone_style.corner_radius_top_left = 28
-	phone_style.corner_radius_top_right = 28
-	phone_style.corner_radius_bottom_left = 28
-	phone_style.corner_radius_bottom_right = 28
-	phone_panel.add_theme_stylebox_override("panel", phone_style)
-	phone_target.add_child(phone_panel)
+	if is_reused:
+		# Reparent to phone_target (smartphone_pane)
+		if phone_panel.get_parent():
+			phone_panel.get_parent().remove_child(phone_panel)
+		phone_target.add_child(phone_panel)
+		
+		# Clear contents of the reused phone panel
+		for child in phone_panel.get_children():
+			child.queue_free()
+			
+		# Reset size and layout anchors/offsets to match left placement exactly and prevent leaks
+		phone_panel.anchor_left = 0.0
+		phone_panel.anchor_right = 0.0
+		phone_panel.anchor_top = 0.0
+		phone_panel.anchor_bottom = 0.0
+		phone_panel.offset_left = 120
+		phone_panel.offset_right = 540
+		phone_panel.offset_top = 140
+		phone_panel.offset_bottom = 940
+		phone_panel.custom_minimum_size = Vector2(420, 800)
+		phone_panel.size = Vector2(420, 800)
+		phone_panel.position = Vector2(120, 140)
+		phone_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	else:
+		# Fallback: Create new phone panel if not reused
+		phone_panel = PanelContainer.new()
+		phone_panel.anchor_left = 0.0
+		phone_panel.anchor_right = 0.0
+		phone_panel.anchor_top = 0.0
+		phone_panel.anchor_bottom = 0.0
+		phone_panel.offset_left = 120
+		phone_panel.offset_right = 540
+		phone_panel.offset_top = 140
+		phone_panel.offset_bottom = 940
+		phone_panel.custom_minimum_size = Vector2(420, 800)
+		phone_panel.size = Vector2(420, 800)
+		phone_panel.position = Vector2(120, 140)
+		phone_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+		
+		var phone_style = StyleBoxFlat.new()
+		phone_style.bg_color = DeskTheme.COLOR_INK
+		phone_style.border_color = Color("37474f")
+		phone_style.border_width_left = 12
+		phone_style.border_width_right = 12
+		phone_style.border_width_top = 32
+		phone_style.border_width_bottom = 32
+		phone_style.corner_radius_top_left = 28
+		phone_style.corner_radius_top_right = 28
+		phone_style.corner_radius_bottom_left = 28
+		phone_style.corner_radius_bottom_right = 28
+		phone_panel.add_theme_stylebox_override("panel", phone_style)
+		phone_target.add_child(phone_panel)
+		
 	phase.phone_panel = phone_panel
 	
 	var phone_vbox = VBoxContainer.new()
+	phone_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	phone_panel.add_child(phone_vbox)
 	
+	# Status bar
 	var status_bar = Label.new()
 	status_bar.text = "16:00  |  チキスタ"
 	status_bar.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -49,27 +89,33 @@ static func build_layout(phase: DailyLikesPhase) -> void:
 	scroll.add_child(timeline_list)
 	phase.timeline_list = timeline_list
 	
-	# RIGHT COLUMN (NOTEBOOK)
+	# RIGHT COLUMN (NOTEBOOK) - Shifted to the right of the phone UI
 	var right_vbox = VBoxContainer.new()
-	right_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	right_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right_vbox.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	right_vbox.position = Vector2(790, 100)
+	right_vbox.size = Vector2(780, 740)
+	right_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
+	right_vbox.size_flags_horizontal = Control.SIZE_FILL
+	right_vbox.size_flags_vertical = Control.SIZE_FILL
 	right_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	right_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_LARGE)
+	right_vbox.add_theme_constant_override("separation", 24)
 	notebook_target.add_child(right_vbox)
 	
 	var detail_wrapper = Control.new()
+	detail_wrapper.mouse_filter = Control.MOUSE_FILTER_STOP
 	detail_wrapper.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail_wrapper.custom_minimum_size = Vector2(700, 380)
+	detail_wrapper.custom_minimum_size = Vector2(780, 600)
 	right_vbox.add_child(detail_wrapper)
 	
 	var detail_modal = PanelContainer.new()
+	detail_modal.mouse_filter = Control.MOUSE_FILTER_STOP
 	detail_modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	detail_modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	detail_wrapper.add_child(detail_modal)
 	phase.detail_modal = detail_modal
 	
 	var detail_margin = MarginContainer.new()
+	detail_margin.mouse_filter = Control.MOUSE_FILTER_STOP
 	detail_margin.add_theme_constant_override("margin_left", DeskTheme.MARGIN_SMALL)
 	detail_margin.add_theme_constant_override("margin_right", DeskTheme.MARGIN_SMALL)
 	detail_margin.add_theme_constant_override("margin_top", DeskTheme.MARGIN_SMALL)
@@ -316,6 +362,7 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	
 	if p["id"] != "player":
 		var doubt_btn = Button.new()
+		doubt_btn.name = "DoubtButton"
 		doubt_btn.text = "ダウト!"
 		doubt_btn.add_theme_font_size_override("font_size", 14)
 		doubt_btn.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
@@ -465,17 +512,17 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 		line1.add_child(hour_lbl)
 		
 		var count_lbl = Label.new()
-		var count_text = "(%d枚ドロー)" % h["draws"]
+		var count_text = "(%d枚ドロー)" % h.get("draws", 0)
 		var text_color = Color(DeskTheme.COLOR_INK, 0.8) # Sightly higher contrast ink
 		var status_icon_tex: Texture = null
 		
 		if p["id"] == "player":
 			if h.get("bursted", false):
-				count_text = "寝落ち [0点] (%d枚)" % h["draws"]
+				count_text = "寝落ち [0点] (%d枚)" % h.get("draws", 0)
 				text_color = DeskTheme.COLOR_TENSION
 				status_icon_tex = load("res://assets/sleep_icon.png")
 			else:
-				count_text = "実点: %d点 (%d枚)" % [h.get("score", 0), h["draws"]]
+				count_text = "実点: %d点 (%d枚)" % [h.get("score", 0), h.get("draws", 0)]
 				text_color = DeskTheme.COLOR_GREEN
 				status_icon_tex = load("res://assets/pencil_icon.png")
 		else:
@@ -522,7 +569,7 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 		cards_hbox.add_theme_constant_override("separation", 3)
 		line2.add_child(cards_hbox)
 		
-		for c_i in range(h["draws"]):
+		for c_i in range(h.get("draws", 0)):
 			var mini_card = PanelContainer.new()
 			mini_card.custom_minimum_size = Vector2(18, 24)
 			
@@ -821,6 +868,8 @@ static func show_doubt_result_modal(
 			fade_tween.tween_property(bg, "color:a", 0.0, 0.2)
 			fade_tween.chain().tween_callback(func():
 				canvas.queue_free()
+				if phase.has_method("_on_doubt_modal_closed"):
+					phase._on_doubt_modal_closed()
 			)
 		)
 	)
@@ -883,7 +932,7 @@ static func show_tutorial_finish_modal(phase: DailyLikesPhase) -> void:
 	vbox.add_child(title)
 	
 	var body = Label.new()
-	body.text = "お疲れ様でした！『テスト勉強チキンレース』の基本的な遊び方（自習、持ち込みアイテム設定、チキスタへの投稿、嘘とダウトの見極め）をマスターしました。\n\n本番の5日制マッチで、他のライバルたちを実力とブラフで圧倒し、第一志望合格（偏差値アップ）を勝ち取りましょう！"
+	body.text = "お疲れ様でした！『テスト勉強チキンレース』の基本的な遊び方（自習、持ち込みアイテム設定、チキスタへの投稿、嘘とダウトの見極め）をマスターしました。\n\n通常プレイや5日制マッチで、他のライバルたちを実力とブラフで圧倒し、第一志望合格（偏差値アップ）を勝ち取りましょう！"
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_theme_font_override("font", DeskTheme.get_font())
 	body.add_theme_font_size_override("font_size", 18)
@@ -896,6 +945,7 @@ static func show_tutorial_finish_modal(phase: DailyLikesPhase) -> void:
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	btn.add_theme_font_override("font", DeskTheme.get_font())
 	btn.add_theme_font_size_override("font_size", 20)
+	DeskTheme.apply_white_button_style(btn)
 	btn.pressed.connect(func():
 		DeskTheme.animate_click(btn, Vector2.ONE, 0.08)
 		Global.is_tutorial_mode = false
@@ -909,4 +959,3 @@ static func show_tutorial_finish_modal(phase: DailyLikesPhase) -> void:
 	modal.scale = Vector2.ZERO
 	var tween = phase.create_tween().bind_node(modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(modal, "scale", Vector2.ONE, 0.3)
-

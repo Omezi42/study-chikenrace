@@ -136,7 +136,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	
 	btn_vbox.add_child(random_btn)
 	
-	# ── ⏱️ 一夜漬けモード (Overnight Mode) ──
+	# ── ⏱️ 通常プレイ (Overnight Mode) ──
 	var overnight_btn = Button.new()
 	overnight_btn.custom_minimum_size = Vector2(660, 100)
 	Global.apply_white_button_style(overnight_btn)
@@ -148,7 +148,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	overnight_btn.add_child(overnight_inner)
 	
 	var overnight_title_lbl = Label.new()
-	overnight_title_lbl.text = "一夜漬けモード"
+	overnight_title_lbl.text = "通常プレイ（1日制）"
 	overnight_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	overnight_title_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	overnight_title_lbl.add_theme_font_size_override("font_size", 22)
@@ -230,7 +230,8 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 
 static func _show_difficulty_selection(parent: Node, mode_modal: PanelContainer, on_friend_match_pressed: Callable, national_names_pool: Array) -> void:
 	var parent_tree = parent
-	mode_modal.queue_free()
+	if mode_modal != null and is_instance_valid(mode_modal):
+		mode_modal.queue_free()
 	
 	var diff_modal = PanelContainer.new()
 	diff_modal.custom_minimum_size = Vector2(720, 620)
@@ -253,7 +254,7 @@ static func _show_difficulty_selection(parent: Node, mode_modal: PanelContainer,
 	
 	var title = Label.new()
 	if Global.game_mode == Constants.MODE_OVERNIGHT:
-		title.text = "一夜漬けのクラス選択"
+		title.text = "通常プレイのクラス選択"
 	else:
 		title.text = "模試のクラス選択"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -394,7 +395,8 @@ static func _show_difficulty_selection(parent: Node, mode_modal: PanelContainer,
 	back_btn.pressed.connect(func():
 		DeskTheme.animate_click(back_btn, Vector2.ONE, 0.08)
 		diff_modal.queue_free()
-		ModeSelectionModal.create_and_show(parent, on_friend_match_pressed, national_names_pool)
+		if mode_modal != null and is_instance_valid(mode_modal):
+			ModeSelectionModal.create_and_show(parent, on_friend_match_pressed, national_names_pool)
 	)
 	
 	# Entrance animation
@@ -404,7 +406,8 @@ static func _show_difficulty_selection(parent: Node, mode_modal: PanelContainer,
 		tween.tween_property(diff_modal, "scale", Vector2.ONE, 0.3)
 
 static func _show_login_warning(parent: Node, mode_modal: PanelContainer, national_names_pool: Array, on_friend_match_pressed: Callable) -> void:
-	mode_modal.queue_free()
+	if mode_modal != null and is_instance_valid(mode_modal):
+		mode_modal.queue_free()
 	
 	var warning = PanelContainer.new()
 	warning.custom_minimum_size = Vector2(600, 360)
@@ -471,11 +474,13 @@ static func _show_login_warning(parent: Node, mode_modal: PanelContainer, nation
 	no_btn.pressed.connect(func():
 		DeskTheme.animate_click(no_btn, Vector2.ONE, 0.08)
 		warning.queue_free()
-		ModeSelectionModal.create_and_show(parent, on_friend_match_pressed, national_names_pool)
+		if mode_modal != null and is_instance_valid(mode_modal):
+			ModeSelectionModal.create_and_show(parent, on_friend_match_pressed, national_names_pool)
 	)
 
 static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: Node, national_names_pool: Array, on_friend_match_pressed: Callable) -> void:
-	mode_modal.queue_free()
+	if mode_modal != null and is_instance_valid(mode_modal):
+		mode_modal.queue_free()
 	
 	var lobby = PanelContainer.new()
 	lobby.custom_minimum_size = Vector2(650, 480)
@@ -549,7 +554,8 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 			bm.leave_or_delete_random_room(Global.friend_room_code)
 		Global.friend_room_code = ""
 		clean_up_lobby.call()
-		ModeSelectionModal.create_and_show(parent, on_friend_match_pressed, national_names_pool)
+		if mode_modal != null and is_instance_valid(mode_modal):
+			ModeSelectionModal.create_and_show(parent, on_friend_match_pressed, national_names_pool)
 	)
 	
 	on_status_changed = func(status: String, message: String):

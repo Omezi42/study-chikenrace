@@ -42,9 +42,7 @@ func draw_card() -> Dictionary:
 func apply_deck_startup_items(is_tutorial: bool) -> void:
 	for slot_idx in Global.current_deck.keys():
 		var item = Global.current_deck[slot_idx]
-		if item == "item_eraser" and (is_tutorial or randf() < 0.5):
-			deck.eraser_charges += 1
-		elif item == "item_red_sheet" and randf() < 0.3:
+		if item == "item_red_sheet" and randf() < 0.3:
 			deck.red_sheet_active = true
 		elif item == "item_mech_pencil" and randf() < 0.4:
 			deck.next_draw_bonus_points += 2

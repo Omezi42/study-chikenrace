@@ -453,7 +453,7 @@ func test_scenario_modes() -> bool:
 	var orig_friend_current_day = Global.friend_current_day
 	var orig_friend_match_history = Global.friend_match_history.duplicate(true)
 	
-	# --- Part A: Cram (一夜漬け) Mode Simulation ---
+	# --- Part A: Cram (通常プレイ 1日制) Mode Simulation ---
 	Global.game_mode = Constants.MODE_CRAM
 	Global.daily_current_day = 3
 	Global.daily_my_records = {
@@ -1019,9 +1019,9 @@ func test_full_game_integration_flow() -> bool:
 	return pass_start and pass_max_hours and pass_hours_size and pass_game_over
 
 
-# Test 17: Grade & Progression System Test
+# Test 17: Grade & Progression System Test (Modified to reflect disabled progression)
 func test_grade_progression_system() -> bool:
-	print("\n--- Test 17: Grade Stage & Progression System ---")
+	print("\n--- Test 17: Grade Stage & Progression System (Disabled) ---")
 	
 	# Reset states
 	PlayerState.grade_stage = 0
@@ -1031,33 +1031,23 @@ func test_grade_progression_system() -> bool:
 	PlayerState.total_wins = 0
 	PlayerState.recent_results = []
 	
-	# Stage 0 requires 2 wins to trigger exam
-	var pass_req = assert_true(PlayerState.get_current_required_wins() == 2, "Grade stage 0 requires 2 wins.")
-	
 	# 1st normal win
 	var rep1 = PlayerState.record_match_result(true)
-	var pass_win1 = assert_true(PlayerState.exam_wins_progress == 1, "First win increases exam progress to 1.")
 	var pass_win1_wins = assert_true(PlayerState.total_wins == 1, "Total wins increases to 1.")
-	var pass_lvl1 = assert_true(PlayerState.player_level == 1, "Level remains 1 before exam promotion.")
-	
-	# Check if exam is ready
-	var pass_exam_ready_no = assert_true(not PlayerState.is_next_match_exam(), "Exam is not ready with 1 win.")
+	var pass_lvl1 = assert_true(PlayerState.player_level == 1, "Level remains 1.")
 	
 	# 2nd normal win
 	var rep2 = PlayerState.record_match_result(true)
-	var pass_win2 = assert_true(PlayerState.exam_wins_progress == 2, "Second win increases exam progress to 2.")
-	var pass_exam_ready_yes = assert_true(PlayerState.is_next_match_exam(), "Exam is ready after 2 wins.")
+	var pass_win2_wins = assert_true(PlayerState.total_wins == 2, "Total wins increases to 2.")
 	
-	# Now next match is exam match. If we win, we promote to next grade!
+	# 3rd win
 	var rep3 = PlayerState.record_match_result(true)
-	var pass_promo = assert_true(rep3["level_up"] == true, "Exam match win triggers level up / grade promotion.")
-	var pass_new_grade = assert_true(PlayerState.grade_stage == 1, "Grade stage increases to 1.")
-	var pass_progress_reset = assert_true(PlayerState.exam_wins_progress == 0, "Exam progress resets to 0 after promotion.")
-	var pass_lvl_up = assert_true(PlayerState.player_level == 2, "Player level increases to 2.")
-	var pass_coins_reward = assert_true(PlayerState.coins > 100, "Coins reward is paid after promotion.")
+	var pass_win3_wins = assert_true(PlayerState.total_wins == 3, "Total wins increases to 3.")
+	var pass_no_promo = assert_true(rep3["level_up"] == false, "Progression is disabled: level_up is false.")
+	var pass_grade_stage_same = assert_true(PlayerState.grade_stage == 0, "Grade stage remains 0.")
 	var pass_recent = assert_true(PlayerState.recent_results == ["WIN", "WIN", "WIN"], "Recent results holds all WINs.")
 	
-	return pass_req and pass_win1 and pass_win1_wins and pass_lvl1 and pass_exam_ready_no and pass_win2 and pass_exam_ready_yes and pass_promo and pass_new_grade and pass_progress_reset and pass_lvl_up and pass_coins_reward and pass_recent
+	return pass_win1_wins and pass_lvl1 and pass_win2_wins and pass_win3_wins and pass_no_promo and pass_grade_stage_same and pass_recent
 
 
 

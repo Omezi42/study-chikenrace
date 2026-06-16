@@ -546,51 +546,7 @@ func trigger_report_card() -> void:
 	breakdown.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.75))
 	report_left_page.add_child(breakdown)
 	
-	# Add Grade promotion notice panel if applicable
-	var prog_report = showdown_data.get("prog_report", {})
-	if not prog_report.is_empty() and prog_report.get("level_up", false):
-		var promo_panel = PanelContainer.new()
-		var promo_style = StyleBoxFlat.new()
-		promo_style.bg_color = Color("fff9c4") # Light gold
-		promo_style.border_color = Color("fbc02d")
-		promo_style.border_width_left = 3
-		promo_style.border_width_right = 3
-		promo_style.border_width_top = 3
-		promo_style.border_width_bottom = 3
-		promo_style.corner_radius_top_left = 6
-		promo_style.corner_radius_top_right = 6
-		promo_style.corner_radius_bottom_left = 6
-		promo_style.corner_radius_bottom_right = 6
-		promo_style.content_margin_left = 10
-		promo_style.content_margin_right = 10
-		promo_style.content_margin_top = 8
-		promo_style.content_margin_bottom = 8
-		promo_panel.add_theme_stylebox_override("panel", promo_style)
-		report_left_page.add_child(promo_panel)
-		
-		var promo_vbox = VBoxContainer.new()
-		promo_vbox.add_theme_constant_override("separation", 2)
-		promo_panel.add_child(promo_vbox)
-		
-		var promo_title = Label.new()
-		promo_title.text = "🎉 進級おめでとう！ 🎉"
-		promo_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		promo_title.add_theme_font_override("font", DeskTheme.get_font())
-		promo_title.add_theme_font_size_override("font_size", 18)
-		promo_title.add_theme_color_override("font_color", Color("c62828"))
-		promo_vbox.add_child(promo_title)
-		
-		var promo_desc = Label.new()
-		promo_desc.text = "%s から\n%s へ進級しました！\n進級祝い金: 🪙%d コイン" % [
-			prog_report.get("old_grade", "前学期"),
-			prog_report.get("new_grade", "現学期"),
-			prog_report.get("reward_coins", 100)
-		]
-		promo_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		promo_desc.add_theme_font_override("font", DeskTheme.get_font())
-		promo_desc.add_theme_font_size_override("font_size", 14)
-		promo_desc.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-		promo_vbox.add_child(promo_desc)
+	# 進級システム無効化のため進級告知パネル表示を削除
 
 	
 	# Coin earning rollup section (Loop 12)

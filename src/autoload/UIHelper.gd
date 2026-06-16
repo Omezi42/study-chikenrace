@@ -124,11 +124,11 @@ func hide_loading() -> void:
 func show_tutorial_dialog(parent: Control, text: String, pos: Vector2 = Vector2(700, 50), next_callback: Callable = Callable()) -> PanelContainer:
 	var dialog = PanelContainer.new()
 	dialog.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	dialog.custom_minimum_size = Vector2(520, 220)
-	dialog.size = Vector2(520, 220)
+	dialog.custom_minimum_size = Vector2(560, 160)
+	dialog.size = Vector2(560, 160)
 	var viewport_size = parent.get_viewport_rect().size
 	if pos == Vector2(700, 50):
-		dialog.position = viewport_size * 0.5 - dialog.pivot_offset
+		dialog.position = viewport_size * 0.5 - Vector2(280, 80)
 	else:
 		dialog.position = Vector2(
 			clamp(pos.x, 0.0, max(viewport_size.x - dialog.size.x, 0.0)),
@@ -163,20 +163,13 @@ func show_tutorial_dialog(parent: Control, text: String, pos: Vector2 = Vector2(
 	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vbox.add_theme_constant_override("separation", 10)
 	margin.add_child(vbox)
-	
-	var header = Label.new()
-	header.text = "📌 佐藤くんのメモ"
-	header.add_theme_font_override("font", DeskTheme.get_font())
-	header.add_theme_font_size_override("font_size", 20)
-	header.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	vbox.add_child(header)
 
 	
 	var body = Label.new()
 	body.text = text
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_theme_font_override("font", DeskTheme.get_font())
-	body.add_theme_font_size_override("font_size", 16)
+	body.add_theme_font_size_override("font_size", 20)
 	body.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(body)
 	
@@ -186,7 +179,7 @@ func show_tutorial_dialog(parent: Control, text: String, pos: Vector2 = Vector2(
 		btn.custom_minimum_size = Vector2(100, 36)
 		btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 		btn.add_theme_font_override("font", DeskTheme.get_font())
-		btn.add_theme_font_size_override("font_size", 16)
+		btn.add_theme_font_size_override("font_size", 18)
 		btn.pressed.connect(func():
 			DeskTheme.animate_click(btn, Vector2.ONE, 0.08)
 			var out_tween = parent.create_tween().bind_node(dialog)
@@ -201,7 +194,7 @@ func show_tutorial_dialog(parent: Control, text: String, pos: Vector2 = Vector2(
 	parent.add_child(dialog)
 	
 	dialog.scale = Vector2.ZERO
-	dialog.pivot_offset = Vector2(260, 110)
+	dialog.pivot_offset = Vector2(280, 80)
 	var tween = parent.create_tween().bind_node(dialog).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(dialog, "scale", Vector2.ONE, 0.3)
 	

@@ -9,13 +9,10 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	# Force targeting the main phase instead of smartphone_pane to center it on screen
 	var target_parent = phase
 
-	# SMARTPHONE CONTAINER (Phone UI Frame) - Centered manually
+	# SMARTPHONE CONTAINER (Phone UI Frame) - Manually centered on 1920x1080 canvas
 	var phone_panel = PanelContainer.new()
-	phone_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	phone_panel.custom_minimum_size = Vector2(420, 800)
 	phone_panel.size = Vector2(420, 800)
-	# 1500 x 850 base screen size, centering gives: X=(1500-420)/2=540, Y=(850-800)/2=25
-	phone_panel.position = Vector2(540, 25)
 	phone_panel.pivot_offset = Vector2(210, 400)
 	
 	var phone_style = StyleBoxFlat.new()
@@ -31,6 +28,10 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	phone_style.corner_radius_bottom_right = 28
 	phone_panel.add_theme_stylebox_override("panel", phone_style)
 	target_parent.add_child(phone_panel)
+	
+	# Use PRESET_TOP_LEFT with explicit center coords (X=750, Y=140) to prevent engine layout scaling issues
+	phone_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	phone_panel.position = Vector2(750, 140)
 	phase.phone_panel = phone_panel
 	
 	# Inside Phone VBox

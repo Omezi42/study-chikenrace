@@ -32,7 +32,7 @@ func initialize_deck(deck_config: Dictionary) -> void:
 	# For each slot N (1 to 10), insert N copies of the card
 	var max_slots = 10
 	if Global.game_mode == Constants.MODE_OVERNIGHT:
-		max_slots = 8 # 一夜漬けモード時は36枚のミニデッキでバースト高確率化
+		max_slots = 8 # 通常プレイ（1日制）時は36枚のミニデッキでバースト高確率化
 		
 	for slot_idx in range(1, max_slots + 1):
 		var item_id = deck_config.get(slot_idx, "")
@@ -60,23 +60,33 @@ func initialize_deck(deck_config: Dictionary) -> void:
 		var tutorial_cards = [
 			{
 				"value": 3,
-				"item_id": "item_ruler",
-				"name": "定規"
+				"item_id": "",
+				"name": "勉強カード"
 			},
 			{
 				"value": 3,
-				"item_id": "item_ruler",
-				"name": "定規"
+				"item_id": "",
+				"name": "勉強カード"
 			},
 			{
 				"value": 5,
-				"item_id": "item_sticky_note",
-				"name": "付箋"
+				"item_id": "item_mech_pencil",
+				"name": "シャーペン"
 			},
 			{
 				"value": 8,
 				"item_id": "item_wordbook",
 				"name": "単語帳"
+			},
+			{
+				"value": 7,
+				"item_id": "",
+				"name": "勉強カード"
+			},
+			{
+				"value": 6,
+				"item_id": "",
+				"name": "勉強カード"
 			}
 		]
 		cards.clear()
@@ -191,20 +201,20 @@ func get_burst_probability() -> float:
 			continue
 		hand_values.append(card["value"])
 		
-	var total_cards = draw_pile.size() + discard_pile.size()
+	# 次にドローする対象の山札（空ならリサイクルされる捨て札）を対象にする
+	var target_pile = draw_pile
+	if draw_pile.size() == 0:
+		target_pile = discard_pile
+		
+	var total_cards = target_pile.size()
 	var burst_cards = 0
 	
-	# Check draw pile
-	for card in draw_pile:
-		if card["value"] in hand_values:
-			burst_cards += 1
-			
-	# Check discard pile
-	for card in discard_pile:
+	for card in target_pile:
 		if card["value"] in hand_values:
 			burst_cards += 1
 			
 	return float(burst_cards) / float(total_cards)
+
 
 # Get burst chance for energy drink (10% per card drawn after 3, first 3 cards are safe)
 func get_energy_drink_burst_chance() -> float:

@@ -6,8 +6,8 @@ static func evaluate_suspiciousness(declared_score: int, hours: Array[Dictionary
 	var used_cheat_items = false
 	
 	for hour in hours:
-		total_draws += hour["draws"]
-		for item in hour["used_items"]:
+		total_draws += hour.get("draws", 0)
+		for item in hour.get("used_items", []):
 			if item in ["item_cheat_sheet", "item_copy_answer"]:
 				used_cheat_items = true
 				

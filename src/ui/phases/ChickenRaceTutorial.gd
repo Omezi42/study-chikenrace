@@ -6,32 +6,57 @@ var tutorial_step: int = 0
 var tutorial_dialog_node: PanelContainer = null
 var current_hour: int = 1
 
+# ハイライト管理用
+var active_tweens: Array[Tween] = []
+var restored_nodes: Dictionary = {} # node -> { "scale": Vector2, "modulate": Color }
+
 func _init(p_phase: ChickenRacePhase) -> void:
 	phase = p_phase
+
+func highlight(node: Control) -> void:
+	if not node or not node.is_inside_tree():
+		return
+	if not restored_nodes.has(node):
+		restored_nodes[node] = {
+			"scale": node.scale,
+			"modulate": node.modulate
+		}
+	var tween = DeskTheme.flash_highlight(node)
+	if tween:
+		active_tweens.append(tween)
+
+func clear_highlights() -> void:
+	for tween in active_tweens:
+		if is_instance_valid(tween):
+			tween.kill()
+	active_tweens.clear()
+	
+	for node in restored_nodes.keys():
+		if is_instance_valid(node):
+			node.scale = restored_nodes[node]["scale"]
+			node.modulate = restored_nodes[node]["modulate"]
+	restored_nodes.clear()
 
 func start() -> void:
 	tutorial_step = 0
 	current_hour = 1
-	phase.stop_btn.disabled = true # Cannot stop yet
-	phase.draw_btn.disabled = true # Must read description first
+	phase.stop_btn.disabled = true
+	phase.draw_btn.disabled = true
+	
+	clear_highlights()
+	DeskTheme.show_toast(phase, "チュートリアルへようこそ！", 2.5, DeskTheme.COLOR_GREEN)
 	
 	var viewport_size = phase.get_viewport_rect().size
-	var dialog_pos = Vector2(viewport_size.x * 0.05, viewport_size.y * 0.22)
+	var dialog_pos = Vector2(viewport_size.x * 0.6, viewport_size.y * 0.08)
 	
-	tutorial_dialog_node = phase.show_tutorial_dialog(
-		"おーい！次のテスト、マジでヤバいらしいぞ！\n一緒に『一夜漬け』で乗り切ろうぜ。\n\nルールは簡単、カードを引いて勉強するだけ！でも居眠り（バースト）には気をつけろよ！",
-		dialog_pos,
-		func():
-			tutorial_dialog_node = phase.show_tutorial_dialog(
-				"勉強すればするほど点数は上がるけど、同じ勉強内容（カードの数字）が重なった瞬間、脳みそがパンクして『居眠り（バースト）』しちゃうんだ。\n\nそうなったらその時間は 0点 になるからな！",
-				dialog_pos,
-				func():
-					tutorial_dialog_node = phase.show_tutorial_dialog(
-						"でも安心しろよ！俺たちの筆箱には『単語帳』とか『付箋』みたいな便利ツールが入ってる。引いた瞬間に効果が出るから、うまく使おうぜ！\n\nほら、まずは『勉強カードを引く』を押して1枚引いてみて！",
-						dialog_pos
-					)
-					phase.draw_btn.disabled = false
-			)
+	var t = phase.get_tree().create_timer(0.2)
+	t.timeout.connect(func():
+		tutorial_dialog_node = phase.show_tutorial_dialog(
+			"勉強カードを引いて、テストの点数を上げます。まずは1枚引いてみましょう。",
+			dialog_pos
+		)
+		phase.draw_btn.disabled = false
+		highlight(phase.draw_btn)
 	)
 
 func start_hour_2() -> void:
@@ -40,23 +65,49 @@ func start_hour_2() -> void:
 	phase.stop_btn.disabled = true
 	phase.draw_btn.disabled = true
 	
+	clear_highlights()
+	
 	var viewport_size = phase.get_viewport_rect().size
-	var dialog_pos = Vector2(viewport_size.x * 0.05, viewport_size.y * 0.22)
+	var dialog_pos = Vector2(viewport_size.x * 0.6, viewport_size.y * 0.08)
 	
 	tutorial_dialog_node = phase.show_tutorial_dialog(
-		"2時限目が始まったぞ！山札はさっきの続きからだ。\n\nさっき引いたカードは捨て札にあるから、もう山札からは出ない。引いた数字を覚えておくのがコツだ。さあ、もう1枚いこう！",
+		"筆記用具（アイテム）を引くと、有利な特殊効果が発動します。カードを引いてみましょう。",
 		dialog_pos
 	)
 	phase.draw_btn.disabled = false
+	highlight(phase.draw_btn)
+
+func start_hour_3() -> void:
+	tutorial_step = 0
+	current_hour = 3
+	phase.stop_btn.disabled = true
+	phase.draw_btn.disabled = true
+	
+	clear_highlights()
+	
+	var viewport_size = phase.get_viewport_rect().size
+	var dialog_pos = Vector2(viewport_size.x * 0.6, viewport_size.y * 0.08)
+	
+	tutorial_dialog_node = phase.show_tutorial_dialog(
+		"手札と同じ数字を引いてしまうと『バースト（寝落ち）』となり、点数が0になります。リスクを体感するため、カードを引いてみましょう。",
+		dialog_pos
+	)
+	phase.draw_btn.disabled = false
+	highlight(phase.draw_btn)
+	
+	if is_instance_valid(phase.draw_history_container):
+		highlight(phase.draw_history_container)
 
 func advance_step() -> void:
 	if tutorial_dialog_node:
 		tutorial_dialog_node.queue_free()
 		tutorial_dialog_node = null
 		
+	clear_highlights()
 	tutorial_step += 1
+	
 	var viewport_size = phase.get_viewport_rect().size
-	var dialog_pos = Vector2(viewport_size.x * 0.05, viewport_size.y * 0.22)
+	var dialog_pos = Vector2(viewport_size.x * 0.6, viewport_size.y * 0.08)
 	
 	if current_hour == 1:
 		match tutorial_step:
@@ -64,30 +115,57 @@ func advance_step() -> void:
 				phase.stop_btn.disabled = true
 				phase.draw_btn.disabled = false
 				tutorial_dialog_node = phase.show_tutorial_dialog(
-					"お、『単語帳』を引いたな！カードの数字がそのまま得点になるぞ。\n単語帳の効果で、次のカードが3枚『のぞき見』できたな！これで次に出る数字が先読みできる。\n\nよし、もう1枚引いてみよう！",
+					"さらに高い点数を目指して勉強を重ねます。もう一枚引いてみましょう。",
 					dialog_pos
 				)
+				highlight(phase.draw_btn)
 			2:
-				phase.draw_btn.disabled = true # Prevent drawing further
-				phase.stop_btn.disabled = false # Enable stop
+				phase.draw_btn.disabled = true 
+				phase.stop_btn.disabled = false 
 				tutorial_dialog_node = phase.show_tutorial_dialog(
-					"2枚目は『付箋』を引いて、合計13点になったぞ！\n付箋の効果で、次に引くカードにボーナスが入るようになった！\n\n今回は上出来だしバーストしたら勿体ないから、安全のために『休憩する』を押して、得点を確定させよう！",
+					"これ以上引くとバースト（寝落ち）して0点になる危険があります。『休憩』を押して点数を確定させましょう。",
 					dialog_pos
 				)
+				highlight(phase.stop_btn)
 	elif current_hour == 2:
 		match tutorial_step:
 			1:
 				phase.stop_btn.disabled = true
 				phase.draw_btn.disabled = false
 				tutorial_dialog_node = phase.show_tutorial_dialog(
-					"『3』を引いたな！\n山札の初期構成では『3』は3枚入ってる。もし次も『3』を引くとバースト（居眠り）してしまうぞ！確率も上がってるな。\n\nここは居眠りを体験するために、あえてもう1枚引いてみてくれ！",
+					"のぞき見効果で次に引くカードがわかれば、安全にドローを続けられます。もう一枚引いてみましょう。",
 					dialog_pos
 				)
+				highlight(phase.draw_btn)
+				if is_instance_valid(phase.active_peek_sticky):
+					highlight(phase.active_peek_sticky)
+			2:
+				phase.draw_btn.disabled = true 
+				phase.stop_btn.disabled = false 
+				tutorial_dialog_node = phase.show_tutorial_dialog(
+					"シャーペンの継続効果が発動しました。十分に点数が稼げたので、休憩して時限を終えましょう。",
+					dialog_pos
+				)
+				highlight(phase.stop_btn)
+				if is_instance_valid(phase.active_effects_hbox):
+					highlight(phase.active_effects_hbox)
+	elif current_hour == 3:
+		match tutorial_step:
+			1:
+				phase.stop_btn.disabled = true
+				phase.draw_btn.disabled = false
+				tutorial_dialog_node = phase.show_tutorial_dialog(
+					"手札にある『3』をもう一度引くとバーストします。あえてもう一枚引いてバーストを体験してみましょう。",
+					dialog_pos
+				)
+				highlight(phase.draw_btn)
 			2:
 				phase.draw_btn.disabled = true
 				phase.stop_btn.disabled = true
 
 func cleanup() -> void:
+	clear_highlights()
 	if tutorial_dialog_node:
 		tutorial_dialog_node.queue_free()
 		tutorial_dialog_node = null
+

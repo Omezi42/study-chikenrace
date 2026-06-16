@@ -309,7 +309,7 @@ func _init_notebook_ui() -> void:
 		Global.is_tutorial_mode = false
 
 	if Global.is_tutorial_mode and session.current_day == 1 and session.current_hour == 1:
-		session.max_hours_today = 2
+		session.max_hours_today = 3
 		tutorial = ChickenRaceTutorial.new(self)
 		tutorial.start()
 
@@ -327,24 +327,30 @@ func _update_decision_panel() -> void:
 		return
 	var score = engine.calculate_hand_score() if engine else 0
 	var prob = engine.deck.get_burst_probability() if engine else 0.0
-	var deck_count = engine.deck.cards.size() if engine else 0
+	var deck_count = engine.deck.draw_pile.size() if engine else 0
 	var hand_count = session.player_deck.hand.size()
 	
 	var expected_val = 0.0
-	if engine and engine.deck.cards.size() > 0:
-		var safe_points_sum = 0
-		var safe_count = 0
-		for c in engine.deck.cards:
-			if not engine.deck.would_card_burst(c):
-				safe_points_sum += c.get("value", 0)
-				safe_count += 1
-		if safe_count > 0:
-			var safe_prob = 1.0 - prob
-			var avg_safe_score = float(safe_points_sum) / safe_count
-			# expected delta = (avg_safe_score) * safe_prob + (-score) * prob
-			expected_val = (avg_safe_score * safe_prob) - (score * prob)
+	if engine:
+		var target_pile = engine.deck.draw_pile
+		if target_pile.size() == 0:
+			target_pile = engine.deck.discard_pile
+			
+		if target_pile.size() > 0:
+			var safe_points_sum = 0
+			var safe_count = 0
+			for c in target_pile:
+				if not engine.deck.would_card_burst(c):
+					safe_points_sum += c.get("value", 0)
+					safe_count += 1
+			if safe_count > 0:
+				var safe_prob = 1.0 - prob
+				var avg_safe_score = float(safe_points_sum) / safe_count
+				# expected delta = (avg_safe_score) * safe_prob + (-score) * prob
+				expected_val = (avg_safe_score * safe_prob) - (score * prob)
 			
 	decision_panel.update_info(score, prob, deck_count, hand_count, expected_val)
+
 
 func perform_animated_draw(card: Dictionary, on_complete: Callable = Callable()) -> void:
 	is_animating = true
@@ -692,8 +698,11 @@ func reset_phase_for_next_hour() -> void:
 	
 	DeskTheme.show_toast(self, "第 %d 時限目の勉強を開始します！" % session.current_hour)
 	
-	if Global.is_tutorial_mode and tutorial and session.current_hour == 2:
-		tutorial.start_hour_2()
+	if Global.is_tutorial_mode and tutorial:
+		if session.current_hour == 2:
+			tutorial.start_hour_2()
+		elif session.current_hour == 3:
+			tutorial.start_hour_3()
 
 func show_hour_result_popup(score: int, is_burst: bool) -> void:
 	ChickenRaceAnimations.show_hour_result_popup(self, score, is_burst)

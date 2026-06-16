@@ -4,7 +4,8 @@
   "description": "放課後の机の上で、嘘と引きの心理戦を楽しむ **Godot 4.6** ブラウザ向けカジュアルゲーム。",
   "main": "test_browser.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "edit-text": "node text-editor-server.js"
   },
   "repository": {
     "type": "git",
