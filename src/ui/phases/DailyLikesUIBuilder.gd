@@ -92,7 +92,7 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	# RIGHT COLUMN (NOTEBOOK) - Shifted to the right of the phone UI
 	var right_vbox = VBoxContainer.new()
 	right_vbox.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	right_vbox.position = Vector2(790, 100)
+	right_vbox.position = Vector2(790, 200)
 	right_vbox.size = Vector2(780, 740)
 	right_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	right_vbox.size_flags_horizontal = Control.SIZE_FILL
@@ -101,17 +101,12 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	right_vbox.add_theme_constant_override("separation", 24)
 	notebook_target.add_child(right_vbox)
 	
-	var detail_wrapper = Control.new()
-	detail_wrapper.mouse_filter = Control.MOUSE_FILTER_STOP
-	detail_wrapper.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail_wrapper.custom_minimum_size = Vector2(780, 600)
-	right_vbox.add_child(detail_wrapper)
-	
 	var detail_modal = PanelContainer.new()
 	detail_modal.mouse_filter = Control.MOUSE_FILTER_STOP
-	detail_modal.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	detail_modal.custom_minimum_size = Vector2(780, 600)
+	detail_modal.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
-	detail_wrapper.add_child(detail_modal)
+	right_vbox.add_child(detail_modal)
 	phase.detail_modal = detail_modal
 	
 	var detail_margin = MarginContainer.new()
@@ -453,6 +448,7 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 	
 	if p["id"] != "player":
 		var doubt_btn = Button.new()
+		doubt_btn.name = "DetailDoubtButton"
 		doubt_btn.text = "ダウト！"
 		doubt_btn.custom_minimum_size = Vector2(0, 50)
 		doubt_btn.add_theme_font_override("font", DeskTheme.get_font())
@@ -948,6 +944,8 @@ static func show_tutorial_finish_modal(phase: DailyLikesPhase) -> void:
 	DeskTheme.apply_white_button_style(btn)
 	btn.pressed.connect(func():
 		DeskTheme.animate_click(btn, Vector2.ONE, 0.08)
+		PlayerState.is_tutorial_completed = true
+		Global.save_game()
 		Global.is_tutorial_mode = false
 		var timer = phase.get_tree().create_timer(0.2)
 		timer.timeout.connect(func():

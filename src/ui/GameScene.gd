@@ -46,7 +46,7 @@ func _ready() -> void:
 	# Layout for persistent 2-pane structure - Add smartphone_pane after notebook_pane to make it topmost
 	smartphone_pane = Control.new()
 	smartphone_pane.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	smartphone_pane.mouse_filter = Control.MOUSE_FILTER_PASS
+	smartphone_pane.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(smartphone_pane)
 	
 	# Global references for phases to attach to
@@ -163,7 +163,9 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 					bm.upload_friend_move(Global.friend_room_code, session.current_day, mid_move)
 				change_phase(Constants.PHASE_WAITING, {"day": session.current_day, "final_wait": false})
 			else:
-				change_phase(Constants.PHASE_DAILY_LIKES, {"from_report": true})
+				var setup = result_data.duplicate()
+				setup["from_report"] = true
+				change_phase(Constants.PHASE_DAILY_LIKES, setup)
 				
 		Constants.PHASE_DAILY_LIKES:
 			# Day ends. Compute AIs and compile doubts.

@@ -188,6 +188,19 @@ func _on_inspect_pressed(p: Dictionary) -> void:
 	await get_tree().process_frame
 	_update_ellipsis_visibility()
 
+	if Global.is_tutorial_mode and session.current_day == 1:
+		clear_highlights()
+		var detail_btn = detail_modal.find_child("DetailDoubtButton", true, false)
+		if detail_btn and not detail_btn.disabled:
+			highlight(detail_btn)
+		
+		var viewport_size = get_viewport_rect().size
+		var dialog_pos = Vector2(viewport_size.x - 620, viewport_size.y - 220)
+		tutorial_dialog_node = show_tutorial_dialog(
+			"詳細ログから友達の行動履歴を確認できます。点数に対してドロー回数が少なすぎますね。詳細パネルの『ダウト！』を押してみましょう。",
+			dialog_pos
+		)
+
 func _update_ellipsis_visibility() -> void:
 	if not is_instance_valid(detail_scroll) or not is_instance_valid(detail_ellipsis):
 		return

@@ -257,7 +257,7 @@ func apply_white_button_style(btn: Button) -> void:
 
 func _on_node_added(node: Node) -> void:
 	if node is Control:
-		call_deferred("_apply_improved_typography", node)
+		(func(n): if is_instance_valid(n): _apply_improved_typography(n)).call_deferred(node)
 
 func _apply_improved_typography(node: Node) -> void:
 	if not is_instance_valid(node):
