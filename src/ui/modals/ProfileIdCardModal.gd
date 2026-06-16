@@ -23,21 +23,21 @@ func _ready() -> void:
 	add_child(bg_overlay)
 	
 	var modal = PanelContainer.new()
-	modal.custom_minimum_size = Vector2(460, 520)
-	modal.pivot_offset = Vector2(230, 260)
+	modal.custom_minimum_size = Vector2(500, 560)
+	modal.pivot_offset = Vector2(250, 280)
 	
 	var id_style = StyleBoxFlat.new()
-	id_style.bg_color = DeskTheme.COLOR_CRAFT
-	id_style.border_color = Color("1a237e") # Student ID Blue
-	id_style.border_width_left = 20 # binding border
-	id_style.border_width_right = 4
-	id_style.border_width_top = 4
-	id_style.border_width_bottom = 4
-	id_style.corner_radius_top_left = 12
-	id_style.corner_radius_top_right = 12
-	id_style.corner_radius_bottom_left = 12
-	id_style.corner_radius_bottom_right = 12
-	id_style.shadow_color = Color(0, 0, 0, 0.3)
+	id_style.bg_color = DeskTheme.COLOR_CRAFT # Inside paper
+	id_style.border_color = Color("111111") # Black synthetic leather cover
+	id_style.border_width_left = 24
+	id_style.border_width_right = 16
+	id_style.border_width_top = 16
+	id_style.border_width_bottom = 16
+	id_style.corner_radius_top_left = 8
+	id_style.corner_radius_top_right = 16
+	id_style.corner_radius_bottom_left = 8
+	id_style.corner_radius_bottom_right = 16
+	id_style.shadow_color = Color(0, 0, 0, 0.4)
 	id_style.shadow_size = 15
 	id_style.shadow_offset = Vector2(6, 6)
 	modal.add_theme_stylebox_override("panel", id_style)
@@ -57,12 +57,28 @@ func _ready() -> void:
 	vbox.add_theme_constant_override("separation", 15)
 	margin.add_child(vbox)
 	
+	var header_hbox = HBoxContainer.new()
+	header_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	header_hbox.add_theme_constant_override("separation", 10)
+	vbox.add_child(header_hbox)
+	
+	var header_icon = Label.new()
+	header_icon.text = "⚜️" # 校章の代わり
+	header_icon.add_theme_font_override("font", DeskTheme.get_font())
+	header_icon.add_theme_font_size_override("font_size", 24)
+	header_hbox.add_child(header_icon)
+	
 	var header = Label.new()
-	header.text = "生徒手帳 ID CARD"
+	header.text = "私立チキン学園 生徒手帳"
 	header.add_theme_font_override("font", DeskTheme.get_font())
-	header.add_theme_font_size_override("font_size", 22)
-	header.add_theme_color_override("font_color", Color("1a237e"))
-	vbox.add_child(header)
+	header.add_theme_font_size_override("font_size", 24)
+	header.add_theme_color_override("font_color", Color("111111"))
+	header_hbox.add_child(header)
+	
+	var header_divider = ColorRect.new()
+	header_divider.custom_minimum_size = Vector2(0, 2)
+	header_divider.color = Color("111111")
+	vbox.add_child(header_divider)
 	
 	var name_hbox = HBoxContainer.new()
 	name_hbox.add_theme_constant_override("separation", 10)

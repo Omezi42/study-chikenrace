@@ -29,17 +29,31 @@ func _build_ui() -> void:
 	var card_style = StyleBoxFlat.new()
 	card_style.bg_color = DeskTheme.COLOR_CRAFT
 	card_style.border_color = CardData.get_role_color(item_info.get("role", CardData.ROLE_PREP))
-	card_style.border_width_left = 4
-	card_style.border_width_right = 4
-	card_style.border_width_top = 4
-	card_style.border_width_bottom = 4
-	card_style.corner_radius_top_left = 8
-	card_style.corner_radius_top_right = 8
-	card_style.corner_radius_bottom_left = 8
-	card_style.corner_radius_bottom_right = 8
+	card_style.border_width_left = 3
+	card_style.border_width_right = 3
+	card_style.border_width_top = 3
+	card_style.border_width_bottom = 8 # Thick bottom border for shadow/depth
+	card_style.corner_radius_top_left = 12
+	card_style.corner_radius_top_right = 12
+	card_style.corner_radius_bottom_left = 12
+	card_style.corner_radius_bottom_right = 12
+	card_style.shadow_color = Color(0, 0, 0, 0.15)
+	card_style.shadow_size = 5
+	card_style.shadow_offset = Vector2(2, 4)
+	
+	var card_hover = card_style.duplicate() as StyleBoxFlat
+	card_hover.shadow_size = 8
+	card_hover.shadow_offset = Vector2(4, 6)
+	card_hover.bg_color = DeskTheme.COLOR_CRAFT.lightened(0.02)
+	
+	var card_pressed = card_style.duplicate() as StyleBoxFlat
+	card_pressed.border_width_bottom = 3
+	card_pressed.shadow_size = 1
+	card_pressed.shadow_offset = Vector2(1, 1)
+	
 	add_theme_stylebox_override("normal", card_style)
-	add_theme_stylebox_override("hover", card_style)
-	add_theme_stylebox_override("pressed", card_style)
+	add_theme_stylebox_override("hover", card_hover)
+	add_theme_stylebox_override("pressed", card_pressed)
 	add_theme_stylebox_override("focus", card_style)
 	
 	var card_vbox = VBoxContainer.new()
@@ -99,6 +113,16 @@ func _build_ui() -> void:
 		var eff_color = Color("ff4081") if role == CardData.ROLE_PUSH else Color(DeskTheme.COLOR_INK, 0.6)
 		effect_lbl.add_theme_color_override("font_color", eff_color)
 		card_vbox.add_child(effect_lbl)
+
+	# 共通ホバーアニメーションの接続（自習画面の扇状配置以外で有効）
+	mouse_entered.connect(func():
+		if not has_meta("fan_position"):
+			DeskTheme.animate_hover(self, true, Vector2.ONE, 0.15)
+	)
+	mouse_exited.connect(func():
+		if not has_meta("fan_position"):
+			DeskTheme.animate_hover(self, false, Vector2.ONE, 0.15)
+	)
 
 
 ## カードUIのVBoxを返す（アニメーション時に可視性を制御するため）

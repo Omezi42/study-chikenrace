@@ -2,17 +2,23 @@ class_name ReportUIBuilder
 extends RefCounted
 
 static func build_layout(phase: ReportPhase) -> void:
-	# SMARTPHONE CONTAINER (Phone UI Frame) - Centered
+	_build_smartphone_ui(phase)
+	_build_notebook_ui(phase)
+
+static func _build_smartphone_ui(phase: ReportPhase) -> void:
+	var target_parent = phase.smartphone_pane if is_instance_valid(phase.smartphone_pane) else phase
+
+	# SMARTPHONE CONTAINER (Phone UI Frame) - Centered in target_parent
 	var phone_panel = PanelContainer.new()
-	phone_panel.custom_minimum_size = Vector2(550, 780)
-	phone_panel.size = Vector2(550, 780)
-	phone_panel.pivot_offset = Vector2(275, 390)
+	phone_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	phone_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	phone_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	
 	var phone_style = StyleBoxFlat.new()
 	phone_style.bg_color = DeskTheme.COLOR_INK
 	phone_style.border_color = Color("37474f")
-	phone_style.border_width_left = 16
-	phone_style.border_width_right = 16
+	phone_style.border_width_left = 12
+	phone_style.border_width_right = 12
 	phone_style.border_width_top = 32
 	phone_style.border_width_bottom = 32
 	phone_style.corner_radius_top_left = 28
@@ -20,9 +26,8 @@ static func build_layout(phase: ReportPhase) -> void:
 	phone_style.corner_radius_bottom_left = 28
 	phone_style.corner_radius_bottom_right = 28
 	phone_panel.add_theme_stylebox_override("panel", phone_style)
-	phase.add_child(phone_panel)
+	target_parent.add_child(phone_panel)
 	phase.phone_panel = phone_panel
-	phase.fit_control_to_viewport(phone_panel, Vector2(550, 780), Vector2(72, 72), 0.76, true)
 	
 	# Inside Phone VBox
 	var phone_vbox = VBoxContainer.new()
@@ -131,8 +136,22 @@ static func build_layout(phase: ReportPhase) -> void:
 	report_slider.max_value = phase.actual_score + phase.max_bluff_limit
 	report_slider.value = phase.actual_score
 	report_slider.step = 1
-	report_slider.custom_minimum_size = Vector2(400, 45)
+	report_slider.custom_minimum_size = Vector2(320, 60)
 	report_slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	
+	# Eraser and Ruler theme
+	var slider_bg = StyleBoxFlat.new()
+	slider_bg.bg_color = Color("d1bfae") # Ruler wood color
+	slider_bg.border_color = Color("a68a73")
+	slider_bg.border_width_bottom = 2
+	slider_bg.expand_margin_top = 10
+	slider_bg.expand_margin_bottom = 10
+	report_slider.add_theme_stylebox_override("slider", slider_bg)
+	
+	var grabber_icon = _create_eraser_texture()
+	report_slider.add_theme_icon_override("grabber", grabber_icon)
+	report_slider.add_theme_icon_override("grabber_highlight", grabber_icon)
+	
 	report_slider.value_changed.connect(phase._on_slider_changed)
 	card_vbox.add_child(report_slider)
 	phase.report_slider = report_slider
@@ -276,6 +295,64 @@ static func build_layout(phase: ReportPhase) -> void:
 	
 	# Entrance slide-in on phone_panel
 	DeskTheme.animate_entrance(phone_panel, phone_panel.position, Vector2(0, 300), 0.5)
+
+static func _build_notebook_ui(phase: ReportPhase) -> void:
+	phase.add_theme_stylebox_override("panel", DeskTheme.create_right_page_style())
+	
+	var margin = MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 60)
+	margin.add_theme_constant_override("margin_top", 60)
+	margin.add_theme_constant_override("margin_right", 60)
+	margin.add_theme_constant_override("margin_bottom", 60)
+	phase.add_child(margin)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 30)
+	margin.add_child(vbox)
+	
+	var title = Label.new()
+	title.text = "本日の自習成果"
+	title.add_theme_font_override("font", DeskTheme.get_font())
+	title.add_theme_font_size_override("font_size", 36)
+	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	vbox.add_child(title)
+	
+	var score_lbl = Label.new()
+	score_lbl.text = "総実点： " + str(phase.actual_score) + "点"
+	score_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	score_lbl.add_theme_font_size_override("font_size", 48)
+	score_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	vbox.add_child(score_lbl)
+	
+	# Show hours history
+	if phase.session and phase.session.player_hours_history_today.size() > 0:
+		var hist_title = Label.new()
+		hist_title.text = "時間割内訳："
+		hist_title.add_theme_font_override("font", DeskTheme.get_font())
+		hist_title.add_theme_font_size_override("font_size", 24)
+		hist_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.8))
+		vbox.add_child(hist_title)
+		
+		for i in range(phase.session.player_hours_history_today.size()):
+			var h = phase.session.player_hours_history_today[i]
+			var line = Label.new()
+			var burst_txt = " (寝落ち)" if h.get("bursted", false) else ""
+			line.text = "%d時限目: %d点%s" % [i+1, h.get("score", 0), burst_txt]
+			line.add_theme_font_override("font", DeskTheme.get_font())
+			line.add_theme_font_size_override("font_size", 20)
+			line.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+			vbox.add_child(line)
+
+static func _create_eraser_texture() -> ImageTexture:
+	# Create a simple red eraser image for the slider grabber
+	var img = Image.create_empty(40, 24, false, Image.FORMAT_RGBA8)
+	img.fill(DeskTheme.COLOR_TENSION)
+	# Add white wrapper band
+	for x in range(12, 28):
+		for y in range(24):
+			img.set_pixel(x, y, Color.WHITE)
+	return ImageTexture.create_from_image(img)
 
 static func show_stamp_animation(phase: ReportPhase) -> void:
 	var stamp = PanelContainer.new()

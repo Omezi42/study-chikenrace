@@ -1,4 +1,4 @@
-﻿class_name DayTransitionPhase
+class_name DayTransitionPhase
 extends PhaseBase
 
 # UI Controls
@@ -35,8 +35,9 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	add_child(calendar_panel)
 	
 	# Center it manually to prevent layout offsets on un-sized parents
-	var viewport_size = get_viewport_rect().size
-	calendar_panel.position = viewport_size * 0.5 - calendar_panel.pivot_offset
+	# Using 1000x850 as the approximate size of the notebook_pane
+	var notebook_size = Vector2(1000, 850)
+	calendar_panel.position = notebook_size * 0.5 - calendar_panel.pivot_offset
 	
 	var cal_vbox = VBoxContainer.new()
 	cal_vbox.alignment = BoxContainer.ALIGNMENT_CENTER

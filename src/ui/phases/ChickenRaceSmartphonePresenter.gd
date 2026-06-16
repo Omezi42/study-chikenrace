@@ -157,4 +157,3 @@ func update_active_effects_ui() -> void:
 		)
 		
 		phase.active_effects_hbox.add_child(badge)
-

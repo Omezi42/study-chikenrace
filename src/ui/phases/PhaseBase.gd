@@ -4,6 +4,8 @@ extends Control
 signal phase_finished(data: Dictionary)
 
 var session: GameSession
+var smartphone_pane: Control
+var notebook_pane: Control
 
 # Virtual initialization method
 func setup(p_session: GameSession, setup_data: Dictionary = {}) -> void:

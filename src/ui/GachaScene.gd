@@ -108,137 +108,33 @@ func _on_pull_pressed() -> void:
 			detail_fade.tween_callback(func(): result_detail_panel.queue_free())
 
 	
-	# Animate rotary lever rotation
-	var lever_tween = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	lever_btn.rotation_degrees = 0.0
-	lever_tween.tween_property(lever_btn, "rotation_degrees", 360.0, 0.6)
-	
-	# Shake the machine body
-	DeskTheme.shake_control(machine_wrapper, 10.0, 0.7, 14)
-	
-	# Shake the capsules inside the glass dome intensely (simulate jiggling physics)
-	DeskTheme.shake_control(capsules_container, 18.0, 0.7, 16)
-	
-	# Jiggle individual capsules randomly
-	for cap in capsules_container.get_children():
-		var original_pos = cap.position
-		var jiggle_tween = create_tween().set_loops(6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		var rand_offset = Vector2(randf_range(-12.0, 12.0), randf_range(-20.0, -5.0))
-		jiggle_tween.tween_property(cap, "position", original_pos + rand_offset, 0.06)
-		jiggle_tween.tween_property(cap, "position", original_pos, 0.06)
-	
-	var timer = get_tree().create_timer(0.7)
-	timer.timeout.connect(func():
-		if not skip_triggered:
-			spawn_capsule(machine_wrapper.get_parent())
-	)
-
-
-func spawn_capsule(slot_wrapper: Control) -> void:
-	result_lbl.text = "カプセルが出てきた！"
-	
-	var capsule_colors = [Color("ff1744"), Color("2979ff"), Color("00e676"), Color("ffd600"), Color("d500f9")]
-	var cap_color = capsule_colors[randi() % capsule_colors.size()]
-	
-	var capsule = Control.new()
-	capsule.custom_minimum_size = Vector2(120, 120)
-	capsule.size = Vector2(120, 120)
-	capsule.pivot_offset = Vector2(60, 60)
-	capsule.position = Vector2(120, 310) 
-	capsule.scale = Vector2(0.3, 0.3)
-	slot_wrapper.add_child(capsule)
-	
-	var shell_t = PanelContainer.new()
-	shell_t.custom_minimum_size = Vector2(120, 60)
-	shell_t.size = Vector2(120, 60)
-	var style_t = StyleBoxFlat.new()
-	style_t.bg_color = cap_color
-	style_t.corner_radius_top_left = 60
-	style_t.corner_radius_top_right = 60
-	style_t.border_color = DeskTheme.COLOR_INK
-	style_t.border_width_left = 4
-	style_t.border_width_top = 4
-	style_t.border_width_right = 4
-	style_t.border_width_bottom = 2
-	shell_t.add_theme_stylebox_override("panel", style_t)
-	capsule.add_child(shell_t)
-	
-	var shell_b = PanelContainer.new()
-	shell_b.custom_minimum_size = Vector2(120, 60)
-	shell_b.size = Vector2(120, 60)
-	shell_b.position = Vector2(0, 60)
-	var style_b = StyleBoxFlat.new()
-	style_b.bg_color = Color("f5f5f5")
-	style_b.corner_radius_bottom_left = 60
-	style_b.corner_radius_bottom_right = 60
-	style_b.border_color = DeskTheme.COLOR_INK
-	style_b.border_width_left = 4
-	style_b.border_width_bottom = 4
-	style_b.border_width_right = 4
-	style_b.border_width_top = 2
-	shell_b.add_theme_stylebox_override("panel", style_b)
-	capsule.add_child(shell_b)
-	
-	var cap_btn = TextureButton.new()
-	cap_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	capsule.add_child(cap_btn)
-	
-	current_capsule = capsule
-	
-	# Animate capsule flying out & bouncing in center (complete 360-degree rotation)
-	var cap_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	cap_tween.tween_property(capsule, "position", Vector2(120, 150), 0.5)
-	cap_tween.tween_property(capsule, "scale", Vector2(1.8, 1.8), 0.5)
-	cap_tween.tween_property(capsule, "rotation_degrees", 360.0, 0.5)
-	
-	cap_tween.chain().tween_callback(func():
-		if skip_triggered:
-			return
-		# Spawn Prompt Label directly under slot_wrapper so it doesn't rotate with the capsule
-		prompt_lbl = Label.new()
-		prompt_lbl.text = "タップして開封！"
-		prompt_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		prompt_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		prompt_lbl.add_theme_font_size_override("font_size", 16)
-		prompt_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-		# Positioned below the capsule: capsule center is at (180, 210), prompt is placed at bottom-center
-		prompt_lbl.position = Vector2(180 - 64, 270)
-		slot_wrapper.add_child(prompt_lbl)
-		
-		# Floating animation loop for the label
-		current_float_tween = create_tween().set_loops().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		current_float_tween.tween_property(prompt_lbl, "position:y", 274.0, 0.4)
-		current_float_tween.tween_property(prompt_lbl, "position:y", 266.0, 0.4)
-		
-		cap_btn.pressed.connect(func():
-			if cap_btn.disabled:
-				return
-			cap_btn.disabled = true
-			if is_instance_valid(current_float_tween):
-				current_float_tween.kill()
-			if is_instance_valid(prompt_lbl):
-				prompt_lbl.queue_free()
-			_on_capsule_clicked(capsule, shell_t, shell_b)
-		)
-	)
-
-
-func _on_capsule_clicked(capsule: Control, shell_t: PanelContainer, shell_b: PanelContainer) -> void:
-	capsule.get_child(2).queue_free() # remove button
+	# Shaking the pack intensely
+	var pack_body = machine_wrapper.get_node("PackBody")
+	DeskTheme.shake_control(pack_body, 18.0, 0.8, 20)
 	
 	if has_node("/root/AudioManager"):
-		get_node("/root/AudioManager").play_se(AudioManager.SE_PLACE)
+		get_node("/root/AudioManager").play_se(AudioManager.SE_DRAW) # Simulate tearing sound
 		
-	var split_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	split_tween.tween_property(shell_t, "position:y", -120.0, 0.4)
-	split_tween.tween_property(shell_t, "modulate:a", 0.0, 0.3)
-	split_tween.tween_property(shell_b, "position:y", 180.0, 0.4)
-	split_tween.tween_property(shell_b, "modulate:a", 0.0, 0.3)
-	split_tween.tween_property(capsule, "scale", Vector2(1.5, 1.5), 0.2)
+	var timer = get_tree().create_timer(0.8)
+	timer.timeout.connect(func():
+		if not skip_triggered:
+			spawn_pack_tear(pack_body)
+	)
+
+
+func spawn_pack_tear(pack_body: Control) -> void:
+	result_lbl.text = "パックが破けた！"
 	
-	split_tween.chain().tween_callback(func():
-		capsule.queue_free()
+	var tear_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	# Simulate pack bursting open
+	tear_tween.tween_property(pack_body, "scale", Vector2(1.2, 1.2), 0.2)
+	tear_tween.tween_property(pack_body, "modulate:a", 0.0, 0.3)
+	
+	tear_tween.chain().tween_callback(func():
 		reveal_gacha_result()
+		# Reset pack for next pull
+		pack_body.scale = Vector2.ONE
+		pack_body.modulate.a = 1.0
 	)
 
 func reveal_gacha_result() -> void:
@@ -361,12 +257,12 @@ func _on_gacha_skip_pressed() -> void:
 	if is_instance_valid(gacha_skip_btn):
 		gacha_skip_btn.visible = false
 	
-	if is_instance_valid(current_capsule):
-		current_capsule.queue_free()
-	if is_instance_valid(prompt_lbl):
-		prompt_lbl.queue_free()
 	if is_instance_valid(current_float_tween):
 		current_float_tween.kill()
+		
+	var pack_body = machine_wrapper.get_node("PackBody")
+	pack_body.scale = Vector2.ONE
+	pack_body.modulate.a = 1.0
 		
 	reveal_gacha_result()
 

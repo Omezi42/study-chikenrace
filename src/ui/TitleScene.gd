@@ -43,136 +43,221 @@ func _ready() -> void:
 	center_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center_container)
 	
-	var center_vbox = VBoxContainer.new()
-	center_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	center_vbox.add_theme_constant_override("separation", 48) # 35 -> 48
-	center_container.add_child(center_vbox)
+	# Notebook Cover Panel
+	var notebook_cover = PanelContainer.new()
+	notebook_cover.custom_minimum_size = Vector2(900, 750)
+	notebook_cover.pivot_offset = Vector2(450, 375)
 	
-	# Title Logo Container (Larger & Static)
-	var logo_container = Control.new()
-	logo_container.custom_minimum_size = Vector2(950, 300)
-	logo_container.pivot_offset = Vector2(475, 150)
-	center_vbox.add_child(logo_container)
+	var cover_style = StyleBoxFlat.new()
+	cover_style.bg_color = Color("2b3c5a") # Navy blue notebook cover
+	cover_style.border_color = Color("1a2538")
+	cover_style.border_width_left = 60 # Thick binding on the left
+	cover_style.border_width_right = 4
+	cover_style.border_width_top = 4
+	cover_style.border_width_bottom = 4
+	cover_style.corner_radius_top_right = 16
+	cover_style.corner_radius_bottom_right = 16
+	cover_style.shadow_color = Color(0, 0, 0, 0.4)
+	cover_style.shadow_size = 20
+	cover_style.shadow_offset = Vector2(10, 10)
+	notebook_cover.add_theme_stylebox_override("panel", cover_style)
+	center_container.add_child(notebook_cover)
 	
-	var logo_center = CenterContainer.new()
-	logo_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	logo_container.add_child(logo_center)
+	# Dashboard Container inside cover
+	var dashboard_vbox = VBoxContainer.new()
+	dashboard_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	dashboard_vbox.add_theme_constant_override("separation", 30)
+	notebook_cover.add_child(dashboard_vbox)
 	
-	var logo_vbox = VBoxContainer.new()
-	logo_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	logo_vbox.add_theme_constant_override("separation", -10)
-	logo_vbox.pivot_offset = Vector2(475, 150)
-	logo_center.add_child(logo_vbox)
+	# Player Info (Name and Level)
+	var player_info_lbl = Label.new()
+	var p_name = Global.player_name if Global.player_name != "" else "ゲストプレイヤー"
+	player_info_lbl.text = "%s  Lv.%d" % [p_name, PlayerState.player_level]
+	player_info_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	player_info_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	player_info_lbl.add_theme_font_size_override("font_size", 48)
+	player_info_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	dashboard_vbox.add_child(player_info_lbl)
 	
-	# Top Text with Highlighter
-	var top_text_container = Control.new()
-	top_text_container.custom_minimum_size = Vector2(500, 90)
-	logo_vbox.add_child(top_text_container)
+	# Season / Exam Info
+	var exam_info_lbl = Label.new()
+	exam_info_lbl.text = "【 %s 】\n試験まであと %d 日" % [Global.get_season_name(), Global.get_season_remaining_days()]
+	exam_info_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	exam_info_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	exam_info_lbl.add_theme_font_size_override("font_size", 40)
+	exam_info_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	dashboard_vbox.add_child(exam_info_lbl)
 	
-	var top_lbl = Label.new()
-	top_lbl.text = "テスト勉強"
-	top_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	top_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	top_lbl.add_theme_font_size_override("font_size", 76)
-	top_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	top_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	top_text_container.add_child(top_lbl)
+	# Stats Info
+	var stats_lbl = Label.new()
+	stats_lbl.text = "偏差値: %.1f    学年順位: %d 位" % [PlayerState.deviation_value, PlayerState.get_grade_rank()]
+	stats_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stats_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	stats_lbl.add_theme_font_size_override("font_size", 36)
+	stats_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	dashboard_vbox.add_child(stats_lbl)
 	
-	var highlighter = ColorRect.new()
-	highlighter.color = DeskTheme.COLOR_HIGHLIGHTER
-	highlighter.custom_minimum_size = Vector2(380, 30)
-	highlighter.position = Vector2(160, 52) # Shifted another 100px right (60 -> 160)
-	highlighter.rotation_degrees = -2.0
-	highlighter.scale.x = 0.0 # Will animate on start
-	highlighter.pivot_offset = Vector2(0, 15)
-	highlighter.show_behind_parent = true
-	top_lbl.add_child(highlighter)
+	# Daily Missions Section
+	var spacer = Control.new()
+	spacer.custom_minimum_size = Vector2(0, 20)
+	dashboard_vbox.add_child(spacer)
 	
-	var bottom_lbl = Label.new()
-	bottom_lbl.text = "チキンレース"
-	bottom_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	bottom_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	bottom_lbl.add_theme_font_size_override("font_size", 114)
-	bottom_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
-	bottom_lbl.add_theme_constant_override("outline_size", 8)
-	bottom_lbl.add_theme_color_override("font_outline_color", Color.WHITE)
-	logo_vbox.add_child(bottom_lbl)
+	var mission_title = Label.new()
+	mission_title.text = "── 今日の課題 ──"
+	mission_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mission_title.add_theme_font_override("font", DeskTheme.get_font())
+	mission_title.add_theme_font_size_override("font_size", 32)
+	mission_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	dashboard_vbox.add_child(mission_title)
+	
+	var mission_vbox = VBoxContainer.new()
+	mission_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	mission_vbox.add_theme_constant_override("separation", 10)
+	dashboard_vbox.add_child(mission_vbox)
+	
+	if has_node("/root/DailyMissionManager"):
+		var missions = get_node("/root/DailyMissionManager").get_missions_display()
+		for m in missions:
+			var hbox = HBoxContainer.new()
+			hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+			hbox.add_theme_constant_override("separation", 20)
+			
+			var checkbox = CheckBox.new()
+			checkbox.button_pressed = m["completed"]
+			checkbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			checkbox.add_theme_color_override("font_disabled_color", DeskTheme.COLOR_INK)
+			checkbox.disabled = true # Cannot manually toggle
+			hbox.add_child(checkbox)
+			
+			var desc_lbl = Label.new()
+			var comp_str = "[達成]" if m["completed"] else "(%d/%d)" % [m["progress"], m["target"]]
+			desc_lbl.text = "%s %s" % [m["desc"], comp_str]
+			desc_lbl.add_theme_font_override("font", DeskTheme.get_font())
+			desc_lbl.add_theme_font_size_override("font_size", 28)
+			desc_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+			hbox.add_child(desc_lbl)
+			
+			var reward_lbl = Label.new()
+			reward_lbl.text = "報酬: 🪙 %d" % m["reward"]
+			reward_lbl.add_theme_font_override("font", DeskTheme.get_font())
+			reward_lbl.add_theme_font_size_override("font_size", 24)
+			reward_lbl.add_theme_color_override("font_color", Color("f57c00")) # Orange for coins
+			hbox.add_child(reward_lbl)
+			
+			mission_vbox.add_child(hbox)
 
-	var season_lbl = Label.new()
-	season_lbl.text = "%s 開催中！ (終了まであと %d 日)" % [Global.get_season_name(), Global.get_season_remaining_days()]
-	season_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	season_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	season_lbl.add_theme_font_size_override("font_size", 24)
-	season_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	logo_vbox.add_child(season_lbl)
-
 	
-	# Logo Animations
-	# 1. Highlighter reveal (スライド出現演出のみ有効)
-	var hl_tween = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	hl_tween.tween_property(highlighter, "scale:x", 1.0, 0.6).set_delay(0.3)
+	# Study Start Button in Dashboard
+	var start_spacer = Control.new()
+	start_spacer.custom_minimum_size = Vector2(0, 30)
+	dashboard_vbox.add_child(start_spacer)
 	
-	# 2. Hand-drawn jitter (ゆらゆら) - Disabled
-	# 3. Heartbeat pulse - Disabled
-	
-	# Buttons VBox
-	var btn_vbox = VBoxContainer.new()
-	btn_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	btn_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_DEFAULT) # 18 -> 30
-	center_vbox.add_child(btn_vbox)
-	
-	quick_start_btn = _create_quick_start_button("今すぐ遊ぶ (3分)", Vector2(360, 75), DeskTheme.FONT_SIZE_LARGE)
-	quick_start_btn.pivot_offset = Vector2(180, 37.5)
+	quick_start_btn = Button.new()
+	quick_start_btn.text = "✏️ 勉強開始"
+	quick_start_btn.custom_minimum_size = Vector2(320, 80)
+	quick_start_btn.add_theme_font_override("font", DeskTheme.get_font())
+	quick_start_btn.add_theme_font_size_override("font_size", 48)
+	Global.apply_white_button_style(quick_start_btn)
 	quick_start_btn.pressed.connect(_on_quick_start_pressed)
-	btn_vbox.add_child(quick_start_btn)
+	
+	var start_btn_margin = MarginContainer.new()
+	start_btn_margin.add_theme_constant_override("margin_top", 10)
+	start_btn_margin.add_theme_constant_override("margin_bottom", 10)
+	start_btn_margin.add_child(quick_start_btn)
+	dashboard_vbox.add_child(start_btn_margin)
 	
 	# Loop scale animation for Quick Start Button
+	quick_start_btn.pivot_offset = Vector2(160, 40)
 	var quick_tween = create_tween().set_loops().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	quick_tween.tween_property(quick_start_btn, "scale", Vector2(1.06, 1.06), 0.5)
+	quick_tween.tween_property(quick_start_btn, "scale", Vector2(1.05, 1.05), 0.5)
 	quick_tween.tween_property(quick_start_btn, "scale", Vector2.ONE, 0.5)
 	
-	start_btn = _create_menu_button("モード選択", Vector2(360, 60), DeskTheme.FONT_SIZE_NORMAL)
-	start_btn.pivot_offset = Vector2(180, 30)
-	start_btn.pressed.connect(_on_start_pressed)
-	btn_vbox.add_child(start_btn)
+	# Seasonal Flavor Text (季節イベント表示)
+	var month = Time.get_datetime_dict_from_system()["month"]
+	var seasonal_text = ""
+	match month:
+		12, 1, 2: seasonal_text = "⛄ 冬期講習 頑張ろう！"
+		3, 4, 5: seasonal_text = "🌸 新学期スタート"
+		6, 7, 8: seasonal_text = "🍉 夏を制する者は受験を制す"
+		9, 10, 11: seasonal_text = "🍂 読書の秋・勉強の秋"
 	
-	var row_hbox = HBoxContainer.new()
-	row_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	row_hbox.add_theme_constant_override("separation", DeskTheme.MARGIN_DEFAULT) # SMALL -> DEFAULT
-	btn_vbox.add_child(row_hbox)
+	var season_flavor_lbl = Label.new()
+	season_flavor_lbl.text = seasonal_text
+	season_flavor_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	season_flavor_lbl.add_theme_font_size_override("font_size", 24)
+	season_flavor_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
+	# Position at bottom right of the notebook
+	season_flavor_lbl.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	season_flavor_lbl.position = Vector2(600, 680)
+	notebook_cover.add_child(season_flavor_lbl)
 	
-	loadout_btn = _create_menu_button("デッキ編成", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
+	# Desk Items (Replaces Sticky Notes)
+	var desk_items_container = Control.new()
+	desk_items_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	desk_items_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(desk_items_container)
+	
+	# Instead of right-aligned VBox, place items freely around the desk
+	# We use buttons styled as objects
+	
+	# Loadout (Blue Notebook) - Bottom Left
+	loadout_btn = _create_desk_item("デッキ編成", Vector2(200, 140), Color("42a5f5"), Vector2(150, 800), -5)
 	loadout_btn.pressed.connect(_on_loadout_pressed)
-	row_hbox.add_child(loadout_btn)
+	desk_items_container.add_child(loadout_btn)
 	
-	zukan_btn = _create_menu_button("アイテム図鑑", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
+	# Zukan (Red Notebook / Wordbook) - Top Left
+	zukan_btn = _create_desk_item("アイテム図鑑", Vector2(180, 120), Color("ef5350"), Vector2(250, 150), 8)
 	zukan_btn.pressed.connect(_on_zukan_pressed)
-	row_hbox.add_child(zukan_btn)
+	desk_items_container.add_child(zukan_btn)
 	
-	gacha_btn = _create_menu_button("購買部ガチャ", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
+	# Gacha (Pencil Case) - Bottom Right
+	gacha_btn = _create_desk_item("購買部ガチャ", Vector2(300, 100), Color("78909c"), Vector2(1450, 820), 12)
 	gacha_btn.pressed.connect(_on_gacha_pressed)
-	row_hbox.add_child(gacha_btn)
+	desk_items_container.add_child(gacha_btn)
 	
-	var row_hbox2 = HBoxContainer.new()
-	row_hbox2.alignment = BoxContainer.ALIGNMENT_CENTER
-	row_hbox2.add_theme_constant_override("separation", DeskTheme.MARGIN_DEFAULT) # SMALL -> DEFAULT
-	btn_vbox.add_child(row_hbox2)
-	
-	tutorial_btn = _create_menu_button("あそびかた", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
-	tutorial_btn.pressed.connect(_on_tutorial_pressed)
-	row_hbox2.add_child(tutorial_btn)
-	
-	var ranking_btn = _create_menu_button("ランキング", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
+	# Ranking (Ruler) - Right edge
+	var ranking_btn = _create_desk_item("ランキング", Vector2(80, 400), Color("fff59d"), Vector2(1750, 400), -2)
 	ranking_btn.pressed.connect(func():
 		LeaderboardModal.create_and_show(self)
 	)
-	row_hbox2.add_child(ranking_btn)
+	# Rotate text for ruler
+	var rank_lbl = ranking_btn.get_child(0) as Label
+	rank_lbl.rotation_degrees = 90
+	rank_lbl.pivot_offset = Vector2(40, 200)
+	desk_items_container.add_child(ranking_btn)
 	
-	var opt_btn = _create_menu_button("設定", Vector2(160, 50), DeskTheme.FONT_SIZE_SMALL)
+	# Tutorial / Mode / Settings as smaller items (Erasers, sticky notes)
+	tutorial_btn = _create_desk_item("あそびかた", Vector2(120, 60), Color("bcaaa4"), Vector2(1650, 150), 15)
+	tutorial_btn.pressed.connect(_on_tutorial_pressed)
+	desk_items_container.add_child(tutorial_btn)
+	
+	start_btn = _create_desk_item("モード選択", Vector2(120, 60), Color("80d8ff"), Vector2(1600, 250), -10)
+	start_btn.pressed.connect(_on_start_pressed)
+	desk_items_container.add_child(start_btn)
+	
+	var opt_btn = _create_desk_item("設定", Vector2(100, 50), Color("e1bee7"), Vector2(150, 950), 0)
 	opt_btn.pressed.connect(func():
 		SettingsModal.create_and_show(self)
 	)
-	row_hbox2.add_child(opt_btn)
+	desk_items_container.add_child(opt_btn)
+
+	
+	# Setup hover animations for all desk items
+	for child in desk_items_container.get_children():
+		if child is Button:
+			child.set_meta("original_rotation", child.rotation_degrees)
+			child.mouse_entered.connect(func():
+				var tween = child.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+				tween.tween_property(child, "scale", Vector2(1.1, 1.1), 0.15)
+				tween.parallel().tween_property(child, "rotation_degrees", child.rotation_degrees + randf_range(-5, 5), 0.15)
+			)
+			child.mouse_exited.connect(func():
+				var tween = child.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+				tween.tween_property(child, "scale", Vector2.ONE, 0.2)
+				var orig_rot = child.get_meta("original_rotation", 0.0)
+				tween.parallel().tween_property(child, "rotation_degrees", orig_rot, 0.2)
+			)
+
 	
 	# 👤 Profile/Login button on top right of the desk
 	profile_btn = Button.new()
@@ -243,8 +328,26 @@ func _on_quick_start_pressed() -> void:
 		Global.is_tutorial_mode = true
 	else:
 		Global.is_tutorial_mode = false
+	
+	# Page Flip Animation before changing scene
+	# We assume notebook_cover is child(2) inside center_container, we can search for it
+	var cover = get_node_or_null("CenterContainer/PanelContainer")
+	if not cover:
+		# Fallback if path is incorrect: search children
+		for c in get_children():
+			if c is CenterContainer and c.get_child_count() > 0:
+				cover = c.get_child(0)
+				break
+				
+	if cover:
+		var page_tween = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+		# ページめくり風：X軸方向のスケールを0にする
+		cover.pivot_offset = Vector2(0, cover.size.y / 2) # 左端基準でめくる
+		page_tween.tween_property(cover, "scale:x", 0.0, 0.4)
+		page_tween.parallel().tween_property(cover, "modulate:a", 0.0, 0.4)
+		await page_tween.finished
 		
-	var timer = get_tree().create_timer(0.2)
+	var timer = get_tree().create_timer(0.1)
 	timer.timeout.connect(func():
 		Global.change_scene_with_fade(get_tree(), "res://Main.tscn")
 	)
@@ -306,7 +409,12 @@ func _on_tutorial_pressed() -> void:
 	var timer = get_tree().create_timer(0.2)
 	timer.timeout.connect(func():
 		if Global.player_name == "":
-			Global.change_scene_with_fade(get_tree(), "res://Profile.tscn")
+			is_transitioning = false
+			ProfileIdCardModal.create_and_show(self, profile_btn, func():
+				_update_profile_btn_text(profile_btn)
+				if Global.player_name != "":
+					Global.change_scene_with_fade(get_tree(), "res://Main.tscn")
+			)
 		else:
 			Global.change_scene_with_fade(get_tree(), "res://Main.tscn")
 	)
@@ -318,100 +426,38 @@ func show_tutorial_modal() -> void:
 	var modal = TutorialModal.new()
 	add_child(modal)
 
-func _create_menu_button(btn_text: String, min_size: Vector2, font_size: int) -> Button:
+func _create_desk_item(btn_text: String, min_size: Vector2, item_color: Color, pos: Vector2, rot: float) -> Button:
 	var btn = Button.new()
 	btn.custom_minimum_size = min_size
+	btn.size = min_size
+	btn.position = pos
+	btn.rotation_degrees = rot
+	btn.pivot_offset = min_size / 2.0
 	
-	# Normal stylebox (handdrawn craft note look, now white background)
+	# Normal item style (like a notebook, pencil case, ruler)
 	var style_normal = StyleBoxFlat.new()
-	style_normal.bg_color = Color.WHITE
-	style_normal.border_color = DeskTheme.COLOR_INK
-	style_normal.border_width_left = 3
-	style_normal.border_width_right = 3
-	style_normal.border_width_top = 3
-	style_normal.border_width_bottom = 3
-	style_normal.corner_radius_top_left = 6
-	style_normal.corner_radius_top_right = 6
-	style_normal.corner_radius_bottom_left = 6
-	style_normal.corner_radius_bottom_right = 6
-	style_normal.shadow_color = Color(0.12, 0.08, 0.05, 0.22)
-	style_normal.shadow_size = 4
-	style_normal.shadow_offset = Vector2(2, 2)
-	
-	# Hover stylebox (slightly brighter highlight)
-	var style_hover = style_normal.duplicate() as StyleBoxFlat
-	style_hover.bg_color = Color("fffde7")
-	style_hover.border_width_left = 4
-	style_hover.border_width_right = 4
-	style_hover.border_width_top = 4
-	style_hover.border_width_bottom = 4
-	style_hover.shadow_size = 6
-	style_hover.shadow_offset = Vector2(3, 3)
-	
-	# Pressed stylebox (pushed down)
-	var style_pressed = style_normal.duplicate() as StyleBoxFlat
-	style_pressed.bg_color = Color("e8e4db")
-	style_pressed.shadow_size = 1
-	style_pressed.shadow_offset = Vector2(1, 1)
-
-	var style_focus = StyleBoxEmpty.new()
-	
-	btn.add_theme_stylebox_override("normal", style_normal)
-	btn.add_theme_stylebox_override("hover", style_hover)
-	btn.add_theme_stylebox_override("pressed", style_pressed)
-	btn.add_theme_stylebox_override("focus", style_focus)
-	
-	var lbl = Label.new()
-	lbl.text = btn_text
-	lbl.add_theme_font_override("font", DeskTheme.get_font())
-	lbl.add_theme_font_size_override("font_size", font_size)
-	lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	btn.add_child(lbl)
-	
-	# Connect micro-animations
-	btn.mouse_entered.connect(func():
-		DeskTheme.animate_hover(btn, true, Vector2.ONE, 0.12)
-	)
-	btn.mouse_exited.connect(func():
-		DeskTheme.animate_hover(btn, false, Vector2.ONE, 0.12)
-	)
-	btn.pressed.connect(func():
-		btn.release_focus()
-	)
-	
-	return btn
-
-func _create_quick_start_button(btn_text: String, min_size: Vector2, font_size: int) -> Button:
-	var btn = Button.new()
-	btn.custom_minimum_size = min_size
-	
-	var style_normal = StyleBoxFlat.new()
-	style_normal.bg_color = DeskTheme.COLOR_HIGHLIGHTER
-	style_normal.border_color = DeskTheme.COLOR_INK
-	style_normal.border_width_left = 3
-	style_normal.border_width_right = 3
-	style_normal.border_width_top = 3
-	style_normal.border_width_bottom = 3
-	style_normal.corner_radius_top_left = 8
-	style_normal.corner_radius_top_right = 8
-	style_normal.corner_radius_bottom_left = 8
-	style_normal.corner_radius_bottom_right = 8
-	style_normal.shadow_color = Color(0.12, 0.08, 0.05, 0.3)
-	style_normal.shadow_size = 5
+	style_normal.bg_color = item_color
+	style_normal.corner_radius_top_left = 4
+	style_normal.corner_radius_top_right = 4
+	style_normal.corner_radius_bottom_left = 4
+	style_normal.corner_radius_bottom_right = 4
+	style_normal.shadow_color = Color(0, 0, 0, 0.3)
+	style_normal.shadow_size = 6
 	style_normal.shadow_offset = Vector2(3, 3)
 	
+	# Add some edge details
+	style_normal.border_color = item_color.darkened(0.2)
+	style_normal.border_width_bottom = 4
+	style_normal.border_width_right = 2
+	
 	var style_hover = style_normal.duplicate() as StyleBoxFlat
-	style_hover.bg_color = Color("ffffa1")
-	style_hover.shadow_size = 7
-	style_hover.shadow_offset = Vector2(4, 4)
+	style_hover.bg_color = item_color.lightened(0.1)
+	style_hover.shadow_size = 12
+	style_hover.shadow_offset = Vector2(6, 6)
 	
 	var style_pressed = style_normal.duplicate() as StyleBoxFlat
-	style_pressed.bg_color = Color("eedc66")
-	style_pressed.shadow_size = 1
+	style_pressed.bg_color = item_color.darkened(0.1)
+	style_pressed.shadow_size = 2
 	style_pressed.shadow_offset = Vector2(1, 1)
 	
 	var style_focus = StyleBoxEmpty.new()
@@ -424,20 +470,16 @@ func _create_quick_start_button(btn_text: String, min_size: Vector2, font_size: 
 	var lbl = Label.new()
 	lbl.text = btn_text
 	lbl.add_theme_font_override("font", DeskTheme.get_font())
-	lbl.add_theme_font_size_override("font_size", font_size)
-	lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	# Dynamic font size based on height to fit inside the object
+	lbl.add_theme_font_size_override("font_size", int(min_size.y * 0.4))
+	lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK if item_color.get_luminance() > 0.5 else Color.WHITE)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	btn.add_child(lbl)
 	
-	btn.mouse_entered.connect(func():
-		DeskTheme.animate_hover(btn, true, Vector2.ONE, 0.12)
-	)
-	btn.mouse_exited.connect(func():
-		DeskTheme.animate_hover(btn, false, Vector2.ONE, 0.12)
-	)
+	# We handle hover animations dynamically in the caller to save state, or here if needed.
 	btn.pressed.connect(func():
 		btn.release_focus()
 	)

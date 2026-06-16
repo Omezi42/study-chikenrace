@@ -101,6 +101,7 @@ func shuffle_draw_pile() -> void:
 func draw_card() -> Dictionary:
 	var original_card: Dictionary = {}
 	var card: Dictionary = {}
+	var attempts = 0
 	
 	while true:
 		if draw_pile.size() == 0:
@@ -112,8 +113,8 @@ func draw_card() -> Dictionary:
 			else:
 				return {} # No cards available
 
-		original_card = draw_pile.pop_back()
-		card = original_card.duplicate()
+		var original_card = draw_pile.pop_back()
+		var card = original_card.duplicate()
 		
 		# Apply Red Sheet (赤シート) effect if active
 		if red_sheet_active and would_card_burst(card):
@@ -130,6 +131,10 @@ func draw_card() -> Dictionary:
 			# Put back to draw pile, shuffle, and draw again
 			draw_pile.append(original_card)
 			shuffle_draw_pile()
+			attempts += 1
+			if attempts >= 10:
+				# Safety break to prevent infinite loops
+				break
 			continue
 			
 		break

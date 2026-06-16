@@ -473,12 +473,19 @@ func trigger_report_card() -> void:
 	if is_instance_valid(skip_btn):
 		skip_btn.queue_free()
 	
-	blackboard_panel.visible = false
-	report_notebook.visible = true
+	# Smoothly fade out and slide down the blackboard panel
+	var exit_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	exit_tween.tween_property(blackboard_panel, "modulate:a", 0.0, 0.3)
+	exit_tween.tween_property(blackboard_panel, "position:y", blackboard_panel.position.y + 150.0, 0.3)
 	
-	# Slide notebook down from top with swing and bounce
-	var target_pos = report_notebook.position
-	DeskTheme.animate_entrance(report_notebook, target_pos, Vector2(0, -400), 0.6)
+	exit_tween.chain().tween_callback(func():
+		blackboard_panel.visible = false
+		report_notebook.visible = true
+		
+		# Slide notebook down from top with swing and bounce
+		var target_pos = report_notebook.position
+		DeskTheme.animate_entrance(report_notebook, target_pos, Vector2(0, -400), 0.6)
+	)
 	
 	# Build Left Page (Player scorecard)
 	var rank_title = Label.new()
@@ -785,30 +792,65 @@ func trigger_report_card() -> void:
 	act_hbox.add_theme_constant_override("separation", DeskTheme.MARGIN_DEFAULT)
 	report_right_page.add_child(act_hbox)
 	
+	# Eraser button style helper function inside scope
+	var apply_eraser_style = func(btn: Button) -> void:
+		var eraser_normal = StyleBoxFlat.new()
+		eraser_normal.bg_color = Color("2e3b32") # Dark green plastic/wood top
+		eraser_normal.border_color = Color("eceff1") # White/gray felt pad
+		eraser_normal.border_width_left = 2
+		eraser_normal.border_width_right = 2
+		eraser_normal.border_width_top = 2
+		eraser_normal.border_width_bottom = 12 # Thick felt pad at the bottom
+		eraser_normal.corner_radius_top_left = 6
+		eraser_normal.corner_radius_top_right = 6
+		eraser_normal.corner_radius_bottom_left = 4
+		eraser_normal.corner_radius_bottom_right = 4
+		eraser_normal.shadow_color = Color(0, 0, 0, 0.3)
+		eraser_normal.shadow_size = 6
+		eraser_normal.shadow_offset = Vector2(2, 4)
+		
+		var eraser_hover = eraser_normal.duplicate() as StyleBoxFlat
+		eraser_hover.bg_color = Color("3e4b42")
+		eraser_hover.border_color = Color("ffffff")
+		
+		var eraser_pressed = eraser_normal.duplicate() as StyleBoxFlat
+		eraser_pressed.bg_color = Color("1e2b22")
+		eraser_pressed.border_width_bottom = 4 # Squish the felt pad down
+		eraser_pressed.shadow_size = 2
+		eraser_pressed.shadow_offset = Vector2(1, 1)
+		
+		btn.add_theme_stylebox_override("normal", eraser_normal)
+		btn.add_theme_stylebox_override("hover", eraser_hover)
+		btn.add_theme_stylebox_override("pressed", eraser_pressed)
+		btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		btn.add_theme_color_override("font_color", Color("eceff1"))
+		btn.add_theme_color_override("font_hover_color", Color.WHITE)
+		btn.add_theme_color_override("font_pressed_color", Color("cfd8dc"))
+	
 	share_btn = Button.new()
 	share_btn.text = "Xでシェア"
-	share_btn.custom_minimum_size = Vector2(240, 65)
+	share_btn.custom_minimum_size = Vector2(220, 65)
 	share_btn.add_theme_font_override("font", DeskTheme.get_font())
 	share_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
-	Global.apply_white_button_style(share_btn)
+	apply_eraser_style.call(share_btn)
 	share_btn.pressed.connect(_on_share_pressed)
 	act_hbox.add_child(share_btn)
 	
 	play_again_btn = Button.new()
 	play_again_btn.text = "もう1回遊ぶ"
-	play_again_btn.custom_minimum_size = Vector2(240, 65)
+	play_again_btn.custom_minimum_size = Vector2(220, 65)
 	play_again_btn.add_theme_font_override("font", DeskTheme.get_font())
 	play_again_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
-	Global.apply_white_button_style(play_again_btn)
+	apply_eraser_style.call(play_again_btn)
 	play_again_btn.pressed.connect(_on_play_again_pressed)
 	act_hbox.add_child(play_again_btn)
 	
 	restart_btn = Button.new()
 	restart_btn.text = "タイトルへ"
-	restart_btn.custom_minimum_size = Vector2(240, 65)
+	restart_btn.custom_minimum_size = Vector2(220, 65)
 	restart_btn.add_theme_font_override("font", DeskTheme.get_font())
 	restart_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
-	Global.apply_white_button_style(restart_btn)
+	apply_eraser_style.call(restart_btn)
 	restart_btn.pressed.connect(_on_restart_pressed)
 	act_hbox.add_child(restart_btn)
 

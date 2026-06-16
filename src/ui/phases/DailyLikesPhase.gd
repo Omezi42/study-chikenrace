@@ -46,8 +46,10 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	populate_timeline()
 	update_remaining_votes()
 	
-	# Entrance slide in on main_hbox instead of self
-	DeskTheme.animate_entrance(main_hbox, main_hbox.position, Vector2(0, 300), 0.5)
+	# Entrance slide in
+	if is_instance_valid(phone_panel):
+		DeskTheme.animate_entrance(phone_panel, phone_panel.position, Vector2(0, 300), 0.5)
+	DeskTheme.animate_entrance(self, self.position, Vector2(0, 300), 0.5)
 	
 	if Global.is_tutorial_mode and session.current_day == 1:
 		next_day_btn.text = "チュートリアルを完了する"

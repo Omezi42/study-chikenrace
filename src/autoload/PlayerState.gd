@@ -10,6 +10,7 @@ var coins: int = 100
 var best_score: int = 0
 var play_count: int = 0
 var is_tutorial_completed: bool = false
+var player_level: int = 1
 
 var deviation_value: float = 50.0
 var max_deviation_value: float = 50.0
@@ -63,6 +64,12 @@ var deck_preset_names: Dictionary = {
 }
 var selected_preset_idx: int = 1
 
+func get_grade_rank() -> int:
+	# 学年500人規模と仮定して、偏差値から概算の順位を出す
+	# 偏差値75で約1位、偏差値50で約250位、偏差値25で約500位
+	var rank = int((75.0 - deviation_value) * 10.0)
+	return clampi(rank, 1, 500)
+
 func validate_current_deck() -> void:
 	var assigned: Array[String] = []
 	for i in range(1, 11):
@@ -91,6 +98,7 @@ func save_data_to_dict() -> Dictionary:
 	return {
 		"player_name": player_name,
 		"player_title": player_title,
+		"player_level": player_level,
 		"coins": coins,
 		"best_score": best_score,
 		"play_count": play_count,
@@ -113,6 +121,7 @@ func save_data_to_dict() -> Dictionary:
 func load_data_from_dict(data: Dictionary) -> void:
 	if "player_name" in data: player_name = str(data["player_name"])
 	if "player_title" in data: player_title = str(data["player_title"])
+	if "player_level" in data: player_level = int(data["player_level"])
 	if "coins" in data: coins = int(data["coins"])
 	if "best_score" in data: best_score = int(data["best_score"])
 	if "play_count" in data: play_count = int(data["play_count"])

@@ -4,30 +4,30 @@ extends RefCounted
 static func build_background(scene: ResultScene) -> void:
 	var bg = ColorRect.new()
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bg.color = Color("214b3b")
+	bg.color = Color("1b3629") # Deeper black-green slate
 	scene.root_layer.add_child(bg)
 
 	var board_frame = ColorRect.new()
 	board_frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	board_frame.color = Color("7a5633")
+	board_frame.color = Color("5c3f25") # Rich mahogany frame
 	board_frame.modulate.a = 0.95
 	scene.root_layer.add_child(board_frame)
 	scene.board_frame = board_frame
 
 	var board_inner = ColorRect.new()
-	board_inner.color = Color("1f4d3a")
+	board_inner.color = Color("1e3d2f") # Perfect traditional chalkboard green
 	board_inner.modulate.a = 0.98
 	scene.root_layer.add_child(board_inner)
 	scene.board_inner = board_inner
 
 	var grain = ColorRect.new()
 	grain.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	grain.color = Color(0.95, 0.85, 0.65, 0.06)
+	grain.color = Color(0.95, 0.85, 0.65, 0.04) # Subtle wooden grain texture overlay
 	scene.root_layer.add_child(grain)
 
 	var vignette = ColorRect.new()
 	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	vignette.color = Color(0.03, 0.02, 0.01, 0.22)
+	vignette.color = Color(0.02, 0.01, 0.0, 0.3) # Deeper vignette for dramatic depth
 	scene.root_layer.add_child(vignette)
 
 static func build_blackboard(scene: ResultScene) -> void:

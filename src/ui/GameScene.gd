@@ -15,6 +15,8 @@ var active_phase_node: PhaseBase
 # Desk background
 var bg_color_rect: ColorRect
 var bg_texture: TextureRect
+var smartphone_pane: Control
+var notebook_pane: Control
 var phase_layer: Control
 
 func _ready() -> void:
@@ -35,10 +37,30 @@ func _ready() -> void:
 	bg_texture.modulate = Color.WHITE
 	add_child(bg_texture)
 	
-	# Phase layer fills the screen; individual phases manage their own internal layout.
-	phase_layer = Control.new()
-	phase_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(phase_layer)
+	# Layout for persistent 2-pane structure
+	var main_hbox = HBoxContainer.new()
+	main_hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	main_hbox.add_theme_constant_override("separation", 20)
+	main_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	add_child(main_hbox)
+	
+	# Left: Smartphone Pane (30% approx)
+	smartphone_pane = Control.new()
+	smartphone_pane.custom_minimum_size = Vector2(400, 850)
+	smartphone_pane.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	smartphone_pane.size_flags_stretch_ratio = 0.3
+	main_hbox.add_child(smartphone_pane)
+	
+	# Right: Notebook Pane (70% approx)
+	notebook_pane = Control.new()
+	notebook_pane.custom_minimum_size = Vector2(1000, 850)
+	notebook_pane.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	notebook_pane.size_flags_stretch_ratio = 0.7
+	main_hbox.add_child(notebook_pane)
+	
+	# Global references for phases to attach to
+	phase_layer = notebook_pane # notebook_pane is the layer for phases
+	# Note: smartphone_pane is left empty. Phases that need it will add children to it.
 	
 	session = GameSession.new()
 	var starting_deck = Global.current_deck
@@ -52,6 +74,10 @@ func _ready() -> void:
 func change_phase(phase_type: String, setup_data: Dictionary = {}) -> void:
 	var old_node = active_phase_node
 	active_phase_node = null
+	
+	if is_instance_valid(smartphone_pane):
+		for child in smartphone_pane.get_children():
+			child.queue_free()
 	
 	# 同期状態機械の更新
 	var target_state = GameSession.SessionPhaseState.LOBBY
@@ -85,6 +111,8 @@ func change_phase(phase_type: String, setup_data: Dictionary = {}) -> void:
 			active_phase_node = WaitingPhaseClass.new()
 			
 	if active_phase_node:
+		active_phase_node.smartphone_pane = smartphone_pane
+		active_phase_node.notebook_pane = notebook_pane
 		active_phase_node.phase_finished.connect(_on_phase_finished.bind(phase_type))
 		phase_layer.add_child(active_phase_node)
 		active_phase_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

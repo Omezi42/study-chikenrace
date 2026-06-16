@@ -82,15 +82,21 @@ func _ready() -> void:
 	cork_panel.add_theme_stylebox_override("panel", cork_style)
 	cork_base.add_child(cork_panel)
 	
-	# Center container for VBox
+	# Center container for HBox
 	var center_container = CenterContainer.new()
 	center_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center_container)
 	
-	var main_vbox = VBoxContainer.new()
-	main_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	main_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_LARGE)
-	center_container.add_child(main_vbox)
+	var main_hbox = HBoxContainer.new()
+	main_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	main_hbox.add_theme_constant_override("separation", 60)
+	center_container.add_child(main_hbox)
+	
+	# Left Side: Notebook (Slots)
+	var left_vbox = VBoxContainer.new()
+	left_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	left_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_LARGE)
+	main_hbox.add_child(left_vbox)
 	
 	# Title Box (付箋風・画用紙風の背景にしてコルクボードとのコントラストを出す)
 	var title_panel = PanelContainer.new()
@@ -114,7 +120,7 @@ func _ready() -> void:
 	title_style.content_margin_top = 16
 	title_style.content_margin_bottom = 16
 	title_panel.add_theme_stylebox_override("panel", title_style)
-	main_vbox.add_child(title_panel)
+	left_vbox.add_child(title_panel)
 	
 	var title_vbox = VBoxContainer.new()
 	title_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -138,17 +144,16 @@ func _ready() -> void:
 	sub_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	title_vbox.add_child(sub_title)
 	
-	# 5x2 slots grid
 	slots_grid = GridContainer.new()
 	slots_grid.columns = 5
 	slots_grid.add_theme_constant_override("h_separation", DeskTheme.MARGIN_DEFAULT)
 	slots_grid.add_theme_constant_override("v_separation", DeskTheme.MARGIN_DEFAULT)
-	main_vbox.add_child(slots_grid)
+	left_vbox.add_child(slots_grid)
 	
 	# Populate 10 slots
 	populate_slots()
 	
-	_create_preset_ui(main_vbox)
+	_create_preset_ui(left_vbox)
 	
 	# Back button
 	back_btn = Button.new()
@@ -158,10 +163,14 @@ func _ready() -> void:
 	back_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_LARGE)
 	Global.apply_white_button_style(back_btn)
 	back_btn.pressed.connect(_on_back_pressed)
-	main_vbox.add_child(back_btn)
+	left_vbox.add_child(back_btn)
 	
-	# SELECT MODAL (hidden initially)
-	setup_select_modal()
+	# Right Side: Pen Case (Inventory)
+	var right_vbox = VBoxContainer.new()
+	right_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	main_hbox.add_child(right_vbox)
+	
+	setup_pencase(right_vbox)
 
 	if Global.is_tutorial_mode:
 		Global.show_tutorial_dialog(
@@ -263,17 +272,38 @@ func populate_slots() -> void:
 		
 		slots_grid.add_child(slot_btn)
 
-func setup_select_modal() -> void:
+func setup_pencase(parent: Control) -> void:
 	select_modal = PanelContainer.new()
-	select_modal.custom_minimum_size = Vector2(1080, 700)
-	select_modal.pivot_offset = Vector2(540, 350)
-	select_modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
-	add_child(select_modal)
-	select_modal.position = get_viewport_rect().size * 0.5 - select_modal.pivot_offset
-	select_modal.visible = false
+	select_modal.custom_minimum_size = Vector2(500, 850) # Taller pen case
+	select_modal.pivot_offset = Vector2(250, 425)
+	
+	var pencase_style = StyleBoxFlat.new()
+	pencase_style.bg_color = Color("2e3b4e") # Dark greyish blue (pen case material)
+	pencase_style.border_color = Color("1c2430")
+	pencase_style.border_width_left = 6
+	pencase_style.border_width_right = 6
+	pencase_style.border_width_top = 6
+	pencase_style.border_width_bottom = 6
+	pencase_style.corner_radius_top_left = 16
+	pencase_style.corner_radius_top_right = 16
+	pencase_style.corner_radius_bottom_left = 16
+	pencase_style.corner_radius_bottom_right = 16
+	pencase_style.shadow_color = Color(0, 0, 0, 0.3)
+	pencase_style.shadow_size = 15
+	pencase_style.shadow_offset = Vector2(8, 8)
+	select_modal.add_theme_stylebox_override("panel", pencase_style)
+	parent.add_child(select_modal)
+	
+	# Zip line visual indicator
+	var zip_line = ColorRect.new()
+	zip_line.custom_minimum_size = Vector2(6, 0)
+	zip_line.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	zip_line.color = Color("1c2430")
+	zip_line.position = Vector2(25, 20)
+	select_modal.add_child(zip_line)
 	
 	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", DeskTheme.MARGIN_LARGE)
+	margin.add_theme_constant_override("margin_left", DeskTheme.MARGIN_LARGE + 20)
 	margin.add_theme_constant_override("margin_right", DeskTheme.MARGIN_LARGE)
 	margin.add_theme_constant_override("margin_top", DeskTheme.MARGIN_LARGE)
 	margin.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_LARGE)
@@ -284,11 +314,11 @@ func setup_select_modal() -> void:
 	margin.add_child(vbox)
 	
 	var title = Label.new()
-	title.text = "アイテムの入れ替え"
+	title.text = "筆箱（インベントリ）"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TITLE)
-	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	title.add_theme_color_override("font_color", Color("cfd8dc")) # Light text on dark bg
 	vbox.add_child(title)
 	
 	# 検索・フィルター用 HBox
@@ -321,13 +351,13 @@ func setup_select_modal() -> void:
 	)
 	filter_hbox.add_child(role_filter)
 	
-	# Main split HBox
-	var main_split = HBoxContainer.new()
+	# Main split VBox inside Pen Case
+	var main_split = VBoxContainer.new()
 	main_split.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	main_split.add_theme_constant_override("separation", DeskTheme.MARGIN_LARGE) # 20 -> 35
 	vbox.add_child(main_split)
 	
-	# Scroll for unlocked items (Left Side)
+	# Scroll for unlocked items (Top Side)
 	var scroll = ScrollContainer.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -335,7 +365,7 @@ func setup_select_modal() -> void:
 	main_split.add_child(scroll)
 	
 	select_grid = GridContainer.new()
-	select_grid.columns = 3 # Reduced columns to fit the detail panel on the right
+	select_grid.columns = 2 # 2 columns for narrow pen case
 	select_grid.add_theme_constant_override("h_separation", DeskTheme.MARGIN_SMALL)
 	select_grid.add_theme_constant_override("v_separation", DeskTheme.MARGIN_SMALL)
 	scroll.add_child(select_grid)
@@ -423,18 +453,7 @@ func setup_select_modal() -> void:
 	)
 	detail_vbox.add_child(equip_btn)
 	
-	var close_btn = Button.new()
-	close_btn.text = "閉じる"
-	close_btn.custom_minimum_size = Vector2(200, 55)
-	close_btn.add_theme_font_override("font", DeskTheme.get_font())
-	close_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
-	Global.apply_white_button_style(close_btn)
-	close_btn.pressed.connect(func():
-		close_btn.release_focus()
-		DeskTheme.animate_click(close_btn, Vector2.ONE, 0.08)
-		select_modal.visible = false
-	)
-	vbox.add_child(close_btn)
+	# "閉じる" button removed since pen case is always visible
 
 func update_detail_panel(item_id: String) -> void:
 	var item = CardData.ITEMS.get(item_id, {})
@@ -474,10 +493,7 @@ func update_detail_panel(item_id: String) -> void:
 
 
 func _on_slot_clicked(slot_num: int) -> void:
-	if select_modal.visible:
-		return
 	active_slot_idx = slot_num
-	select_modal.visible = true
 	
 	# Reset search and role filters
 	if search_input:
@@ -492,10 +508,10 @@ func _on_slot_clicked(slot_num: int) -> void:
 	# Spawn unlocked items in modal grid
 	populate_select_list("", 0)
 	
-	# Smooth modal scale pop-in (zoom) without wobbly overshoot
-	select_modal.scale = Vector2(0.85, 0.85)
+	# Optional: Animate pen case to show it's active
 	var tween = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tween.tween_property(select_modal, "scale", Vector2.ONE, 0.25)
+	tween.tween_property(select_modal, "scale", Vector2(1.02, 1.02), 0.1)
+	tween.tween_property(select_modal, "scale", Vector2.ONE, 0.15)
 
 func populate_select_list(filter_text: String = "", filter_role_id: int = 0) -> void:
 	for child in select_grid.get_children():
@@ -646,9 +662,8 @@ func populate_select_list(filter_text: String = "", filter_role_id: int = 0) -> 
 		select_grid.add_child(item_btn)
 
 func _on_item_selected(item_id: String) -> void:
-	if not select_modal.visible:
+	if active_slot_idx == -1:
 		return
-	select_modal.visible = false
 	var duplicate_slot = -1
 	for slot_idx in Global.current_deck.keys():
 		if int(slot_idx) != active_slot_idx and Global.current_deck[slot_idx] == item_id:

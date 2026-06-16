@@ -2,23 +2,20 @@ class_name DailyLikesUIBuilder
 extends RefCounted
 
 static func build_layout(phase: DailyLikesPhase) -> void:
-	var main_hbox = HBoxContainer.new()
-	main_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	main_hbox.add_theme_constant_override("separation", 60)
-	phase.add_child(main_hbox)
-	phase.fit_control_to_viewport(main_hbox, Vector2(1500, 850), Vector2(72, 72), 0.72, true)
-	phase.main_hbox = main_hbox
+	var phone_target = phase.smartphone_pane if is_instance_valid(phase.smartphone_pane) else phase
+	var notebook_target = phase
 	
 	# SMARTPHONE CONTAINER
 	var phone_panel = PanelContainer.new()
-	phone_panel.custom_minimum_size = Vector2(550, 780)
-	phone_panel.pivot_offset = Vector2(275, 390)
+	phone_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	phone_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	phone_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	
 	var phone_style = StyleBoxFlat.new()
 	phone_style.bg_color = DeskTheme.COLOR_INK
 	phone_style.border_color = Color("37474f")
-	phone_style.border_width_left = 16
-	phone_style.border_width_right = 16
+	phone_style.border_width_left = 12
+	phone_style.border_width_right = 12
 	phone_style.border_width_top = 32
 	phone_style.border_width_bottom = 32
 	phone_style.corner_radius_top_left = 28
@@ -26,7 +23,7 @@ static func build_layout(phase: DailyLikesPhase) -> void:
 	phone_style.corner_radius_bottom_left = 28
 	phone_style.corner_radius_bottom_right = 28
 	phone_panel.add_theme_stylebox_override("panel", phone_style)
-	main_hbox.add_child(phone_panel)
+	phone_target.add_child(phone_panel)
 	phase.phone_panel = phone_panel
 	
 	var phone_vbox = VBoxContainer.new()
@@ -52,13 +49,14 @@ static func build_layout(phase: DailyLikesPhase) -> void:
 	scroll.add_child(timeline_list)
 	phase.timeline_list = timeline_list
 	
-	# RIGHT COLUMN
+	# RIGHT COLUMN (NOTEBOOK)
 	var right_vbox = VBoxContainer.new()
+	right_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	right_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	right_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	right_vbox.add_theme_constant_override("separation", DeskTheme.MARGIN_LARGE)
-	main_hbox.add_child(right_vbox)
+	notebook_target.add_child(right_vbox)
 	
 	var detail_wrapper = Control.new()
 	detail_wrapper.size_flags_horizontal = Control.SIZE_EXPAND_FILL

@@ -112,8 +112,14 @@ func _on_setup(setup_data: Dictionary) -> void:
 	hand_presenter = ChickenRaceHandPresenter.new(self)
 	cpu_presenter = ChickenRaceCPUPresenter.new(self)
 	smartphone_presenter = ChickenRaceSmartphonePresenter.new(self)
+	
+	# Scale down the original 1500x850 layout to fit inside the notebook pane (approx 1000x850)
+	var target_scale = 1000.0 / 1500.0
 	custom_minimum_size = Vector2(1500, 850)
 	size = Vector2(1500, 850)
+	pivot_offset = Vector2(750, 425)
+	scale = Vector2(target_scale, target_scale)
+	
 	current_state = RaceState.IDLE
 	card_selection_mode_active = ""
 
@@ -238,6 +244,14 @@ func _on_setup(setup_data: Dictionary) -> void:
 	Global.apply_white_button_style(draw_btn)
 	Global.apply_white_button_style(stop_btn)
 	
+	draw_btn.mouse_entered.connect(func():
+		if engine:
+			var prob = engine.deck.get_burst_probability()
+			if prob >= 0.7:
+				# 緊張による手の震えを再現する微細なシェイク
+				DeskTheme.shake_control(draw_btn, 3.0 * (prob * 2.0), 0.3, 12)
+	)
+	
 	apply_deck_startup_items()
 	init_cpu_simulation_states()
 	update_ui()
@@ -279,7 +293,7 @@ func _update_decision_panel() -> void:
 		var safe_points_sum = 0
 		var safe_count = 0
 		for c in engine.deck.cards:
-			if not engine.deck.will_card_burst(c):
+			if not engine.deck.would_card_burst(c):
 				safe_points_sum += c.get("value", 0)
 				safe_count += 1
 		if safe_count > 0:
