@@ -99,8 +99,8 @@ func shuffle_draw_pile() -> void:
 
 # Draw the top card
 func draw_card() -> Dictionary:
-	var original_card: Dictionary = {}
-	var card: Dictionary = {}
+	var original_card = {}
+	var card = {}
 	var attempts = 0
 	
 	while true:
@@ -113,8 +113,8 @@ func draw_card() -> Dictionary:
 			else:
 				return {} # No cards available
 
-		var original_card = draw_pile.pop_back()
-		var card = original_card.duplicate()
+		original_card = draw_pile.pop_back()
+		card = original_card.duplicate()
 		
 		# Apply Red Sheet (赤シート) effect if active
 		if red_sheet_active and would_card_burst(card):

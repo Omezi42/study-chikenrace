@@ -11,6 +11,7 @@ var best_score: int = 0
 var play_count: int = 0
 var is_tutorial_completed: bool = false
 var player_level: int = 1
+var recent_results: Array = ["WIN", "LOSE", "WIN", "WIN", "LOSE"]
 
 var deviation_value: float = 50.0
 var max_deviation_value: float = 50.0
@@ -102,6 +103,7 @@ func save_data_to_dict() -> Dictionary:
 		"coins": coins,
 		"best_score": best_score,
 		"play_count": play_count,
+		"recent_results": recent_results.duplicate(),
 		"deviation_value": deviation_value,
 		"max_deviation_value": max_deviation_value,
 		"selected_class": selected_class,
@@ -125,6 +127,8 @@ func load_data_from_dict(data: Dictionary) -> void:
 	if "coins" in data: coins = int(data["coins"])
 	if "best_score" in data: best_score = int(data["best_score"])
 	if "play_count" in data: play_count = int(data["play_count"])
+	if "recent_results" in data and data["recent_results"] is Array:
+		recent_results = data["recent_results"].duplicate()
 	if "deviation_value" in data: deviation_value = float(data["deviation_value"])
 	if "max_deviation_value" in data: max_deviation_value = float(data["max_deviation_value"])
 	if "selected_class" in data: selected_class = str(data["selected_class"])
