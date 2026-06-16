@@ -52,19 +52,19 @@ func _on_setup(_setup_data: Dictionary) -> void:
 	DeskTheme.animate_entrance(self, self.position, Vector2(0, 300), 0.5)
 	
 	if Global.is_tutorial_mode and session.current_day == 1:
-		next_day_btn.text = "チュートリアルを完了する"
+		next_day_btn.text = "テストを開始する"
 		var viewport_size = get_viewport_rect().size
 		var dialog_pos = Vector2(viewport_size.x * 0.45, viewport_size.y * 0.15)
 		tutorial_dialog_node = show_tutorial_dialog(
-			"佐藤くん：「ここは勉強報告SNS『チキスタ』の画面だよ！\n\nみんなが時限ごとにドローした枚数と、今日の『勉強報告（自己申告した得点）』がタイムラインに流れるんだ。」",
+			"よし！今日の勉強報告SNS『チキスタ』の時間だ！\n\nみんなが今日どれくらい勉強したか、ここに自己申告の得点をアップするんだぜ。",
 			dialog_pos,
 			func():
 				tutorial_dialog_node = show_tutorial_dialog(
-					"佐藤くん：「【ブラフとダウト】\nもしドローした枚数に対して、申告している点数が高すぎる人がいたら、嘘（ブラフ）をついているかもしれない！\n\n『詳細確認』で各時限のドロー数を確認し、怪しいと思ったら『ダウト！』を押して暴いてみよう！成功すればボーナス点、失敗すると減点だよ。」",
+					"引いたドロー枚数に対して、申告点数が高すぎるヤツは怪しいぞ！ウソ（ブラフ）を言ってるかもしれない。\n\n詳細を確認して、ウソだと思ったら『ダウト！』で突っ込んでやろう。見事暴けばボーナス点だけど、無実のヤツを疑うと減点だからな！",
 					dialog_pos,
 					func():
 						tutorial_dialog_node = show_tutorial_dialog(
-							"佐藤くん：「確認したら、『チュートリアルを完了する』を押して本番に進もう！」",
+							"説明はこんな感じかな！\n準備ができたら『テストを開始する』を押して、本番のテストに挑戦してみようぜ！",
 							dialog_pos
 						)
 				)
@@ -345,9 +345,5 @@ func _animate_scroll() -> void:
 		.set_ease(Tween.EASE_OUT)
 
 func _exit_tree() -> void:
-	# Tweenのリークを防ぐため、実行中のTweenを停止
-	var tree = get_tree()
-	if tree:
-		for tween in tree.get_processed_tweens():
-			if tween and tween.get_bound_node() == self or tween.get_bound_node() in get_children():
-				tween.kill()
+	if is_instance_valid(scroll_tween):
+		scroll_tween.kill()

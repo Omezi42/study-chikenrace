@@ -13,6 +13,43 @@ var is_tutorial_completed: bool = false
 var player_level: int = 1
 var recent_results: Array = ["WIN", "LOSE", "WIN", "WIN", "LOSE"]
 
+# Progression & Exam System Constants
+const GRADE_STAGE_NAMES = [
+	"高校1年・春",
+	"高校1年・秋",
+	"高校2年・春",
+	"高校2年・秋",
+	"高校3年・春",
+	"受験生・冬",
+	"東大模試・挑戦"
+]
+
+const EXAM_TARGET_NAMES = [
+	"中間試験",
+	"期末試験",
+	"実力テスト",
+	"学年末試験",
+	"センター模試",
+	"大学入試",
+	"東大模試"
+]
+
+const EXAM_REQUIRED_WINS = [
+	2, # 高1春 -> 中間試験まであと2勝
+	3, # 高1秋 -> 期末試験まであと3勝
+	3, # 高2春 -> 実力テストまであと3勝
+	4, # 高2秋 -> 学年末試験まであと4勝
+	4, # 高3春 -> センター模試まであと4勝
+	5, # 受験生 -> 大学入試まであと5勝
+	6  # 東大模試 -> 東大模試まであと6勝 (ループ)
+]
+
+# Progression variables
+var total_wins: int = 0
+var exam_wins_progress: int = 0
+var grade_stage: int = 0
+
+
 var deviation_value: float = 50.0
 var max_deviation_value: float = 50.0
 var selected_class: String = "regular"
@@ -117,6 +154,10 @@ func save_data_to_dict() -> Dictionary:
 		"deck_presets": deck_presets.duplicate(true),
 		"deck_preset_names": deck_preset_names.duplicate(true),
 		"selected_preset_idx": selected_preset_idx,
+		"total_wins": total_wins,
+		"exam_wins_progress": exam_wins_progress,
+		"grade_stage": grade_stage,
+		"is_tutorial_completed": is_tutorial_completed,
 		"current_deck": get_deck_as_string_keys()
 	}
 
@@ -136,6 +177,10 @@ func load_data_from_dict(data: Dictionary) -> void:
 	if "total_doubt_failures" in data: total_doubt_failures = int(data["total_doubt_failures"])
 	if "total_burst_count" in data: total_burst_count = int(data["total_burst_count"])
 	if "total_perfect_crimes" in data: total_perfect_crimes = int(data["total_perfect_crimes"])
+	if "total_wins" in data: total_wins = int(data["total_wins"])
+	if "exam_wins_progress" in data: exam_wins_progress = int(data["exam_wins_progress"])
+	if "grade_stage" in data: grade_stage = int(data["grade_stage"])
+	if "is_tutorial_completed" in data: is_tutorial_completed = bool(data["is_tutorial_completed"])
 	
 	if "unlocked_items" in data and data["unlocked_items"] is Array:
 		unlocked_items.clear()
@@ -162,3 +207,49 @@ func load_data_from_dict(data: Dictionary) -> void:
 			
 	validate_current_deck()
 	data_changed.emit()
+
+func is_next_match_exam() -> bool:
+	var req = EXAM_REQUIRED_WINS[clampi(grade_stage, 0, EXAM_REQUIRED_WINS.size() - 1)]
+	return exam_wins_progress >= req
+
+func get_current_required_wins() -> int:
+	return EXAM_REQUIRED_WINS[clampi(grade_stage, 0, EXAM_REQUIRED_WINS.size() - 1)]
+
+func record_match_result(is_win: bool) -> Dictionary:
+	# 最近の成績を更新
+	var res_str = "WIN" if is_win else "LOSE"
+	recent_results.push_front(res_str)
+	if recent_results.size() > 5:
+		recent_results.pop_back()
+		
+	var report = {
+		"level_up": false,
+		"old_grade": GRADE_STAGE_NAMES[clampi(grade_stage, 0, GRADE_STAGE_NAMES.size() - 1)],
+		"new_grade": GRADE_STAGE_NAMES[clampi(grade_stage, 0, GRADE_STAGE_NAMES.size() - 1)],
+		"reward_coins": 0
+	}
+	
+	if is_win:
+		total_wins += 1
+		# すでに試験戦だった場合、勝利で進級！
+		if is_next_match_exam():
+			# 進級処理
+			var old_stage = grade_stage
+			grade_stage = clampi(grade_stage + 1, 0, GRADE_STAGE_NAMES.size() - 1)
+			exam_wins_progress = 0 # リセット
+			player_level += 1
+			
+			# 報酬
+			var bonus = 150 + (grade_stage * 50)
+			coins += bonus
+			
+			report["level_up"] = true
+			report["new_grade"] = GRADE_STAGE_NAMES[clampi(grade_stage, 0, GRADE_STAGE_NAMES.size() - 1)]
+			report["reward_coins"] = bonus
+		else:
+			# 通常勝利：進捗を進める
+			exam_wins_progress += 1
+			
+	# 保存
+	data_changed.emit()
+	return report

@@ -120,6 +120,10 @@ func change_phase(phase_type: String, setup_data: Dictionary = {}) -> void:
 		# Initialize
 		active_phase_node.setup(session, setup_data)
 		
+		# Hide smartphone pane if no children were added, so notebook can center on the whole screen
+		if is_instance_valid(smartphone_pane):
+			smartphone_pane.visible = smartphone_pane.get_child_count() > 0
+		
 		# Use a page-flip transition for phase swaps.
 		if old_node and old_node.is_inside_tree():
 			DeskTheme.animate_page_flip(old_node, active_phase_node, 0.45)

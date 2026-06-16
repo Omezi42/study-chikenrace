@@ -165,8 +165,10 @@ const SIMPLE_SAVE_FIELDS = [
 	"total_doubt_successes", "total_doubt_failures", "total_burst_count", "total_perfect_crimes",
 	"deck_presets", "deck_preset_names", "selected_preset_idx",
 	"today_missions", "mission_progress", "last_mission_date", "current_season",
+	"total_wins", "exam_wins_progress", "grade_stage",
 	"last_updated_at"
 ]
+
 
 const OBFUSCATION_KEY = "anti_gravity_chicken_race_key"
 

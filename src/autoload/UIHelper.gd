@@ -165,11 +165,12 @@ func show_tutorial_dialog(parent: Control, text: String, pos: Vector2 = Vector2(
 	margin.add_child(vbox)
 	
 	var header = Label.new()
-	header.text = "[ガイド] チュートリアルガイド"
+	header.text = "📌 佐藤くんのメモ"
 	header.add_theme_font_override("font", DeskTheme.get_font())
 	header.add_theme_font_size_override("font_size", 20)
 	header.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(header)
+
 	
 	var body = Label.new()
 	body.text = text

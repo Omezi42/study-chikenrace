@@ -17,6 +17,7 @@ var stop_btn: Button
 var left_page: PanelContainer
 var right_page: PanelContainer
 var header_left: Label
+var ui_scene_node: Control
 
 # Deck count sticky note (Loop 11)
 var deck_sticky: PanelContainer
@@ -113,17 +114,47 @@ func _on_setup(setup_data: Dictionary) -> void:
 	cpu_presenter = ChickenRaceCPUPresenter.new(self)
 	smartphone_presenter = ChickenRaceSmartphonePresenter.new(self)
 	
-	# Scale down the original 1500x850 layout to fit inside the notebook pane (approx 1000x850)
-	var target_scale = 1000.0 / 1500.0
-	custom_minimum_size = Vector2(1500, 850)
-	size = Vector2(1500, 850)
-	pivot_offset = Vector2(750, 425)
-	scale = Vector2(target_scale, target_scale)
-	
-	current_state = RaceState.IDLE
-	card_selection_mode_active = ""
+	_init_notebook_ui()
+	call_deferred("_rescale_notebook")
 
+var _rescaling: bool = false
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_rescale_notebook()
+
+func _rescale_notebook() -> void:
+	if _rescaling:
+		return
+	_rescaling = true
+	# 親からのサイズではなく、自分自身（FULL_RECT設定により親と同じサイズになっている）のサイズを基準にする
+	var parent_size = size
+	if parent_size == Vector2.ZERO or not ui_scene_node:
+		_rescaling = false
+		return
 	
+	# アスペクト比を1.7647 (1500/850) に保つための計算
+	var scale_x = parent_size.x / 1500.0
+	var scale_y = parent_size.y / 850.0
+	var final_scale = min(scale_x, scale_y)
+	final_scale = clamp(final_scale, 0.4, 1.0)
+	
+	# ui_scene_node 自身（内部のレイアウト）をスケールする
+	ui_scene_node.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	ui_scene_node.size = Vector2(1500, 850)
+	ui_scene_node.pivot_offset = Vector2.ZERO
+	ui_scene_node.scale = Vector2(final_scale, final_scale)
+	
+	# スケール後の実サイズに基づいて中央に配置
+	var scaled_size = Vector2(1500, 850) * final_scale
+	ui_scene_node.position = (parent_size - scaled_size) / 2.0
+	
+	_rescaling = false
+
+func _init_notebook_ui() -> void:
+	if not session:
+		return
+		
 	if session.current_hour == 1:
 		session.player_deck.reset_for_next_day()
 	
@@ -133,29 +164,31 @@ func _on_setup(setup_data: Dictionary) -> void:
 			bm.connection_lost.connect(_on_connection_lost)
 	
 	# TSCNシーンのインスタンス化
-	var ui_scene = load("res://src/ui/phases/ChickenRacePhase.tscn").instantiate()
-	add_child(ui_scene)
+	ui_scene_node = load("res://src/ui/phases/ChickenRacePhase.tscn").instantiate()
+	add_child(ui_scene_node)
+	ui_scene_node.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	ui_scene_node.size = Vector2(1500, 850)
 	
 	# コントロールのバインド
-	left_page = ui_scene.get_node_or_null("MainHBox/LeftPage")
-	header_left = ui_scene.get_node_or_null("MainHBox/LeftPage/LeftVBox/LeftMargin/LeftInnerVBox/HeaderLabel")
-	actual_score_label = ui_scene.get_node_or_null("MainHBox/LeftPage/LeftVBox/LeftMargin/LeftInnerVBox/ActualScoreLabel")
-	draw_history_container = ui_scene.get_node_or_null("MainHBox/LeftPage/LeftVBox/LeftMargin/LeftInnerVBox/DrawHistoryContainer")
-	card_detail_box = ui_scene.get_node_or_null("MainHBox/LeftPage/LeftVBox/LeftMargin/LeftInnerVBox/CardDetailBox")
+	left_page = ui_scene_node.get_node_or_null("MainHBox/LeftPage")
+	header_left = ui_scene_node.get_node_or_null("MainHBox/LeftPage/LeftVBox/LeftMargin/LeftInnerVBox/HeaderLabel")
+	actual_score_label = ui_scene_node.get_node_or_null("MainHBox/LeftPage/LeftVBox/LeftMargin/LeftInnerVBox/ActualScoreLabel")
+	draw_history_container = ui_scene_node.get_node_or_null("MainHBox/LeftPage/LeftVBox/LeftMargin/LeftInnerVBox/DrawHistoryContainer")
+	card_detail_box = ui_scene_node.get_node_or_null("MainHBox/LeftPage/LeftVBox/LeftMargin/LeftInnerVBox/CardDetailBox")
 	
-	right_page = ui_scene.get_node_or_null("MainHBox/RightPage")
-	var stats_hbox = ui_scene.get_node_or_null("MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox/StatsHBox")
+	right_page = ui_scene_node.get_node_or_null("MainHBox/RightPage")
+	var stats_hbox = ui_scene_node.get_node_or_null("MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox/StatsHBox")
 	if stats_hbox:
 		stats_hbox.visible = false # 旧バースト率表示は隠す
 		led_indicator = stats_hbox.get_node_or_null("LedIndicator")
 		burst_prob_label = stats_hbox.get_node_or_null("BurstProbLabel")
 	
-	hand_container = ui_scene.get_node_or_null("MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox/HandContainer")
-	draw_btn = ui_scene.get_node_or_null("MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox/ActionButtons/DrawButton")
-	stop_btn = ui_scene.get_node_or_null("MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox/ActionButtons/StopButton")
+	hand_container = ui_scene_node.get_node_or_null("MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox/HandContainer")
+	draw_btn = ui_scene_node.get_node_or_null("MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox/ActionButtons/DrawButton")
+	stop_btn = ui_scene_node.get_node_or_null("MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox/ActionButtons/StopButton")
 	
 	decision_panel = DecisionPanel.new()
-	var right_inner_vbox = ui_scene.get_node_or_null("MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox")
+	var right_inner_vbox = ui_scene_node.get_node_or_null("MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox")
 	if right_inner_vbox:
 		right_inner_vbox.add_child(decision_panel)
 		right_inner_vbox.move_child(decision_panel, 0) # 一番上に配置
@@ -256,6 +289,15 @@ func _on_setup(setup_data: Dictionary) -> void:
 	init_cpu_simulation_states()
 	update_ui()
 	_update_member_badge_ui("player")
+	
+	# Apply notebook visual details like ZukanScene
+	if left_page:
+		DeskTheme.add_ruled_lines(left_page)
+	if right_page:
+		DeskTheme.add_ruled_lines(right_page)
+	var main_hbox = ui_scene_node.get_node_or_null("MainHBox")
+	if main_hbox:
+		DeskTheme.add_spiral_binding(main_hbox, 850.0)
 	
 	# 自動テスト実行中はチュートリアルをスキップ
 	var is_test = false
@@ -857,9 +899,5 @@ func _update_member_badge_ui(member_id: String) -> void:
 	cpu_presenter._update_member_badge_ui(member_id)
 
 func _exit_tree() -> void:
-	# Tweenのリークを防ぐため、実行中のTweenを停止
-	var tree = get_tree()
-	if tree:
-		for tween in tree.get_processed_tweens():
-			if tween and tween.get_bound_node() == self or tween.get_bound_node() in get_children():
-				tween.kill()
+	if is_instance_valid(hovered_card_tween):
+		hovered_card_tween.kill()

@@ -83,11 +83,3 @@ func _on_submit_pressed() -> void:
 			"emote": selected_emote
 		})
 	)
-
-func _exit_tree() -> void:
-	# Tweenのリークを防ぐため、実行中のTweenを停止
-	var tree = get_tree()
-	if tree:
-		for tween in tree.get_processed_tweens():
-			if tween and tween.get_bound_node() == self or tween.get_bound_node() in get_children():
-				tween.kill()

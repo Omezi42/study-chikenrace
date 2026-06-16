@@ -29,7 +29,7 @@ alignment = 1
 theme_override_constants/separation = 0
 
 [node name="LeftPage" type="PanelContainer" parent="MainHBox"]
-custom_minimum_size = Vector2(650, 850)
+custom_minimum_size = Vector2(750, 850)
 layout_mode = 2
 
 [node name="LeftVBox" type="VBoxContainer" parent="MainHBox/LeftPage"]
@@ -82,7 +82,7 @@ layout_mode = 2
 size_flags_horizontal = 4
 
 [node name="RightPage" type="PanelContainer" parent="MainHBox"]
-custom_minimum_size = Vector2(850, 850)
+custom_minimum_size = Vector2(750, 850)
 layout_mode = 2
 
 [node name="RightVBox" type="VBoxContainer" parent="MainHBox/RightPage"]
