@@ -136,35 +136,6 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	
 	btn_vbox.add_child(random_btn)
 	
-	# ── ⏱️ 通常プレイ (Overnight Mode) ──
-	var overnight_btn = Button.new()
-	overnight_btn.custom_minimum_size = Vector2(660, 100)
-	Global.apply_white_button_style(overnight_btn)
-	
-	var overnight_inner = VBoxContainer.new()
-	overnight_inner.alignment = BoxContainer.ALIGNMENT_CENTER
-	overnight_inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overnight_inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	overnight_btn.add_child(overnight_inner)
-	
-	var overnight_title_lbl = Label.new()
-	overnight_title_lbl.text = "通常プレイ（1日制）"
-	overnight_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	overnight_title_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	overnight_title_lbl.add_theme_font_size_override("font_size", 22)
-	overnight_title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	overnight_inner.add_child(overnight_title_lbl)
-	
-	var overnight_desc = Label.new()
-	overnight_desc.text = "1日限りの短期決戦！8枚のミニデッキで3時限の勉強に挑みます。"
-	overnight_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	overnight_desc.add_theme_font_override("font", DeskTheme.get_font())
-	overnight_desc.add_theme_font_size_override("font_size", 14)
-	overnight_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
-	overnight_inner.add_child(overnight_desc)
-	
-	btn_vbox.add_child(overnight_btn)
-	
 	# Cancel Button
 	var cancel_btn = Button.new()
 	cancel_btn.text = Localization.get_text("CANCEL_BUTTON")
@@ -201,13 +172,6 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 			
 		Global.game_mode = Constants.MODE_RANDOM
 		_show_matching_lobby(parent, mode_modal, bm, national_names_pool, on_friend_match_pressed)
-	)
-	
-	# ── Connect: ⏱️ 一夜漬けモード ──
-	overnight_btn.pressed.connect(func():
-		DeskTheme.animate_click(overnight_btn, Vector2.ONE, 0.08)
-		Global.game_mode = Constants.MODE_OVERNIGHT
-		_show_difficulty_selection(parent, mode_modal, on_friend_match_pressed, national_names_pool)
 	)
 	
 	cancel_btn.pressed.connect(func():
@@ -253,10 +217,7 @@ static func _show_difficulty_selection(parent: Node, mode_modal: PanelContainer,
 	margin.add_child(vbox)
 	
 	var title = Label.new()
-	if Global.game_mode == Constants.MODE_OVERNIGHT:
-		title.text = "通常プレイのクラス選択"
-	else:
-		title.text = "模試のクラス選択"
+	title.text = "模試のクラス選択"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 28)
@@ -367,18 +328,11 @@ static func _show_difficulty_selection(parent: Node, mode_modal: PanelContainer,
 
 				var timer = parent.get_tree().create_timer(0.2)
 				timer.timeout.connect(func():
-					if Global.game_mode == Constants.MODE_OVERNIGHT:
-						var cram_modal_script = load("res://src/ui/modals/CramDeckPreviewModal.gd")
-						if cram_modal_script:
-							cram_modal_script.create_and_show(parent, start_game)
-						else:
-							start_game.call()
+					var select_modal_script = load("res://src/ui/modals/DeckSelectionModal.gd")
+					if select_modal_script:
+						select_modal_script.create_and_show(parent, start_game)
 					else:
-						var select_modal_script = load("res://src/ui/modals/DeckSelectionModal.gd")
-						if select_modal_script:
-							select_modal_script.create_and_show(parent, start_game)
-						else:
-							start_game.call()
+						start_game.call()
 				)
 			)
 			

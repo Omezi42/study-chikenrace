@@ -19,7 +19,7 @@ const LEAGUE_C = "C"
 const LEAGUE_F = "F"
 
 # --- ゲーム設定 ---
-const MAX_DAYS = 5
+const MAX_DAYS = 3
 const SAVE_VERSION = 2
 const SEASON_DURATION_DAYS = 14  # 1シーズン = 2週間
 
@@ -34,7 +34,7 @@ const PHASE_DAILY_LIKES = "PHASE_DAILY_LIKES"
 
 # --- アチーブメント称号 ---
 const TITLE_DEV_GOD = "偏差値70の神"
-const TITLE_CRAM_GENIUS = "通常プレイの天才"
+const TITLE_CRAM_GENIUS = "模試の天才"
 const TITLE_SAFE_CHAMP = "石橋を叩いて渡る覇者"
 const TITLE_STORM = "暴風警報発令中"
 const TITLE_SNIPER = "沈黙のスナイパー"

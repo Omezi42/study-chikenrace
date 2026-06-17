@@ -22,7 +22,6 @@ var quick_tween: Tween
 
 # Notebook Inner Nodes for Reload
 var name_lbl: Label
-var grade_lbl: Label
 var coin_lbl: Label
 var deviation_lbl: Label
 
@@ -31,8 +30,9 @@ var quest_vbox: VBoxContainer
 
 # Overnight Info UI Nodes
 var target_dev_lbl: Label
-var recent_results_hbox: HBoxContainer
+var deck_icons_grid: GridContainer
 var top_right_btn_hbox: HBoxContainer
+var title_preset_buttons: Array[Button] = []
 
 var bg_color: ColorRect
 var bg_tex: TextureRect
@@ -192,12 +192,6 @@ func _setup_notebook() -> void:
 	name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	info_vbox.add_child(name_lbl)
 	
-	grade_lbl = Label.new()
-	grade_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	grade_lbl.add_theme_font_size_override("font_size", 34)
-	grade_lbl.add_theme_color_override("font_color", Color("6d5c4b"))
-	info_vbox.add_child(grade_lbl)
-	
 	profile_btn = Button.new()
 	_update_profile_btn_text()
 	profile_btn.custom_minimum_size = Vector2(280, 56)
@@ -283,12 +277,40 @@ func _setup_notebook() -> void:
 	var quest_vbox_main = VBoxContainer.new()
 	quest_vbox_main.add_theme_constant_override("separation", 9)
 	
+	var quest_header_hbox = HBoxContainer.new()
+	quest_header_hbox.add_theme_constant_override("separation", 15)
+	quest_vbox_main.add_child(quest_header_hbox)
+	
 	var quest_title = Label.new()
-	quest_title.text = "今日の課題（デイリークエスト）"
+	quest_title.text = "今日の課題"
+	quest_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	quest_title.add_theme_font_override("font", DeskTheme.get_font())
 	quest_title.add_theme_font_size_override("font_size", 28)
 	quest_title.add_theme_color_override("font_color", Color("5d4d3d"))
-	quest_vbox_main.add_child(quest_title)
+	quest_header_hbox.add_child(quest_title)
+	
+	# コイン表示（右ページから移動）
+	var coin_panel = PanelContainer.new()
+	var coin_style = StyleBoxFlat.new()
+	coin_style.bg_color = Color("fff9c4")
+	coin_style.corner_radius_top_left = 18
+	coin_style.corner_radius_top_right = 18
+	coin_style.corner_radius_bottom_left = 18
+	coin_style.corner_radius_bottom_right = 18
+	coin_style.content_margin_left = 14
+	coin_style.content_margin_right = 14
+	coin_style.content_margin_top = 4
+	coin_style.content_margin_bottom = 4
+	coin_style.border_width_bottom = 2
+	coin_style.border_color = Color("fbc02d")
+	coin_panel.add_theme_stylebox_override("panel", coin_style)
+	
+	coin_lbl = Label.new()
+	coin_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	coin_lbl.add_theme_font_size_override("font_size", 20)
+	coin_lbl.add_theme_color_override("font_color", Color("f57c00"))
+	coin_panel.add_child(coin_lbl)
+	quest_header_hbox.add_child(coin_panel)
 	
 	var quest_paper = PanelContainer.new()
 	var qp_style = StyleBoxFlat.new()
@@ -362,39 +384,7 @@ func _setup_notebook() -> void:
 	study_menu_container.add_theme_constant_override("separation", 25)
 	right_content_container.add_child(study_menu_container)
 	
-	# Header with coin
-	var right_top_hbox = HBoxContainer.new()
-	study_menu_container.add_child(right_top_hbox)
-	
-	var section_title = Label.new()
-	section_title.text = "今夜のテスト対策"
-	section_title.add_theme_font_override("font", DeskTheme.get_font())
-	section_title.add_theme_font_size_override("font_size", 40)
-	section_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	section_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right_top_hbox.add_child(section_title)
-	
-	var coin_panel = PanelContainer.new()
-	var coin_style = StyleBoxFlat.new()
-	coin_style.bg_color = Color("fff9c4")
-	coin_style.corner_radius_top_left = 23
-	coin_style.corner_radius_top_right = 23
-	coin_style.corner_radius_bottom_left = 23
-	coin_style.corner_radius_bottom_right = 23
-	coin_style.content_margin_left = 18
-	coin_style.content_margin_right = 18
-	coin_style.content_margin_top = 6
-	coin_style.content_margin_bottom = 6
-	coin_style.border_width_bottom = 3
-	coin_style.border_color = Color("fbc02d")
-	coin_panel.add_theme_stylebox_override("panel", coin_style)
-	
-	coin_lbl = Label.new()
-	coin_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	coin_lbl.add_theme_font_size_override("font_size", 28)
-	coin_lbl.add_theme_color_override("font_color", Color("f57c00"))
-	coin_panel.add_child(coin_lbl)
-	right_top_hbox.add_child(coin_panel)
+	# Main One-night Test Card (Header and coin display removed/moved)
 	
 	# Main One-night Test Card
 	var cram_card = PanelContainer.new()
@@ -422,53 +412,62 @@ func _setup_notebook() -> void:
 	cram_card.add_child(card_vbox)
 	
 	var c_title = Label.new()
-	c_title.text = "通常プレイ（1日制）"
+	c_title.text = "ランダムマッチ"
 	c_title.add_theme_font_override("font", DeskTheme.get_font())
 	c_title.add_theme_font_size_override("font_size", 34)
 	c_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	card_vbox.add_child(c_title)
 	
 	var c_desc = Label.new()
-	c_desc.text = "制限時間: 3分\nカードを引いて勉強を進めるスピーディーなチキンレーステスト！順位に応じて偏差値が判定されます。"
+	c_desc.text = "オンラインで全国のプレイヤーと対戦！マッチングにより自動で集まった4人で心理戦を繰り広げます。"
 	c_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	c_desc.add_theme_font_override("font", DeskTheme.get_font())
 	c_desc.add_theme_font_size_override("font_size", 22)
 	c_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.75))
 	card_vbox.add_child(c_desc)
 	
-	# Target Deviation / Rewards
-	var details_hbox = HBoxContainer.new()
-	details_hbox.add_theme_constant_override("separation", 40)
-	card_vbox.add_child(details_hbox)
-	
-	target_dev_lbl = Label.new()
-	target_dev_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	target_dev_lbl.add_theme_font_size_override("font_size", 24)
-	target_dev_lbl.add_theme_color_override("font_color", Color("2e7d32"))
-	details_hbox.add_child(target_dev_lbl)
-	
-	var reward_lbl = Label.new()
-	reward_lbl.text = "成功報酬: 100 コイン"
-	reward_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	reward_lbl.add_theme_font_size_override("font_size", 24)
-	reward_lbl.add_theme_color_override("font_color", Color("e65100"))
-	details_hbox.add_child(reward_lbl)
-	
-	# Recent Results inside this card
+	# Recent Results inside this card (目標偏差値と成功報酬は非表示化)
 	var recent_vbox = VBoxContainer.new()
 	recent_vbox.add_theme_constant_override("separation", 6)
 	card_vbox.add_child(recent_vbox)
 	
+	var recent_header_hbox = HBoxContainer.new()
+	recent_header_hbox.add_theme_constant_override("separation", 15)
+	recent_vbox.add_child(recent_header_hbox)
+	
 	var recent_title = Label.new()
-	recent_title.text = "最近の成績履歴:"
+	recent_title.text = "現在のカバンの中身:"
+	recent_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	recent_title.add_theme_font_override("font", DeskTheme.get_font())
 	recent_title.add_theme_font_size_override("font_size", 20)
 	recent_title.add_theme_color_override("font_color", Color("7d6c5d"))
-	recent_vbox.add_child(recent_title)
+	recent_header_hbox.add_child(recent_title)
 	
-	recent_results_hbox = HBoxContainer.new()
-	recent_results_hbox.add_theme_constant_override("separation", 12)
-	recent_vbox.add_child(recent_results_hbox)
+	var preset_hbox = HBoxContainer.new()
+	preset_hbox.add_theme_constant_override("separation", 6)
+	recent_header_hbox.add_child(preset_hbox)
+	
+	title_preset_buttons.clear()
+	for i in range(1, 4):
+		var p_btn = Button.new()
+		p_btn.text = Global.deck_preset_names.get(str(i), "P%d" % i)
+		p_btn.custom_minimum_size = Vector2(70, 32)
+		p_btn.add_theme_font_override("font", DeskTheme.get_font())
+		p_btn.add_theme_font_size_override("font_size", 14)
+		Global.apply_white_button_style(p_btn)
+		p_btn.pressed.connect(func():
+			p_btn.release_focus()
+			DeskTheme.animate_click(p_btn, Vector2.ONE, 0.08)
+			_load_preset_on_title(i)
+		)
+		preset_hbox.add_child(p_btn)
+		title_preset_buttons.append(p_btn)
+	
+	deck_icons_grid = GridContainer.new()
+	deck_icons_grid.columns = 5
+	deck_icons_grid.add_theme_constant_override("h_separation", 12)
+	deck_icons_grid.add_theme_constant_override("v_separation", 10)
+	recent_vbox.add_child(deck_icons_grid)
 	
 	# Start Button (Giant Red Button)
 	var start_margin = MarginContainer.new()
@@ -587,17 +586,7 @@ func _setup_secondary_menu_nodes() -> void:
 	# Medium buttons for balanced fitting of 4 items
 	_add_menu_button(
 		left_vbox,
-		"通常プレイ",
-		"制限時間3分！カードを引いて勉強を進めるスピーディーなチキンレーステスト！順位に応じて偏差値が判定されます。",
-		"medium",
-		_on_quick_start_pressed,
-		"res://assets/icons/pencil.svg",
-		Color("f87171") # Red
-	)
-	
-	_add_menu_button(
-		left_vbox,
-		"5日間モード (ランダムマッチ)",
+		"ランダムマッチ",
 		"オンラインで全国のプレイヤーと対戦！マッチングにより自動で集まった4人で心理戦を繰り広げます。",
 		"medium",
 		func():
@@ -615,8 +604,8 @@ func _setup_secondary_menu_nodes() -> void:
 	
 	_add_menu_button(
 		left_vbox,
-		"5日間モード (フレンド戦)",
-		"合言葉を決めて友達と合流！最大4人のプレイヤーで5日間の心理戦をリアルタイムに対戦しよう。",
+		"フレンド戦",
+		"合言葉を決めて友達と合流！最大4人のプレイヤーで3日間の心理戦をリアルタイムに対戦しよう。",
 		"medium",
 		func():
 			show_friend_lobby_selection_modal(),
@@ -626,8 +615,8 @@ func _setup_secondary_menu_nodes() -> void:
 	
 	_add_menu_button(
 		left_vbox,
-		"5日間モード (模試)",
-		"実力テストに挑戦！CPUライバルたちと5日間の偏差値競争を行い、合格・進級を目指そう。",
+		"模試",
+		"実力テストに挑戦！CPUライバルたちと3日間の偏差値競争を行い、合格・進級を目指そう。",
 		"medium",
 		func():
 			Global.game_mode = Constants.MODE_NATIONAL
@@ -887,8 +876,6 @@ func _reload_all_data() -> void:
 	var p_name = Global.player_name if Global.player_name != "" else "ゲストプレイヤー"
 	name_lbl.text = p_name
 	
-	var g_stage = clampi(PlayerState.grade_stage, 0, PlayerState.GRADE_STAGE_NAMES.size() - 1)
-	grade_lbl.text = "学年: %s" % PlayerState.GRADE_STAGE_NAMES[g_stage]
 	deviation_lbl.text = "偏差値: %.1f" % PlayerState.deviation_value
 	
 	# Update Coins
@@ -897,47 +884,92 @@ func _reload_all_data() -> void:
 	# Update Daily Quests List
 	_update_daily_quests()
 		
-	# Update Target Deviation
-	var current_dev = PlayerState.deviation_value
-	var target_dev = snapped(current_dev + 2.0, 0.1)
-	target_dev_lbl.text = "目標偏差値: %.1f" % target_dev
+	# Update Target Deviation (ラベル非表示化に伴い安全にガード)
+	if is_instance_valid(target_dev_lbl):
+		var current_dev = PlayerState.deviation_value
+		var target_dev = snapped(current_dev + 2.0, 0.1)
+		target_dev_lbl.text = "目標偏差値: %.1f" % target_dev
 	
-	# Update Recent Results Badges
-	for child in recent_results_hbox.get_children():
+	# Update Deck Icons
+	for child in deck_icons_grid.get_children():
 		child.queue_free()
 		
-	var results = PlayerState.recent_results
-	for i in range(min(5, results.size())):
-		var res_str = results[i]
-		var badge = PanelContainer.new()
-		badge.custom_minimum_size = Vector2(62, 62)
+	var deck = Global.current_deck
+	for i in range(1, 11):
+		var item_id = deck.get(i, "")
 		
-		var b_style = StyleBoxFlat.new()
-		b_style.corner_radius_top_left = 31
-		b_style.corner_radius_top_right = 31
-		b_style.corner_radius_bottom_left = 31
-		b_style.corner_radius_bottom_right = 31
-		b_style.shadow_color = Color(0, 0, 0, 0.15)
-		b_style.shadow_size = 3
+		# VBoxContainer to group Slot Number + Icon Slot
+		var slot_vbox = VBoxContainer.new()
+		slot_vbox.add_theme_constant_override("separation", 2)
+		slot_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		
-		if res_str == "WIN":
-			b_style.bg_color = Color("e53935") # win
-		else:
-			b_style.bg_color = Color("78909c") # lose
+		# Slot number label
+		var num_lbl = Label.new()
+		num_lbl.text = str(i)
+		num_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		num_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		num_lbl.add_theme_font_size_override("font_size", 16)
+		num_lbl.add_theme_color_override("font_color", Color("7d6c5d"))
+		slot_vbox.add_child(num_lbl)
+		
+		var icon_container = PanelContainer.new()
+		icon_container.custom_minimum_size = Vector2(52, 52)
+		icon_container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		
+		var c_style = StyleBoxFlat.new()
+		c_style.bg_color = DeskTheme.COLOR_CRAFT
+		c_style.corner_radius_top_left = 6
+		c_style.corner_radius_top_right = 6
+		c_style.corner_radius_bottom_left = 6
+		c_style.corner_radius_bottom_right = 6
+		c_style.border_width_left = 2
+		c_style.border_width_right = 2
+		c_style.border_width_top = 2
+		c_style.border_width_bottom = 2
+		c_style.border_color = Color(DeskTheme.COLOR_INK, 0.25)
+		icon_container.add_theme_stylebox_override("panel", c_style)
+		
+		if item_id != "":
+			var img_path = CardData.get_item_image_path(item_id)
+			var item_name = ""
+			var item_desc = ""
+			var item_role = ""
+			if CardData.ITEMS.has(item_id):
+				var info = CardData.ITEMS[item_id]
+				item_name = info.get("name", "")
+				item_desc = info.get("description", "")
+				item_role = CardData.get_role_name(info.get("role", ""))
 			
-		badge.add_theme_stylebox_override("panel", b_style)
-		
-		var lbl = Label.new()
-		lbl.text = res_str
-		lbl.add_theme_font_override("font", DeskTheme.get_font())
-		lbl.add_theme_font_size_override("font_size", 20)
-		lbl.add_theme_color_override("font_color", Color.WHITE)
-		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		badge.add_child(lbl)
-		
-		recent_results_hbox.add_child(badge)
+			icon_container.tooltip_text = "%s\n【%s】\n%s" % [item_name, item_role, item_desc]
+			
+			if img_path != "":
+				var img_rect = TextureRect.new()
+				img_rect.texture = load(img_path)
+				img_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				img_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				img_rect.custom_minimum_size = Vector2(36, 36)
+				var margin = MarginContainer.new()
+				margin.add_theme_constant_override("margin_left", 6)
+				margin.add_theme_constant_override("margin_right", 6)
+				margin.add_theme_constant_override("margin_top", 6)
+				margin.add_theme_constant_override("margin_bottom", 6)
+				margin.add_child(img_rect)
+				icon_container.add_child(margin)
+		else:
+			icon_container.tooltip_text = "未編成"
+			var lbl = Label.new()
+			lbl.text = "+"
+			lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			lbl.add_theme_font_override("font", DeskTheme.get_font())
+			lbl.add_theme_font_size_override("font_size", 20)
+			lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.3))
+			icon_container.add_child(lbl)
+			
+		slot_vbox.add_child(icon_container)
+		deck_icons_grid.add_child(slot_vbox)
+	
+	_update_preset_buttons_highlight()
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
@@ -998,39 +1030,18 @@ func _on_quick_start_pressed() -> void:
 	is_transitioning = true
 	DeskTheme.animate_click(quick_start_btn, Vector2.ONE, 0.08)
 	
-	if Global.player_name == "":
-		Global.player_name = "プレイヤー"
-		
-	# Check if this next match is an Exam match
-	if PlayerState.is_next_match_exam():
-		# Special event match: set a global flag so result screen triggers stage up
-		Global.set("is_exam_match", true)
-	else:
-		Global.set("is_exam_match", false)
-		
-	Global.game_mode = Constants.MODE_OVERNIGHT
-	Global.opponent_profiles = {
-		"cpu_sato": {"name": "佐藤くん", "deviation": clamp(PlayerState.deviation_value + randf_range(-2, 2), 35, 85)},
-		"cpu_suzuki": {"name": "鈴木さん", "deviation": clamp(PlayerState.deviation_value + randf_range(-3, 1), 35, 85)},
-		"cpu_takahashi": {"name": "高橋くん", "deviation": clamp(PlayerState.deviation_value + randf_range(-1, 3), 35, 85)}
-	}
-	
-	if not PlayerState.is_tutorial_completed:
-		Global.is_tutorial_mode = true
-	else:
-		Global.is_tutorial_mode = false
-	
-	# Page flip animation
-	if notebook:
-		var page_tween = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-		notebook.pivot_offset = Vector2(0, notebook.size.y / 2)
-		page_tween.tween_property(notebook, "scale:x", 0.0, 0.4)
-		page_tween.parallel().tween_property(notebook, "modulate:a", 0.0, 0.4)
-		await page_tween.finished
-		
 	var timer = get_tree().create_timer(0.1)
 	timer.timeout.connect(func():
-		Global.change_scene_with_fade(get_tree(), "res://Main.tscn")
+		is_transitioning = false
+		if not has_node("/root/BackendManager"):
+			return
+		var bm = get_node("/root/BackendManager")
+		if bm.auth_token == "" or bm.logged_in_uuid == "":
+			ModeSelectionModal._show_login_warning(self, null, NATIONAL_NAMES, show_friend_lobby_selection_modal)
+			return
+			
+		Global.game_mode = Constants.MODE_RANDOM
+		ModeSelectionModal._show_matching_lobby(self, null, bm, NATIONAL_NAMES, show_friend_lobby_selection_modal)
 	)
 
 func show_mode_selection_modal() -> void:
@@ -1166,3 +1177,56 @@ func _update_daily_quests() -> void:
 			
 		hbox.add_child(desc_lbl)
 		quest_vbox.add_child(hbox)
+
+func _load_preset_on_title(preset_idx: int) -> void:
+	var key = str(preset_idx)
+	var preset = Global.deck_presets.get(key, {})
+	if preset.is_empty():
+		preset = {
+			"1": "item_sticky_note",
+			"2": "item_eraser",
+			"3": "item_ruler",
+			"4": "item_wordbook",
+			"5": "item_mech_pencil",
+			"6": "item_memo_cards",
+			"7": "item_highlighter",
+			"8": "item_blue_pen",
+			"9": "item_cushion",
+			"10": "item_memo_app"
+		}
+	Global.current_deck.clear()
+	for k in preset.keys():
+		Global.current_deck[int(k)] = preset[k]
+	Global.selected_preset_idx = preset_idx
+	Global.validate_current_deck()
+	Global.save_game()
+	_reload_all_data()
+	
+	var preset_name = Global.deck_preset_names.get(str(preset_idx), "P%d" % preset_idx)
+	if has_node("/root/AudioManager"):
+		var audio = get_node("/root/AudioManager")
+		audio.play_se(audio.SE_CLICK)
+	DeskTheme.show_toast(self, "%s を読み込みました！" % preset_name, 1.2, Color("#4a90e2"))
+
+func _update_preset_buttons_highlight() -> void:
+	for i in range(title_preset_buttons.size()):
+		var btn = title_preset_buttons[i]
+		var idx = i + 1
+		btn.text = Global.deck_preset_names.get(str(idx), "P%d" % idx)
+		if idx == Global.selected_preset_idx:
+			var active_style = StyleBoxFlat.new()
+			active_style.bg_color = Color("#eddcc9") # highlight paper color
+			active_style.border_color = DeskTheme.COLOR_INK
+			active_style.border_width_left = 2
+			active_style.border_width_right = 2
+			active_style.border_width_top = 2
+			active_style.border_width_bottom = 2
+			active_style.corner_radius_top_left = 6
+			active_style.corner_radius_top_right = 6
+			active_style.corner_radius_bottom_left = 6
+			active_style.corner_radius_bottom_right = 6
+			btn.add_theme_stylebox_override("normal", active_style)
+			btn.add_theme_stylebox_override("hover", active_style)
+			btn.add_theme_stylebox_override("pressed", active_style)
+		else:
+			Global.apply_white_button_style(btn)

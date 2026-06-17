@@ -928,7 +928,7 @@ static func show_tutorial_finish_modal(phase: DailyLikesPhase) -> void:
 	vbox.add_child(title)
 	
 	var body = Label.new()
-	body.text = "お疲れ様でした！『テスト勉強チキンレース』の基本的な遊び方（自習、持ち込みアイテム設定、チキスタへの投稿、嘘とダウトの見極め）をマスターしました。\n\n通常プレイや5日制マッチで、他のライバルたちを実力とブラフで圧倒し、第一志望合格（偏差値アップ）を勝ち取りましょう！"
+	body.text = "お疲れ様でした！『テスト勉強チキンレース』の基本的な遊び方（自習、持ち込みアイテム設定、チキスタへの投稿、嘘とダウトの見極め）をマスターしました。\n\n模試やマッチングで、他のライバルたちを実力とブラフで圧倒し、第一志望合格（偏差値アップ）を勝ち取りましょう！"
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_theme_font_override("font", DeskTheme.get_font())
 	body.add_theme_font_size_override("font_size", 18)

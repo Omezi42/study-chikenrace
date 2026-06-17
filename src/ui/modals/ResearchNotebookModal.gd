@@ -84,11 +84,11 @@ func _ready() -> void:
 	buttons_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(buttons_vbox)
 	
-	# 1. 5日制モード (じっくり対戦)
+	# 1. 3日制モード
 	_add_menu_button(
 		buttons_vbox,
-		"📚 5日制モード (じっくり対戦)",
-		"3時限×5日間の授業を戦い抜き、ライバルの嘘を見破る心理戦モード",
+		"📚 3日制モード",
+		"3時限×3日間の授業を戦い抜き、ライバルの嘘を見破る心理戦モード",
 		func():
 			_close_modal()
 			var parent = get_parent()
