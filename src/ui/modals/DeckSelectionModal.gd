@@ -275,82 +275,21 @@ func _update_preview() -> void:
 		
 	for i in range(1, 11):
 		var item_id = Global.current_deck.get(i, "")
-		var item = CardData.ITEMS.get(item_id, {"name": "空き", "role": CardData.ROLE_PREP, "description": ""})
+		var slot_card = DeckSlotCard.create(i, item_id)
 		
-		var preview_box = Button.new()
-		preview_box.custom_minimum_size = Vector2(165, 175)
-		
-		var style = StyleBoxFlat.new()
-		style.bg_color = DeskTheme.COLOR_CRAFT
-		style.border_color = CardData.get_role_color(item["role"])
-		style.border_width_top = 22
-		style.border_width_left = 2
-		style.border_width_right = 2
-		style.border_width_bottom = 2
-		style.corner_radius_bottom_left = 4
-		style.corner_radius_bottom_right = 4
-		
-		var style_hover = style.duplicate() as StyleBoxFlat
-		style_hover.bg_color = Color("e5dec9")
-		
-		preview_box.add_theme_stylebox_override("normal", style)
-		preview_box.add_theme_stylebox_override("hover", style_hover)
-		preview_box.add_theme_stylebox_override("pressed", style_hover)
-		preview_box.add_theme_stylebox_override("focus", style)
-		
-		var vbox = VBoxContainer.new()
-		vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-		vbox.add_theme_constant_override("separation", 6)
-		vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		preview_box.add_child(vbox)
-		
-		var num_lbl = Label.new()
-		num_lbl.text = "Slot " + str(i)
-		num_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		num_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		num_lbl.add_theme_font_size_override("font_size", 14)
-		num_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
-		vbox.add_child(num_lbl)
-		
-		if item_id != "":
-			var img_path = CardData.get_item_image_path(item_id)
-			if img_path != "":
-				var img = TextureRect.new()
-				img.texture = load(img_path)
-				img.custom_minimum_size = Vector2(54, 54)
-				img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-				img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-				img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-				vbox.add_child(img)
-			else:
-				var spacer = Control.new()
-				spacer.custom_minimum_size = Vector2(54, 15)
-				vbox.add_child(spacer)
-				
-		var name_lbl = Label.new()
-		name_lbl.text = item["name"]
-		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		name_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		name_lbl.add_theme_font_size_override("font_size", 16)
-		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-		vbox.add_child(name_lbl)
-		
-		# Tooltip representation
-		preview_box.tooltip_text = "%s\n%s" % [item["name"], item["description"]]
-		
-		preview_box.mouse_entered.connect(func():
-			DeskTheme.animate_hover(preview_box, true, Vector2.ONE, 0.12)
-		)
-		preview_box.mouse_exited.connect(func():
-			DeskTheme.animate_hover(preview_box, false, Vector2.ONE, 0.12)
-		)
-		preview_box.pressed.connect(func():
-			preview_box.release_focus()
-			DeskTheme.animate_click(preview_box, Vector2.ONE, 0.08)
-			update_detail_panel(item_id)
+		# Connect clicked signal to show details
+		slot_card.slot_clicked.connect(func(slot_num):
+			var clicked_item_id = Global.current_deck.get(slot_num, "")
+			update_detail_panel(clicked_item_id)
 		)
 		
-		preview_grid.add_child(preview_box)
+		# Connect mouse enter to temporarily show detail preview
+		slot_card.mouse_entered.connect(func():
+			var hover_item_id = Global.current_deck.get(i, "")
+			update_detail_panel(hover_item_id)
+		)
+		
+		preview_grid.add_child(slot_card)
 
 func update_detail_panel(item_id: String) -> void:
 	var item = CardData.ITEMS.get(item_id, {})

@@ -132,58 +132,8 @@ func _update_preview() -> void:
 	
 	for i in range(1, 9):
 		var item_id = season_deck.get(i, "")
-		var item = CardData.ITEMS.get(item_id, {"name": "空き", "role": CardData.ROLE_PREP, "description": ""})
+		var slot_card = DeckSlotCard.create(i, item_id)
 		
-		var preview_box = PanelContainer.new()
-		preview_box.custom_minimum_size = Vector2(200, 165)
-		var style = StyleBoxFlat.new()
-		style.bg_color = DeskTheme.COLOR_CRAFT
-		style.border_color = CardData.get_role_color(item["role"])
-		style.border_width_top = 22
-		style.border_width_left = 2
-		style.border_width_right = 2
-		style.border_width_bottom = 2
-		style.corner_radius_bottom_left = 4
-		style.corner_radius_bottom_right = 4
-		preview_box.add_theme_stylebox_override("panel", style)
-		
-		var vbox = VBoxContainer.new()
-		vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-		vbox.add_theme_constant_override("separation", 6)
-		preview_box.add_child(vbox)
-		
-		var num_lbl = Label.new()
-		num_lbl.text = "Slot " + str(i) + " (" + str(i) + "枚)"
-		num_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		num_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		num_lbl.add_theme_font_size_override("font_size", 14)
-		num_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
-		vbox.add_child(num_lbl)
-		
-		if item_id != "":
-			var img_path = CardData.get_item_image_path(item_id)
-			if img_path != "":
-				var img = TextureRect.new()
-				img.texture = load(img_path)
-				img.custom_minimum_size = Vector2(54, 54)
-				img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-				img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-				img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-				vbox.add_child(img)
-			else:
-				var spacer = Control.new()
-				spacer.custom_minimum_size = Vector2(54, 15)
-				vbox.add_child(spacer)
-				
-		var name_lbl = Label.new()
-		name_lbl.text = item["name"]
-		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		name_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		name_lbl.add_theme_font_size_override("font_size", 16)
-		name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-		vbox.add_child(name_lbl)
-		
-		# Tooltip representation
-		preview_box.tooltip_text = "%s\n%s" % [item["name"], item["description"]]
-		
-		preview_grid.add_child(preview_box)
+		# In preview, we can disable or disconnect slot_clicked since they are not editable,
+		# but keeping it is fine as it has standard click animation or we can release focus.
+		preview_grid.add_child(slot_card)
