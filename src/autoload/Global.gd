@@ -2,6 +2,10 @@ extends Node
 
 var _preloaded_font = preload("res://assets/hgrsmp.ttf")
 
+# Splash screen control
+var show_title_splash: bool = true
+
+
 # Player Progression & Saved Stats
 var player_name: String:
 	get: return PlayerState.player_name

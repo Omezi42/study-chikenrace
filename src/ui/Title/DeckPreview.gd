@@ -15,15 +15,15 @@ func _ready() -> void:
 	# プリセット選択ボタンHBox
 	preset_buttons_hbox = HBoxContainer.new()
 	preset_buttons_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	preset_buttons_hbox.add_theme_constant_override("separation", 10)
+	preset_buttons_hbox.add_theme_constant_override("separation", 12)
 	add_child(preset_buttons_hbox)
 	
 	# P1, P2, P3の作成
 	for i in range(1, 4):
 		var btn = Button.new()
-		btn.custom_minimum_size = Vector2(80, 36)
+		btn.custom_minimum_size = Vector2(130, 48)
 		btn.add_theme_font_override("font", DeskTheme.get_font())
-		btn.add_theme_font_size_override("font_size", 16)
+		btn.add_theme_font_size_override("font_size", 20)
 		btn.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		
 		# デフォルトスタイル (付箋風)
@@ -51,8 +51,8 @@ func _ready() -> void:
 	# デッキグリッド
 	deck_icons_grid = GridContainer.new()
 	deck_icons_grid.columns = 5
-	deck_icons_grid.add_theme_constant_override("h_separation", 16)
-	deck_icons_grid.add_theme_constant_override("v_separation", 14)
+	deck_icons_grid.add_theme_constant_override("h_separation", 24)
+	deck_icons_grid.add_theme_constant_override("v_separation", 28)
 	deck_icons_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	deck_icons_grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	add_child(deck_icons_grid)
@@ -102,12 +102,12 @@ func update_deck(deck: Dictionary, selected_preset_idx: int, preset_names: Dicti
 		num_lbl.text = str(i)
 		num_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		num_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		num_lbl.add_theme_font_size_override("font_size", 18)
+		num_lbl.add_theme_font_size_override("font_size", 22)
 		num_lbl.add_theme_color_override("font_color", Color("7d6c5d"))
 		slot_vbox.add_child(num_lbl)
 		
 		var icon_container = PanelContainer.new()
-		icon_container.custom_minimum_size = Vector2(72, 72)
+		icon_container.custom_minimum_size = Vector2(92, 92)
 		icon_container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		
 		var c_style = StyleBoxFlat.new()
@@ -141,12 +141,12 @@ func update_deck(deck: Dictionary, selected_preset_idx: int, preset_names: Dicti
 				img_rect.texture = load(img_path)
 				img_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 				img_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-				img_rect.custom_minimum_size = Vector2(52, 52)
+				img_rect.custom_minimum_size = Vector2(68, 68)
 				var margin = MarginContainer.new()
-				margin.add_theme_constant_override("margin_left", 6)
-				margin.add_theme_constant_override("margin_right", 6)
-				margin.add_theme_constant_override("margin_top", 6)
-				margin.add_theme_constant_override("margin_bottom", 6)
+				margin.add_theme_constant_override("margin_left", 8)
+				margin.add_theme_constant_override("margin_right", 8)
+				margin.add_theme_constant_override("margin_top", 8)
+				margin.add_theme_constant_override("margin_bottom", 8)
 				margin.add_child(img_rect)
 				icon_container.add_child(margin)
 		else:
@@ -156,7 +156,7 @@ func update_deck(deck: Dictionary, selected_preset_idx: int, preset_names: Dicti
 			lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			lbl.add_theme_font_override("font", DeskTheme.get_font())
-			lbl.add_theme_font_size_override("font_size", 20)
+			lbl.add_theme_font_size_override("font_size", 24)
 			lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.3))
 			icon_container.add_child(lbl)
 			

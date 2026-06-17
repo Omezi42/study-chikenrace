@@ -65,11 +65,29 @@ func _ready() -> void:
 	
 	# 2. ノートブックUIのセットアップ (最初は非表示)
 	_setup_notebook()
-	notebook_container.visible = false
-	notebook_container.modulate.a = 0.0
 	
-	# 3. タイトル画面 (Splash) のセットアップ
-	_setup_title_screen()
+	if Global.show_title_splash:
+		notebook_container.visible = false
+		notebook_container.modulate.a = 0.0
+		
+		# 3. タイトル画面 (Splash) のセットアップ
+		_setup_title_screen()
+	else:
+		# 直接ホーム画面を表示
+		notebook_container.visible = true
+		notebook_container.modulate.a = 1.0
+		
+		# タイトルロゴを直接左ページに追加
+		title_logo = TitleLogo.new()
+		left_p1_container.add_child(title_logo)
+		left_p1_container.move_child(title_logo, 0)
+		title_logo.scale = Vector2.ONE
+		title_logo.position = Vector2.ZERO
+		
+		current_state = State.HOME
+		
+		# BGMのスタート (もし始まっていなければ)
+		start_bgm()
 	
 	# 4. データリロード
 	_reload_all_data()
@@ -122,48 +140,6 @@ func _setup_notebook() -> void:
 	notebook.add_theme_stylebox_override("panel", book_style)
 	notebook_container.add_child(notebook)
 	
-	# 右上のシステムメニュー
-	var system_menu_margin = MarginContainer.new()
-	system_menu_margin.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	system_menu_margin.anchor_left = 1.0
-	system_menu_margin.anchor_top = 0.0
-	system_menu_margin.anchor_right = 1.0
-	system_menu_margin.anchor_bottom = 0.0
-	system_menu_margin.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	system_menu_margin.grow_vertical = Control.GROW_DIRECTION_END
-	system_menu_margin.add_theme_constant_override("margin_top", 20)
-	system_menu_margin.add_theme_constant_override("margin_right", 20)
-	add_child(system_menu_margin)
-	
-	top_right_btn_hbox = HBoxContainer.new()
-	top_right_btn_hbox.add_theme_constant_override("separation", 12)
-	system_menu_margin.add_child(top_right_btn_hbox)
-	
-	_add_system_button(
-		top_right_btn_hbox,
-		"あそびかた",
-		func():
-			Global.is_tutorial_mode = true
-			Global.game_mode = Constants.MODE_CPU
-			Global.opponent_profiles = {
-				"cpu_sato": {"name": "佐藤くん", "deviation": 51.5},
-				"cpu_suzuki": {"name": "鈴木さん", "deviation": 48.0},
-				"cpu_takahashi": {"name": "高橋くん", "deviation": 54.2}
-			}
-			if Global.player_name == "":
-				Global.player_name = "プレイヤー"
-			Global.change_scene_with_fade(get_tree(), "res://Main.tscn"),
-		"res://assets/icons/help-circle.svg"
-	)
-	
-	_add_system_button(
-		top_right_btn_hbox,
-		"音量・システム設定",
-		func():
-			SettingsModal.create_and_show(self),
-		"res://assets/icons/settings.svg"
-	)
-	
 	# ノート内部
 	var notebook_hbox = HBoxContainer.new()
 	notebook_hbox.add_theme_constant_override("separation", 0)
@@ -198,6 +174,56 @@ func _setup_notebook() -> void:
 	player_id_card = PlayerIdCard.new()
 	player_id_card.profile_pressed.connect(_on_profile_card_pressed)
 	left_p1_container.add_child(player_id_card)
+	
+	# 設定・チュートリアルボタン用HBox
+	var card_buttons_hbox = HBoxContainer.new()
+	card_buttons_hbox.add_theme_constant_override("separation", 16)
+	left_p1_container.add_child(card_buttons_hbox)
+	
+	# チュートリアルボタン (あそびかた)
+	var tutorial_btn = Button.new()
+	tutorial_btn.text = " あそびかた"
+	tutorial_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tutorial_btn.custom_minimum_size = Vector2(0, 48)
+	tutorial_btn.add_theme_font_override("font", DeskTheme.get_font())
+	tutorial_btn.add_theme_font_size_override("font_size", 18)
+	Global.apply_white_button_style(tutorial_btn)
+	if ResourceLoader.exists("res://assets/icons/help-circle.svg"):
+		tutorial_btn.icon = load("res://assets/icons/help-circle.svg")
+		tutorial_btn.expand_icon = true
+	tutorial_btn.pressed.connect(func():
+		tutorial_btn.release_focus()
+		DeskTheme.animate_click(tutorial_btn, Vector2.ONE, 0.08)
+		Global.is_tutorial_mode = true
+		Global.game_mode = Constants.MODE_CPU
+		Global.opponent_profiles = {
+			"cpu_sato": {"name": "佐藤くん", "deviation": 51.5},
+			"cpu_suzuki": {"name": "鈴木さん", "deviation": 48.0},
+			"cpu_takahashi": {"name": "高橋くん", "deviation": 54.2}
+		}
+		if Global.player_name == "":
+			Global.player_name = "プレイヤー"
+		Global.change_scene_with_fade(get_tree(), "res://Main.tscn")
+	)
+	card_buttons_hbox.add_child(tutorial_btn)
+	
+	# 設定ボタン (音量・システム設定)
+	var settings_btn = Button.new()
+	settings_btn.text = " 設定"
+	settings_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	settings_btn.custom_minimum_size = Vector2(0, 48)
+	settings_btn.add_theme_font_override("font", DeskTheme.get_font())
+	settings_btn.add_theme_font_size_override("font_size", 18)
+	Global.apply_white_button_style(settings_btn)
+	if ResourceLoader.exists("res://assets/icons/settings.svg"):
+		settings_btn.icon = load("res://assets/icons/settings.svg")
+		settings_btn.expand_icon = true
+	settings_btn.pressed.connect(func():
+		settings_btn.release_focus()
+		DeskTheme.animate_click(settings_btn, Vector2.ONE, 0.08)
+		SettingsModal.create_and_show(self)
+	)
+	card_buttons_hbox.add_child(settings_btn)
 	
 	# 左ページ下部にスペーサーを入れて学生証をより中央に配置
 	var bottom_spacer = Control.new()
@@ -239,14 +265,20 @@ func _setup_notebook() -> void:
 	right_p1_container.offset_right = -60
 	right_p1_container.offset_top = 45
 	right_p1_container.offset_bottom = -45
-	right_p1_container.add_theme_constant_override("separation", 25)
+	right_p1_container.add_theme_constant_override("separation", 50)
 	right_content_container.add_child(right_p1_container)
 	
 	# 対戦モード選択を右ページ上部に配置
 	mode_button_group = ModeButtonGroup.new()
-	mode_button_group.exam_pressed.connect(func(): show_mode_selection_modal())
-	mode_button_group.friend_pressed.connect(func(): show_friend_lobby_selection_modal())
-	mode_button_group.random_pressed.connect(func(): _on_quick_start_pressed())
+	mode_button_group.start_pressed.connect(func(mode: String):
+		match mode:
+			"national":
+				show_mode_selection_modal()
+			"friend":
+				show_friend_lobby_selection_modal()
+			"random":
+				_on_quick_start_pressed()
+	)
 	right_p1_container.add_child(mode_button_group)
 	
 	# デッキプレビュー（残りスペースを最大限使用）
@@ -272,6 +304,7 @@ func _setup_notebook() -> void:
 	next_page_btn.is_next = true
 	next_page_btn.custom_minimum_size = Vector2(100, 100)
 	next_page_btn.size = Vector2(100, 100)
+	next_page_btn.position = Vector2(1500 - 100 - 30, 850 - 100 - 20)
 	next_page_btn.pressed.connect(func(): _turn_page_anim(true))
 	notebook_container.add_child(next_page_btn)
 	
@@ -279,6 +312,7 @@ func _setup_notebook() -> void:
 	prev_page_btn.is_next = false
 	prev_page_btn.custom_minimum_size = Vector2(100, 100)
 	prev_page_btn.size = Vector2(100, 100)
+	prev_page_btn.position = Vector2(30, 850 - 100 - 20)
 	prev_page_btn.visible = false
 	prev_page_btn.pressed.connect(func(): _turn_page_anim(false))
 	notebook_container.add_child(prev_page_btn)
@@ -443,7 +477,9 @@ func _transition_to_home() -> void:
 	
 	title_container.queue_free()
 	
+	Global.show_title_splash = false
 	current_state = State.HOME
+	_reflow_layout()
 	is_transitioning = false
 
 func _turn_page_anim(to_secondary: bool) -> void:
@@ -538,15 +574,10 @@ func _reflow_layout() -> void:
 			notebook_container.position = (screen_size - notebook_container.size * scale_factor) / 2.0
 			
 			if is_instance_valid(next_page_btn):
-				next_page_btn.position = Vector2(1500 - 30, 850 - 100 - 20)
+				next_page_btn.position = Vector2(1500 - 100 - 30, 850 - 100 - 20)
 			if is_instance_valid(prev_page_btn):
-				prev_page_btn.position = Vector2(-70, 850 - 100 - 20)
+				prev_page_btn.position = Vector2(30, 850 - 100 - 20)
 				
-	if is_instance_valid(top_right_btn_hbox):
-		var margin_container = top_right_btn_hbox.get_parent()
-		if is_instance_valid(margin_container):
-			margin_container.position = Vector2(0, 0)
-
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		_reflow_layout()
