@@ -3,7 +3,7 @@ extends RefCounted
 
 static func build_report_notebook(scene: ResultScene) -> void:
 	var report_notebook = PanelContainer.new()
-	report_notebook.custom_minimum_size = Vector2(1450, 780)
+	report_notebook.custom_minimum_size = Vector2(1400, 500)
 	report_notebook.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	scene.root_layer.add_child(report_notebook)
 	report_notebook.pivot_offset = report_notebook.custom_minimum_size * 0.5
@@ -13,32 +13,32 @@ static func build_report_notebook(scene: ResultScene) -> void:
 	
 	var note_hbox = HBoxContainer.new()
 	note_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	note_hbox.add_theme_constant_override("separation", 60)
+	note_hbox.add_theme_constant_override("separation", 40)
 	report_notebook.add_child(note_hbox)
 	
 	var left_p = MarginContainer.new()
-	left_p.add_theme_constant_override("margin_left", DeskTheme.MARGIN_MEDIUM)
-	left_p.add_theme_constant_override("margin_right", DeskTheme.MARGIN_MEDIUM)
-	left_p.add_theme_constant_override("margin_top", DeskTheme.MARGIN_MEDIUM)
-	left_p.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_MEDIUM)
+	left_p.add_theme_constant_override("margin_left", DeskTheme.MARGIN_SMALL)
+	left_p.add_theme_constant_override("margin_right", DeskTheme.MARGIN_SMALL)
+	left_p.add_theme_constant_override("margin_top", DeskTheme.MARGIN_SMALL)
+	left_p.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_SMALL)
 	note_hbox.add_child(left_p)
 	
 	var report_left_page = VBoxContainer.new()
-	report_left_page.custom_minimum_size = Vector2(600, 680)
-	report_left_page.add_theme_constant_override("separation", DeskTheme.MARGIN_SMALL)
+	report_left_page.custom_minimum_size = Vector2(580, 0)
+	report_left_page.add_theme_constant_override("separation", DeskTheme.MARGIN_TINY)
 	left_p.add_child(report_left_page)
 	scene.report_left_page = report_left_page
 	
 	var right_p = MarginContainer.new()
-	right_p.add_theme_constant_override("margin_left", DeskTheme.MARGIN_MEDIUM)
-	right_p.add_theme_constant_override("margin_right", DeskTheme.MARGIN_MEDIUM)
-	right_p.add_theme_constant_override("margin_top", DeskTheme.MARGIN_MEDIUM)
-	right_p.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_MEDIUM)
+	right_p.add_theme_constant_override("margin_left", DeskTheme.MARGIN_SMALL)
+	right_p.add_theme_constant_override("margin_right", DeskTheme.MARGIN_SMALL)
+	right_p.add_theme_constant_override("margin_top", DeskTheme.MARGIN_SMALL)
+	right_p.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_SMALL)
 	note_hbox.add_child(right_p)
 	
 	var report_right_page = VBoxContainer.new()
-	report_right_page.custom_minimum_size = Vector2(600, 680)
-	report_right_page.add_theme_constant_override("separation", DeskTheme.MARGIN_SMALL)
+	report_right_page.custom_minimum_size = Vector2(580, 0)
+	report_right_page.add_theme_constant_override("separation", DeskTheme.MARGIN_TINY)
 	right_p.add_child(report_right_page)
 	scene.report_right_page = report_right_page
 	

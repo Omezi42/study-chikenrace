@@ -537,8 +537,9 @@ func _reload_all_data() -> void:
 	var deviation = PlayerState.deviation_value
 	var coins = Global.coins
 	var logged_in = Global.logged_in_user_id != ""
+	var p_title = Global.player_title
 	
-	player_id_card.update_data(name_to_use, deviation, coins, logged_in)
+	player_id_card.update_data(name_to_use, p_title, deviation, coins, logged_in)
 	deck_preview.update_deck(Global.current_deck, Global.selected_preset_idx, Global.deck_preset_names)
 
 func _on_profile_card_pressed() -> void:

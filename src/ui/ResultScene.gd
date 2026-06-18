@@ -96,6 +96,7 @@ func _reflow_layout() -> void:
 		blackboard_panel.position = vp_size * 0.5 - blackboard_panel.custom_minimum_size * 0.5
 	if is_instance_valid(report_notebook):
 		report_notebook.position = vp_size * 0.5 - report_notebook.custom_minimum_size * 0.5
+		report_notebook.position.y -= 60.0 # 画面の上に少し持ち上げる
 	if is_instance_valid(skip_btn):
 		skip_btn.position = vp_size - skip_btn.custom_minimum_size - Vector2(24, 24)
 	if is_instance_valid(board_inner):
@@ -146,12 +147,7 @@ func reveal_next_day_showdown() -> void:
 		var is_exposed = info["is_doubt_exposed"]
 		var actual = info["actual"]
 		var declared = info["declared"]
-		var name_str = "ライバル"
-		if p_id != "player":
-			if Global.opponent_profiles.has(p_id):
-				name_str = Global.opponent_profiles[p_id].get("name", "ライバル")
-			else:
-				name_str = AIManager.get_cpu_name(p_id)
+		var name_str = _get_participant_name(p_id)
 			
 		# Chalk Card Panel
 		var card = PanelContainer.new()
@@ -455,7 +451,7 @@ func _update_day_chart(day_idx: int) -> void:
 
 func _get_participant_name(p_id: String) -> String:
 	if p_id == "player":
-		return "あなた"
+		return Global.player_name if Global.player_name != "" else "あなた"
 	if Global.opponent_profiles.has(p_id):
 		return Global.opponent_profiles[p_id].get("name", p_id)
 	return AIManager.get_cpu_name(p_id)
@@ -619,32 +615,26 @@ func trigger_report_card() -> void:
 	stamp_panel.add_child(title_lbl)
 	
 	stamp_panel.scale = Vector2(3.0, 3.0)
-	stamp_panel.modulate.a = 0.0
-	
-	var s_tween = create_tween()
-	s_tween.tween_interval(0.4)
-	
-	s_tween.tween_property(stamp_panel, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	s_tween.parallel().tween_property(stamp_panel, "modulate:a", 1.0, 0.2)
-	
-	s_tween.tween_callback(func():
-		DeskTheme.shake_control(stamp_panel, 8.0, 0.25)
-	)
-	
 	# If S-grade (250+ points), stamp a huge hanamaru (花丸スタンプ)
 	if my_score >= 250:
 		var hanamaru = TextureRect.new()
-		hanamaru.custom_minimum_size = Vector2(180, 180)
-		hanamaru.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		hanamaru.custom_minimum_size = Vector2(160, 160)
+		hanamaru.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		hanamaru.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		if FileAccess.file_exists("res://assets/はなまるスタンプ.png"):
 			hanamaru.texture = load("res://assets/はなまるスタンプ.png")
-		report_left_page.add_child(hanamaru)
+		report_notebook.add_child(hanamaru)
+		# Absolutely position it on the left page near the score
+		hanamaru.position = Vector2(380, 20)
+		hanamaru.pivot_offset = Vector2(80, 80)
 		
 		# Hanamaru stamp landing bounce and screen shake
-		hanamaru.scale = Vector2(4.0, 4.0)
-		var h_tween = create_tween().set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-		h_tween.tween_property(hanamaru, "scale", Vector2.ONE, 0.4)
-		h_tween.tween_callback(func():
+		hanamaru.scale = Vector2(1.2, 1.2)
+		hanamaru.modulate.a = 0.0
+		var h_tween = create_tween().set_parallel(true)
+		h_tween.tween_property(hanamaru, "scale", Vector2(0.35, 0.35), 0.4).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+		h_tween.tween_property(hanamaru, "modulate:a", 1.0, 0.2)
+		h_tween.chain().tween_callback(func():
 			DeskTheme.shake_control(report_notebook, 14.0, 0.3)
 		)
 		
@@ -661,10 +651,10 @@ func trigger_report_card() -> void:
 	advice_style.corner_radius_top_right = 4
 	advice_style.corner_radius_bottom_left = 4
 	advice_style.corner_radius_bottom_right = 4
-	advice_style.content_margin_left = 12
-	advice_style.content_margin_right = 12
-	advice_style.content_margin_top = 8
-	advice_style.content_margin_bottom = 8
+	advice_style.content_margin_left = 10
+	advice_style.content_margin_right = 10
+	advice_style.content_margin_top = 6
+	advice_style.content_margin_bottom = 6
 	advice_box.add_theme_stylebox_override("panel", advice_style)
 	report_left_page.add_child(advice_box)
 	
@@ -688,7 +678,7 @@ func trigger_report_card() -> void:
 		
 	advice_lbl.text = advice_text
 	advice_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	advice_lbl.add_theme_font_size_override("font_size", 16)
+	advice_lbl.add_theme_font_size_override("font_size", 14)
 	advice_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	advice_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	advice_box.add_child(advice_lbl)
@@ -818,10 +808,13 @@ func trigger_report_card() -> void:
 		var eraser_hover = eraser_normal.duplicate() as StyleBoxFlat
 		eraser_hover.bg_color = Color("3e4b42")
 		eraser_hover.border_color = Color("ffffff")
+		eraser_hover.border_width_bottom = 15 # Lifted up
+		eraser_hover.shadow_size = 10
+		eraser_hover.shadow_offset = Vector2(3, 6)
 		
 		var eraser_pressed = eraser_normal.duplicate() as StyleBoxFlat
 		eraser_pressed.bg_color = Color("1e2b22")
-		eraser_pressed.border_width_bottom = 4 # Squish the felt pad down
+		eraser_pressed.border_width_bottom = 3 # Squished felt pad
 		eraser_pressed.shadow_size = 2
 		eraser_pressed.shadow_offset = Vector2(1, 1)
 		
@@ -832,6 +825,39 @@ func trigger_report_card() -> void:
 		btn.add_theme_color_override("font_color", Color("eceff1"))
 		btn.add_theme_color_override("font_hover_color", Color.WHITE)
 		btn.add_theme_color_override("font_pressed_color", Color("cfd8dc"))
+		
+		# Set pivot to center for nice scaling animations
+		btn.pivot_offset = btn.custom_minimum_size * 0.5
+		
+		# Connect hover animations for tactile feel
+		btn.mouse_entered.connect(func():
+			if not btn.disabled:
+				var tween = btn.create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+				tween.tween_property(btn, "scale", Vector2(1.04, 1.04), 0.15)
+				# Slide up slightly to feel 3D
+				tween.tween_property(btn, "position:y", -4.0, 0.15)
+				if Engine.get_main_loop().root.has_node("AudioManager"):
+					var audio = Engine.get_main_loop().root.get_node("AudioManager")
+					audio.play_se(audio.SE_CLICK)
+		)
+		btn.mouse_exited.connect(func():
+			if not btn.disabled:
+				var tween = btn.create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+				tween.tween_property(btn, "scale", Vector2.ONE, 0.15)
+				tween.tween_property(btn, "position:y", 0.0, 0.15)
+		)
+		btn.button_down.connect(func():
+			if not btn.disabled:
+				var tween = btn.create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+				tween.tween_property(btn, "scale", Vector2(0.95, 0.95), 0.08)
+				tween.tween_property(btn, "position:y", 4.0, 0.08)
+		)
+		btn.button_up.connect(func():
+			if not btn.disabled:
+				var tween = btn.create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+				tween.tween_property(btn, "scale", Vector2.ONE, 0.15)
+				tween.tween_property(btn, "position:y", 0.0, 0.15)
+		)
 	
 	share_btn = Button.new()
 	share_btn.text = "Xでシェア"

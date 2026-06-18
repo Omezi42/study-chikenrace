@@ -118,10 +118,9 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 20
 text = "バースト確率: 0.0%"
 
-[node name="HandContainer" type="HBoxContainer" parent="MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox"]
+[node name="HandContainer" type="Control" parent="MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox"]
 custom_minimum_size = Vector2(700, 240)
 layout_mode = 2
-alignment = 1
 
 [node name="ActionButtons" type="HBoxContainer" parent="MainHBox/RightPage/RightVBox/RightMargin/RightInnerVBox"]
 layout_mode = 2

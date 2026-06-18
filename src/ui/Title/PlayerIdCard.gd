@@ -4,6 +4,7 @@ extends PanelContainer
 signal profile_pressed
 
 var name_lbl: Label
+var title_lbl: Label
 var deviation_lbl: Label
 var coin_lbl: Label
 var profile_btn: Button
@@ -61,6 +62,13 @@ func _ready() -> void:
 	coin_panel.add_child(coin_lbl)
 	header_hbox.add_child(coin_panel)
 	
+	# 称号
+	title_lbl = Label.new()
+	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	title_lbl.add_theme_font_size_override("font_size", 18)
+	title_lbl.add_theme_color_override("font_color", Color("795548"))
+	main_vbox.add_child(title_lbl)
+	
 	# ユーザー名
 	name_lbl = Label.new()
 	name_lbl.add_theme_font_override("font", DeskTheme.get_font())
@@ -91,7 +99,8 @@ func _ready() -> void:
 	)
 	main_vbox.add_child(profile_btn)
 
-func update_data(player_name: String, deviation: float, coins: int, logged_in: bool) -> void:
+func update_data(player_name: String, player_title: String, deviation: float, coins: int, logged_in: bool) -> void:
+	title_lbl.text = "【" + player_title + "】" if player_title != "" else "【ただの凡人】"
 	name_lbl.text = player_name
 	
 	# 偏差値のフォーマット

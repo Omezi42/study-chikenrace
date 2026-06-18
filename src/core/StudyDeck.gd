@@ -154,6 +154,8 @@ func draw_card() -> Dictionary:
 			
 		break
 		
+	eraser_charges = 0
+	
 	# Apply Mech Pencil (シャーペン) points bonus (+3 points to next drawn cards)
 	if next_draw_bonus_points > 0:
 		card["bonus_points"] = 3
