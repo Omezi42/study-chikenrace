@@ -303,22 +303,25 @@ func _setup_page_1(visual_area: Control, rtb: RichTextLabel) -> void:
 	
 	var cards_ctrl = Control.new()
 	cards_ctrl.custom_minimum_size = Vector2(280, 240)
-	var c1 = CardVisual.create({"value": 7, "item_id": "pencil", "name": "シャーペン"})
+	var c1 = CardVisual.create({"value": 7, "item_id": "item_mech_pencil", "name": "シャーペン"})
 	c1.scale = Vector2(0.8, 0.8)
 	c1.position = Vector2(0, 20)
 	c1.rotation_degrees = -10
+	c1.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cards_ctrl.add_child(c1)
 	
-	var c2 = CardVisual.create({"value": 10, "item_id": "ruler", "name": "定規"})
+	var c2 = CardVisual.create({"value": 10, "item_id": "item_ruler", "name": "定規"})
 	c2.scale = Vector2(0.8, 0.8)
 	c2.position = Vector2(60, 0)
 	c2.rotation_degrees = 0
+	c2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cards_ctrl.add_child(c2)
 	
-	var c3 = CardVisual.create({"value": 8, "item_id": "blue_pen", "name": "青ペン"})
+	var c3 = CardVisual.create({"value": 8, "item_id": "item_blue_pen", "name": "青ペン"})
 	c3.scale = Vector2(0.8, 0.8)
 	c3.position = Vector2(120, 20)
 	c3.rotation_degrees = 10
+	c3.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cards_ctrl.add_child(c3)
 	
 	left_v.add_child(cards_ctrl)
@@ -422,9 +425,9 @@ func _setup_page_2(visual_area: Control, rtb: RichTextLabel) -> void:
 	
 	var graph_bg = ColorRect.new()
 	graph_bg.color = Color(0,0,0,0.05)
-	graph_bg.custom_minimum_size = Vector2(320, 200)
+	graph_bg.custom_minimum_size = Vector2(340, 200)
 	
-	var bar_data = [2, 3, 4, 5, 6, 7, 8, 9, 10]
+	var bar_data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 	var max_val = 10.0
 	for i in range(bar_data.size()):
 		var val = bar_data[i]
@@ -453,11 +456,13 @@ func _setup_page_2(visual_area: Control, rtb: RichTextLabel) -> void:
 	
 	var c7_1 = CardVisual.create({"value": 7, "item_id": "", "name": "通常"})
 	c7_1.position = Vector2(0, 0)
+	c7_1.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	burst_ctrl.add_child(c7_1)
 	
 	var c7_2 = CardVisual.create({"value": 7, "item_id": "", "name": "通常"})
 	c7_2.position = Vector2(40, 40) # ズラして配置
 	c7_2.modulate = Color(1.0, 0.3, 0.3) # 強い赤
+	c7_2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	burst_ctrl.add_child(c7_2)
 	burst_v.add_child(burst_ctrl)
 	
@@ -487,7 +492,7 @@ func _setup_page_3(visual_area: Control, rtb: RichTextLabel) -> void:
 	item1_v.add_theme_constant_override("separation", 20)
 	
 	var t1 = TextureRect.new()
-	t1.texture = load(CardData.get_item_image_path("eraser"))
+	t1.texture = load(CardData.get_item_image_path("item_eraser"))
 	t1.custom_minimum_size = Vector2(120, 120)
 	t1.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	t1.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -507,7 +512,7 @@ func _setup_page_3(visual_area: Control, rtb: RichTextLabel) -> void:
 	item2_v.add_theme_constant_override("separation", 20)
 	
 	var t2 = TextureRect.new()
-	t2.texture = load(CardData.get_item_image_path("blue_pen"))
+	t2.texture = load(CardData.get_item_image_path("item_blue_pen"))
 	t2.custom_minimum_size = Vector2(120, 120)
 	t2.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	t2.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -602,64 +607,160 @@ func _setup_page_5(visual_area: Control, rtb: RichTextLabel) -> void:
 	var hbox = HBoxContainer.new()
 	hbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	hbox.add_theme_constant_override("separation", 60)
+	hbox.add_theme_constant_override("separation", 40)
 	visual_area.add_child(hbox)
 	
-	# Left: Doubt Modal replication
+	# Left: Doubt Modal replication (exactly like actual game modal)
 	var doubt_pnl = PanelContainer.new()
-	doubt_pnl.custom_minimum_size = Vector2(340, 260)
-	var d_style = StyleBoxFlat.new()
-	d_style.bg_color = Color("#2c3e50")
-	d_style.corner_radius_top_left = 12
-	d_style.corner_radius_top_right = 12
-	d_style.corner_radius_bottom_left = 12
-	d_style.corner_radius_bottom_right = 12
-	d_style.border_width_bottom = 8
-	d_style.border_color = Color("#1a252f")
-	doubt_pnl.add_theme_stylebox_override("panel", d_style)
+	doubt_pnl.custom_minimum_size = Vector2(500, 320)
+	
+	var base_style = DeskTheme.create_craft_panel()
+	base_style.border_color = DeskTheme.COLOR_GREEN
+	base_style.border_width_left = 4
+	base_style.border_width_right = 4
+	base_style.border_width_top = 4
+	base_style.border_width_bottom = 4
+	doubt_pnl.add_theme_stylebox_override("panel", base_style)
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 20)
+	margin.add_theme_constant_override("margin_right", 20)
+	margin.add_theme_constant_override("margin_top", 15)
+	margin.add_theme_constant_override("margin_bottom", 15)
+	doubt_pnl.add_child(margin)
 	
 	var d_vbox = VBoxContainer.new()
-	d_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	d_vbox.add_theme_constant_override("separation", 15)
+	margin.add_child(d_vbox)
 	
 	var d_title = Label.new()
 	d_title.text = "ダウト成功！"
-	d_title.add_theme_font_override("font", DeskTheme.get_font())
-	d_title.add_theme_font_size_override("font_size", 32)
-	d_title.add_theme_color_override("font_color", Color("#e74c3c"))
 	d_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	d_title.add_theme_font_override("font", DeskTheme.get_font())
+	d_title.add_theme_font_size_override("font_size", 28)
+	d_title.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	d_vbox.add_child(d_title)
 	
-	var d_text = Label.new()
-	d_text.text = "相手の嘘を見破った！"
-	d_text.add_theme_font_override("font", DeskTheme.get_font())
-	d_text.add_theme_font_size_override("font_size", 18)
-	d_text.add_theme_color_override("font_color", Color.WHITE)
-	d_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	d_vbox.add_child(d_text)
+	var desc_lbl = Label.new()
+	desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	desc_lbl.add_theme_font_size_override("font_size", 16)
+	desc_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	desc_lbl.text = "佐藤くん は勉強報告で嘘をついていた！\n【申告】 44 点  ➡  【実際】 20 点"
+	d_vbox.add_child(desc_lbl)
 	
-	var score_hbox = HBoxContainer.new()
-	score_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	score_hbox.add_theme_constant_override("separation", 20)
+	var cards_hbox = HBoxContainer.new()
+	cards_hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	cards_hbox.add_theme_constant_override("separation", 20)
+	d_vbox.add_child(cards_hbox)
 	
-	var opp_lbl = Label.new()
-	opp_lbl.text = "相手:\n実点に戻る"
-	opp_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	opp_lbl.add_theme_font_size_override("font_size", 20)
-	opp_lbl.add_theme_color_override("font_color", Color("#bdc3c7"))
-	opp_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	score_hbox.add_child(opp_lbl)
+	var my_card = PanelContainer.new()
+	my_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	my_card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var my_style = StyleBoxFlat.new()
+	my_style.bg_color = Color("e8f5e9")
+	my_style.border_color = Color("81c784")
+	my_style.border_width_left = 2
+	my_style.border_width_right = 2
+	my_style.border_width_top = 2
+	my_style.border_width_bottom = 2
+	my_style.corner_radius_top_left = 8
+	my_style.corner_radius_top_right = 8
+	my_style.corner_radius_bottom_left = 8
+	my_style.corner_radius_bottom_right = 8
+	my_card.add_theme_stylebox_override("panel", my_style)
+	cards_hbox.add_child(my_card)
 	
-	var my_lbl = Label.new()
-	my_lbl.text = "自分:\n+24 点"
-	my_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	my_lbl.add_theme_font_size_override("font_size", 26)
-	my_lbl.add_theme_color_override("font_color", Color("#2ecc71"))
-	my_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	score_hbox.add_child(my_lbl)
+	var my_margin = MarginContainer.new()
+	my_margin.add_theme_constant_override("margin_left", 10)
+	my_margin.add_theme_constant_override("margin_right", 10)
+	my_margin.add_theme_constant_override("margin_top", 10)
+	my_margin.add_theme_constant_override("margin_bottom", 10)
+	my_card.add_child(my_margin)
 	
-	d_vbox.add_child(score_hbox)
-	doubt_pnl.add_child(d_vbox)
+	var my_vbox = VBoxContainer.new()
+	my_vbox.add_theme_constant_override("separation", 5)
+	my_margin.add_child(my_vbox)
+	
+	var my_title = Label.new()
+	my_title.text = "あなたへの影響"
+	my_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	my_title.add_theme_font_override("font", DeskTheme.get_font())
+	my_title.add_theme_font_size_override("font_size", 14)
+	my_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	my_vbox.add_child(my_title)
+	
+	var my_diff_lbl = Label.new()
+	my_diff_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	my_diff_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	my_diff_lbl.add_theme_font_size_override("font_size", 28)
+	my_diff_lbl.text = "+24 点"
+	my_diff_lbl.add_theme_color_override("font_color", Color("2e7d32"))
+	my_vbox.add_child(my_diff_lbl)
+	
+	var my_detail = Label.new()
+	my_detail.text = "ダウト成功ボーナスを獲得！"
+	my_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	my_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	my_detail.add_theme_font_override("font", DeskTheme.get_font())
+	my_detail.add_theme_font_size_override("font_size", 12)
+	my_detail.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.75))
+	my_vbox.add_child(my_detail)
+	
+	var opp_card = PanelContainer.new()
+	opp_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	opp_card.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var opp_style = StyleBoxFlat.new()
+	opp_style.bg_color = Color("ffebee")
+	opp_style.border_color = Color("e57373")
+	opp_style.border_width_left = 2
+	opp_style.border_width_right = 2
+	opp_style.border_width_top = 2
+	opp_style.border_width_bottom = 2
+	opp_style.corner_radius_top_left = 8
+	opp_style.corner_radius_top_right = 8
+	opp_style.corner_radius_bottom_left = 8
+	opp_style.corner_radius_bottom_right = 8
+	opp_card.add_theme_stylebox_override("panel", opp_style)
+	cards_hbox.add_child(opp_card)
+	
+	var opp_margin = MarginContainer.new()
+	opp_margin.add_theme_constant_override("margin_left", 10)
+	opp_margin.add_theme_constant_override("margin_right", 10)
+	opp_margin.add_theme_constant_override("margin_top", 10)
+	opp_margin.add_theme_constant_override("margin_bottom", 10)
+	opp_card.add_child(opp_margin)
+	
+	var opp_vbox = VBoxContainer.new()
+	opp_vbox.add_theme_constant_override("separation", 5)
+	opp_margin.add_child(opp_vbox)
+	
+	var opp_title = Label.new()
+	opp_title.text = "佐藤くん"
+	opp_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	opp_title.add_theme_font_override("font", DeskTheme.get_font())
+	opp_title.add_theme_font_size_override("font_size", 14)
+	opp_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	opp_vbox.add_child(opp_title)
+	
+	var opp_diff_lbl = Label.new()
+	opp_diff_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	opp_diff_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	opp_diff_lbl.add_theme_font_size_override("font_size", 28)
+	opp_diff_lbl.text = "実点に低下"
+	opp_diff_lbl.add_theme_color_override("font_color", Color("c62828"))
+	opp_vbox.add_child(opp_diff_lbl)
+	
+	var opp_detail = Label.new()
+	opp_detail.text = "嘘がバレてスコアが下がった"
+	opp_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	opp_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	opp_detail.add_theme_font_override("font", DeskTheme.get_font())
+	opp_detail.add_theme_font_size_override("font_size", 12)
+	opp_detail.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.75))
+	opp_vbox.add_child(opp_detail)
+	
 	hbox.add_child(doubt_pnl)
 	
 	# Right: Blackboard
@@ -755,4 +856,6 @@ func _setup_page_6(visual_area: Control, rtb: RichTextLabel) -> void:
 	text_rtb.text = content
 	vbox.add_child(text_rtb)
 	
-	rtb.get_parent().visible = false
+	var txt_pnl = rtb.get_parent().get_parent()
+	if txt_pnl and txt_pnl is PanelContainer:
+		txt_pnl.visible = false
