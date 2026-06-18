@@ -40,12 +40,7 @@ func draw_card() -> Dictionary:
 
 # Apply startup deck items.
 func apply_deck_startup_items(is_tutorial: bool) -> void:
-	for slot_idx in Global.current_deck.keys():
-		var item = Global.current_deck[slot_idx]
-		if item == "item_red_sheet" and randf() < 0.3:
-			deck.red_sheet_active = true
-		elif item == "item_mech_pencil" and randf() < 0.4:
-			deck.next_draw_bonus_points += 2
+	pass
 
 # Checks for burst status, considering energy drink side effects.
 func check_burst() -> bool:

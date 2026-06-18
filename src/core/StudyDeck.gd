@@ -112,12 +112,15 @@ func draw_card() -> Dictionary:
 	var original_card = {}
 	var card = {}
 	var attempts = 0
+	var eraser_used_in_this_draw = false
 	
 	while true:
 		if draw_pile.size() == 0:
 			if discard_pile.size() > 0:
 				# Recycle discard pile
 				draw_pile = discard_pile.duplicate()
+				for c in draw_pile:
+					_cleanup_card_temporary_keys(c)
 				discard_pile.clear()
 				shuffle_draw_pile()
 			else:
@@ -134,8 +137,10 @@ func draw_card() -> Dictionary:
 			card["red_sheet_exempt"] = true
 			
 		# Apply Eraser (消しゴム) charges
-		if would_card_burst(card) and eraser_charges > 0:
-			eraser_charges -= 1
+		if would_card_burst(card) and (eraser_charges > 0 or eraser_used_in_this_draw):
+			if not eraser_used_in_this_draw:
+				eraser_charges -= 1
+				eraser_used_in_this_draw = true
 			if not "item_eraser" in activated_items:
 				activated_items.append("item_eraser")
 			# Put back to draw pile, shuffle, and draw again
@@ -268,10 +273,19 @@ func reset_status_effects() -> void:
 	amulet_active = false
 	activated_items.clear()
 
+# カードの一時的な効果パラメータを消去
+func _cleanup_card_temporary_keys(card: Dictionary) -> void:
+	if card.has("bonus_points"):
+		card.erase("bonus_points")
+	if card.has("red_sheet_exempt"):
+		card.erase("red_sheet_exempt")
+
 # End of period (hour): Move hand to discard pile, keep draw and discard piles as is for day-long counting
 func reset_for_next_hour() -> void:
 	for card in hand:
-		discard_pile.append(card.duplicate())
+		var cleaned_card = card.duplicate()
+		_cleanup_card_temporary_keys(cleaned_card)
+		discard_pile.append(cleaned_card)
 	hand.clear()
 	reset_status_effects()
 

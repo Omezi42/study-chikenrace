@@ -23,8 +23,24 @@ static func simulate_friend_room_cpus(
 		var uid = p["user_id"]
 		if uid != "player":
 			if not existing_cpus.has(uid):
-				var simulated_score = randi_range(25, 55)
-				var declared = simulated_score + (randi_range(5, 15) if randf() < 0.5 else 0)
+				var profile_slot_key = ""
+				for k in opponent_profiles.keys():
+					if opponent_profiles[k].get("id") == uid:
+						profile_slot_key = k
+						break
+				if profile_slot_key == "":
+					if opponent_profiles.has(uid):
+						profile_slot_key = uid
+					else:
+						profile_slot_key = opponent_profiles.keys()[0] if opponent_profiles.size() > 0 else "cpu_sato"
+				
+				var sim = AIManager.simulate_cpu_day(profile_slot_key, day_idx)
+				var simulated_score = sim["actual_score"]
+				var hours_history = sim["hours"]
+				
+				var declared = AIManager.calculate_cpu_bluff(profile_slot_key, simulated_score, day_idx)
+				var cpu_emote = AIManager.select_cpu_emote(profile_slot_key, declared - simulated_score, simulated_score)
+				
 				var cpu_move = {
 					"room_code": room_code,
 					"user_id": uid,
@@ -32,7 +48,8 @@ static func simulate_friend_room_cpus(
 					"day_idx": day_idx,
 					"actual_score": simulated_score,
 					"declared_score": declared,
-					"hours_history": [{"draws": 4, "used_items": [], "bursted": false, "score": simulated_score}],
+					"hours_history": hours_history,
+					"emote": cpu_emote,
 					"doubts_made": [],
 					"doubts_submitted": true
 				}

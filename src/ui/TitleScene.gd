@@ -17,8 +17,9 @@ var deck_preview: DeckPreview
 # UIノード参照
 var bg_color: ColorRect
 var bg_tex: TextureRect
-var title_container: Control
+var title_placeholder: Control
 var click_to_start_lbl: Label
+var title_container: Control
 
 var notebook_container: Control
 var notebook: PanelContainer
@@ -167,6 +168,13 @@ func _setup_notebook() -> void:
 	left_p1_container.add_theme_constant_override("separation", 24)
 	left_content_container.add_child(left_p1_container)
 	
+	if Global.show_title_splash:
+		title_placeholder = VBoxContainer.new()
+		title_placeholder.custom_minimum_size = Vector2(500, 220)
+		title_placeholder.size_flags_horizontal = Control.SIZE_FILL
+		title_placeholder.size_flags_vertical = Control.SIZE_FILL
+		left_p1_container.add_child(title_placeholder)
+	
 	var logo_spacer = Control.new()
 	logo_spacer.custom_minimum_size = Vector2(500, 80)
 	left_p1_container.add_child(logo_spacer)
@@ -194,16 +202,7 @@ func _setup_notebook() -> void:
 	tutorial_btn.pressed.connect(func():
 		tutorial_btn.release_focus()
 		DeskTheme.animate_click(tutorial_btn, Vector2.ONE, 0.08)
-		Global.is_tutorial_mode = true
-		Global.game_mode = Constants.MODE_CPU
-		Global.opponent_profiles = {
-			"cpu_sato": {"name": "佐藤くん", "deviation": 51.5},
-			"cpu_suzuki": {"name": "鈴木さん", "deviation": 48.0},
-			"cpu_takahashi": {"name": "高橋くん", "deviation": 54.2}
-		}
-		if Global.player_name == "":
-			Global.player_name = "プレイヤー"
-		Global.change_scene_with_fade(get_tree(), "res://Main.tscn")
+		RulebookModal.create_and_show(self)
 	)
 	card_buttons_hbox.add_child(tutorial_btn)
 	
@@ -456,17 +455,22 @@ func _transition_to_home() -> void:
 	var scale_factor = clamp(min(screen_size.x / design_size.x, screen_size.y / design_size.y), 0.5, 1.25)
 	
 	var notebook_target_pos = (screen_size - Vector2(1500, 850) * scale_factor) / 2.0
-	# left_p1_container内のlogo_spacerの中心位置
-	var logo_target_gpos = notebook_target_pos + Vector2(60 + 250, 45 + 110) * scale_factor
+	var final_gpos = notebook_target_pos + Vector2(60, 45) * scale_factor
 	
 	var logo_tween = create_tween().bind_node(title_logo).set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	logo_tween.tween_property(title_logo, "global_position", logo_target_gpos - title_logo.pivot_offset * scale_factor, 0.5)
-	logo_tween.tween_property(title_logo, "scale", Vector2(0.8 * scale_factor, 0.8 * scale_factor), 0.5)
+	logo_tween.tween_property(title_logo, "global_position", final_gpos, 0.5)
+	logo_tween.tween_property(title_logo, "scale", Vector2(scale_factor, scale_factor), 0.5)
 	
+	notebook_container.scale = Vector2(scale_factor, scale_factor)
+	notebook_container.pivot_offset = notebook_container.custom_minimum_size / 2.0
 	notebook_container.visible = true
 	DeskTheme.animate_entrance(notebook_container, notebook_target_pos, Vector2(0, 400), 0.5)
 	
 	await logo_tween.finished
+	
+	if is_instance_valid(title_placeholder):
+		left_p1_container.remove_child(title_placeholder)
+		title_placeholder.queue_free()
 	
 	title_logo.get_parent().remove_child(title_logo)
 	left_p1_container.add_child(title_logo)
@@ -604,7 +608,8 @@ func _on_quick_start_pressed() -> void:
 	)
 
 func show_mode_selection_modal() -> void:
-	ModeSelectionModal.create_and_show(self, show_friend_lobby_selection_modal, NATIONAL_NAMES)
+	Global.game_mode = Constants.MODE_NATIONAL
+	ModeSelectionModal.show_difficulty_selection(self, null, show_friend_lobby_selection_modal, NATIONAL_NAMES)
 
 func show_friend_lobby_selection_modal() -> void:
 	FriendLobbyModal.create_selection_modal(self)

@@ -150,7 +150,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	national_btn.pressed.connect(func():
 		DeskTheme.animate_click(national_btn, Vector2.ONE, 0.08)
 		Global.game_mode = Constants.MODE_NATIONAL
-		_show_difficulty_selection(parent, mode_modal, on_friend_match_pressed, national_names_pool)
+		show_difficulty_selection(parent, mode_modal, on_friend_match_pressed, national_names_pool)
 	)
 	
 	# ── Connect: 🤝 フレンド戦 ──
@@ -192,7 +192,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 		
 	return mode_modal
 
-static func _show_difficulty_selection(parent: Node, mode_modal: PanelContainer, on_friend_match_pressed: Callable, national_names_pool: Array) -> void:
+static func show_difficulty_selection(parent: Node, mode_modal: PanelContainer, on_friend_match_pressed: Callable, national_names_pool: Array) -> void:
 	var parent_tree = parent
 	if mode_modal != null and is_instance_valid(mode_modal):
 		mode_modal.queue_free()
@@ -328,11 +328,7 @@ static func _show_difficulty_selection(parent: Node, mode_modal: PanelContainer,
 
 				var timer = parent.get_tree().create_timer(0.2)
 				timer.timeout.connect(func():
-					var select_modal_script = load("res://src/ui/modals/DeckSelectionModal.gd")
-					if select_modal_script:
-						select_modal_script.create_and_show(parent, start_game)
-					else:
-						start_game.call()
+					start_game.call()
 				)
 			)
 			

@@ -62,7 +62,7 @@
     "rewards": {
         "coins_by_rank": [80, 40, 15, 5],
         "perfect_crime_bonus": 50,
-        "gacha_cost": 100,
+        "gacha_cost": 300,
         "season_reward": {
             "S": 200,
             "A": 100,
@@ -82,8 +82,8 @@
         "burst_divisor": 40.0,
         "burst_exponent": 2.0,
         "penalty_extra_rate": 0.5,
-        "fail_penalty_base": 10,
-        "fail_penalty_per_day": 2
+        "fail_penalty_base": 15,
+        "fail_penalty_per_day": 3
     },
     "star_bonus": {
         "2": 1,

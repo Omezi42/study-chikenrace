@@ -642,6 +642,7 @@ func finish_hour_and_transition(final_score: int, is_burst: bool) -> void:
 	show_hour_result_popup(final_score, is_burst)
 	
 	session.player_deck.reset_for_next_hour()
+	update_ui()
 	
 	if tutorial:
 		tutorial.cleanup()

@@ -112,6 +112,8 @@ func _draw() -> void:
 	
 	# Draw Kanji Text ("次へ" or "戻る") below the arrow
 	var font = DeskTheme.get_font()
+	if font == null:
+		font = get_theme_font("font")
 	var text = "次へ" if is_next else "戻る"
 	var text_size = 28
 	

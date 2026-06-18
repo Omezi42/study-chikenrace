@@ -108,8 +108,10 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 			continue
 		var day_data: Dictionary = session.match_history[day_idx]
 		
-		# Daily failure penalty base: Day1=10, Day2=12, ..., Day5=18
-		var base_fail_penalty := 10 + (day_idx - 1) * 2
+		# Daily failure penalty base: Day1=15, Day2=18, ..., Day5=27 (by default config)
+		var penalty_base: int = BalanceConfig.get_value("exposure.fail_penalty_base", 15)
+		var penalty_per_day: int = BalanceConfig.get_value("exposure.fail_penalty_per_day", 3)
+		var base_fail_penalty := penalty_base + (day_idx - 1) * penalty_per_day
 		
 		for p_id in final_scores.keys():
 			if not day_data.has(p_id):

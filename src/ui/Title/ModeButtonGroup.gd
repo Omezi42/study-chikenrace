@@ -17,7 +17,7 @@ var active_styles: Dictionary = {}
 const MODES = {
 	"national": {
 		"title": "模試",
-		"desc": "CPUと対戦して自分の実力を試します。\n対戦成績に応じてあなたの偏差値が変動します。",
+		"desc": "CPUと対戦して自分の実力を試します。\n対戦成績による偏差値の変動はありません。",
 		"action_text": "模試を受ける",
 		"icon": "res://assets/icons/book.svg",
 		"bg_color": Color("e3f2fd"),
@@ -76,37 +76,39 @@ func _ready() -> void:
 	
 	# 3. アクション（開始）ボタン
 	start_button = Button.new()
-	start_button.custom_minimum_size = Vector2(280, 52)
+	start_button.custom_minimum_size = Vector2(320, 60)
 	start_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	start_button.add_theme_font_override("font", DeskTheme.get_font())
-	start_button.add_theme_font_size_override("font_size", 22)
+	start_button.add_theme_font_size_override("font_size", 24)
+	start_button.add_theme_constant_override("outline_size", 6)
+	start_button.add_theme_color_override("font_outline_color", Color("2d1a0c"))
 	
 	# 開始ボタンの特別なスタイル（TENSIONカラーのピンク）
 	var style_normal = StyleBoxFlat.new()
 	style_normal.bg_color = DeskTheme.COLOR_TENSION # ff4081 (テンションピンク)
 	style_normal.border_color = DeskTheme.COLOR_INK
-	style_normal.border_width_left = 3
-	style_normal.border_width_right = 3
-	style_normal.border_width_top = 3
-	style_normal.border_width_bottom = 5
-	style_normal.corner_radius_top_left = 8
-	style_normal.corner_radius_top_right = 8
-	style_normal.corner_radius_bottom_left = 8
-	style_normal.corner_radius_bottom_right = 8
-	style_normal.shadow_color = Color(0, 0, 0, 0.15)
-	style_normal.shadow_size = 5
-	style_normal.shadow_offset = Vector2(2, 3)
+	style_normal.border_width_left = 4
+	style_normal.border_width_right = 4
+	style_normal.border_width_top = 4
+	style_normal.border_width_bottom = 8
+	style_normal.corner_radius_top_left = 12
+	style_normal.corner_radius_top_right = 12
+	style_normal.corner_radius_bottom_left = 12
+	style_normal.corner_radius_bottom_right = 12
+	style_normal.shadow_color = Color(0, 0, 0, 0.2)
+	style_normal.shadow_size = 8
+	style_normal.shadow_offset = Vector2(3, 5)
 	
 	var style_hover = style_normal.duplicate()
 	style_hover.bg_color = Color("ff80ab") # ホバー時は少し明るいピンク
-	style_hover.shadow_size = 7
-	style_hover.shadow_offset = Vector2(3, 4)
+	style_hover.shadow_size = 10
+	style_hover.shadow_offset = Vector2(4, 6)
 	
 	var style_pressed = style_normal.duplicate()
 	style_pressed.bg_color = Color("c51162") # プレス時は濃いピンク
-	style_pressed.border_width_bottom = 2
-	style_pressed.shadow_size = 2
-	style_pressed.shadow_offset = Vector2(1, 1)
+	style_pressed.border_width_bottom = 3
+	style_pressed.shadow_size = 3
+	style_pressed.shadow_offset = Vector2(1, 2)
 	
 	start_button.add_theme_stylebox_override("normal", style_normal)
 	start_button.add_theme_stylebox_override("hover", style_hover)
@@ -129,7 +131,7 @@ func _ready() -> void:
 			start_pressed.emit(selected_mode)
 		)
 	)
-	start_button.pivot_offset = Vector2(140, 26)
+	start_button.pivot_offset = Vector2(160, 30)
 	
 	start_button.mouse_entered.connect(func(): DeskTheme.animate_hover(start_button, true, Vector2.ONE, 0.1))
 	start_button.mouse_exited.connect(func(): DeskTheme.animate_hover(start_button, false, Vector2.ONE, 0.1))

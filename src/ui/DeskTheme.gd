@@ -27,7 +27,10 @@ static func get_font() -> Font:
 	if root and root.has_node("Global"):
 		var global = root.get_node("Global")
 		if not global.use_handwriting_font:
-			return null
+			var temp = Control.new()
+			var font = temp.get_theme_font("font")
+			temp.free()
+			return font
 	return _preloaded_font
 
 static var _stylebox_cache: Dictionary = {}
@@ -401,7 +404,7 @@ static func show_toast(caller_node: Node, text: String, duration: float = 1.8, b
 	# Create CanvasLayer to overlay everything
 	var canvas = CanvasLayer.new()
 	canvas.layer = 100 # High layer to be on top
-	scene_tree.root.add_child(canvas)
+	scene_tree.root.add_child.call_deferred(canvas)
 	
 	# Create Toast PanelContainer
 	var panel = PanelContainer.new()
@@ -436,7 +439,9 @@ static func show_toast(caller_node: Node, text: String, duration: float = 1.8, b
 	label.text = text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_override("font", get_font())
+	var font = get_font()
+	if font != null:
+		label.add_theme_font_override("font", font)
 	label.add_theme_font_size_override("font_size", 20)
 	label.add_theme_color_override("font_color", COLOR_INK)
 	panel.add_child(label)

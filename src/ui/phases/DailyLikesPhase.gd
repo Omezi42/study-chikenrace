@@ -281,7 +281,9 @@ func _on_doubt_pressed(target_id: String, card_node: Control, btn: Button) -> vo
 		Global.total_doubt_successes += 1
 	else:
 		# 失敗時：自分に減点、相手はノーダメージ
-		var base_fail_penalty = 10 + (session.current_day - 1) * 2
+		var penalty_base: int = BalanceConfig.get_value("exposure.fail_penalty_base", 15)
+		var penalty_per_day: int = BalanceConfig.get_value("exposure.fail_penalty_per_day", 3)
+		var base_fail_penalty = penalty_base + (session.current_day - 1) * penalty_per_day
 		var cushion_active = "item_cushion" in Global.current_deck.values()
 		var earplug_reduction = 10 if "item_earplugs" in Global.current_deck.values() else 0
 		

@@ -9,6 +9,7 @@ func _init(p_phase: ChickenRacePhase) -> void:
 func repopulate_hand_visuals() -> void:
 	for child in phase.hand_container.get_children():
 		child.queue_free()
+		phase.hand_container.remove_child(child)
 		
 	phase.current_hand_cards.clear()
 	var idx = 0
@@ -24,7 +25,12 @@ func repopulate_hand_visuals() -> void:
 
 func arrange_hand_fan() -> void:
 	var children = phase.hand_container.get_children()
-	var count = children.size()
+	var active_children = []
+	for child in children:
+		if not child.is_queued_for_deletion():
+			active_children.append(child)
+			
+	var count = active_children.size()
 	if count == 0:
 		return
 		
@@ -36,7 +42,7 @@ func arrange_hand_fan() -> void:
 	var base_y = 20.0
 	
 	for idx in range(count):
-		var child = children[idx] as Control
+		var child = active_children[idx] as Control
 		var angle_offset = -max_arc / 2.0 + idx * step_angle
 		if count == 1:
 			angle_offset = 0.0

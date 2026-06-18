@@ -24,6 +24,7 @@ func _ready() -> void:
 	success = success and test_cram_genius_overnight()
 	success = success and test_full_game_integration_flow()
 	success = success and test_grade_progression_system()
+	success = success and test_eraser_consecutive_bursts()
 	
 	print("==================================================")
 	if success:
@@ -550,6 +551,12 @@ func test_metadata_and_integrity() -> bool:
 	result_scene._calculate_deviation()
 	var pass_cpu_dev = assert_true(Global.deviation_value == 50.0, "CPU mode does not alter player deviation.")
 	
+	# Mode NATIONAL (deviation should NOT change)
+	Global.game_mode = Constants.MODE_NATIONAL
+	Global.deviation_value = 50.0
+	result_scene._calculate_deviation()
+	var pass_national_dev = assert_true(Global.deviation_value == 50.0, "National match mode (mock match) does not alter player deviation.")
+	
 	# Mode RANDOM (deviation SHOULD change)
 	Global.game_mode = Constants.MODE_RANDOM
 	Global.deviation_value = 50.0
@@ -561,7 +568,7 @@ func test_metadata_and_integrity() -> bool:
 	Global.deviation_value = orig_deviation
 	result_scene.free()
 	
-	return pass_cpu_dev and pass_random_dev
+	return pass_cpu_dev and pass_national_dev and pass_random_dev
 
 # Test 9: Multiplayer Sync Scheme & Idempotency
 func test_multiplayer_sync_and_idempotency() -> bool:
@@ -1048,6 +1055,34 @@ func test_grade_progression_system() -> bool:
 	var pass_recent = assert_true(PlayerState.recent_results == ["WIN", "WIN", "WIN"], "Recent results holds all WINs.")
 	
 	return pass_win1_wins and pass_lvl1 and pass_win2_wins and pass_win3_wins and pass_no_promo and pass_grade_stage_same and pass_recent
+
+
+# Test 17: Eraser Consecutive Bursts (Avoid double charge consumption on consecutive draws)
+func test_eraser_consecutive_bursts() -> bool:
+	print("\n--- Test 17: Eraser Consecutive Bursts ---")
+	
+	var mock_script = GDScript.new()
+	mock_script.source_code = "extends StudyDeck\nfunc shuffle_draw_pile() -> void:\n\tdraw_pile.reverse()"
+	mock_script.reload()
+	
+	var deck_instance = RefCounted.new()
+	deck_instance.set_script(mock_script)
+	
+	deck_instance.eraser_charges = 1
+	var h: Array[Dictionary] = [{"value": 3}]
+	deck_instance.hand = h
+	# We want pop_back to yield 3, then 3, then 4.
+	# So draw_pile should be: [{"value": 4}, {"value": 3}, {"value": 3}]
+	var dp: Array[Dictionary] = [{"value": 4}, {"value": 3}, {"value": 3}]
+	deck_instance.draw_pile = dp
+	
+	var drawn = deck_instance.draw_card()
+	
+	var pass_drawn_value = assert_true(drawn.get("value", 0) == 4, "Drawn card is 4 (safe card after bypassing 3s). Actual: %s" % str(drawn))
+	var pass_charges = assert_true(deck_instance.eraser_charges == 0, "Eraser charges reduced to 0. Actual: %d" % deck_instance.eraser_charges)
+	var pass_activated = assert_true("item_eraser" in deck_instance.activated_items, "item_eraser is in activated_items. Actual: %s" % str(deck_instance.activated_items))
+	
+	return pass_drawn_value and pass_charges and pass_activated
 
 
 

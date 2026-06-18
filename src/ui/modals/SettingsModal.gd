@@ -139,7 +139,7 @@ func _ready() -> void:
 	
 	# Rules button inside Settings
 	var rule_btn = Button.new()
-	rule_btn.text = "ルールブックを閲覧"
+	rule_btn.text = "あそびかたをみる"
 	rule_btn.custom_minimum_size = Vector2(300, 45)
 	rule_btn.add_theme_font_override("font", DeskTheme.get_font())
 	rule_btn.add_theme_font_size_override("font_size", 16)

@@ -310,13 +310,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 			# Wait a split second to make sure parts contains CPUs if filled
 			var fetch_timer = parent.get_tree().create_timer(0.5)
 			fetch_timer.timeout.connect(func():
-				var start_game = func():
-					start_game_transition.call(parts)
-				var select_modal_script = load("res://src/ui/modals/DeckSelectionModal.gd")
-				if select_modal_script:
-					select_modal_script.create_and_show(parent, start_game)
-				else:
-					start_game.call()
+				start_game_transition.call(parts)
 			)
 			return
 			
@@ -370,11 +364,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 					]
 					start_game_transition.call(final_parts)
 					
-			var select_modal_script = load("res://src/ui/modals/DeckSelectionModal.gd")
-			if select_modal_script:
-				select_modal_script.create_and_show(parent, do_launch)
-			else:
-				do_launch.call()
+			do_launch.call()
 		)
 		
 	exit_btn.pressed.connect(func():

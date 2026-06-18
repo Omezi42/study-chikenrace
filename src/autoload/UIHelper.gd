@@ -13,7 +13,7 @@ func change_scene_with_fade(tree: SceneTree, target_scene_path: String, duration
 	# Create CanvasLayer to overlay transition
 	var canvas = CanvasLayer.new()
 	canvas.layer = 128
-	tree.root.add_child(canvas)
+	tree.root.add_child.call_deferred(canvas)
 	
 	var fade_rect = ColorRect.new()
 	fade_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
