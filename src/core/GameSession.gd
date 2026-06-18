@@ -176,15 +176,6 @@ func _finalize_day_data() -> void:
 		if exposed_by_doubt:
 			p["is_doubt_exposed"] = true
 
-		var auto_exposed = false
-		if is_liar and not p.get("is_doubt_exposed", false):
-			var bluff_amount = int(p.get("declared_score", 0)) - int(p.get("actual_score", 0))
-			var exposure_chance = ScoreEvaluator.get_auto_exposure_chance(bluff_amount)
-			if randf() < exposure_chance:
-				auto_exposed = true
-				p["auto_exposed"] = true
-				p["is_doubt_exposed"] = true
-
 	for hour in player_hours_history_today:
 		for item in hour.get("used_items", []):
 			Global.add_item_usage(str(item), 1)
@@ -343,12 +334,7 @@ func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 		if is_liar and p.get("doubts_received", []).size() > 0:
 			p["is_doubt_exposed"] = true
 
-		if is_liar and not p.get("is_doubt_exposed", false):
-			var diff = int(p.get("declared_score", 0)) - int(p.get("actual_score", 0))
-			var auto_prob = ScoreEvaluator.get_auto_exposure_chance(diff)
-			if randf() < auto_prob:
-				p["auto_exposed"] = true
-				p["is_doubt_exposed"] = true
+
 
 	Global.friend_match_history = match_history.duplicate(true)
 	Global.save_game()

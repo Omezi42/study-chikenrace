@@ -79,13 +79,7 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 						
 				if final_exposed:
 					var penalty := declared - actual
-					if _has_item(deck_config, "item_copy_answer"):
-						# Double penalty: actual - 2 * penalty -> declared - 3 * penalty
-						adjustment -= 3 * penalty
-					else:
-						# Normal penalty: actual - penalty -> declared - 2 * penalty
-						adjustment -= 2 * penalty
-						
+					adjustment -= penalty						
 				p["is_doubt_exposed"] = final_exposed
 				p["auto_exposed"] = auto_exposed
 					
@@ -382,8 +376,7 @@ static func _determine_title(
 	
 	return Constants.TITLE_AVERAGE
  
-static func get_auto_exposure_chance(bluff_amount: int) -> float:
-	return pow(float(bluff_amount) / 40.0, 2.0)
+
 
 static func get_streak_bonus(streak: int) -> int:
 	match streak:

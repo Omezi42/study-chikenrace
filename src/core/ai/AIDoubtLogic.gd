@@ -50,46 +50,6 @@ static func make_cpu_doubts(cpu_id: String, participants: Array[Dictionary]) -> 
 		deviation = Global.opponent_profiles[cpu_id]["deviation"]
 	var dev_doubt_mod = clamp(deviation / 50.0, 0.5, 1.5)
 	
-	var threshold = 0.7
-	var bc = Engine.get_main_loop().root.get_node_or_null("BalanceConfig")
-	if bc:
-		var cfg_threshold = bc.get_value("doubt.threshold." + cpu_type)
-		if cfg_threshold != null:
-			threshold = float(cfg_threshold)
-	else:
-		match cpu_type:
-			AIProfile.TYPE_CAUTIOUS: threshold = 0.58
-			AIProfile.TYPE_AGGRESSIVE: threshold = 0.72
-			AIProfile.TYPE_BLUFFER: threshold = 0.82
-			AIProfile.TYPE_HIGHROLLER: threshold = 0.50
-		
-	var class_mod = 1.0
-	if Global:
-		if Global.game_mode == Constants.MODE_RANDOM:
-			var league = Global.get_deviation_league(Global.deviation_value)
-			if bc:
-				var cfg_class_mod = bc.get_value("doubt.league_mod." + league)
-				if cfg_class_mod != null:
-					class_mod = float(cfg_class_mod)
-			else:
-				match league:
-					Constants.LEAGUE_S: class_mod = 0.65
-					Constants.LEAGUE_A: class_mod = 0.8
-					Constants.LEAGUE_B: class_mod = 1.0
-					Constants.LEAGUE_C: class_mod = 1.2
-					Constants.LEAGUE_F: class_mod = 1.45
-		else:
-			if bc:
-				var cfg_class_mod = bc.get_value("doubt.class_mod." + Global.selected_class)
-				if cfg_class_mod != null:
-					class_mod = float(cfg_class_mod)
-			else:
-				match Global.selected_class:
-					"remedial": class_mod = 1.35
-					"advanced": class_mod = 0.75
-			
-	threshold = clamp(threshold * randf_range(0.85, 1.15) * class_mod / dev_doubt_mod, 0.1, 0.95)
-	
 	var main_loop = Engine.get_main_loop()
 	var session = null
 	if main_loop is SceneTree:
@@ -108,35 +68,82 @@ static func make_cpu_doubts(cpu_id: String, participants: Array[Dictionary]) -> 
 		day_idx = session.current_day
 		
 	var history = _analyze_player_bluff_history(session, day_idx)
-	if history["sample_size"] >= 1:
-		if history["lie_rate"] > 0.5:
-			threshold *= 0.8
-		elif history["lie_rate"] < 0.2 and history["sample_size"] >= 2:
-			threshold *= 1.2
-		
+	
+	# Evaluate EV based doubt for each opponent
 	var suspect_list = []
 	for p in participants:
 		if p["id"] == cpu_id:
 			continue
 			
 		var suspiciousness = AIRiskEvaluator.evaluate_suspiciousness_with_emote(p["declared_score"], p["hours"] as Array[Dictionary], p.get("emote", "normal"))
+		
+		# ---- ユーザー要望: 実際に相手が嘘をついているときほど少しだけダウトされやすくする（直感補正） ----
+		var is_actually_lying = false
+		if p.has("actual_score") and p["declared_score"] > p["actual_score"]:
+			is_actually_lying = true
+		
+		if is_actually_lying:
+			# CPUの強さ（deviation）やクラスに応じて直感補正を強める
+			var intuition_bonus = 0.05 + (deviation - 50.0) * 0.005 # 偏差値50で+5%、偏差値70で+15%
+			if Global and Global.game_mode != Constants.MODE_RANDOM:
+				if Global.selected_class == "advanced":
+					intuition_bonus += 0.1
+			suspiciousness = clamp(suspiciousness + intuition_bonus, 0.0, 1.0)
+		# ------------------------------------------------------------------------------------------
+			
+		# EV Calculation
+		# ダウト失敗ペナルティ
+		var penalty_base: int = 15
+		var bc = Engine.get_main_loop().root.get_node_or_null("BalanceConfig")
+		if bc:
+			penalty_base = bc.get_value("exposure.fail_penalty_base", 15)
+			var penalty_per_day = bc.get_value("exposure.fail_penalty_per_day", 3)
+			penalty_base += (day_idx - 1) * penalty_per_day
+		else:
+			penalty_base += (day_idx - 1) * 3
+			
+		# 推定盛り幅
+		var estimated_bluff = 15.0
+		if p["id"] == "player" and history["sample_size"] > 0 and history["avg_bluff"] > 0:
+			estimated_bluff = history["avg_bluff"]
+		
+		var success_bonus = estimated_bluff * 0.75 + 6.0
+		var prob_lying = suspiciousness
+		var prob_truth = 1.0 - suspiciousness
+		
+		var expected_value = (prob_lying * success_bonus) - (prob_truth * penalty_base)
+		
+		# 性格に基づくEV閾値
+		var ev_threshold = 0.0
+		match cpu_type:
+			AIProfile.TYPE_CAUTIOUS: ev_threshold = 3.0   # 期待値が+3以上じゃないとダウトしない
+			AIProfile.TYPE_AGGRESSIVE: ev_threshold = -2.0 # 多少マイナスでも攻める
+			AIProfile.TYPE_BLUFFER: ev_threshold = 0.0    # プラマイ0でGO
+			AIProfile.TYPE_HIGHROLLER: ev_threshold = -5.0 # リスクを恐れない
+			
+		# 偏差値による閾値の微調整（頭がいいほど無謀なダウトを避けるが、確信があれば刺す）
+		ev_threshold *= (2.0 - dev_doubt_mod)
+		
 		suspect_list.append({
 			"id": p["id"],
-			"value": suspiciousness
+			"ev": expected_value,
+			"threshold": ev_threshold,
+			"suspiciousness": suspiciousness
 		})
 		
-	suspect_list.sort_custom(func(a, b): return a["value"] > b["value"])
+	suspect_list.sort_custom(func(a, b): return a["ev"] > b["ev"])
 	
 	var max_doubts = 3
-	if bc:
-		var cfg_max = bc.get_value("doubt.max_doubts_per_day")
+	var bc2 = Engine.get_main_loop().root.get_node_or_null("BalanceConfig")
+	if bc2:
+		var cfg_max = bc2.get_value("doubt.max_doubts_per_day")
 		if cfg_max != null:
 			max_doubts = int(cfg_max)
 	
 	for s in suspect_list:
 		if doubts.size() >= max_doubts:
 			break
-		if s["value"] >= threshold:
+		if s["ev"] >= s["threshold"]:
 			doubts.append(s["id"])
 			
 	return doubts
