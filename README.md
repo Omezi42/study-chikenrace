@@ -76,4 +76,4 @@ study-chikenrace/
 
 ## ライセンス
 
-（未記載 — 必要に応じて追記）
+[（未記載 — 必要に応じて追記）](https://dova-s.jp/bgm/detail/3813)
