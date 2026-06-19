@@ -39,10 +39,14 @@ func _ready() -> void:
 	# Root layer for all result UI.
 	root_layer = Control.new()
 	root_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(root_layer)
 	ResultBoardUI.build_background(self)
 	ResultBoardUI.build_blackboard(self)
 	_build_day_chart_shell()
+	
+	if has_node("/root/AudioManager"):
+		get_node("/root/AudioManager").play_bgm(AudioManager.BGM_RESULT)
 	
 	if Global.is_tutorial_mode:
 		PlayerState.is_tutorial_completed = true
@@ -95,8 +99,18 @@ func _reflow_layout() -> void:
 	if is_instance_valid(blackboard_panel):
 		blackboard_panel.position = vp_size * 0.5 - blackboard_panel.custom_minimum_size * 0.5
 	if is_instance_valid(report_notebook):
-		report_notebook.position = vp_size * 0.5 - report_notebook.custom_minimum_size * 0.5
-		report_notebook.position.y -= 60.0 # 画面の上に少し持ち上げる
+		var max_w = min(1300.0, vp_size.x - 100.0)
+		var max_h = min(600.0, vp_size.y - 120.0)
+		report_notebook.custom_minimum_size = Vector2(max_w, max_h)
+		report_notebook.size = Vector2(max_w, max_h)
+		
+		if is_instance_valid(report_left_page):
+			report_left_page.custom_minimum_size = Vector2((max_w - 100.0) * 0.5, 0)
+		if is_instance_valid(report_right_page):
+			report_right_page.custom_minimum_size = Vector2((max_w - 100.0) * 0.5, 0)
+			
+		report_notebook.position = vp_size * 0.5 - report_notebook.size * 0.5
+		report_notebook.position.y -= 20.0
 	if is_instance_valid(skip_btn):
 		skip_btn.position = vp_size - skip_btn.custom_minimum_size - Vector2(24, 24)
 	if is_instance_valid(board_inner):
@@ -472,6 +486,8 @@ func trigger_report_card() -> void:
 	if is_instance_valid(skip_btn):
 		skip_btn.queue_free()
 	
+	var anim_actions = []
+	
 	# Smoothly fade out and slide down the blackboard panel
 	var exit_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	exit_tween.tween_property(blackboard_panel, "modulate:a", 0.0, 0.3)
@@ -479,11 +495,32 @@ func trigger_report_card() -> void:
 	
 	exit_tween.chain().tween_callback(func():
 		blackboard_panel.visible = false
-		report_notebook.visible = true
 		
-		# Slide notebook down from top with swing and bounce
-		var target_pos = report_notebook.position
-		DeskTheme.animate_entrance(report_notebook, target_pos, Vector2(0, -400), 0.6)
+		if is_instance_valid(report_notebook):
+			report_notebook.visible = true
+			var target_pos = report_notebook.position
+			DeskTheme.animate_entrance(report_notebook, target_pos, Vector2(0, -400), 0.6)
+			
+			# Run the graph reveal animation when it lands on the desk (0.6 seconds later)
+			var land_timer = get_tree().create_timer(0.6)
+			land_timer.timeout.connect(func():
+				# Start graph animations concurrently
+				for action in anim_actions:
+					action.call()
+					
+				# Wait for the step-by-step graph animation to finish (approx 1.9s)
+				var end_timer = get_tree().create_timer(1.9)
+				end_timer.timeout.connect(func():
+					if has_node("/root/AudioManager"):
+						get_node("/root/AudioManager").play_se(AudioManager.SE_FANFARE, 0.0, -10.0)
+						get_node("/root/AudioManager").play_bgm(AudioManager.BGM_RESULT)
+					
+					# Spawn confetti if 1st place
+					var my_rank = showdown_data.get("my_rank", 3)
+					if my_rank == 1:
+						_spawn_confetti()
+				)
+			)
 	)
 	
 	# Build Left Page (Player scorecard)
@@ -591,14 +628,23 @@ func trigger_report_card() -> void:
 	report_left_page.add_child(title_container)
 	
 	var title_desc = Label.new()
-	title_desc.text = "獲得した称号"
+	var is_title_new = showdown_data.get("is_title_new", false)
+	if is_title_new:
+		title_desc.text = "【 新称号獲得！ 】"
+	else:
+		title_desc.text = "現在の称号"
 	title_desc.add_theme_font_override("font", DeskTheme.get_font())
 	title_desc.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
-	title_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
+	if is_title_new:
+		title_desc.add_theme_color_override("font_color", Color("c62828"))
+	else:
+		title_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	title_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_container.add_child(title_desc)
 	
-	var stamp_style = DeskTheme.create_stamp_style(Color("c62828"), Color(1, 0.9, 0.9, 0.3))
+	var stamp_color = Color("c62828") if is_title_new else Color("455a64")
+	var stamp_bg = Color(1, 0.9, 0.9, 0.3) if is_title_new else Color(0.9, 0.9, 1.0, 0.3)
+	var stamp_style = DeskTheme.create_stamp_style(stamp_color, stamp_bg)
 	
 	var stamp_panel = PanelContainer.new()
 	stamp_panel.add_theme_stylebox_override("panel", stamp_style)
@@ -610,32 +656,51 @@ func trigger_report_card() -> void:
 	title_lbl.text = "【 " + showdown_data["title"] + " 】"
 	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	title_lbl.add_theme_font_size_override("font_size", 20)
-	title_lbl.add_theme_color_override("font_color", Color("c62828"))
+	title_lbl.add_theme_color_override("font_color", stamp_color)
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	stamp_panel.add_child(title_lbl)
 	
-	stamp_panel.scale = Vector2(3.0, 3.0)
+	var s_tween = create_tween().set_parallel(true)
+	if is_title_new:
+		stamp_panel.scale = Vector2(3.0, 3.0)
+		stamp_panel.modulate.a = 0.0
+		s_tween.tween_property(stamp_panel, "scale", Vector2(1.0, 1.0), 0.35).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+		s_tween.tween_property(stamp_panel, "modulate:a", 1.0, 0.15)
+	else:
+		stamp_panel.scale = Vector2(1.0, 1.0)
+		stamp_panel.modulate.a = 0.0
+		s_tween.tween_property(stamp_panel, "modulate:a", 1.0, 0.25)
 	# If S-grade (250+ points), stamp a huge hanamaru (花丸スタンプ)
 	if my_score >= 250:
+		var hanamaru_parent = Control.new()
+		hanamaru_parent.name = "HanamaruParent"
+		hanamaru_parent.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		report_notebook.add_child(hanamaru_parent)
+		
 		var hanamaru = TextureRect.new()
-		hanamaru.custom_minimum_size = Vector2(160, 160)
+		hanamaru.custom_minimum_size = Vector2(300, 300)
+		hanamaru.size = Vector2(300, 300)
 		hanamaru.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		hanamaru.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		hanamaru.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		if FileAccess.file_exists("res://assets/はなまるスタンプ.png"):
 			hanamaru.texture = load("res://assets/はなまるスタンプ.png")
-		report_notebook.add_child(hanamaru)
-		# Absolutely position it on the left page near the score
-		hanamaru.position = Vector2(380, 20)
-		hanamaru.pivot_offset = Vector2(80, 80)
+		hanamaru_parent.add_child(hanamaru)
+		
+		# Center bottom on the left page (under advice box)
+		# Left page is around X=50 to X=650, Y=0 to Y=600.
+		# Setting X=150, Y=260 puts the 300x300 stamp perfectly in the lower half of the left page.
+		hanamaru.position = Vector2(150, 260)
+		hanamaru.pivot_offset = Vector2(150, 150)
 		
 		# Hanamaru stamp landing bounce and screen shake
-		hanamaru.scale = Vector2(1.2, 1.2)
+		hanamaru.scale = Vector2(3.0, 3.0)
 		hanamaru.modulate.a = 0.0
 		var h_tween = create_tween().set_parallel(true)
-		h_tween.tween_property(hanamaru, "scale", Vector2(0.35, 0.35), 0.4).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-		h_tween.tween_property(hanamaru, "modulate:a", 1.0, 0.2)
+		h_tween.tween_property(hanamaru, "scale", Vector2(1.0, 1.0), 0.35).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+		h_tween.tween_property(hanamaru, "modulate:a", 1.0, 0.15)
 		h_tween.chain().tween_callback(func():
-			DeskTheme.shake_control(report_notebook, 14.0, 0.3)
+			DeskTheme.shake_control(report_notebook, 5.0, 0.25)
 		)
 		
 	# 担任からの評価（リテンション向上用フィードバック）
@@ -767,20 +832,37 @@ func trigger_report_card() -> void:
 		bar_back.add_theme_stylebox_override("panel", bar_back_style)
 		bar_row.add_child(bar_back)
 
+		# 段階的な累積スコアの計算
+		var score_history: Array[int] = []
+		var cum_score = 0
+		for day in range(1, 6):
+			if showdown_data.get("details", {}).has(day):
+				var day_details = showdown_data["details"][day]
+				if day_details.has(r["id"]):
+					cum_score += int(day_details[r["id"]].get("base", 0)) + int(day_details[r["id"]].get("adjustment", 0))
+			score_history.append(cum_score)
+
 		var bar_fill = ColorRect.new()
 		bar_fill.color = Color("6bbf59") if r["id"] == "player" else Color("3f51b5")
 		bar_fill.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		bar_fill.size = Vector2(1, 22)
+		bar_fill.size = Vector2(8, 22)
 		bar_back.add_child(bar_fill)
 
-		var score_ratio = float(r["score"]) / float(max_score)
-		var target_width = int(520 * score_ratio)
-		var bar_tween = create_tween().bind_node(bar_fill).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		bar_tween.tween_property(bar_fill, "size:x", max(8, target_width), 0.7 + 0.08 * r_idx)
-		bar_tween.tween_callback(func():
-			if r["id"] == "player":
-				DeskTheme.shake_control(report_notebook, 6.0, 0.12)
-		)
+		# Register animation step actions
+		var anim_action = func():
+			var bar_tween = create_tween().bind_node(bar_fill).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			for d_idx in range(5):
+				var step_score = score_history[d_idx]
+				var step_ratio = float(step_score) / float(max_score)
+				var step_width = max(8, int(520 * step_ratio))
+				bar_tween.tween_property(bar_fill, "size:x", step_width, 0.3)
+				if d_idx < 4:
+					bar_tween.tween_interval(0.1)
+			bar_tween.tween_callback(func():
+				if r["id"] == "player":
+					DeskTheme.shake_control(report_notebook, 6.0, 0.12)
+			)
+		anim_actions.append(anim_action)
 
 	# Actions HBox
 	var act_hbox = HBoxContainer.new()
@@ -1167,3 +1249,49 @@ func _set_line1_point(val: Vector2) -> void:
 func _set_line2_point(val: Vector2) -> void:
 	if is_instance_valid(_anim_line2):
 		_anim_line2.set_point_position(1, val)
+
+
+func _spawn_confetti() -> void:
+	var vp_size = get_viewport_rect().size
+	
+	var confetti = CPUParticles2D.new()
+	confetti.name = "ConfettiParticles"
+	confetti.position = Vector2(vp_size.x / 2.0, -20.0)
+	confetti.emitting = true
+	confetti.amount = 150
+	confetti.lifetime = 5.0
+	confetti.one_shot = false
+	confetti.explosiveness = 0.1
+	
+	confetti.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	confetti.emission_rect_extents = Vector2(vp_size.x / 2.0, 10.0)
+	
+	confetti.direction = Vector2(0, 1)
+	confetti.spread = 15.0
+	confetti.gravity = Vector2(0, 180)
+	confetti.initial_velocity_min = 60.0
+	confetti.initial_velocity_max = 150.0
+	
+	confetti.angular_velocity_min = -120.0
+	confetti.angular_velocity_max = 120.0
+	
+	confetti.scale_amount_min = 6.0
+	confetti.scale_amount_max = 14.0
+	
+	confetti.color = Color("ff3333") # Base vivid red for nice hue shifting
+	confetti.hue_variation_min = -1.0
+	confetti.hue_variation_max = 1.0
+	
+	root_layer.add_child(confetti)
+	
+	# Stop emitting after 8 seconds and queue_free after lifetime (5.0 seconds) to ensure clean removal
+	var stop_timer = get_tree().create_timer(8.0)
+	stop_timer.timeout.connect(func():
+		if is_instance_valid(confetti):
+			confetti.emitting = false
+			var free_timer = get_tree().create_timer(confetti.lifetime)
+			free_timer.timeout.connect(func():
+				if is_instance_valid(confetti):
+					confetti.queue_free()
+			)
+	)

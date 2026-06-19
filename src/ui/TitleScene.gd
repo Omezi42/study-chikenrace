@@ -557,7 +557,7 @@ func start_bgm() -> void:
 		return
 	bgm_started = true
 	if has_node("/root/AudioManager"):
-		get_node("/root/AudioManager").play_bgm(AudioManager.BGM_MAIN)
+		get_node("/root/AudioManager").play_bgm(AudioManager.BGM_MAIN, 1.5)
 
 func _reflow_layout() -> void:
 	var screen_size = get_viewport_rect().size

@@ -221,7 +221,8 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 	)
 	
 	Global.player_title = title
-	if not title in Global.unlocked_titles:
+	var is_title_new := not title in Global.unlocked_titles
+	if is_title_new:
 		Global.unlocked_titles.append(title)
 		
 	# === Step 6.5: Deviation & League calculation (MODE_RANDOM only) ===
@@ -285,6 +286,7 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 		"level_bonus": level_bonus,
 		"star_bonus": star_bonus,
 		"title": title,
+		"is_title_new": is_title_new,
 		"details": showdown_details,
 		"old_deviation": old_deviation,
 		"new_deviation": new_deviation,

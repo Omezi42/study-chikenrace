@@ -875,7 +875,7 @@ static func show_doubt_result_modal(
 		if is_bluff:
 			audio.play_se(AudioManager.SE_COMBO)
 		else:
-			audio.play_se(AudioManager.SE_BURST)
+			audio.play_se(AudioManager.SE_BURST, 0.0, -8.0)
 			
 	modal.scale = Vector2.ZERO
 	var tween = scene_tree.create_tween().bind_node(modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

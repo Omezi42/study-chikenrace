@@ -101,7 +101,7 @@ static func play_burst_animation(phase: ChickenRacePhase, duplicate_values: Arra
 	
 	# バーストSEの再生
 	if phase.has_node("/root/AudioManager"):
-		phase.get_node("/root/AudioManager").play_se(AudioManager.SE_BURST)
+		phase.get_node("/root/AudioManager").play_se(AudioManager.SE_BURST, 0.0, -8.0)
 	
 	phase.led_indicator.color = DeskTheme.COLOR_TENSION
 	phase.burst_prob_label.text = "寝落ちしました！(バースト)"

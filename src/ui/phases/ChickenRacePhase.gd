@@ -116,6 +116,8 @@ func _on_setup(setup_data: Dictionary) -> void:
 	
 	_init_notebook_ui()
 	call_deferred("_rescale_notebook")
+	if has_node("/root/AudioManager"):
+		get_node("/root/AudioManager").play_bgm(AudioManager.BGM_GAME, 1.0)
 
 var _rescaling: bool = false
 
@@ -455,6 +457,9 @@ func _on_draw_pressed() -> void:
 	if prob > current_max_burst_prob:
 		current_max_burst_prob = prob
 		
+	if has_node("/root/AudioManager"):
+		get_node("/root/AudioManager").set_bgm_pitch(1.0)
+		
 	# Advance CPU simulation states
 	advance_cpu_simulations()
 	_update_member_badge_ui("player")
@@ -474,7 +479,7 @@ func _on_draw_pressed() -> void:
 				DeskTheme.shake_control(self, 6.0, 0.3)
 				if has_node("/root/AudioManager"):
 					var am = get_node_or_null("/root/AudioManager")
-					if am: am.play_se(AudioManager.SE_PLACE) # SE_TENSIONの代用
+					if am: am.play_se(AudioManager.SE_TENSION)
 					
 			# Check burst (including energy drink side effect) via engine
 			if engine.check_burst():
@@ -532,7 +537,7 @@ func trigger_burst_sequence() -> void:
 	
 	if has_node("/root/AudioManager"):
 		var am = get_node_or_null("/root/AudioManager")
-		if am: am.play_se(AudioManager.SE_BURST)
+		if am: am.play_se(AudioManager.SE_BURST, 0.0, -8.0)
 	
 	# Clear peek sticky on burst
 	if active_peek_sticky:
@@ -676,6 +681,9 @@ func reset_phase_for_next_hour() -> void:
 	is_animating = false
 	current_max_burst_prob = 0.0
 	engine.reset_for_hour()
+	
+	if has_node("/root/AudioManager"):
+		get_node("/root/AudioManager").set_bgm_pitch(1.0)
 
 	
 	# Clear hand and history containers

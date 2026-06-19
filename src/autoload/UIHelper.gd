@@ -10,6 +10,9 @@ func show_toast(text: String, duration: float = 1.8, bg_color: Color = Color()) 
 	DeskTheme.show_toast(self, text, duration, bg_color)
 
 func change_scene_with_fade(tree: SceneTree, target_scene_path: String, duration: float = 0.35) -> void:
+	if tree.root.has_node("AudioManager"):
+		tree.root.get_node("AudioManager").play_ui(AudioManager.SE_WHOOSH)
+		
 	# Create CanvasLayer to overlay transition
 	var canvas = CanvasLayer.new()
 	canvas.layer = 128
@@ -344,6 +347,10 @@ func _apply_improved_typography(node: Node) -> void:
 			node.add_theme_font_override("font", current_font)
 		else:
 			node.remove_theme_font_override("font")
+			
+		var am = root.get_node_or_null("AudioManager")
+		if am and not node.mouse_entered.is_connected(am.play_ui_hover):
+			node.mouse_entered.connect(am.play_ui_hover)
 		
 		var font_size = node.get_theme_font_size("font_size")
 		var outline_sz = 0
