@@ -19,26 +19,26 @@ static func build_report_notebook(scene: ResultScene) -> void:
 	var left_p = MarginContainer.new()
 	left_p.add_theme_constant_override("margin_left", DeskTheme.MARGIN_SMALL)
 	left_p.add_theme_constant_override("margin_right", DeskTheme.MARGIN_SMALL)
-	left_p.add_theme_constant_override("margin_top", DeskTheme.MARGIN_SMALL)
-	left_p.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_SMALL)
+	left_p.add_theme_constant_override("margin_top", 10)
+	left_p.add_theme_constant_override("margin_bottom", 10)
 	note_hbox.add_child(left_p)
 	
 	var report_left_page = VBoxContainer.new()
 	report_left_page.custom_minimum_size = Vector2(580, 0)
-	report_left_page.add_theme_constant_override("separation", DeskTheme.MARGIN_TINY)
+	report_left_page.add_theme_constant_override("separation", 8)
 	left_p.add_child(report_left_page)
 	scene.report_left_page = report_left_page
 	
 	var right_p = MarginContainer.new()
 	right_p.add_theme_constant_override("margin_left", DeskTheme.MARGIN_SMALL)
 	right_p.add_theme_constant_override("margin_right", DeskTheme.MARGIN_SMALL)
-	right_p.add_theme_constant_override("margin_top", DeskTheme.MARGIN_SMALL)
-	right_p.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_SMALL)
+	right_p.add_theme_constant_override("margin_top", 10)
+	right_p.add_theme_constant_override("margin_bottom", 10)
 	note_hbox.add_child(right_p)
 	
 	var report_right_page = VBoxContainer.new()
 	report_right_page.custom_minimum_size = Vector2(580, 0)
-	report_right_page.add_theme_constant_override("separation", DeskTheme.MARGIN_TINY)
+	report_right_page.add_theme_constant_override("separation", 8)
 	right_p.add_child(report_right_page)
 	scene.report_right_page = report_right_page
 	

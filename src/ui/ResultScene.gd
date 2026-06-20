@@ -100,7 +100,7 @@ func _reflow_layout() -> void:
 		blackboard_panel.position = vp_size * 0.5 - blackboard_panel.custom_minimum_size * 0.5
 	if is_instance_valid(report_notebook):
 		var max_w = min(1300.0, vp_size.x - 100.0)
-		var max_h = min(600.0, vp_size.y - 120.0)
+		var max_h = min(510.0, vp_size.y - 150.0)
 		report_notebook.custom_minimum_size = Vector2(max_w, max_h)
 		report_notebook.size = Vector2(max_w, max_h)
 		
@@ -110,7 +110,7 @@ func _reflow_layout() -> void:
 			report_right_page.custom_minimum_size = Vector2((max_w - 100.0) * 0.5, 0)
 			
 		report_notebook.position = vp_size * 0.5 - report_notebook.size * 0.5
-		report_notebook.position.y -= 20.0
+		report_notebook.position.y += 10.0
 	if is_instance_valid(skip_btn):
 		skip_btn.position = vp_size - skip_btn.custom_minimum_size - Vector2(24, 24)
 	if is_instance_valid(board_inner):
@@ -689,8 +689,8 @@ func trigger_report_card() -> void:
 		
 		# Center bottom on the left page (under advice box)
 		# Left page is around X=50 to X=650, Y=0 to Y=600.
-		# Setting X=150, Y=260 puts the 300x300 stamp perfectly in the lower half of the left page.
-		hanamaru.position = Vector2(150, 260)
+		# Setting X=150, Y=320 puts the 300x300 stamp perfectly in the lower half of the left page.
+		hanamaru.position = Vector2(150, 320)
 		hanamaru.pivot_offset = Vector2(150, 150)
 		
 		# Hanamaru stamp landing bounce and screen shake
@@ -765,7 +765,7 @@ func trigger_report_card() -> void:
 	report_right_page.add_child(player_name_lbl)
 
 	graph_area = VBoxContainer.new()
-	graph_area.add_theme_constant_override("separation", DeskTheme.MARGIN_TINY)
+	graph_area.add_theme_constant_override("separation", 8)
 	report_right_page.add_child(graph_area)
 
 	# Stable rankings sort (Higher score, then lower bursts, then alphabetical ID)
@@ -841,6 +841,13 @@ func trigger_report_card() -> void:
 				if day_details.has(r["id"]):
 					cum_score += int(day_details[r["id"]].get("base", 0)) + int(day_details[r["id"]].get("adjustment", 0))
 			score_history.append(cum_score)
+		
+		# 最終日の累積値を最終得点と強制的に一致させ、それ以前のスコアがそれを超えないようにする
+		var final_score_val = int(r["score"])
+		score_history[4] = final_score_val
+		for i in range(4):
+			if score_history[i] > final_score_val:
+				score_history[i] = final_score_val
 
 		var bar_fill = ColorRect.new()
 		bar_fill.color = Color("6bbf59") if r["id"] == "player" else Color("3f51b5")
