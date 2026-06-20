@@ -942,6 +942,7 @@ func trigger_report_card() -> void:
 		)
 	
 	share_btn = Button.new()
+	share_btn.add_to_group("important_button")
 	share_btn.text = "Xでシェア"
 	share_btn.custom_minimum_size = Vector2(220, 65)
 	share_btn.add_theme_font_override("font", DeskTheme.get_font())
@@ -951,6 +952,7 @@ func trigger_report_card() -> void:
 	act_hbox.add_child(share_btn)
 	
 	play_again_btn = Button.new()
+	play_again_btn.add_to_group("important_button")
 	play_again_btn.text = "もう1回遊ぶ"
 	play_again_btn.custom_minimum_size = Vector2(220, 65)
 	play_again_btn.add_theme_font_override("font", DeskTheme.get_font())
@@ -960,6 +962,7 @@ func trigger_report_card() -> void:
 	act_hbox.add_child(play_again_btn)
 	
 	restart_btn = Button.new()
+	restart_btn.add_to_group("important_button")
 	restart_btn.text = "タイトルへ"
 	restart_btn.custom_minimum_size = Vector2(220, 65)
 	restart_btn.add_theme_font_override("font", DeskTheme.get_font())

@@ -190,6 +190,7 @@ func _setup_notebook() -> void:
 	
 	# チュートリアルボタン (あそびかた)
 	var tutorial_btn = Button.new()
+	tutorial_btn.add_to_group("important_button")
 	tutorial_btn.text = " あそびかた"
 	tutorial_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tutorial_btn.custom_minimum_size = Vector2(0, 48)
@@ -208,6 +209,7 @@ func _setup_notebook() -> void:
 	
 	# 設定ボタン (音量・システム設定)
 	var settings_btn = Button.new()
+	settings_btn.add_to_group("important_button")
 	settings_btn.text = " 設定"
 	settings_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	settings_btn.custom_minimum_size = Vector2(0, 48)
@@ -300,6 +302,7 @@ func _setup_notebook() -> void:
 	
 	# ページめくりボタン
 	next_page_btn = PageFlipButton.new()
+	next_page_btn.add_to_group("important_button")
 	next_page_btn.is_next = true
 	next_page_btn.custom_minimum_size = Vector2(100, 100)
 	next_page_btn.size = Vector2(100, 100)
@@ -308,6 +311,7 @@ func _setup_notebook() -> void:
 	notebook_container.add_child(next_page_btn)
 	
 	prev_page_btn = PageFlipButton.new()
+	prev_page_btn.add_to_group("important_button")
 	prev_page_btn.is_next = false
 	prev_page_btn.custom_minimum_size = Vector2(100, 100)
 	prev_page_btn.size = Vector2(100, 100)
@@ -704,6 +708,7 @@ func _add_menu_button(parent: Node, title_text: String, desc_text: String, tier:
 	outer_panel.add_child(margin_container)
 
 	var btn = Button.new()
+	btn.add_to_group("important_button")
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin_container.add_child(btn)

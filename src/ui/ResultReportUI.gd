@@ -43,6 +43,7 @@ static func build_report_notebook(scene: ResultScene) -> void:
 	scene.report_right_page = report_right_page
 	
 	var skip_btn = Button.new()
+	skip_btn.add_to_group("important_button")
 	skip_btn.text = "結果へスキップ >>"
 	skip_btn.custom_minimum_size = Vector2(240, 60)
 	skip_btn.add_theme_font_override("font", DeskTheme.get_font())

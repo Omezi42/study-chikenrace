@@ -105,6 +105,7 @@ func _ready() -> void:
 	main_vbox.add_child(title_row)
 	
 	back_btn = Button.new()
+	back_btn.add_to_group("important_button")
 	back_btn.text = "戻る"
 	back_btn.custom_minimum_size = Vector2(100, 40)
 	back_btn.add_theme_font_override("font", DeskTheme.get_font())

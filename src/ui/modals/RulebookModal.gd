@@ -403,7 +403,7 @@ func _setup_page_1(visual_area: Control, rtb: RichTextLabel) -> void:
 	right_v.add_child(doubt_btn)
 	hbox.add_child(right_v)
 	
-	rtb.text = "[center]メインの流れは[color=#ff9900][b]3フェーズ[/b][/color]\nカードを引いて点数を上げ、ライバルと[color=#ff3333][b]騙しあい！[/b][/color][/center]"
+	rtb.text = "[center]ゲームの基本の流れは[color=#ff9900][b]3つのステップ[/b][/color]です。\n1. カードを引いて点数を集め、 2. 結果を盛って報告し、 3. 相手の嘘を見破る！[/center]"
 
 func _setup_page_2(visual_area: Control, rtb: RichTextLabel) -> void:
 	var hbox = HBoxContainer.new()
@@ -478,7 +478,7 @@ func _setup_page_2(visual_area: Control, rtb: RichTextLabel) -> void:
 	
 	hbox.add_child(burst_v)
 	
-	rtb.text = "[center]カードの数字だけ枚数も得点も[b]増える[/b]\n同じ数字を引いたら[color=#0033cc][b]寝落ちしてバースト（その時限は0点）！[/b][/color][/center]"
+	rtb.text = "[center]カードを引くと、[color=#ff9900][b]カードの数字がそのまま点数（勉強時間）として加算[/b][/color]されます。\nただし、[color=#ff3333][b]同じ数字のカードを2枚引く[/b][/color]と寝落ち（バースト）してその回の点数は0点に！\n『休憩』して点数を確定させましょう。[/center]"
 
 func _setup_page_3(visual_area: Control, rtb: RichTextLabel) -> void:
 	var hbox = HBoxContainer.new()
@@ -803,7 +803,7 @@ func _setup_page_5(visual_area: Control, rtb: RichTextLabel) -> void:
 	
 	hbox.add_child(bb_pnl)
 	
-	rtb.text = "[center]嘘の報告には[color=#ff3333][b]ダウトを宣告！[/b][/color]\n勉強の得点＋ダウトの結果で点数が高ければ[color=#ff9900][b]合格！[/b][/color][/center]"
+	rtb.text = "[center]嘘の報告には[color=#ff3333][b]ダウトを宣告！[/b][/color]\n勉強で稼いだ点数 ＋ ダウトの結果（最終得点）が一番高かった人の[color=#ff9900][b]勝ち！[/b][/color][/center]"
 
 func _setup_page_6(visual_area: Control, rtb: RichTextLabel) -> void:
 	var scroll = ScrollContainer.new()
@@ -850,8 +850,10 @@ func _setup_page_6(visual_area: Control, rtb: RichTextLabel) -> void:
 	content += "正直な人に誤ってダウトすると減点になります（日程経過で [color=#ff3333]10点〜18点[/color]）。\n"
 	content += "座布団で半減、耳栓で-10点の軽減が可能です。\n\n"
 	
-	content += "[b]◆ 最終得点[/b]\n"
-	content += "[color=#ff9900]申告点 ＋ ダウト成功ボーナス － ダウト失敗ペナルティ － 嘘バレによる減算（実点への修正）[/color]"
+	content += "[b]◆ 勝敗の決め方（最終得点）[/b]\n"
+	content += "5日間の「申告した点数の合計」を競いますが、ダウト（嘘の指摘）の結果によって最終得点が大きく変動します！\n"
+	content += "【最終得点】 ＝ [color=#ff9900]5日間の申告点 ＋ ダウト成功ボーナス － ダウト失敗ペナルティ － 嘘バレによる実点への減算[/color]\n"
+	content += "つまり、[color=#ff9900][b]ただカードを引くだけでなく、上手に嘘をつき、相手の嘘を見破ることで勝利に近づきます！[/b][/color]"
 	
 	text_rtb.text = content
 	vbox.add_child(text_rtb)

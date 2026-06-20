@@ -289,3 +289,54 @@ static func get_reaction_text(prob: float) -> String:
 	else:
 		return "手が震えている！"
 
+# Rarity constants
+const RARITY_COMMON = "common"
+const RARITY_UNCOMMON = "uncommon"
+const RARITY_RARE = "rare"
+
+const ITEM_RARITIES = {
+	"item_energy_drink": RARITY_RARE,
+	"item_cheat_sheet": RARITY_RARE,
+	"item_copy_answer": RARITY_RARE,
+	"item_night_note": RARITY_RARE,
+	"item_cram_school_print": RARITY_RARE,
+
+	"item_red_sheet": RARITY_UNCOMMON,
+	"item_thick_book": RARITY_UNCOMMON,
+	"item_amulet": RARITY_UNCOMMON,
+	"item_cafe_latte": RARITY_UNCOMMON,
+
+	"item_compass": RARITY_COMMON,
+	"item_timer": RARITY_COMMON,
+	"item_study_chat": RARITY_COMMON,
+	"item_expected_questions": RARITY_COMMON,
+	"item_earplugs": RARITY_COMMON
+}
+
+const RARITY_COSTS = {
+	RARITY_COMMON: 100,
+	RARITY_UNCOMMON: 300,
+	RARITY_RARE: 500
+}
+
+static func get_item_rarity(item_id: String) -> String:
+	return ITEM_RARITIES.get(item_id, RARITY_COMMON)
+
+static func get_rarity_name(rarity: String) -> String:
+	match rarity:
+		RARITY_COMMON: return "コモン"
+		RARITY_UNCOMMON: return "アンコモン"
+		RARITY_RARE: return "レア"
+	return "その他"
+
+static func get_rarity_color(rarity: String) -> Color:
+	match rarity:
+		RARITY_COMMON: return Color("757575") # Gray
+		RARITY_UNCOMMON: return Color("1976d2") # Blue
+		RARITY_RARE: return Color("fbc02d") # Yellow/Gold
+	return Color("ffffff")
+
+static func get_unlock_cost(item_id: String) -> int:
+	var rarity = get_item_rarity(item_id)
+	return RARITY_COSTS.get(rarity, 100)
+

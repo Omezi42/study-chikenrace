@@ -602,15 +602,22 @@ func _on_stop_pressed() -> void:
 	# Click animation
 	DeskTheme.animate_click(stop_btn, Vector2.ONE, 0.08)
 	
-	# ドラマティックストップ演出（提出スタンプ表示）
+	# ドラマティックストップ演出（ストップスタンプ表示）
 	var stamp = Label.new()
-	stamp.text = "提出！"
+	stamp.text = "ストップ！"
 	stamp.add_theme_font_override("font", DeskTheme.get_font())
 	stamp.add_theme_font_size_override("font_size", 100)
 	stamp.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
 	stamp.rotation_degrees = -15
+	
+	# 中央配置のための設定
+	stamp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stamp.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	stamp.custom_minimum_size = Vector2(600, 150)
+	stamp.pivot_offset = Vector2(300, 75)
+	
 	var vp_size = get_viewport_rect().size
-	stamp.position = Vector2(vp_size.x * 0.4, vp_size.y * 0.4)
+	stamp.position = vp_size / 2 - stamp.pivot_offset
 	stamp.z_index = 100
 	add_child(stamp)
 	

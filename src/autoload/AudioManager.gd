@@ -227,8 +227,8 @@ func _update_bus_volumes() -> void:
 	else:
 		AudioServer.set_bus_mute(master_bus_idx, false)
 		AudioServer.set_bus_volume_db(bgm_bus_idx, linear_to_db(bgm_volume))
-		AudioServer.set_bus_volume_db(se_bus_idx, linear_to_db(se_volume))
-		AudioServer.set_bus_volume_db(ui_bus_idx, linear_to_db(se_volume)) # share volume setting with SE for now
+		AudioServer.set_bus_volume_db(se_bus_idx, linear_to_db(se_volume * (10.0 / 7.0)))
+		AudioServer.set_bus_volume_db(ui_bus_idx, linear_to_db(se_volume * (10.0 / 7.0))) # share volume setting with SE for now
 
 func linear_to_db(linear_value: float) -> float:
 	if linear_value <= 0.0001:

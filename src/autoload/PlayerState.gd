@@ -12,6 +12,7 @@ var play_count: int = 0
 var is_tutorial_completed: bool = false
 var player_level: int = 1
 var recent_results: Array = ["WIN", "LOSE", "WIN", "WIN", "LOSE"]
+var stationery_points: int = 0
 
 # Progression & Exam System Constants
 const GRADE_STAGE_NAMES = [
@@ -132,6 +133,7 @@ func save_data_to_dict() -> Dictionary:
 		"player_title": player_title,
 		"player_level": player_level,
 		"coins": coins,
+		"stationery_points": stationery_points,
 		"best_score": best_score,
 		"play_count": play_count,
 		"recent_results": recent_results.duplicate(),
@@ -160,6 +162,7 @@ func load_data_from_dict(data: Dictionary) -> void:
 	if "player_title" in data: player_title = str(data["player_title"])
 	if "player_level" in data: player_level = int(data["player_level"])
 	if "coins" in data: coins = int(data["coins"])
+	if "stationery_points" in data: stationery_points = int(data["stationery_points"])
 	if "best_score" in data: best_score = int(data["best_score"])
 	if "play_count" in data: play_count = int(data["play_count"])
 	if "recent_results" in data and data["recent_results"] is Array:

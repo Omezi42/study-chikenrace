@@ -16,6 +16,9 @@ var player_title: String:
 var coins: int:
 	get: return PlayerState.coins
 	set(val): PlayerState.coins = val
+var stationery_points: int:
+	get: return PlayerState.stationery_points
+	set(val): PlayerState.stationery_points = val
 var best_score: int:
 	get: return PlayerState.best_score
 	set(val): PlayerState.best_score = val
@@ -161,7 +164,7 @@ func _ready() -> void:
 
 # Save Game state to local storage JSON
 const SIMPLE_SAVE_FIELDS = [
-	"player_name", "player_title", "coins", "best_score", "play_count", 
+	"player_name", "player_title", "coins", "stationery_points", "best_score", "play_count", 
 	"unlocked_items", "item_usage_counts", "unlocked_titles", 
 	"deviation_value", "max_deviation_value", "selected_class", "game_mode", 
 	"opponent_profiles", "bgm_volume", "se_volume", "is_muted", "use_handwriting_font",

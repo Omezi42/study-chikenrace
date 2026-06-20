@@ -52,7 +52,7 @@ func start() -> void:
 	var t = phase.get_tree().create_timer(0.2)
 	t.timeout.connect(func():
 		tutorial_dialog_node = phase.show_tutorial_dialog(
-			"勉強カードを引いて、テストの点数を上げます。まずは1枚引いてみましょう。",
+			"勉強カードを引くと、カードの数字がそのまま点数（勉強時間）になります。まずは1枚引いてみましょう。",
 			dialog_pos
 		)
 		phase.draw_btn.disabled = false
@@ -89,7 +89,7 @@ func start_hour_3() -> void:
 	var dialog_pos = Vector2(viewport_size.x * 0.6, viewport_size.y * 0.08)
 	
 	tutorial_dialog_node = phase.show_tutorial_dialog(
-		"手札と同じ数字を引いてしまうと『バースト（寝落ち）』となり、点数が0になります。リスクを体感するため、カードを引いてみましょう。",
+		"すでに場に出ているカードと同じ数字のカードを引くと「バースト（寝落ち）」になり、その回の点数は0点になります。リスクを体感するため、カードを引いてみましょう。",
 		dialog_pos
 	)
 	phase.draw_btn.disabled = false
@@ -123,7 +123,7 @@ func advance_step() -> void:
 				phase.draw_btn.disabled = true 
 				phase.stop_btn.disabled = false 
 				tutorial_dialog_node = phase.show_tutorial_dialog(
-					"これ以上引くとバースト（寝落ち）して0点になる危険があります。『休憩』を押して点数を確定させましょう。",
+					"手札と同じ数字のカードを引くと「バースト（寝落ち）」して0点になります。安全のために『休憩』を押して、現在の合計点を確定させましょう。",
 					dialog_pos
 				)
 				highlight(phase.stop_btn)
@@ -155,7 +155,7 @@ func advance_step() -> void:
 				phase.stop_btn.disabled = true
 				phase.draw_btn.disabled = false
 				tutorial_dialog_node = phase.show_tutorial_dialog(
-					"手札にある『3』をもう一度引くとバーストします。あえてもう一枚引いてバーストを体験してみましょう。",
+					"すでに場にある『3』のカードをもう一度引くとバーストします。あえてもう一枚引いてバースト（0点になること）を体験してみましょう。",
 					dialog_pos
 				)
 				highlight(phase.draw_btn)

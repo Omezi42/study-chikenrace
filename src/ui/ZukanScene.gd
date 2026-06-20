@@ -74,6 +74,7 @@ var title_detail_desc: Label
 var title_detail_status: Label
 
 var back_btn: Button
+var stationery_points_lbl: Label
 var selected_item_id: String = ""
 var selected_title_id: String = ""
 var current_tab: String = "item" # "item" or "title"
@@ -113,6 +114,7 @@ func _ready() -> void:
 	main_vbox.add_child(tab_hbox)
 	
 	tab_item_btn = Button.new()
+	tab_item_btn.add_to_group("important_button")
 	tab_item_btn.text = "参考書図鑑"
 	tab_item_btn.custom_minimum_size = Vector2(200, 50)
 	tab_item_btn.add_theme_font_override("font", DeskTheme.get_font())
@@ -122,6 +124,7 @@ func _ready() -> void:
 	tab_item_btn.pressed.connect(func(): _switch_tab("item"))
 	
 	tab_title_btn = Button.new()
+	tab_title_btn.add_to_group("important_button")
 	tab_title_btn.text = "獲得称号ギャラリー"
 	tab_title_btn.custom_minimum_size = Vector2(200, 50)
 	tab_title_btn.add_theme_font_override("font", DeskTheme.get_font())
@@ -160,12 +163,24 @@ func _ready() -> void:
 	left_inner.add_theme_constant_override("separation", DeskTheme.MARGIN_SMALL)
 	left_margin.add_child(left_inner)
 	
+	var left_header_hbox = HBoxContainer.new()
+	left_header_hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left_inner.add_child(left_header_hbox)
+
 	left_title_label = Label.new()
 	left_title_label.text = "参考書アイテム図鑑"
 	left_title_label.add_theme_font_override("font", DeskTheme.get_font())
 	left_title_label.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TITLE)
 	left_title_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	left_inner.add_child(left_title_label)
+	left_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left_header_hbox.add_child(left_title_label)
+
+	stationery_points_lbl = Label.new()
+	stationery_points_lbl.text = "所持文房具ポイント: %d pt" % Global.stationery_points
+	stationery_points_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	stationery_points_lbl.add_theme_font_size_override("font_size", 16)
+	stationery_points_lbl.add_theme_color_override("font_color", Color("00796b"))
+	left_header_hbox.add_child(stationery_points_lbl)
 	
 	# Scroll for Items
 	left_scroll_item = ScrollContainer.new()
@@ -270,6 +285,17 @@ func _ready() -> void:
 	stars_container.alignment = BoxContainer.ALIGNMENT_BEGIN
 	stars_container.add_theme_constant_override("separation", 10)
 	right_inner_item.add_child(stars_container)
+
+	var unlock_btn = Button.new()
+	unlock_btn.name = "unlock_btn"
+	unlock_btn.add_to_group("important_button")
+	unlock_btn.text = "解放する"
+	unlock_btn.custom_minimum_size = Vector2(240, 50)
+	unlock_btn.add_theme_font_override("font", DeskTheme.get_font())
+	unlock_btn.add_theme_font_size_override("font_size", 16)
+	Global.apply_white_button_style(unlock_btn)
+	unlock_btn.visible = false
+	right_inner_item.add_child(unlock_btn)
 	
 	# Inner container for title details
 	right_inner_title = VBoxContainer.new()
@@ -346,6 +372,7 @@ func _ready() -> void:
 	# Change title button (dynamic)
 	var change_title_btn = Button.new()
 	change_title_btn.name = "change_title_btn"
+	change_title_btn.add_to_group("important_button")
 	change_title_btn.text = "この称号を設定する"
 	change_title_btn.custom_minimum_size = Vector2(240, 50)
 	change_title_btn.add_theme_font_override("font", DeskTheme.get_font())
@@ -360,6 +387,7 @@ func _ready() -> void:
 	
 	# Back button (Common)
 	back_btn = Button.new()
+	back_btn.add_to_group("important_button")
 	back_btn.text = "タイトルに戻る"
 	back_btn.custom_minimum_size = Vector2(320, 70)
 	back_btn.add_theme_font_override("font", DeskTheme.get_font())
@@ -551,6 +579,31 @@ func select_item(item_id: String) -> void:
 			s_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			stars_container.add_child(s_icon)
 			
+	# Unlock button control
+	var unlock_btn = right_inner_item.get_node("unlock_btn")
+	var is_gacha = item.get("is_gacha", false)
+	if not is_unlocked and is_gacha:
+		var cost = CardData.get_unlock_cost(item_id)
+		unlock_btn.text = "%d ptで解放する" % cost
+		unlock_btn.visible = true
+		
+		if Global.stationery_points >= cost:
+			unlock_btn.disabled = false
+			var active_style = DeskTheme.create_stamp_style(Color("00796b"), Color("e0f2f1"))
+			unlock_btn.add_theme_stylebox_override("normal", active_style)
+			unlock_btn.add_theme_color_override("font_color", Color("00796b"))
+		else:
+			unlock_btn.disabled = true
+			var disabled_style = DeskTheme.create_craft_panel()
+			unlock_btn.add_theme_stylebox_override("normal", disabled_style)
+			unlock_btn.add_theme_color_override("font_color", Color(0.5, 0.5, 0.5))
+			
+		if unlock_btn.pressed.is_connected(self._on_unlock_pressed):
+			unlock_btn.pressed.disconnect(self._on_unlock_pressed)
+		unlock_btn.pressed.connect(self._on_unlock_pressed.bind(item_id, cost))
+	else:
+		unlock_btn.visible = false
+			
 	# Slide & flip card visual on select
 	var card_style = StyleBoxFlat.new()
 	card_style.bg_color = DeskTheme.COLOR_CRAFT
@@ -709,3 +762,23 @@ func _on_back_pressed() -> void:
 	timer.timeout.connect(func():
 		Global.change_scene_with_fade(get_tree(), "res://Title.tscn")
 	)
+
+func _on_unlock_pressed(item_id: String, cost: int) -> void:
+	if Global.stationery_points < cost:
+		return
+		
+	Global.stationery_points -= cost
+	Global.unlocked_items.append(item_id)
+	Global.save_game()
+	
+	if has_node("/root/AudioManager"):
+		get_node("/root/AudioManager").play_se(AudioManager.SE_SUCCESS)
+		
+	if has_node("/root/UIHelper"):
+		get_node("/root/UIHelper").show_toast("アイテム「%s」を開放しました！" % CardData.ITEMS[item_id]["name"], 2.0, DeskTheme.COLOR_GREEN)
+		
+	# UIの更新
+	if is_instance_valid(stationery_points_lbl):
+		stationery_points_lbl.text = "所持文房具ポイント: %d pt" % Global.stationery_points
+	populate_catalog()
+	select_item(item_id)

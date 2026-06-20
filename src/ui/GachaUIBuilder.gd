@@ -88,7 +88,7 @@ static func build_layout(scene: GachaScene) -> void:
 	slot_wrapper.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	center_vbox.add_child(slot_wrapper)
 	
-	# 1. Booster Pack Container
+	# 1. Gacha Machine UI Container (starts visible)
 	var machine_wrapper = Control.new()
 	machine_wrapper.custom_minimum_size = Vector2(320, 420)
 	machine_wrapper.size = Vector2(320, 420)
@@ -97,56 +97,145 @@ static func build_layout(scene: GachaScene) -> void:
 	slot_wrapper.add_child(machine_wrapper)
 	scene.machine_wrapper = machine_wrapper
 	
-	# Booster Pack Body (Silver Foil)
-	var pack_body = PanelContainer.new()
-	pack_body.name = "PackBody"
-	pack_body.custom_minimum_size = Vector2(240, 360)
-	pack_body.size = Vector2(240, 360)
-	pack_body.position = Vector2(40, 30)
-	pack_body.pivot_offset = Vector2(120, 180)
+	# Machine Red Base
+	var machine_body = PanelContainer.new()
+	machine_body.custom_minimum_size = Vector2(280, 220)
+	machine_body.size = Vector2(280, 220)
+	machine_body.position = Vector2(20, 200)
+	var body_style = StyleBoxFlat.new()
+	body_style.bg_color = Color("c62828") # Bright red
+	body_style.border_color = DeskTheme.COLOR_INK
+	body_style.border_width_left = 4
+	body_style.border_width_right = 4
+	body_style.border_width_top = 4
+	body_style.border_width_bottom = 4
+	body_style.corner_radius_top_left = 12
+	body_style.corner_radius_top_right = 12
+	body_style.corner_radius_bottom_left = 16
+	body_style.corner_radius_bottom_right = 16
+	body_style.shadow_color = Color(0, 0, 0, 0.2)
+	body_style.shadow_size = 8
+	body_style.shadow_offset = Vector2(4, 4)
+	machine_body.add_theme_stylebox_override("panel", body_style)
+	machine_wrapper.add_child(machine_body)
 	
-	var pack_style = StyleBoxFlat.new()
-	pack_style.bg_color = Color("c0c0c0") # Silver color
-	pack_style.border_color = Color("9e9e9e")
-	pack_style.border_width_left = 6
-	pack_style.border_width_right = 6
-	pack_style.border_width_top = 15 # Top crimp
-	pack_style.border_width_bottom = 15 # Bottom crimp
-	pack_style.corner_radius_top_left = 4
-	pack_style.corner_radius_top_right = 4
-	pack_style.corner_radius_bottom_left = 4
-	pack_style.corner_radius_bottom_right = 4
-	pack_style.shadow_color = Color(0, 0, 0, 0.4)
-	pack_style.shadow_size = 10
-	pack_style.shadow_offset = Vector2(6, 6)
-	pack_body.add_theme_stylebox_override("panel", pack_style)
-	machine_wrapper.add_child(pack_body)
+	# Semi-transparent glass dome
+	var glass_dome = PanelContainer.new()
+	glass_dome.custom_minimum_size = Vector2(240, 200)
+	glass_dome.size = Vector2(240, 200)
+	glass_dome.position = Vector2(40, 10)
+	var glass_style = StyleBoxFlat.new()
+	glass_style.bg_color = Color("e3f2fd", 0.5) # transparent blue glass
+	glass_style.border_color = DeskTheme.COLOR_INK
+	glass_style.border_width_left = 4
+	glass_style.border_width_right = 4
+	glass_style.border_width_top = 4
+	glass_style.border_width_bottom = 0
+	glass_style.corner_radius_top_left = 120
+	glass_style.corner_radius_top_right = 120
+	glass_dome.add_theme_stylebox_override("panel", glass_style)
+	machine_wrapper.add_child(glass_dome)
 	
-	var pack_vbox = VBoxContainer.new()
-	pack_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	pack_vbox.add_theme_constant_override("separation", 15)
-	pack_body.add_child(pack_vbox)
+	# Decorative capsules inside dome
+	var capsules_container = Control.new()
+	capsules_container.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	capsules_container.pivot_offset = Vector2(120, 100)
+	glass_dome.add_child(capsules_container)
+	scene.capsules_container = capsules_container
 	
-	var pack_title = Label.new()
-	pack_title.text = "CHIKEN\nSTATIONERY"
-	pack_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pack_title.add_theme_font_override("font", DeskTheme.get_font())
-	pack_title.add_theme_font_size_override("font_size", 24)
-	pack_title.add_theme_color_override("font_color", Color("d32f2f"))
-	pack_vbox.add_child(pack_title)
+	var cap_colors = [Color("ff1744"), Color("2979ff"), Color("00e676"), Color("ffd600"), Color("d500f9")]
+	for i in range(12):
+		var cap_size = randf_range(30, 36)
+		
+		# Inner dummy capsule wrapper
+		var cap = Control.new()
+		cap.custom_minimum_size = Vector2(cap_size, cap_size)
+		cap.size = Vector2(cap_size, cap_size)
+		cap.pivot_offset = Vector2(cap_size / 2.0, cap_size / 2.0)
+		cap.position = Vector2(randf_range(30, 170), randf_range(100, 150))
+		cap.rotation_degrees = randf_range(-45.0, 45.0)
+		capsules_container.add_child(cap)
+		
+		# Colored top half (蓋)
+		var shell_t = PanelContainer.new()
+		shell_t.custom_minimum_size = Vector2(cap_size, cap_size / 2.0)
+		shell_t.size = Vector2(cap_size, cap_size / 2.0)
+		var style_t = StyleBoxFlat.new()
+		style_t.bg_color = cap_colors[randi() % cap_colors.size()]
+		style_t.corner_radius_top_left = cap_size / 2.0
+		style_t.corner_radius_top_right = cap_size / 2.0
+		style_t.border_color = DeskTheme.COLOR_INK
+		style_t.border_width_left = 2
+		style_t.border_width_top = 2
+		style_t.border_width_right = 2
+		style_t.border_width_bottom = 1
+		shell_t.add_theme_stylebox_override("panel", style_t)
+		cap.add_child(shell_t)
+		
+		# White/Gray bottom half (本体)
+		var shell_b = PanelContainer.new()
+		shell_b.custom_minimum_size = Vector2(cap_size, cap_size / 2.0)
+		shell_b.size = Vector2(cap_size, cap_size / 2.0)
+		shell_b.position = Vector2(0, cap_size / 2.0)
+		var style_b = StyleBoxFlat.new()
+		style_b.bg_color = Color("f5f5f5")
+		style_b.corner_radius_bottom_left = cap_size / 2.0
+		style_b.corner_radius_bottom_right = cap_size / 2.0
+		style_b.border_color = DeskTheme.COLOR_INK
+		style_b.border_width_left = 2
+		style_b.border_width_bottom = 2
+		style_b.border_width_right = 2
+		style_b.border_width_top = 1
+		shell_b.add_theme_stylebox_override("panel", style_b)
+		cap.add_child(shell_b)
+		
+	# Dispenser Hole
+	var dispenser = PanelContainer.new()
+	dispenser.custom_minimum_size = Vector2(70, 60)
+	dispenser.size = Vector2(70, 60)
+	dispenser.position = Vector2(125, 340)
+	var disp_style = StyleBoxFlat.new()
+	disp_style.bg_color = Color("151515")
+	disp_style.border_color = DeskTheme.COLOR_INK
+	disp_style.border_width_left = 3
+	disp_style.border_width_right = 3
+	disp_style.border_width_top = 3
+	disp_style.border_width_bottom = 3
+	disp_style.corner_radius_top_left = 30
+	disp_style.corner_radius_top_right = 30
+	dispenser.add_theme_stylebox_override("panel", disp_style)
+	machine_wrapper.add_child(dispenser)
 	
-	var pack_sub = Label.new()
-	pack_sub.text = "ブースターパック"
-	pack_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	pack_sub.add_theme_font_override("font", DeskTheme.get_font())
-	pack_sub.add_theme_font_size_override("font_size", 14)
-	pack_sub.add_theme_color_override("font_color", Color("212121"))
-	pack_vbox.add_child(pack_sub)
+	# Lever Button
+	var lever_btn = Button.new()
+	lever_btn.custom_minimum_size = Vector2(80, 80)
+	lever_btn.size = Vector2(80, 80)
+	lever_btn.position = Vector2(120, 230)
+	lever_btn.pivot_offset = Vector2(40, 40)
+	var lever_style = StyleBoxFlat.new()
+	lever_style.bg_color = Color("cfd8dc")
+	lever_style.border_color = DeskTheme.COLOR_INK
+	lever_style.border_width_left = 4
+	lever_style.border_width_right = 4
+	lever_style.border_width_top = 4
+	lever_style.border_width_bottom = 4
+	lever_style.corner_radius_top_left = 40
+	lever_style.corner_radius_top_right = 40
+	lever_style.corner_radius_bottom_left = 40
+	lever_style.corner_radius_bottom_right = 40
+	lever_btn.add_theme_stylebox_override("normal", lever_style)
+	lever_btn.add_theme_stylebox_override("hover", lever_style)
+	lever_btn.add_theme_stylebox_override("pressed", lever_style)
+	lever_btn.add_theme_stylebox_override("disabled", lever_style)
+	machine_wrapper.add_child(lever_btn)
+	scene.lever_btn = lever_btn
 	
-	scene.capsules_container = pack_body # Reuse the variable for shaking
-	
-	# (Removed capsules, dispenser, and lever)
-	scene.lever_btn = null
+	var lever_handle = ColorRect.new()
+	lever_handle.color = DeskTheme.COLOR_INK
+	lever_handle.custom_minimum_size = Vector2(60, 14)
+	lever_handle.size = Vector2(60, 14)
+	lever_handle.position = Vector2(10, 33)
+	lever_btn.add_child(lever_handle)
 	
 	# 2. Card Slot (starts hidden/scaled to zero)
 	var card_slot = PanelContainer.new()
@@ -231,6 +320,7 @@ static func build_layout(scene: GachaScene) -> void:
 	center_vbox.add_child(btn_hbox)
 	
 	var pull_btn = Button.new()
+	pull_btn.add_to_group("important_button")
 	var cost = int(BalanceConfig.get_value("rewards.gacha_cost", 50))
 	pull_btn.text = "1回引く (" + str(cost) + "コイン)"
 	pull_btn.custom_minimum_size = Vector2(260, 65)
@@ -287,6 +377,7 @@ static func build_layout(scene: GachaScene) -> void:
 	scene.pull_btn = pull_btn
 	
 	var odds_btn = Button.new()
+	odds_btn.add_to_group("important_button")
 	odds_btn.text = "提供割合"
 	odds_btn.custom_minimum_size = Vector2(160, 65)
 	odds_btn.add_theme_font_override("font", DeskTheme.get_font())
@@ -301,6 +392,7 @@ static func build_layout(scene: GachaScene) -> void:
 	btn_hbox.add_child(odds_btn)
 	
 	var back_btn = Button.new()
+	back_btn.add_to_group("important_button")
 	back_btn.text = "戻る"
 	back_btn.custom_minimum_size = Vector2(160, 65)
 	back_btn.add_theme_font_override("font", DeskTheme.get_font())
@@ -316,6 +408,7 @@ static func build_layout(scene: GachaScene) -> void:
 	
 	# Skip Button (Top Right)
 	var gacha_skip_btn = Button.new()
+	gacha_skip_btn.add_to_group("important_button")
 	gacha_skip_btn.text = "演出スキップ >>"
 	gacha_skip_btn.custom_minimum_size = Vector2(160, 45)
 	gacha_skip_btn.visible = false
@@ -414,6 +507,7 @@ static func build_odds_modal(scene: GachaScene) -> void:
 			items_vbox.add_child(hbox)
 	
 	var close_btn = Button.new()
+	close_btn.add_to_group("important_button")
 	close_btn.text = "閉じる"
 	close_btn.custom_minimum_size = Vector2(200, 50)
 	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER

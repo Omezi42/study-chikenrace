@@ -108,34 +108,138 @@ func _on_pull_pressed() -> void:
 			detail_fade.tween_callback(func(): result_detail_panel.queue_free())
 
 	
-	# Shaking the pack intensely
-	var pack_body = machine_wrapper.get_node("PackBody")
-	DeskTheme.shake_control(pack_body, 18.0, 0.8, 20)
+	# Animate rotary lever rotation
+	var lever_tween = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	lever_btn.rotation_degrees = 0.0
+	lever_tween.tween_property(lever_btn, "rotation_degrees", 360.0, 0.6)
+	
+	# Shake the machine body
+	DeskTheme.shake_control(machine_wrapper, 10.0, 0.7, 14)
+	
+	# Shake the capsules inside the glass dome intensely (simulate jiggling physics)
+	DeskTheme.shake_control(capsules_container, 18.0, 0.7, 16)
+	
+	# Jiggle individual capsules randomly
+	for cap in capsules_container.get_children():
+		var original_pos = cap.position
+		var jiggle_tween = create_tween().set_loops(6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		var rand_offset = Vector2(randf_range(-12.0, 12.0), randf_range(-20.0, -5.0))
+		jiggle_tween.tween_property(cap, "position", original_pos + rand_offset, 0.06)
+		jiggle_tween.tween_property(cap, "position", original_pos, 0.06)
 	
 	if has_node("/root/AudioManager"):
-		get_node("/root/AudioManager").play_se(AudioManager.SE_DRAW) # Simulate tearing sound
+		get_node("/root/AudioManager").play_se(AudioManager.SE_DRAW) # Play draw/rolling sound
 		
-	var timer = get_tree().create_timer(0.8)
+	var timer = get_tree().create_timer(0.7)
 	timer.timeout.connect(func():
 		if not skip_triggered:
-			spawn_pack_tear(pack_body)
+			spawn_capsule(machine_wrapper.get_parent())
 	)
 
 
-func spawn_pack_tear(pack_body: Control) -> void:
-	result_lbl.text = "パックが破けた！"
+func spawn_capsule(slot_wrapper: Control) -> void:
+	result_lbl.text = "カプセルが出てきた！"
 	
-	var tear_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	# Simulate pack bursting open
-	tear_tween.tween_property(pack_body, "scale", Vector2(1.2, 1.2), 0.2)
-	tear_tween.tween_property(pack_body, "modulate:a", 0.0, 0.3)
+	var capsule_colors = [Color("ff1744"), Color("2979ff"), Color("00e676"), Color("ffd600"), Color("d500f9")]
+	var cap_color = capsule_colors[randi() % capsule_colors.size()]
 	
-	tear_tween.chain().tween_callback(func():
-		reveal_gacha_result()
-		# Reset pack for next pull
-		pack_body.scale = Vector2.ONE
-		pack_body.modulate.a = 1.0
+	var capsule = Control.new()
+	capsule.custom_minimum_size = Vector2(120, 120)
+	capsule.size = Vector2(120, 120)
+	capsule.pivot_offset = Vector2(60, 60)
+	capsule.position = Vector2(120, 310) 
+	capsule.scale = Vector2(0.3, 0.3)
+	slot_wrapper.add_child(capsule)
+	
+	var shell_t = PanelContainer.new()
+	shell_t.custom_minimum_size = Vector2(120, 60)
+	shell_t.size = Vector2(120, 60)
+	var style_t = StyleBoxFlat.new()
+	style_t.bg_color = cap_color
+	style_t.corner_radius_top_left = 60
+	style_t.corner_radius_top_right = 60
+	style_t.border_color = DeskTheme.COLOR_INK
+	style_t.border_width_left = 4
+	style_t.border_width_top = 4
+	style_t.border_width_right = 4
+	style_t.border_width_bottom = 2
+	shell_t.add_theme_stylebox_override("panel", style_t)
+	capsule.add_child(shell_t)
+	
+	var shell_b = PanelContainer.new()
+	shell_b.custom_minimum_size = Vector2(120, 60)
+	shell_b.size = Vector2(120, 60)
+	shell_b.position = Vector2(0, 60)
+	var style_b = StyleBoxFlat.new()
+	style_b.bg_color = Color("f5f5f5")
+	style_b.corner_radius_bottom_left = 60
+	style_b.corner_radius_bottom_right = 60
+	style_b.border_color = DeskTheme.COLOR_INK
+	style_b.border_width_left = 4
+	style_b.border_width_bottom = 4
+	style_b.border_width_right = 4
+	style_b.border_width_top = 2
+	shell_b.add_theme_stylebox_override("panel", style_b)
+	capsule.add_child(shell_b)
+	
+	var cap_btn = TextureButton.new()
+	cap_btn.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	capsule.add_child(cap_btn)
+	
+	current_capsule = capsule
+	
+	# Animate capsule flying out & bouncing in center (complete 360-degree rotation)
+	var cap_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	cap_tween.tween_property(capsule, "position", Vector2(120, 150), 0.5)
+	cap_tween.tween_property(capsule, "scale", Vector2(1.8, 1.8), 0.5)
+	cap_tween.tween_property(capsule, "rotation_degrees", 360.0, 0.5)
+	
+	cap_tween.chain().tween_callback(func():
+		if skip_triggered:
+			return
+		# Spawn Prompt Label directly under slot_wrapper so it doesn't rotate with the capsule
+		prompt_lbl = Label.new()
+		prompt_lbl.text = "タップして開封！"
+		prompt_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		prompt_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		prompt_lbl.add_theme_font_override("font", DeskTheme.get_font())
+		prompt_lbl.add_theme_font_size_override("font_size", 14)
+		prompt_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+		prompt_lbl.position = Vector2(60, 290)
+		slot_wrapper.add_child(prompt_lbl)
+		
+		# Pulse animation for prompt label
+		var pulse = create_tween().set_loops().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		pulse.tween_property(prompt_lbl, "modulate:a", 0.3, 0.6)
+		pulse.tween_property(prompt_lbl, "modulate:a", 1.0, 0.6)
+		
+		# Floating animation for capsule
+		current_float_tween = create_tween().set_loops().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		current_float_tween.tween_property(capsule, "position:y", 142.0, 0.8)
+		current_float_tween.tween_property(capsule, "position:y", 158.0, 0.8)
+		
+		cap_btn.pressed.connect(func():
+			if is_instance_valid(prompt_lbl): prompt_lbl.queue_free()
+			if current_float_tween: current_float_tween.kill()
+			
+			# Pop sound
+			if has_node("/root/AudioManager"):
+				get_node("/root/AudioManager").play_se(AudioManager.SE_SUCCESS)
+				
+			var open_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			open_tween.tween_property(shell_t, "position", Vector2(-50, -50), 0.3)
+			open_tween.tween_property(shell_t, "rotation_degrees", -45.0, 0.3)
+			open_tween.tween_property(shell_b, "position", Vector2(50, 110), 0.3)
+			open_tween.tween_property(shell_b, "rotation_degrees", 45.0, 0.3)
+			open_tween.tween_property(capsule, "modulate:a", 0.0, 0.35)
+			
+			open_tween.chain().tween_callback(func():
+				capsule.queue_free()
+				reveal_gacha_result()
+			)
+		)
 	)
+
 
 func reveal_gacha_result() -> void:
 	# Pick random item with weights
@@ -150,11 +254,12 @@ func reveal_gacha_result() -> void:
 		result_lbl.add_theme_color_override("font_color", Color("ffd700"))
 		DeskTheme.show_toast(self, "新アイテム「%s」を獲得！" % item["name"])
 	else:
-		# Duplicate: add 10 to usage counts!
-		Global.add_item_usage(drawn_item_id, 10)
-		result_lbl.text = "【 重複ボーナス：使用回数 +10回！ 】"
+		# Duplicate: add 10 to stationery points!
+		Global.stationery_points += 10
+		result_lbl.text = "【 重複ボーナス：文房具ポイント +10 pt！ 】"
 		result_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
-		DeskTheme.show_toast(self, "重複ボーナス：「%s」の使用回数+10！" % item["name"])
+		DeskTheme.show_toast(self, "重複ボーナス：文房具ポイント+10 pt！")
+		Global.save_game()
 		
 	card_title.text = item["name"]
 	var img_path = CardData.get_item_image_path(drawn_item_id)

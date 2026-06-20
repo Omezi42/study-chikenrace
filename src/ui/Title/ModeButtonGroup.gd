@@ -76,6 +76,7 @@ func _ready() -> void:
 	
 	# 3. アクション（開始）ボタン
 	start_button = Button.new()
+	start_button.add_to_group("important_button")
 	start_button.custom_minimum_size = Vector2(320, 60)
 	start_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	start_button.add_theme_font_override("font", DeskTheme.get_font())

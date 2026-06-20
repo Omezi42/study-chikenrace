@@ -220,7 +220,6 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 		Global.game_mode
 	)
 	
-	Global.player_title = title
 	var is_title_new := not title in Global.unlocked_titles
 	if is_title_new:
 		Global.unlocked_titles.append(title)

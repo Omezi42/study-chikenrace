@@ -349,8 +349,14 @@ func _apply_improved_typography(node: Node) -> void:
 			node.remove_theme_font_override("font")
 			
 		var am = root.get_node_or_null("AudioManager")
-		if am and not node.mouse_entered.is_connected(am.play_ui_hover):
-			node.mouse_entered.connect(am.play_ui_hover)
+		if am:
+			var should_play_hover = node.is_in_group("important_button") or node.has_meta("play_hover")
+			if should_play_hover:
+				if not node.mouse_entered.is_connected(am.play_ui_hover):
+					node.mouse_entered.connect(am.play_ui_hover)
+			else:
+				if node.mouse_entered.is_connected(am.play_ui_hover):
+					node.mouse_entered.disconnect(am.play_ui_hover)
 		
 		var font_size = node.get_theme_font_size("font_size")
 		var outline_sz = 0
