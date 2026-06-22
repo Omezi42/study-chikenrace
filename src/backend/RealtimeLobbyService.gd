@@ -63,13 +63,28 @@ func _on_ws_connected() -> void:
 	ws_connected = true
 	ws_heartbeat_timer = 0.0
 	var join_msg = {
-		"topic": "realtime:public:friend_rooms",
+		"topic": "realtime:public",
 		"event": "phx_join",
-		"payload": {},
+		"payload": {
+			"config": {
+				"postgres_changes": [
+					{
+						"event": "*",
+						"schema": "public",
+						"table": "friend_rooms"
+					},
+					{
+						"event": "*",
+						"schema": "public",
+						"table": "friend_room_moves"
+					}
+				]
+			}
+		},
 		"ref": "1"
 	}
 	ws_peer.send_text(JSON.stringify(join_msg))
-	push_warning("[Realtime] WebSocket lobby connected and listening.")
+	push_warning("[Realtime] WebSocket lobby connected and listening to changes.")
 
 func _on_ws_disconnected() -> void:
 	ws_connected = false
@@ -94,9 +109,14 @@ func _process_ws_packets() -> void:
 			var msg = json.get_data()
 			if msg is Dictionary and msg.get("event") == "postgres_changes":
 				var payload = msg.get("payload", {})
+				var table = payload.get("table", "")
 				var record = payload.get("data", {})
 				if record.get("room_code") == ws_room_code:
-					bm.poll_room_status(ws_room_code)
+					if table == "friend_rooms":
+						bm.poll_room_status(ws_room_code)
+					elif table == "friend_room_moves":
+						var day = int(record.get("day_idx", 0))
+						bm.poll_day_moves(ws_room_code, day)
 
 func attempt_reconnect() -> void:
 	if is_reconnecting:

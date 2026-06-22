@@ -12,6 +12,7 @@ const SE_DRAW = "res://assets/se_draw.wav"
 const SE_PLACE = "res://assets/se_place.wav"
 const SE_COMBO = "res://assets/se_combo.wav"
 const SE_BURST = "res://assets/se_burst.wav"
+const SE_SUCCESS = "res://assets/se_combo.wav"
 
 const SE_HOVER = "res://assets/se_hover.wav"
 const SE_WHOOSH = "res://assets/se_whoosh.wav"
@@ -86,7 +87,7 @@ func _ready() -> void:
 	_update_bus_volumes()
 	
 	# Cache main streams to avoid runtime loading lag
-	var streams_to_cache = [BGM_MAIN, BGM_TITLE, BGM_GAME, BGM_TENSE, BGM_RESULT, SE_CLICK, SE_DRAW, SE_PLACE, SE_COMBO, SE_BURST, SE_HOVER, SE_WHOOSH, SE_TENSION, SE_FANFARE, SE_DRUMROLL]
+	var streams_to_cache = [BGM_MAIN, BGM_TITLE, BGM_GAME, BGM_TENSE, BGM_RESULT, SE_CLICK, SE_DRAW, SE_PLACE, SE_COMBO, SE_BURST, SE_HOVER, SE_WHOOSH, SE_TENSION, SE_FANFARE, SE_DRUMROLL, SE_SUCCESS]
 	for path in streams_to_cache:
 		if ResourceLoader.exists(path):
 			_cached_streams[path] = load(path)

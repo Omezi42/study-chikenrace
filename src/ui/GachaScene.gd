@@ -203,9 +203,12 @@ func spawn_capsule(slot_wrapper: Control) -> void:
 		prompt_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		prompt_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		prompt_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		prompt_lbl.add_theme_font_size_override("font_size", 14)
+		prompt_lbl.add_theme_font_size_override("font_size", 18)
 		prompt_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-		prompt_lbl.position = Vector2(60, 290)
+		prompt_lbl.add_theme_color_override("font_outline_color", Color.WHITE)
+		prompt_lbl.add_theme_constant_override("outline_size", 6)
+		prompt_lbl.position = Vector2(0, 290)
+		prompt_lbl.size = Vector2(360, 30)
 		slot_wrapper.add_child(prompt_lbl)
 		
 		# Pulse animation for prompt label

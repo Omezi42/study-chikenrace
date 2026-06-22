@@ -106,7 +106,9 @@ func _get_available_request() -> HTTPRequest:
 		var oldest_req = _http_pool[0]
 		oldest_req.cancel()
 		if _pool_callbacks.has(oldest_req):
+			var cb: Callable = _pool_callbacks[oldest_req]
 			_pool_callbacks.erase(oldest_req)
+			cb.call(HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray())
 		return oldest_req
 
 func _on_pool_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray, req: HTTPRequest) -> void:
