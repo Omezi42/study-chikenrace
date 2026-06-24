@@ -120,6 +120,23 @@ func add_player_hour_result(draws: int, used_items: Array, bursted: bool, score:
 func submit_player_declaration(declared_score: int, emote: String = "normal") -> void:
 	player_declared_score_today = declared_score
 	player_emote_today = emote
+	
+	if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
+		var bm = _get_backend_manager()
+		var my_id = bm.logged_in_uuid if (bm and bm.logged_in_uuid != "") else "player"
+		
+		var my_move = {
+			"user_id": my_id,
+			"username": Global.player_name if Global.player_name != "" else "あなた",
+			"day": current_day,
+			"actual_score": player_actual_score_today,
+			"declared_score": player_declared_score_today,
+			"hours_history": player_hours_history_today.duplicate(true),
+			"emote": player_emote_today,
+			"phase": "declare",
+			"doubts_submitted": false
+		}
+		MatchState.submit_player_action.rpc("declare", my_move)
 
 func add_player_doubt(target_id: String) -> void:
 	if not target_id in player_doubts_made_today and player_doubts_made_today.size() < 3:

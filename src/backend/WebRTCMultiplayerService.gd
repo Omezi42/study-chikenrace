@@ -92,9 +92,20 @@ func _on_signaling_connected(my_id: int) -> void:
 		# If guest, we consider it joined but wait for peers. 
 		room_joined.emit(true, _participants)
 
-func _on_random_room_joined(code: String) -> void:
-	_pending_room_code = code
-	Global.friend_room_code = code
+func _on_random_room_joined(data: Dictionary) -> void:
+	print("WebRTC Signaling joined random room: ", data)
+	_pending_room_code = data.get("room_code", "")
+	_is_host = data.get("is_host", false)
+	# For random match, signaling server handles the rest (making offers/answers)
+
+@rpc("any_peer", "call_remote")
+func sync_player_info(username: String) -> void:
+	var sender_id = bm.multiplayer.get_remote_sender_id()
+	for i in range(_participants.size()):
+		if _participants[i].get("user_id", "") == str(sender_id):
+			_participants[i]["username"] = username
+			room_joined.emit(true, _participants)
+			break
 
 func _on_signaling_disconnected() -> void:
 	pass
@@ -120,6 +131,9 @@ func _on_peer_connected(id: int) -> void:
 	# Update participants info. In a real game, you might RPC names over.
 	_participants.append({"user_id": str(id), "username": "Player " + str(id)})
 	player_connected.emit(id)
+	
+	var my_name = Global.player_name if Global.player_name != "" else "あなた"
+	sync_player_info.rpc_id(id, my_name)
 	
 	# If we are guest and a peer connected, emit room_joined with updated participants if needed
 	if not _is_host:
