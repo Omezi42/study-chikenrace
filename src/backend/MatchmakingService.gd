@@ -114,31 +114,52 @@ func start_friend_game(room_code: String) -> void:
 			bm.mock_participants.append({"user_id": "cpu_takahashi", "username": "高橋くん (CPU)"})
 		return
 
-	var url = bm._get_supabase_url() + "/rest/v1/friend_rooms?room_code=eq." + room_code
-	bm._send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
+	# 1. Try atomic start_friend_game_safe RPC first
+	var rpc_url = bm._get_supabase_url() + "/rest/v1/rpc/start_friend_game_safe"
+	var rpc_body = {
+		"p_room_code": room_code,
+		"p_host_id": bm.logged_in_uuid
+	}
+
+	bm._send_request(rpc_url, HTTPClient.METHOD_POST, JSON.stringify(rpc_body), true, func(result, response_code, headers, body_data):
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
-			var json = JSON.new()
-			if json.parse(body_data.get_string_from_utf8()) == OK:
-				var data = json.get_data()
-				if data is Array and data.size() > 0:
-					var room = data[0]
-					var parts = room.get("participants", [])
+			return # Success, RPC handled it atomically!
 
-					var slots = ["cpu_sato", "cpu_suzuki", "cpu_takahashi", "cpu_tanaka"]
-					var slot_idx = 0
-					while parts.size() < 4 and slot_idx < slots.size():
-						var cpu_id = slots[slot_idx]
-						var cpu_profile = AIManager.CPU_OPPONENTS.get(cpu_id, {"name": "CPU"})
-						parts.append({"user_id": cpu_id, "username": cpu_profile["name"] + " (CPU)"})
-						slot_idx += 1
+		# 2. Fallback to GET -> PATCH with race-condition prevention if RPC failed
+		var url = bm._get_supabase_url() + "/rest/v1/friend_rooms?room_code=eq." + room_code
+		bm._send_request(url, HTTPClient.METHOD_GET, "", true, func(g_res, g_code, g_headers, g_body_data):
+			if g_res == HTTPRequest.RESULT_SUCCESS and g_code == 200:
+				var json = JSON.new()
+				if json.parse(g_body_data.get_string_from_utf8()) == OK:
+					var data = json.get_data()
+					if data is Array and data.size() > 0:
+						var room = data[0]
+						var parts = room.get("participants", [])
 
-					var patch_body = {
-						"status": "playing",
-						"participants": parts
-					}
-					bm._send_request(url, HTTPClient.METHOD_PATCH, JSON.stringify(patch_body), true, func(r_res, r_code, r_headers, r_body):
-						pass 
-					)
+						var patch_body = {}
+						if parts.size() >= 4:
+							# If already full, do NOT overwrite participants to avoid race conditions
+							patch_body = {
+								"status": "playing"
+							}
+						else:
+							# Backfill with CPU
+							var slots = ["cpu_sato", "cpu_suzuki", "cpu_takahashi", "cpu_tanaka"]
+							var slot_idx = 0
+							while parts.size() < 4 and slot_idx < slots.size():
+								var cpu_id = slots[slot_idx]
+								var cpu_profile = AIManager.CPU_OPPONENTS.get(cpu_id, {"name": "CPU"})
+								parts.append({"user_id": cpu_id, "username": cpu_profile["name"] + " (CPU)"})
+								slot_idx += 1
+							patch_body = {
+								"status": "playing",
+								"participants": parts
+							}
+
+						bm._send_request(url, HTTPClient.METHOD_PATCH, JSON.stringify(patch_body), true, func(r_res, r_code, r_headers, r_body):
+							pass 
+						)
+		)
 	)
 
 func upload_friend_move(room_code: String, day_idx: int, move_data: Dictionary) -> void:
@@ -247,7 +268,7 @@ func poll_room_status(room_code: String) -> void:
 					bm.mock_current_day = day
 					bm.mock_last_sync_revision = last_revision
 					
-					if Global.game_mode == Constants.MODE_RANDOM and status == "waiting":
+					if room_code.begins_with("RAND_") and status == "waiting":
 						if parts.size() >= 4:
 							var host_id = room.get("host_id", "")
 							if host_id == bm.logged_in_uuid:
@@ -332,41 +353,59 @@ func join_or_create_random_match() -> void:
 	var league = Global.get_deviation_league(Global.deviation_value)
 	var search_prefix = "RAND_" + league + "_"
 	
-	var url = bm._get_supabase_url() + "/rest/v1/friend_rooms?status=eq.waiting&room_code=like." + search_prefix + "%"
+	# '%' must be URL-encoded as '%25' to prevent 500 error from Cloudflare/Supabase gateway
+	var url = bm._get_supabase_url() + "/rest/v1/friend_rooms?status=eq.waiting&room_code=like." + search_prefix + "%25"
 	bm._send_request(url, HTTPClient.METHOD_GET, "", true, func(result, response_code, headers, body_data):
 		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
 			var json = JSON.new()
 			if json.parse(body_data.get_string_from_utf8()) == OK:
 				var rooms = json.get_data()
 				if rooms is Array and rooms.size() > 0:
-					var target_room = rooms[0]
-					var room_code = target_room.get("room_code", "")
-					bm.random_match_status_updated.emit("joining", "対戦ルームにジョイン中...")
+					var candidate_rooms = []
+					for room in rooms:
+						var parts = room.get("participants", [])
+						var host_id = room.get("host_id", "")
+						if parts is Array and parts.size() < 4 and host_id != bm.logged_in_uuid:
+							candidate_rooms.append(room)
 					
-					var rpc_url = bm._get_supabase_url() + "/rest/v1/rpc/join_friend_room_safe"
-					var rpc_body = {
-						"p_room_code": room_code,
-						"p_user_id": bm.logged_in_uuid,
-						"p_username": user_name
-					}
-					bm._send_request(rpc_url, HTTPClient.METHOD_POST, JSON.stringify(rpc_body), true, func(r_res, r_code, r_headers, r_body):
-						if r_res == HTTPRequest.RESULT_SUCCESS and r_code == 200:
-							var r_json = JSON.new()
-							if r_json.parse(r_body.get_string_from_utf8()) == OK:
-								var data = r_json.get_data()
-								if data is Dictionary and not data.has("error"):
-									var parts = data.get("participants", [])
-									Global.friend_room_code = room_code
-									Global.friend_current_day = 1
-									Global.friend_match_history.clear()
-									bm.random_match_status_updated.emit("matched", "マッチング成立！")
-									bm.room_joined.emit(true, parts)
-									return
-						_create_random_match_room(user_name)
-					)
-					return
+					if candidate_rooms.size() > 0:
+						_try_join_room_candidates(candidate_rooms, 0, user_name)
+						return
 		
 		_create_random_match_room(user_name)
+	)
+
+func _try_join_room_candidates(candidates: Array, index: int, user_name: String) -> void:
+	if index >= candidates.size():
+		_create_random_match_room(user_name)
+		return
+		
+	var target_room = candidates[index]
+	var room_code = target_room.get("room_code", "")
+	bm.random_match_status_updated.emit("joining", "対戦ルームにジョイン中...")
+	
+	var rpc_url = bm._get_supabase_url() + "/rest/v1/rpc/join_friend_room_safe"
+	var rpc_body = {
+		"p_room_code": room_code,
+		"p_user_id": bm.logged_in_uuid,
+		"p_username": user_name
+	}
+	
+	bm._send_request(rpc_url, HTTPClient.METHOD_POST, JSON.stringify(rpc_body), true, func(r_res, r_code, r_headers, r_body):
+		if r_res == HTTPRequest.RESULT_SUCCESS and r_code == 200:
+			var r_json = JSON.new()
+			if r_json.parse(r_body.get_string_from_utf8()) == OK:
+				var data = r_json.get_data()
+				if data is Dictionary and not data.has("error"):
+					var parts = data.get("participants", [])
+					Global.friend_room_code = room_code
+					Global.friend_current_day = 1
+					Global.friend_match_history.clear()
+					bm.random_match_status_updated.emit("matched", "マッチング成立！")
+					bm.room_joined.emit(true, parts)
+					return
+		
+		_try_join_room_candidates(candidates, index + 1, user_name)
 	)
 
 func _create_random_match_room(user_name: String) -> void:

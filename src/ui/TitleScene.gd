@@ -595,8 +595,8 @@ func _on_quick_start_pressed() -> void:
 	if is_transitioning:
 		return
 	is_transitioning = true
-	if is_instance_valid(mode_button_group) and is_instance_valid(mode_button_group.random_btn):
-		DeskTheme.animate_click(mode_button_group.random_btn, Vector2.ONE, 0.08)
+	if is_instance_valid(mode_button_group) and mode_button_group.mode_buttons.has("random") and is_instance_valid(mode_button_group.mode_buttons["random"]):
+		DeskTheme.animate_click(mode_button_group.mode_buttons["random"], Vector2.ONE, 0.08)
 	
 	var timer = get_tree().create_timer(0.1)
 	timer.timeout.connect(func():

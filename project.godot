@@ -31,6 +31,11 @@ DailyMissionManager="*res://src/autoload/DailyMissionManager.gd"
 ClickEffectManager="*res://src/autoload/ClickEffectManager.gd"
 AnalyticsManager="*res://src/autoload/AnalyticsManager.gd"
 
+[backend]
+
+supabase_url="https://lhzxandvkgnafshdtrov.supabase.co"
+supabase_key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxoenhhbmR2a2duYWZzaGR0cm92Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NzEzMzMsImV4cCI6MjA5NDI0NzMzM30.dof6q-gDq9qJE32MxWfTD76PBvdgAr6X3EQ1do291sk"
+
 [display]
 
 window/size/viewport_width=1920

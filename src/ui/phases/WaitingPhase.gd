@@ -27,127 +27,98 @@ func _on_setup(setup_data: Dictionary) -> void:
 
 	WaitingUIBuilder.build_layout(self)
 
-	# Connect to Backend polling signals
-	if has_node("/root/BackendManager"):
-		var bm = get_node("/root/BackendManager")
-		bm.day_moves_polled.connect(_on_day_moves_polled)
-		bm.connection_lost.connect(_on_connection_lost)
-		bm.reconnect_succeeded.connect(_on_reconnect_succeeded)
+	# Connect to MatchState signals
+	MatchState.player_action_received.connect(_on_player_action_received)
 
-	# Setup polling timer
+	# Setup simple fallback/UI update timer (no backend polling, just pulsing the UI)
 	poll_timer = Timer.new()
-	poll_timer.wait_time = current_poll_interval
-	poll_timer.one_shot = true
+	poll_timer.wait_time = 1.0
 	poll_timer.timeout.connect(_on_poll_timeout)
 	add_child(poll_timer)
+	poll_timer.start()
 
-
-	# Initial poll immediately
-	_on_poll_timeout()
+	# Check immediately
+	_check_all_actions()
 
 func _exit_tree() -> void:
-	# Clean up signal connection
-	if has_node("/root/BackendManager"):
-		var bm = get_node("/root/BackendManager")
-		if bm.day_moves_polled.is_connected(_on_day_moves_polled):
-			bm.day_moves_polled.disconnect(_on_day_moves_polled)
-		if bm.connection_lost.is_connected(_on_connection_lost):
-			bm.connection_lost.disconnect(_on_connection_lost)
-		if bm.reconnect_succeeded.is_connected(_on_reconnect_succeeded):
-			bm.reconnect_succeeded.disconnect(_on_reconnect_succeeded)
+	if MatchState.player_action_received.is_connected(_on_player_action_received):
+		MatchState.player_action_received.disconnect(_on_player_action_received)
 
 func _on_poll_timeout() -> void:
-	if has_node("/root/BackendManager"):
-		var bm = get_node("/root/BackendManager")
-		bm.poll_day_moves(Global.friend_room_code, target_day)
-
-		# Pulsate loading indicator color slightly
-		var pulse = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		pulse.tween_property(loading_rect, "modulate:a", 0.4, 0.25)
-		pulse.tween_property(loading_rect, "modulate:a", 1.0, 0.25)
-
-		total_poll_time += current_poll_interval
-		if total_poll_time >= 90.0:
-			poll_timer.stop()
-			status_lbl.text = "Polling timed out."
-			status_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
-			_show_timeout_fallback_button()
-			return
-
-		# Back off the polling interval gradually.
-		current_poll_interval = min(current_poll_interval * 1.5, max_poll_interval)
-		poll_timer.wait_time = current_poll_interval
-		poll_timer.start()
-
-func _on_day_moves_polled(success: bool, moves: Array) -> void:
-	if not success:
+	# Pulsate loading indicator color slightly
+	var pulse = create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	pulse.tween_property(loading_rect, "modulate:a", 0.4, 0.4)
+	pulse.tween_property(loading_rect, "modulate:a", 1.0, 0.4)
+	
+	total_poll_time += 1.0
+	if total_poll_time >= 90.0:
+		poll_timer.stop()
+		status_lbl.text = "同期タイムアウト"
+		status_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+		_show_timeout_fallback_button()
 		return
-	if not (moves is Array):
-		return
+
+func _on_player_action_received(player_id: int, action: String, data: Dictionary) -> void:
+	if data.get("day", 1) == target_day:
+		_check_all_actions()
+
+func _check_all_actions() -> void:
+	var actions = MatchState.current_match_actions.get(target_day, {})
+	var prev_actions = MatchState.current_match_actions.get(target_day - 1, {}) if target_day > 1 else {}
+	
+	var moves = []
+	for p_id in actions.keys():
+		if actions[p_id].has("declare"):
+			moves.append(actions[p_id]["declare"])
+		elif actions[p_id].has("doubts"):
+			moves.append(actions[p_id]["doubts"])
+
+	var prev_moves = []
+	for p_id in prev_actions.keys():
+		if prev_actions[p_id].has("doubts"):
+			prev_moves.append(prev_actions[p_id]["doubts"])
+		elif prev_actions[p_id].has("declare"):
+			prev_moves.append(prev_actions[p_id]["declare"])
 
 	last_polled_moves = moves
-
-	# 提出状況が変化（提出した他プレイヤーが増加）していた場合、ポーリング間隔を3.0秒に即時リセット
-	var current_submits = moves.size()
-	if current_submits > last_submitted_count:
-		current_poll_interval = 3.0
-		poll_timer.stop()
-		poll_timer.wait_time = current_poll_interval
-		poll_timer.start()
-
-	last_submitted_count = current_submits
 	update_members_ui(moves)
 
 	# Gather all user IDs that have submitted moves
 	var submitted_user_ids = {}
 	var doubts_submitted_ids = {}
 	for m in moves:
-		if not (m is Dictionary):
-			continue
 		var uid = _resolve_player_id(m.get("user_id", ""))
 		submitted_user_ids[uid] = true
-		if m.get("doubts_submitted", false):
+		if m.get("doubts_submitted", false) or m.get("phase", "") == "doubts":
 			doubts_submitted_ids[uid] = true
 
-	# Check each participant in our room
 	var all_done = true
-	for member in Global.friend_member_list:
-		var uid = _resolve_player_id(member.get("user_id", ""))
-		var is_cpu = uid.begins_with("cpu_")
+	if Global.game_mode == Constants.MODE_FRIEND:
+		for member in Global.friend_member_list:
+			var uid = _resolve_player_id(member.get("user_id", ""))
+			var is_cpu = uid.begins_with("cpu_")
 
-		# 1. Check if study moves are submitted
-		var has_moves = submitted_user_ids.has(uid) or is_cpu
-		if not has_moves:
-			all_done = false
-			break
-
-		# 2. If waiting for final showdown doubts, check if doubts are submitted
-		if is_final_reveal_wait:
-			var has_doubts = doubts_submitted_ids.has(uid) or is_cpu
-			if not has_doubts:
+			var has_moves = submitted_user_ids.has(uid) or is_cpu
+			if not has_moves:
 				all_done = false
 				break
 
+			if is_final_reveal_wait:
+				var has_doubts = doubts_submitted_ids.has(uid) or is_cpu
+				if not has_doubts:
+					all_done = false
+					break
+	else:
+		# Random matchmaking fallback if needed, or singleplayer mock
+		pass
+
 	if all_done:
 		poll_timer.stop()
-		if has_node("/root/BackendManager"):
-			var bm = get_node("/root/BackendManager")
-			if bm.day_moves_polled.is_connected(_on_day_moves_polled):
-				bm.day_moves_polled.disconnect(_on_day_moves_polled)
-
-			# If I am host, advance the database day state for this room (except for final reveal)
-			if Global.friend_is_host and not is_final_reveal_wait:
-				bm.advance_friend_room_day(Global.friend_room_code, target_day + 1)
-
-			if target_day > 1 and not is_final_reveal_wait:
-				var temp_callable = func(success_prev: bool, prev_moves: Array):
-					_transition_out(moves, prev_moves)
-				bm.day_moves_polled.connect(temp_callable, CONNECT_ONE_SHOT)
-				bm.poll_day_moves(Global.friend_room_code, target_day - 1)
-			else:
-				_transition_out(moves, [])
-		else:
-			_transition_out(moves, [])
+		# Add a slight delay before transitioning
+		var t = get_tree().create_timer(0.5)
+		t.timeout.connect(func():
+			_transition_out(moves, prev_moves)
+		)
 
 func _transition_out(moves: Array, prev_moves: Array) -> void:
 	var tween = create_tween().bind_node(phone_panel).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
@@ -202,27 +173,10 @@ func _show_timeout_fallback_button() -> void:
 	WaitingUIBuilder.show_timeout_fallback_buttons(self)
 
 func _on_switch_to_cpu_pressed() -> void:
-	if has_node("/root/BackendManager"):
-		var bm = get_node("/root/BackendManager")
-		bm.is_mock_room = true
-		bm.mock_room_code = Global.friend_room_code
-		bm.mock_room_status = "playing"
-		bm.mock_current_day = target_day
-		bm.mock_participants = Global.friend_member_list.duplicate(true)
-		
-		if not bm.mock_moves.has(target_day):
-			bm.mock_moves[target_day] = []
-		for m in last_polled_moves:
-			bm.mock_moves[target_day].append(m.duplicate(true))
-	
 	_on_force_progress_pressed(last_polled_moves)
 
 func _on_force_progress_pressed(current_moves: Array) -> void:
 	poll_timer.stop()
-	if has_node("/root/BackendManager"):
-		var bm = get_node("/root/BackendManager")
-		if bm.day_moves_polled.is_connected(_on_day_moves_polled):
-			bm.day_moves_polled.disconnect(_on_day_moves_polled)
 
 	# Fill in missing members with dummy moves when force progressing.
 	var simulated_moves = current_moves.duplicate(true)
@@ -248,18 +202,15 @@ func _on_force_progress_pressed(current_moves: Array) -> void:
 			}
 			simulated_moves.append(dummy_move)
 
-	if Global.friend_is_host and not is_final_reveal_wait and has_node("/root/BackendManager"):
-		var bm = get_node("/root/BackendManager")
-		bm.advance_friend_room_day(Global.friend_room_code, target_day + 1)
+	var prev_actions = MatchState.current_match_actions.get(target_day - 1, {}) if target_day > 1 else {}
+	var prev_moves = []
+	for p_id in prev_actions.keys():
+		if prev_actions[p_id].has("doubts"):
+			prev_moves.append(prev_actions[p_id]["doubts"])
+		elif prev_actions[p_id].has("declare"):
+			prev_moves.append(prev_actions[p_id]["declare"])
 
-	if target_day > 1 and not is_final_reveal_wait and has_node("/root/BackendManager"):
-		var bm = get_node("/root/BackendManager")
-		var temp_callable = func(success_prev: bool, prev_moves: Array):
-			_transition_out(simulated_moves, prev_moves)
-		bm.day_moves_polled.connect(temp_callable, CONNECT_ONE_SHOT)
-		bm.poll_day_moves(Global.friend_room_code, target_day - 1)
-	else:
-		_transition_out(simulated_moves, [])
+	_transition_out(simulated_moves, prev_moves)
 
 func _resolve_player_id(uid: String) -> String:
 	var my_id = "player"
@@ -272,22 +223,4 @@ func _resolve_player_id(uid: String) -> String:
 		return my_id
 	return uid
 
-func _on_connection_lost() -> void:
-	if not is_inside_tree():
-		return
-	status_lbl.text = "接続が切断されました。\n自動再接続中..."
-	status_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
-	poll_timer.stop()
-	if has_node("/root/BackendManager"):
-		get_node("/root/BackendManager").attempt_reconnect()
-
-func _on_reconnect_succeeded() -> void:
-	if not is_inside_tree():
-		return
-	status_lbl.text = "接続復旧しました。\n同期を再開しています..."
-	status_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
-	
-	# ポーリング間隔をリセットして再開
-	current_poll_interval = 3.0
-	poll_timer.wait_time = current_poll_interval
-	poll_timer.start()
+# _on_connection_lost and _on_reconnect_succeeded removed since we use WebRTC now

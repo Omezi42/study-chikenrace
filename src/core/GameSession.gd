@@ -199,17 +199,21 @@ func _save_and_upload_day() -> void:
 		Global.save_game()
 
 		var bm = _get_backend_manager()
-		if bm:
-			var my_move = {
-				"actual_score": player_actual_score_today,
-				"declared_score": player_declared_score_today,
-				"hours_history": player_hours_history_today.duplicate(true),
-				"doubts_made": player_doubts_made_today.duplicate(true),
-				"doubts_submitted": true,
-				"phase": "day_end",
-				"client_nonce": "%s-%d-%d" % [Global.friend_room_code, current_day, Time.get_unix_time_from_system()]
-			}
-			bm.upload_friend_move(Global.friend_room_code, current_day, my_move)
+		var my_id = bm.logged_in_uuid if (bm and bm.logged_in_uuid != "") else "player"
+
+		var my_move = {
+			"user_id": my_id,
+			"username": Global.player_name if Global.player_name != "" else "あなた",
+			"day": current_day,
+			"actual_score": player_actual_score_today,
+			"declared_score": player_declared_score_today,
+			"hours_history": player_hours_history_today.duplicate(true),
+			"doubts_made": player_doubts_made_today.duplicate(true),
+			"doubts_submitted": true,
+			"phase": "doubts",
+			"client_nonce": "%s-%d-%d" % [Global.friend_room_code, current_day, Time.get_unix_time_from_system()]
+		}
+		MatchState.submit_player_action.rpc("doubts", my_move)
 
 func _advance_to_next_day() -> void:
 	_reset_daily_variables()
@@ -259,7 +263,7 @@ func _prepare_opponents_for_day(day_idx: int) -> void:
 			Global.daily_opponent_ghosts[next_day_str] = dummy_ghosts
 			Global.save_game()
 	elif Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
-		pass
+		simulate_cpus_for_day(day_idx)
 	else:
 		simulate_cpus_for_day(day_idx)
 

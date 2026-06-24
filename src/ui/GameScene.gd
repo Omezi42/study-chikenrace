@@ -145,22 +145,25 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 				change_phase(Constants.PHASE_CHICKEN_RACE)
 		Constants.PHASE_REPORT:
 			if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
-				# Upload mid-day moves (scores, actual, hours) to server before waiting
 				var bm = null
 				var main_loop = Engine.get_main_loop()
 				if main_loop is SceneTree:
 					bm = main_loop.root.get_node_or_null("BackendManager")
-				if bm:
-					var mid_move = {
-						"actual_score": session.player_actual_score_today,
-						"declared_score": session.player_declared_score_today,
-						"hours_history": session.player_hours_history_today.duplicate(),
-						"doubts_made": [],
-						"doubts_submitted": false,
-						"phase": "mid_day",
-						"client_nonce": "%s-%d-mid" % [Global.friend_room_code, session.current_day]
-					}
-					bm.upload_friend_move(Global.friend_room_code, session.current_day, mid_move)
+				var my_id = bm.logged_in_uuid if (bm and bm.logged_in_uuid != "") else "player"
+
+				var mid_move = {
+					"user_id": my_id,
+					"username": Global.player_name if Global.player_name != "" else "あなた",
+					"day": session.current_day,
+					"actual_score": session.player_actual_score_today,
+					"declared_score": session.player_declared_score_today,
+					"hours_history": session.player_hours_history_today.duplicate(),
+					"doubts_made": [],
+					"doubts_submitted": false,
+					"phase": "mid_day",
+					"client_nonce": "%s-%d-mid" % [Global.friend_room_code, session.current_day]
+				}
+				MatchState.submit_player_action.rpc("declare", mid_move)
 				change_phase(Constants.PHASE_WAITING, {"day": session.current_day, "final_wait": false})
 			else:
 				var setup = result_data.duplicate()

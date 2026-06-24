@@ -43,8 +43,8 @@ var mock_moves: Dictionary = {}
 
 var auth_service: AuthService
 var cloud_save_service: CloudSaveService
-var matchmaking_service: MatchmakingService
-var realtime_lobby_service: RealtimeLobbyService
+var webrtc_signaling: WebRTCSignaling
+var webrtc_multiplayer: WebRTCMultiplayerService
 
 func _init() -> void:
 	var config_loaded = false
@@ -71,19 +71,27 @@ func _init() -> void:
 			
 	auth_service = AuthService.new(self)
 	cloud_save_service = CloudSaveService.new(self)
-	matchmaking_service = MatchmakingService.new(self)
-	realtime_lobby_service = RealtimeLobbyService.new(self)
 
 func _ready() -> void:
 	for i in range(POOL_SIZE):
 		var req = HTTPRequest.new()
 		req.name = "HttpPoolNode_%d" % i
+		req.accept_gzip = false # Webエクスポート時のGzipデコンプレスエラー回避のため
 		add_child(req)
 		req.request_completed.connect(_on_pool_request_completed.bind(req))
 		_http_pool.append(req)
 
-func _process(delta: float) -> void:
-	realtime_lobby_service.process(delta)
+	webrtc_signaling = WebRTCSignaling.new()
+	add_child(webrtc_signaling)
+	webrtc_multiplayer = WebRTCMultiplayerService.new(self, webrtc_signaling)
+	
+	webrtc_multiplayer.room_created.connect(func(s, c): room_created.emit(s, c))
+	webrtc_multiplayer.room_joined.connect(func(s, p): room_joined.emit(s, p))
+	webrtc_multiplayer.player_connected.connect(func(id): print("WebRTC Player connected: ", id))
+	webrtc_multiplayer.player_disconnected.connect(func(id): print("WebRTC Player disconnected: ", id))
+
+func _process(_delta: float) -> void:
+	pass
 
 func is_current_room_host() -> bool:
 	return logged_in_uuid != "" and logged_in_uuid == cached_host_id
@@ -96,6 +104,7 @@ func _get_available_request() -> HTTPRequest:
 	const MAX_POOL_SIZE = 24
 	if _http_pool.size() < MAX_POOL_SIZE:
 		var fallback = HTTPRequest.new()
+		fallback.accept_gzip = false # Webエクスポート時のGzipデコンプレスエラー回避のため
 		add_child(fallback)
 		fallback.request_completed.connect(_on_pool_request_completed.bind(fallback))
 		_http_pool.append(fallback)
@@ -278,47 +287,19 @@ func upload_daily_record(day_idx: int, score: int, record: Dictionary) -> void:
 func fetch_daily_records(day_idx: int) -> void:
 	cloud_save_service.fetch_daily_records(day_idx)
 
-func create_friend_room() -> void:
-	matchmaking_service.create_friend_room()
-
-func join_friend_room(room_code: String) -> void:
-	matchmaking_service.join_friend_room(room_code)
-
-func start_friend_game(room_code: String) -> void:
-	matchmaking_service.start_friend_game(room_code)
-
-func upload_friend_move(room_code: String, day_idx: int, move_data: Dictionary) -> void:
-	matchmaking_service.upload_friend_move(room_code, day_idx, move_data)
-
-func poll_room_status(room_code: String) -> void:
-	matchmaking_service.poll_room_status(room_code)
-
-func poll_day_moves(room_code: String, day_idx: int) -> void:
-	matchmaking_service.poll_day_moves(room_code, day_idx)
-
-func advance_friend_room_day(room_code: String, next_day: int) -> void:
-	matchmaking_service.advance_friend_room_day(room_code, next_day)
-
-func join_or_create_random_match() -> void:
-	matchmaking_service.join_or_create_random_match()
-
 func fetch_participants_deviation(participants: Array) -> void:
 	cloud_save_service.fetch_participants_deviation(participants)
 
 func upload_random_match_result(score: int, rank: int, deviation: float, league: String) -> void:
 	cloud_save_service.upload_random_match_result(score, rank, deviation, league)
 
-func generate_simulated_ghosts(day_idx: int) -> Array:
-	return matchmaking_service.generate_simulated_ghosts(day_idx)
+# --- WebRTC Multiplayer Methods ---
 
-func connect_realtime_lobby(room_code: String) -> void:
-	realtime_lobby_service.connect_realtime_lobby(room_code)
+func create_friend_room() -> void:
+	webrtc_multiplayer.create_room()
+
+func join_friend_room(room_code: String) -> void:
+	webrtc_multiplayer.join_room(room_code)
 
 func disconnect_realtime_lobby() -> void:
-	realtime_lobby_service.disconnect_realtime_lobby()
-
-func attempt_reconnect() -> void:
-	realtime_lobby_service.attempt_reconnect()
-
-func leave_or_delete_random_room(room_code: String) -> void:
-	matchmaking_service.leave_or_delete_random_room(room_code)
+	webrtc_multiplayer.disconnect_room()

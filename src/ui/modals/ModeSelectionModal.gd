@@ -356,7 +356,8 @@ static func show_difficulty_selection(parent: Node, mode_modal: PanelContainer, 
 		tween.tween_property(diff_modal, "scale", Vector2.ONE, 0.3)
 
 static func _show_login_warning(parent: Node, mode_modal: PanelContainer, national_names_pool: Array, on_friend_match_pressed: Callable) -> void:
-	if mode_modal != null and is_instance_valid(mode_modal):
+	var from_mode_selection = (mode_modal != null and is_instance_valid(mode_modal))
+	if from_mode_selection:
 		mode_modal.queue_free()
 	
 	var warning = PanelContainer.new()
@@ -418,18 +419,23 @@ static func _show_login_warning(parent: Node, mode_modal: PanelContainer, nation
 	yes_btn.pressed.connect(func():
 		DeskTheme.animate_click(yes_btn, Vector2.ONE, 0.08)
 		warning.queue_free()
-		Global.change_scene_with_fade(parent.get_tree(), "res://Profile.tscn")
+		var bm = parent.get_node_or_null("/root/BackendManager")
+		LoginModal.create_and_show(parent, null, func():
+			if bm != null:
+				ModeSelectionModal._show_matching_lobby(parent, null, bm, national_names_pool, on_friend_match_pressed)
+		)
 	)
 	
 	no_btn.pressed.connect(func():
 		DeskTheme.animate_click(no_btn, Vector2.ONE, 0.08)
 		warning.queue_free()
-		if mode_modal != null and is_instance_valid(mode_modal):
+		if from_mode_selection:
 			ModeSelectionModal.create_and_show(parent, on_friend_match_pressed, national_names_pool)
 	)
 
 static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: Node, national_names_pool: Array, on_friend_match_pressed: Callable) -> void:
-	if mode_modal != null and is_instance_valid(mode_modal):
+	var from_mode_selection = (mode_modal != null and is_instance_valid(mode_modal))
+	if from_mode_selection:
 		mode_modal.queue_free()
 	
 	var lobby = PanelContainer.new()
@@ -504,7 +510,7 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 			bm.leave_or_delete_random_room(Global.friend_room_code)
 		Global.friend_room_code = ""
 		clean_up_lobby.call()
-		if mode_modal != null and is_instance_valid(mode_modal):
+		if from_mode_selection:
 			ModeSelectionModal.create_and_show(parent, on_friend_match_pressed, national_names_pool)
 	)
 	
@@ -573,4 +579,5 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 			bm.poll_room_status(Global.friend_room_code)
 	)
 	
+	Global.game_mode = Constants.MODE_RANDOM
 	bm.join_or_create_random_match()

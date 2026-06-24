@@ -493,4 +493,3 @@ func show_result_detail_panel(item_id: String, is_new: bool) -> void:
 	var tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(result_detail_panel, "scale", Vector2.ONE, 0.4)
 	tween.tween_property(result_detail_panel, "modulate:a", 1.0, 0.3)
-

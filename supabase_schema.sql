@@ -224,6 +224,76 @@ END;
 $$;
 
 ---------------------------------------------------------
+-- 6.5. アトミックなゲーム開始処理 (スタートとCPU補填)
+---------------------------------------------------------
+CREATE OR REPLACE FUNCTION start_friend_game_safe(
+    p_room_code TEXT,
+    p_host_id TEXT
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_participants JSONB;
+    v_host_id TEXT;
+    v_status TEXT;
+    v_cpu_opponents JSONB := '[
+        {"user_id": "cpu_sato", "username": "佐藤くん (CPU)"},
+        {"user_id": "cpu_suzuki", "username": "鈴木さん (CPU)"},
+        {"user_id": "cpu_takahashi", "username": "高橋くん (CPU)"},
+        {"user_id": "cpu_tanaka", "username": "田中さん (CPU)"}
+    ]'::JSONB;
+    v_cpu_item JSONB;
+    v_count INT;
+    v_idx INT := 0;
+BEGIN
+    -- 部屋情報を排他ロック付きで取得
+    SELECT participants, host_id, status INTO v_participants, v_host_id, v_status
+    FROM public.friend_rooms
+    WHERE room_code = p_room_code
+    FOR UPDATE;
+
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('error', 'room_not_found');
+    END IF;
+
+    -- ホストチェック
+    IF v_host_id <> p_host_id THEN
+        RETURN jsonb_build_object('error', 'not_host');
+    END IF;
+
+    -- すでに開始している場合はそのまま現在のparticipantsを返す
+    IF v_status = 'playing' THEN
+        RETURN jsonb_build_object('participants', v_participants, 'status', v_status);
+    END IF;
+
+    -- 4人未満の場合にCPUを補填
+    v_count := jsonb_array_length(v_participants);
+    WHILE v_count < 4 AND v_idx < jsonb_array_length(v_cpu_opponents) LOOP
+        v_cpu_item := v_cpu_opponents->v_idx;
+        -- 重複しないように追加
+        IF NOT EXISTS (
+            SELECT 1 FROM jsonb_array_elements(v_participants) AS elem
+            WHERE elem->>'user_id' = v_cpu_item->>'user_id'
+        ) THEN
+            v_participants := v_participants || jsonb_build_array(v_cpu_item);
+            v_count := v_count + 1;
+        END IF;
+        v_idx := v_idx + 1;
+    END LOOP;
+
+    -- 部屋情報を更新
+    UPDATE public.friend_rooms
+    SET status = 'playing',
+        participants = v_participants
+    WHERE room_code = p_room_code;
+
+    RETURN jsonb_build_object('participants', v_participants, 'status', 'playing');
+END;
+$$;
+
+---------------------------------------------------------
 -- 7. CHECK制約: チート対策スコア上限バリデーション
 ---------------------------------------------------------
 -- クライアントから異常なスコアが送信されても、
