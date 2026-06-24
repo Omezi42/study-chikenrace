@@ -25,6 +25,7 @@ func _init(backend_manager: Node, sig: WebRTCSignaling) -> void:
 	signaling.offer_received.connect(_on_offer_received)
 	signaling.answer_received.connect(_on_answer_received)
 	signaling.ice_candidate_received.connect(_on_ice_candidate_received)
+	signaling.room_joined.connect(_on_random_room_joined)
 
 func create_room() -> void:
 	Global.show_loading("ルーム作成中...")
@@ -36,7 +37,7 @@ func create_room() -> void:
 	var server_url = ProjectSettings.get_setting("backend/signaling_url", "")
 	if server_url == "":
 		if OS.has_feature("web"):
-			server_url = "wss://your-render-url-here.onrender.com" # 本番用URL（あとで置き換える）
+			server_url = "wss://chicken-race-signaling.onrender.com" # 本番用URL
 		else:
 			server_url = "ws://localhost:9080"
 			
@@ -49,11 +50,23 @@ func join_room(code: String) -> void:
 	var server_url = ProjectSettings.get_setting("backend/signaling_url", "")
 	if server_url == "":
 		if OS.has_feature("web"):
-			server_url = "wss://your-render-url-here.onrender.com" # 本番用URL（あとで置き換える）
+			server_url = "wss://chicken-race-signaling.onrender.com" # 本番用URL
 		else:
 			server_url = "ws://localhost:9080"
 			
 	signaling.connect_to_room(server_url, code)
+
+func join_random_room() -> void:
+	Global.show_loading("ランダムマッチ待機中...\n(最大5秒)")
+	_is_host = false # Default to false, updated dynamically if we receive ID 1
+	var server_url = ProjectSettings.get_setting("backend/signaling_url", "")
+	if server_url == "":
+		if OS.has_feature("web"):
+			server_url = "wss://chicken-race-signaling.onrender.com" # 本番用URL
+		else:
+			server_url = "ws://localhost:9080"
+			
+	signaling.connect_random(server_url)
 
 func disconnect_room() -> void:
 	signaling.disconnect_from_room()
@@ -67,16 +80,22 @@ func _on_signaling_connected(my_id: int) -> void:
 	webrtc_peer.create_mesh(my_id)
 	bm.multiplayer.multiplayer_peer = webrtc_peer
 	
+	_is_host = (my_id == 1)
+	
 	var user_name = Global.player_name if Global.player_name != "" else "あなた"
 	_participants.clear()
 	_participants.append({"user_id": str(my_id), "username": user_name})
 	
 	Global.hide_loading()
-	if _is_host:
-		room_created.emit(true, _pending_room_code)
+	if _is_host and signaling.room_code != "":
+		room_created.emit(true, signaling.room_code)
 	else:
 		# If guest, we consider it joined but wait for peers. 
 		room_joined.emit(true, _participants)
+
+func _on_random_room_joined(code: String) -> void:
+	_pending_room_code = code
+	Global.friend_room_code = code
 
 func _on_signaling_disconnected() -> void:
 	pass

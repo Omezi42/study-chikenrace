@@ -10,18 +10,15 @@ const wss = new WebSocket.Server({ server });
 
 // roomCode -> Map<peerId, WebSocket>
 const rooms = new Map();
-let nextPeerId = 1;
+
+// Random Matchmaking State
+const matchmakingQueue = new Set();
+let matchTimer = null;
 
 wss.on('connection', (ws) => {
-    let currentRoom = null;
-    let peerId = nextPeerId++;
-    
-    // We send an initial ID just in case, but Godot uses 1 for host.
-    // However, Godot WebRTCMultiplayerPeer needs to know its unique ID.
-    // Wait, Godot's WebRTCMultiplayerPeer typically assigns 1 to the host.
-    // In our case, the host will create the room and get ID 1.
-    // Guests will get ID > 1.
-    
+    ws.currentRoom = null;
+    ws.peerId = null;
+
     ws.on('message', (messageAsString) => {
         let msg;
         try {
@@ -31,80 +28,136 @@ wss.on('connection', (ws) => {
         }
 
         switch (msg.type) {
-            case 'join':
+            case 'join': {
                 const roomCode = msg.room;
                 if (!rooms.has(roomCode)) {
                     rooms.set(roomCode, new Map());
                 }
                 const room = rooms.get(roomCode);
                 
-                // If it's the first peer, assign ID 1 (Host)
+                let assignedId;
                 if (room.size === 0) {
-                    peerId = 1;
+                    assignedId = 1;
                 } else {
-                    // Assign a new ID > 1
-                    peerId = Math.max(1, ...Array.from(room.keys())) + 1;
+                    assignedId = Math.max(1, ...Array.from(room.keys())) + 1;
                 }
                 
-                currentRoom = roomCode;
-                room.set(peerId, ws);
+                ws.currentRoom = roomCode;
+                ws.peerId = assignedId;
+                room.set(assignedId, ws);
                 
-                // Tell the client its assigned ID
-                ws.send(JSON.stringify({ type: 'id', id: peerId }));
+                ws.send(JSON.stringify({ type: 'id', id: assignedId }));
 
-                // Notify others in the room that this peer joined
                 for (const [otherId, otherWs] of room.entries()) {
-                    if (otherId !== peerId) {
-                        otherWs.send(JSON.stringify({ type: 'peer_connected', id: peerId }));
+                    if (otherId !== assignedId) {
+                        otherWs.send(JSON.stringify({ type: 'peer_connected', id: assignedId }));
                         ws.send(JSON.stringify({ type: 'peer_connected', id: otherId }));
                     }
                 }
                 break;
+            }
 
-            case 'message':
-                // msg.id is the target peer ID
-                // msg.data is the payload (SDP or ICE)
-                if (currentRoom && rooms.has(currentRoom)) {
-                    const roomPeers = rooms.get(currentRoom);
+            case 'random_join': {
+                matchmakingQueue.add(ws);
+                processMatchmaking();
+                break;
+            }
+
+            case 'message': {
+                if (ws.currentRoom && rooms.has(ws.currentRoom)) {
+                    const roomPeers = rooms.get(ws.currentRoom);
                     const targetWs = roomPeers.get(msg.id);
                     if (targetWs && targetWs.readyState === WebSocket.OPEN) {
                         targetWs.send(JSON.stringify({
                             type: 'message',
-                            id: peerId, // sender ID
+                            id: ws.peerId,
                             data: msg.data
                         }));
                     }
                 }
                 break;
+            }
                 
-            case 'leave':
-                leaveRoom(ws, currentRoom, peerId);
-                currentRoom = null;
+            case 'leave': {
+                leaveRoom(ws);
                 break;
+            }
         }
     });
 
     ws.on('close', () => {
-        leaveRoom(ws, currentRoom, peerId);
+        leaveRoom(ws);
+        matchmakingQueue.delete(ws);
     });
 });
 
-function leaveRoom(ws, roomCode, peerId) {
-    if (roomCode && rooms.has(roomCode)) {
-        const room = rooms.get(roomCode);
-        room.delete(peerId);
+function leaveRoom(ws) {
+    if (ws.currentRoom && rooms.has(ws.currentRoom)) {
+        const room = rooms.get(ws.currentRoom);
+        room.delete(ws.peerId);
         
-        // Notify remaining peers
         for (const [otherId, otherWs] of room.entries()) {
             if (otherWs.readyState === WebSocket.OPEN) {
-                otherWs.send(JSON.stringify({ type: 'peer_disconnected', id: peerId }));
+                otherWs.send(JSON.stringify({ type: 'peer_disconnected', id: ws.peerId }));
             }
         }
         
-        // Cleanup empty rooms
         if (room.size === 0) {
-            rooms.delete(roomCode);
+            rooms.delete(ws.currentRoom);
         }
+    }
+    ws.currentRoom = null;
+    ws.peerId = null;
+}
+
+function processMatchmaking() {
+    if (matchmakingQueue.size >= 4) {
+        createMatch(4);
+    } else if (matchmakingQueue.size >= 2) {
+        if (!matchTimer) {
+            matchTimer = setTimeout(() => {
+                matchTimer = null;
+                if (matchmakingQueue.size >= 2) {
+                    createMatch(Math.min(4, matchmakingQueue.size));
+                }
+            }, 5000);
+        }
+    }
+}
+
+function createMatch(playerCount) {
+    const roomCode = 'RND' + Math.floor(Math.random() * 100000);
+    rooms.set(roomCode, new Map());
+    const room = rooms.get(roomCode);
+    
+    let assignedId = 1;
+    const matchedPeers = [];
+    for (const ws of matchmakingQueue) {
+        if (assignedId > playerCount) break;
+        
+        ws.currentRoom = roomCode;
+        ws.peerId = assignedId;
+        room.set(assignedId, ws);
+        matchmakingQueue.delete(ws);
+        matchedPeers.push(ws);
+        assignedId++;
+    }
+    
+    for (const ws of matchedPeers) {
+        ws.send(JSON.stringify({ type: 'id', id: ws.peerId }));
+        ws.send(JSON.stringify({ type: 'room_joined', room: roomCode }));
+        
+        for (const other of matchedPeers) {
+            if (other.peerId !== ws.peerId) {
+                ws.send(JSON.stringify({ type: 'peer_connected', id: other.peerId }));
+            }
+        }
+    }
+    
+    // Clear timer if not enough players left in queue
+    if (matchmakingQueue.size < 2 && matchTimer) {
+        clearTimeout(matchTimer);
+        matchTimer = null;
     }
 }
 

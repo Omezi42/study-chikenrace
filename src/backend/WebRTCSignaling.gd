@@ -8,6 +8,7 @@ signal peer_disconnected(id: int)
 signal offer_received(id: int, offer: String)
 signal answer_received(id: int, answer: String)
 signal ice_candidate_received(id: int, media: String, index: int, name: String)
+signal room_joined(room_code: String)
 
 var ws: WebSocketPeer = WebSocketPeer.new()
 var is_connected_to_server: bool = false
@@ -37,19 +38,26 @@ func connect_to_room(url: String, code: String) -> Error:
 	room_code = code
 	var err = ws.connect_to_url(server_url)
 	if err == OK:
-		# Connection started. We must wait until STATE_OPEN to send 'join'.
-		# Since _process polls, we'll wait for STATE_OPEN then send join manually or do it here if it's instant.
-		# WebSocketPeer.connect_to_url doesn't open immediately, so we must send join in _process or a coroutine.
-		_send_join_when_ready()
+		_send_join_when_ready("join")
 	return err
 
-func _send_join_when_ready() -> void:
+func connect_random(url: String) -> Error:
+	server_url = url
+	room_code = ""
+	var err = ws.connect_to_url(server_url)
+	if err == OK:
+		_send_join_when_ready("random_join")
+	return err
+
+func _send_join_when_ready(join_type: String) -> void:
 	while ws.get_ready_state() == WebSocketPeer.STATE_CONNECTING:
 		await get_tree().process_frame
 		ws.poll()
 	
 	if ws.get_ready_state() == WebSocketPeer.STATE_OPEN:
-		var msg = {"type": "join", "room": room_code}
+		var msg = {"type": join_type}
+		if join_type == "join":
+			msg["room"] = room_code
 		ws.send_text(JSON.stringify(msg))
 
 func disconnect_from_room() -> void:
@@ -98,6 +106,9 @@ func _handle_message(msg_str: String) -> void:
 		
 	var type = msg.get("type", "")
 	match type:
+		"room_joined":
+			room_code = msg.get("room", "")
+			room_joined.emit(room_code)
 		"id":
 			is_connected_to_server = true
 			var my_id = int(msg.get("id", 0))

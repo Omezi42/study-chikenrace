@@ -517,15 +517,19 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 	on_status_changed = func(status: String, message: String):
 		if not is_instance_valid(status_lbl):
 			return
-		status_lbl.text = message
-		if status == "waiting_for_players" or status == "matched":
-			poll_timer.start()
-			
-	bm.random_match_status_updated.connect(on_status_changed)
+	var _is_starting_game = false
+	bm.multiplayer.room_joined.connect(func(success: bool, participants: Array):
+		if success:
+			status_lbl.text = "マッチング成立！ 他のプレイヤーの参加を待っています..."
+	)
 	
-	on_room_polled = func(status: String, day: int, participants: Array):
+	bm.multiplayer.player_connected.connect(func(id: int):
 		if not is_instance_valid(lobby):
 			return
+		
+		# participants array is managed by bm.multiplayer._participants
+		var participants = bm.multiplayer._participants
+		
 		for child in members_vbox.get_children():
 			child.queue_free()
 			
@@ -539,16 +543,16 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 			p_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 			members_vbox.add_child(p_lbl)
 			
-		if participants.size() >= 4 or status == "playing":
-			poll_timer.stop()
+		if participants.size() >= 2 and not _is_starting_game:
+			_is_starting_game = true
 			status_lbl.text = "マッチング完了！ゲームを開始します..."
 			
 			bm.fetch_participants_deviation(participants)
 			
 			Global.game_mode = Constants.MODE_RANDOM
-			Global.friend_room_code = Global.friend_room_code
+			# Global.friend_room_code is set by WebRTCMultiplayerService on 'room_joined'
 			Global.friend_member_list = participants
-			Global.friend_is_host = bm.is_current_room_host()
+			Global.friend_is_host = bm.multiplayer._is_host
 			Global.save_game()
 			
 			Global.opponent_profiles.clear()
@@ -571,13 +575,7 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 				clean_up_lobby.call()
 				Global.change_scene_with_fade(parent.get_tree(), "res://Main.tscn")
 			)
-			
-	bm.room_polled.connect(on_room_polled)
-	
-	poll_timer.timeout.connect(func():
-		if Global.friend_room_code != "":
-			bm.poll_room_status(Global.friend_room_code)
 	)
 	
 	Global.game_mode = Constants.MODE_RANDOM
-	bm.join_or_create_random_match()
+	bm.multiplayer.join_random_room()
