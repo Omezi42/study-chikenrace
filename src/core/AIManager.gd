@@ -31,10 +31,10 @@ static func select_cpu_emote(cpu_id: String, bluff_amount: int, actual_score: in
 static func make_cpu_doubts(cpu_id: String, participants: Array[Dictionary]) -> Array[String]:
 	return AIDoubtLogic.make_cpu_doubts(cpu_id, participants)
 
-static func evaluate_suspiciousness(declared_score: int, hours: Array[Dictionary]) -> float:
+static func evaluate_suspiciousness(declared_score: int, hours: Array) -> float:
 	return AIRiskEvaluator.evaluate_suspiciousness(declared_score, hours)
 
-static func evaluate_suspiciousness_with_emote(declared_score: int, hours: Array[Dictionary], emote: String) -> float:
+static func evaluate_suspiciousness_with_emote(declared_score: int, hours: Array, emote: String) -> float:
 	return AIRiskEvaluator.evaluate_suspiciousness_with_emote(declared_score, hours, emote)
 
 static func generate_character_comment(char_id: String, declared_score: int, actual_score: int, hours: Array) -> String:

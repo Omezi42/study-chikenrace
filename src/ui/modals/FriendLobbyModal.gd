@@ -224,7 +224,6 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	exit_btn.add_theme_font_override("font", DeskTheme.get_font())
 	exit_btn.add_theme_font_size_override("font_size", 16)
 	vbox.add_child(exit_btn)
-	
 	# Polling Logic via SceneTree timers
 	var is_polling_active = true
 	
@@ -235,7 +234,10 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		Global.game_mode = Constants.MODE_FRIEND
 		Global.friend_room_code = room_code
 		Global.friend_is_host = is_host
-		Global.friend_member_list = final_participants
+		Global.friend_member_list.assign(final_participants)
+		Global.friend_current_day = 1
+		Global.friend_match_history.clear()
+		MatchState.current_match_actions.clear()
 		Global.save_game()
 		
 		# Set slots for opponent profiles

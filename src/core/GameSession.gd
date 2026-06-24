@@ -73,9 +73,12 @@ func start_session(deck_config: Dictionary) -> void:
 					)
 	elif Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
 		current_day = max(Global.friend_current_day, 1)
-		match_history = Global.friend_match_history.duplicate(true)
-		for k in match_history.keys():
-			match_history[k] = Global.normalize_day_record(match_history[k])
+		var new_history = {}
+		var dup = Global.friend_match_history.duplicate(true)
+		for k in dup.keys():
+			var typed_k = int(str(k)) if str(k).is_valid_int() else k
+			new_history[typed_k] = Global.normalize_day_record(dup[k])
+		match_history = new_history
 		if not match_history.has(current_day):
 			match_history[current_day] = {}
 	else:
@@ -211,6 +214,7 @@ func _save_and_upload_day() -> void:
 			"doubts_made": player_doubts_made_today.duplicate(true),
 			"doubts_submitted": true,
 			"phase": "doubts",
+			"emote": player_emote_today,
 			"client_nonce": "%s-%d-%d" % [Global.friend_room_code, current_day, Time.get_unix_time_from_system()]
 		}
 		MatchState.submit_player_action.rpc("doubts", my_move)

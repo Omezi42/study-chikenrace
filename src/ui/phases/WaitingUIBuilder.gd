@@ -82,7 +82,7 @@ static func build_layout(phase: WaitingPhase) -> void:
 
 	# Status message
 	var status_lbl = Label.new()
-	status_lbl.text = "Waiting for everyone to finish..." if not phase.is_final_reveal_wait else "Waiting for final showdown results..."
+	status_lbl.text = "他のメンバーの報告を待っています..." if not phase.is_final_reveal_wait else "最終結果を集計しています..."
 	status_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	status_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status_lbl.add_theme_font_override("font", DeskTheme.get_font())
@@ -102,7 +102,7 @@ static func build_layout(phase: WaitingPhase) -> void:
 
 	# Title for list
 	var list_title = Label.new()
-	list_title.text = "Room Members (Day %d)" % phase.target_day
+	list_title.text = "ルームメンバー (Day %d)" % phase.target_day
 	list_title.add_theme_font_override("font", DeskTheme.get_font())
 	list_title.add_theme_font_size_override("font_size", 20)
 	list_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
@@ -195,10 +195,6 @@ static func show_timeout_fallback_buttons(phase: WaitingPhase) -> void:
 	fallback_btn.add_theme_font_size_override("font_size", 18)
 	Global.apply_white_button_style(fallback_btn)
 	fallback_btn.pressed.connect(func():
-		if phase.has_node("/root/BackendManager"):
-			var bm = phase.get_node("/root/BackendManager")
-			if bm.day_moves_polled.is_connected(phase._on_day_moves_polled):
-				bm.day_moves_polled.disconnect(phase._on_day_moves_polled)
 		Global.change_scene_with_fade(phase.get_tree(), "res://Title.tscn")
 	)
 	phase.app_vbox.add_child(fallback_btn)

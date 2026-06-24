@@ -93,7 +93,7 @@ func _check_all_actions() -> void:
 			doubts_submitted_ids[uid] = true
 
 	var all_done = true
-	if Global.game_mode == Constants.MODE_FRIEND:
+	if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
 		for member in Global.friend_member_list:
 			var uid = _resolve_player_id(member.get("user_id", ""))
 			var is_cpu = uid.begins_with("cpu_")
@@ -152,19 +152,19 @@ func update_members_ui(submitted_moves: Array) -> void:
 		# Determine status
 		var is_submitted = submitted_ids.has(uid) or uid.begins_with("cpu_")
 		var is_doubts_done = doubts_submitted_ids.has(uid) or uid.begins_with("cpu_")
-		var status_text = "Waiting"
+		var status_text = "報告まち"
 		var status_color = Color(DeskTheme.COLOR_INK, 0.4)
 
 		if not is_final_reveal_wait:
 			if is_submitted:
-				status_text = "Done"
+				status_text = "報告完了"
 				status_color = DeskTheme.COLOR_GREEN
 		else:
 			if is_doubts_done:
-				status_text = "Done"
+				status_text = "ダウト申告済"
 				status_color = DeskTheme.COLOR_GREEN
 			elif is_submitted:
-				status_text = "Reviewing..."
+				status_text = "ダウト検討中..."
 				status_color = Color("ff9100") # orange
 
 		WaitingUIBuilder.build_member_row(self, name_str, status_text, status_color)

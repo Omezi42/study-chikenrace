@@ -518,17 +518,17 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 		if not is_instance_valid(status_lbl):
 			return
 	var _is_starting_game = false
-	bm.multiplayer.room_joined.connect(func(success: bool, participants: Array):
+	bm.webrtc_multiplayer.room_joined.connect(func(success: bool, participants: Array):
 		if success:
 			status_lbl.text = "マッチング成立！ 他のプレイヤーの参加を待っています..."
 	)
 	
-	bm.multiplayer.player_connected.connect(func(id: int):
+	bm.webrtc_multiplayer.player_connected.connect(func(id: int):
 		if not is_instance_valid(lobby):
 			return
 		
-		# participants array is managed by bm.multiplayer._participants
-		var participants = bm.multiplayer._participants
+		# participants array is managed by bm.webrtc_multiplayer._participants
+		var participants = bm.webrtc_multiplayer._participants
 		
 		for child in members_vbox.get_children():
 			child.queue_free()
@@ -551,8 +551,11 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 			
 			Global.game_mode = Constants.MODE_RANDOM
 			# Global.friend_room_code is set by WebRTCMultiplayerService on 'room_joined'
-			Global.friend_member_list = participants
-			Global.friend_is_host = bm.multiplayer._is_host
+			Global.friend_member_list.assign(participants)
+			Global.friend_is_host = bm.webrtc_multiplayer._is_host
+			Global.friend_current_day = 1
+			Global.friend_match_history.clear()
+			MatchState.current_match_actions.clear()
 			Global.save_game()
 			
 			Global.opponent_profiles.clear()
@@ -578,4 +581,4 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 	)
 	
 	Global.game_mode = Constants.MODE_RANDOM
-	bm.multiplayer.join_random_room()
+	bm.webrtc_multiplayer.join_random_room()

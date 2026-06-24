@@ -161,6 +161,7 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 					"doubts_made": [],
 					"doubts_submitted": false,
 					"phase": "mid_day",
+					"emote": session.player_emote_today,
 					"client_nonce": "%s-%d-mid" % [Global.friend_room_code, session.current_day]
 				}
 				MatchState.submit_player_action.rpc("declare", mid_move)

@@ -57,7 +57,6 @@ func join_room(code: String) -> void:
 	signaling.connect_to_room(server_url, code)
 
 func join_random_room() -> void:
-	Global.show_loading("ランダムマッチ待機中...\n(最大5秒)")
 	_is_host = false # Default to false, updated dynamically if we receive ID 1
 	var server_url = ProjectSettings.get_setting("backend/signaling_url", "")
 	if server_url == "":

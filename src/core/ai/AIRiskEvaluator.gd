@@ -1,7 +1,7 @@
 class_name AIRiskEvaluator
 extends RefCounted
 
-static func evaluate_suspiciousness(declared_score: int, hours: Array[Dictionary]) -> float:
+static func evaluate_suspiciousness(declared_score: int, hours: Array) -> float:
 	var total_draws = 0
 	var used_cheat_items = false
 	
@@ -26,7 +26,7 @@ static func evaluate_suspiciousness(declared_score: int, hours: Array[Dictionary
 		
 	return suspiciousness
 
-static func evaluate_suspiciousness_with_emote(declared_score: int, hours: Array[Dictionary], emote: String) -> float:
+static func evaluate_suspiciousness_with_emote(declared_score: int, hours: Array, emote: String) -> float:
 	var susp = evaluate_suspiciousness(declared_score, hours)
 	
 	match emote:
