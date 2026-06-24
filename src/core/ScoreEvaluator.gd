@@ -111,11 +111,6 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 			if not day_data.has(p_id):
 				continue
 			var p: Dictionary = day_data[p_id]
-			var deck_config: Dictionary = _get_deck_config(p_id)
-			
-			var cushion_active := _has_item(deck_config, "item_cushion")
-			var earplug_reduction := 10 if _has_item(deck_config, "item_earplugs") else 0
-			var chat_bonus := 6 if _has_item(deck_config, "item_study_chat") else 0
 			
 			for target_id in p.get("doubts_made", []):
 				if not day_data.has(target_id):
@@ -127,14 +122,11 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 				if target_lied:
 					var bluff: int = target["declared_score"] - target["actual_score"]
 					var adjusted_bluff = int(round(bluff * 0.75))
-					doubter_adj += adjusted_bluff + 6 + chat_bonus
+					doubter_adj += adjusted_bluff + 6
 					if p_id == "player":
 						doubt_success_count += 1
 				else:
 					var penalty := base_fail_penalty
-					if cushion_active:
-						penalty = int(round(penalty * 0.5))
-					penalty = max(penalty - earplug_reduction, 0)
 					doubter_adj -= penalty
 					
 				final_scores[p_id] += doubter_adj
@@ -143,13 +135,7 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 				if showdown_details.has(day_idx) and showdown_details[day_idx].has(p_id):
 					showdown_details[day_idx][p_id]["adjustment"] += doubter_adj
 	
-	# === Step 3: Player Level Bonus ===
-	var level_bonus := Global.get_total_level_bonus()
-	final_scores["player"] += level_bonus
-	
-	# === Step 4: Item Star level bonuses ===
-	var star_bonus := _calculate_star_bonus_for_player()
-	final_scores["player"] += star_bonus
+	# Item logic removed
 	
 	# === Step 5: Ranking Calculations ===
 	var rank_list: Array = []
@@ -185,20 +171,10 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 			my_rank = idx + 1
 			break
 			
-	# === Step 6: Coin Rewards ===
-	var coins_by_rank = BalanceConfig.get_value("rewards.coins_by_rank", [100, 50, 20, 10])
+	# === Step 6: Level/Coin logic removed ===
 	var coins_earned := 0
-	if my_rank >= 1 and my_rank <= coins_by_rank.size():
-		coins_earned = int(coins_by_rank[my_rank - 1])
-	else:
-		coins_earned = 10
-		
-	# Perfect Crime Bonus (lied at least once and never got caught)
 	var perfect_bonus := 0
-	if player_lies_count > 0 and player_caught_lies_count == 0:
-		perfect_bonus = int(BalanceConfig.get_value("rewards.perfect_crime_bonus", 50))
-		
-	Global.coins += coins_earned + perfect_bonus
+	var level_bonus := 0
 	
 	# Update lifetime accumulated statistics
 	Global.total_burst_count += total_bursts.get("player", 0)
@@ -283,7 +259,6 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 		"coins_earned": coins_earned,
 		"perfect_bonus": perfect_bonus,
 		"level_bonus": level_bonus,
-		"star_bonus": star_bonus,
 		"title": title,
 		"is_title_new": is_title_new,
 		"details": showdown_details,
@@ -298,35 +273,7 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
  
 # === Private Helpers ===
  
-# Get active item deck for the participant
-static func _get_deck_config(p_id: String) -> Dictionary:
-	if p_id == "player":
-		return Global.current_deck
-	# Resolve real ID via opponent profiles for CPU
-	if Global.opponent_profiles.has(p_id):
-		var opp_id: String = Global.opponent_profiles[p_id].get("id", p_id)
-		if AIManager.CPU_OPPONENTS.has(opp_id):
-			return AIManager.CPU_OPPONENTS[opp_id]["deck"]
-	if AIManager.CPU_OPPONENTS.has(p_id):
-		return AIManager.CPU_OPPONENTS[p_id]["deck"]
-	return {}
- 
-# Check if item_id is inside the deck config
-static func _has_item(deck_config: Dictionary, item_id: String) -> bool:
-	return item_id in deck_config.values()
- 
-# Calculate star level point bonuses for player
-static func _calculate_star_bonus_for_player() -> int:
-	var bonus := 0
-	for item_id in Global.current_deck.values():
-		var stars := Global.get_item_stars(item_id)
-		# Star level bonuses: Star 1=0, Star 2=1, Star 3=2, Star 4=4, Star 5=7
-		match stars:
-			2: bonus += 1
-			3: bonus += 2
-			4: bonus += 4
-			5: bonus += 7
-	return bonus
+# Item logic removed
  
 # Determine title unlocked based on match criteria.
 # Uses a table-driven approach: each entry is checked in order, first match wins.
@@ -344,13 +291,11 @@ static func _determine_title(
 		{"title": Constants.TITLE_DEV_GOD,            "priority": 100, "check": func(): return Global.deviation_value >= 70.0},
 		{"title": Constants.TITLE_CRAM_GENIUS,         "priority": 95,  "check": func(): return is_cram and score >= (100 if game_mode == Constants.MODE_OVERNIGHT else 150) and my_rank == 1},
 		{"title": Constants.TITLE_SAFE_CHAMP,          "priority": 90,  "check": func(): return bursts == 0 and my_rank == 1},
-		{"title": Constants.TITLE_RICH_STUDENT,        "priority": 88,  "check": func(): return Global.coins >= 500 and my_rank == 1},
 		{"title": Constants.TITLE_STORM,               "priority": 85,  "check": func(): return bursts >= 3},
 		{"title": Constants.TITLE_OVERACHIEVER,        "priority": 82,  "check": func(): return lies_count == 0 and score >= (150 if is_cram else 200)},
 		{"title": Constants.TITLE_SNIPER,              "priority": 80,  "check": func(): return lies_count == 0 and doubt_successes >= 2},
 		{"title": Constants.TITLE_CHIKEN_HERO,         "priority": 78,  "check": func(): return bursts <= 1 and score >= (180 if is_cram else 250)},
 		{"title": Constants.TITLE_POKER_FACE,          "priority": 75,  "check": func(): return lies_count >= max_days and caught_lies == 0},
-		{"title": Constants.TITLE_STATIONERY_MASTER,   "priority": 70,  "check": func(): return Global.unlocked_items.size() >= 24},
 		{"title": Constants.TITLE_SPEED_RUNNER,        "priority": 68,  "check": func(): return Global.play_count >= 50},
 		{"title": Constants.TITLE_WOLF_BOY,            "priority": 65,  "check": func(): return caught_lies >= 3},
 		{"title": Constants.TITLE_DOUBT_SPAMMER,       "priority": 62, "check": func(): return doubt_successes >= 4},
@@ -362,7 +307,6 @@ static func _determine_title(
 		{"title": Constants.TITLE_CRAM_HONEST,         "priority": 40,  "check": func(): return lies_count == 0 and score >= (120 if is_cram else 180)},
 		{"title": Constants.TITLE_SAFETY_FIRST,        "priority": 35,  "check": func(): return bursts == 0},
 		{"title": Constants.TITLE_EASY_TARGET,         "priority": 30,  "check": func(): return doubt_successes == 0 and caught_lies > 0},
-		{"title": Constants.TITLE_DEBT_KING,           "priority": 28,  "check": func(): return Global.coins <= 10 and my_rank == 4},
 		{"title": Constants.TITLE_GLASS_HEART,         "priority": 25,  "check": func(): return lies_count >= 2 and caught_lies == lies_count},
 		{"title": Constants.TITLE_EXCELLENT,           "priority": 20,  "check": func(): return my_rank == 1},
 		{"title": Constants.TITLE_UNDERACHIEVER,       "priority": 15,  "check": func(): return my_rank == 4},

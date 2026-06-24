@@ -71,7 +71,7 @@ static func create_selection_modal(parent: Node) -> void:
 	vbox.add_child(cancel_btn)
 	
 	# Logic Bindings
-	var bm = parent.get_node_or_null("/root/BackendManager")
+	var wrm = parent.get_node_or_null("/root/WebRTCManager")
 	
 	create_btn.pressed.connect(func():
 		create_btn.release_focus()
@@ -87,9 +87,9 @@ static func create_selection_modal(parent: Node) -> void:
 				create_btn.disabled = false
 				join_btn.disabled = false
 				
-		if bm:
-			bm.room_created.connect(on_created, CONNECT_ONE_SHOT)
-			bm.create_friend_room()
+		if wrm:
+			wrm.webrtc_multiplayer.room_created.connect(on_created, CONNECT_ONE_SHOT)
+			wrm.webrtc_multiplayer.create_room()
 		else:
 			# Mock Fallback
 			on_created.call(true, "4278")
@@ -112,9 +112,9 @@ static func create_selection_modal(parent: Node) -> void:
 				create_btn.disabled = false
 				join_btn.disabled = false
 				
-		if bm:
-			bm.room_joined.connect(on_joined, CONNECT_ONE_SHOT)
-			bm.join_friend_room(code)
+		if wrm:
+			wrm.webrtc_multiplayer.room_joined.connect(on_joined, CONNECT_ONE_SHOT)
+			wrm.webrtc_multiplayer.join_room(code)
 		else:
 			# Mock Fallback
 			on_joined.call(true, [])
@@ -151,8 +151,8 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	vbox.add_theme_constant_override("separation", 20)
 	margin.add_child(vbox)
 	
-	var bm = parent.get_node_or_null("/root/BackendManager")
-	var is_mock = bm.is_mock_room if bm else true
+	var wrm = parent.get_node_or_null("/root/WebRTCManager")
+	var is_mock = false
 	
 	var title = Label.new()
 	if is_mock:
@@ -231,8 +231,6 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	var start_game_transition = func(final_participants: Array):
 		is_polling_active = false
 		cleanup_signals.call()
-		if bm:
-			bm.disconnect_realtime_lobby()
 		Global.game_mode = Constants.MODE_FRIEND
 		Global.friend_room_code = room_code
 		Global.friend_is_host = is_host
@@ -245,7 +243,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		# Set slots for opponent profiles
 		var slots = ["cpu_sato", "cpu_suzuki", "cpu_takahashi"]
 		var slot_idx = 0
-		var my_id = bm.logged_in_uuid if (bm and bm.logged_in_uuid != "") else "player"
+		var my_id = wrm.get_uuid() if (wrm and wrm.get_uuid() != "") else "player"
 		
 		Global.opponent_profiles.clear()
 		for p in final_participants:
@@ -290,8 +288,8 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 			return
 		
 		var parts = []
-		if bm and bm.webrtc_multiplayer:
-			parts = bm.webrtc_multiplayer._participants
+		if wrm and wrm.webrtc_multiplayer:
+			parts = wrm.webrtc_multiplayer._participants
 			
 		# Update participant list display
 		for child in list_vbox.get_children():
@@ -300,7 +298,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		for p in parts:
 			var name_lbl = Label.new()
 			name_lbl.text = "● " + p.get("username", "プレイヤー")
-			if p.get("user_id") == (bm.logged_in_uuid if (bm and bm.logged_in_uuid != "") else "player"):
+			if p.get("user_id") == (wrm.get_uuid() if (wrm and wrm.get_uuid() != "") else "player"):
 				name_lbl.text += " (あなた)"
 				name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 			else:
@@ -323,17 +321,17 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	var on_player_disconnected_cb = func(id): on_polled.call()
 
 	cleanup_signals = func():
-		if bm and bm.webrtc_multiplayer:
-			if bm.webrtc_multiplayer.player_connected.is_connected(on_player_connected_cb):
-				bm.webrtc_multiplayer.player_connected.disconnect(on_player_connected_cb)
-			if bm.webrtc_multiplayer.player_disconnected.is_connected(on_player_disconnected_cb):
-				bm.webrtc_multiplayer.player_disconnected.disconnect(on_player_disconnected_cb)
+		if wrm and wrm.webrtc_multiplayer:
+			if wrm.webrtc_multiplayer.player_connected.is_connected(on_player_connected_cb):
+				wrm.webrtc_multiplayer.player_connected.disconnect(on_player_connected_cb)
+			if wrm.webrtc_multiplayer.player_disconnected.is_connected(on_player_disconnected_cb):
+				wrm.webrtc_multiplayer.player_disconnected.disconnect(on_player_disconnected_cb)
 		if MatchState.game_state_synced.is_connected(on_game_state_synced):
 			MatchState.game_state_synced.disconnect(on_game_state_synced)
 
-	if bm and bm.webrtc_multiplayer:
-		bm.webrtc_multiplayer.player_connected.connect(on_player_connected_cb)
-		bm.webrtc_multiplayer.player_disconnected.connect(on_player_disconnected_cb)
+	if wrm and wrm.webrtc_multiplayer:
+		wrm.webrtc_multiplayer.player_connected.connect(on_player_connected_cb)
+		wrm.webrtc_multiplayer.player_disconnected.connect(on_player_disconnected_cb)
 		MatchState.game_state_synced.connect(on_game_state_synced)
 		on_polled.call()
 	else:
@@ -347,8 +345,8 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 			DeskTheme.animate_click(start_btn_lobby, Vector2.ONE, 0.08)
 			start_btn_lobby.disabled = true
 			
-			if bm and bm.webrtc_multiplayer:
-				var parts = bm.webrtc_multiplayer._participants
+			if wrm and wrm.webrtc_multiplayer:
+				var parts = wrm.webrtc_multiplayer._participants
 				MatchState.sync_game_state.rpc({"action": "start_game", "participants": parts})
 				start_game_transition.call(parts)
 			else:

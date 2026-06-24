@@ -259,22 +259,14 @@ func _on_doubt_pressed(target_id: String, card_node: Control, btn: Button) -> vo
 		# 成功時：自分にボーナス、相手に減点
 		var bluff = declared_score - actual_score
 		var adjusted_bluff = int(round(bluff * 0.75))
-		var chat_bonus = 6 if "item_study_chat" in Global.current_deck.values() else 0
-		my_score_change = adjusted_bluff + 6 + chat_bonus
+		my_score_change = adjusted_bluff + 6
 		
-		my_details = "・基本ボーナス: +%d 点\n・嘘暴きボーナス: +%d 点 (差分の75%%)" % [6 + chat_bonus, adjusted_bluff]
+		my_details = "・基本ボーナス: +6 点\n・嘘暴きボーナス: +%d 点 (差分の75%%)" % [adjusted_bluff]
 		
-		var opp_deck = _get_target_deck(target_id)
-		var opp_has_copy = "item_copy_answer" in opp_deck.values()
 		var penalty = declared_score - actual_score
 		
-		if opp_has_copy:
-			var extra_penalty = penalty
-			opp_score_change = -(penalty + extra_penalty)
-			opp_details = "・嘘つきペナルティ: -%d 点\n・解答写しのデメリット: -%d 点\n(ペナルティが2倍に増加)" % [penalty, extra_penalty]
-		else:
-			opp_score_change = -penalty
-			opp_details = "・嘘つきペナルティ: -%d 点" % penalty
+		opp_score_change = -penalty
+		opp_details = "・嘘つきペナルティ: -%d 点" % penalty
 			
 		btn.text = "ダウト成功！"
 		btn.add_theme_color_override("font_disabled_color", DeskTheme.COLOR_GREEN)
@@ -284,17 +276,9 @@ func _on_doubt_pressed(target_id: String, card_node: Control, btn: Button) -> vo
 		var penalty_base: int = BalanceConfig.get_value("exposure.fail_penalty_base", 15)
 		var penalty_per_day: int = BalanceConfig.get_value("exposure.fail_penalty_per_day", 3)
 		var base_fail_penalty = penalty_base + (session.current_day - 1) * penalty_per_day
-		var cushion_active = "item_cushion" in Global.current_deck.values()
-		var earplug_reduction = 10 if "item_earplugs" in Global.current_deck.values() else 0
 		
 		var penalty = base_fail_penalty
 		my_details = "・お手つきペナルティ: -%d 点" % base_fail_penalty
-		if cushion_active:
-			penalty = int(round(penalty * 0.5))
-			my_details += "\n・クッション効果: ペナルティ半減"
-		if earplug_reduction > 0:
-			penalty = max(penalty - earplug_reduction, 0)
-			my_details += "\n・耳栓効果: ペナルティ軽減 -10 点"
 			
 		my_score_change = -penalty
 		opp_score_change = 0

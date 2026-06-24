@@ -36,6 +36,11 @@ func _on_setup(setup_data: Dictionary) -> void:
 	poll_timer.timeout.connect(_on_poll_timeout)
 	add_child(poll_timer)
 	poll_timer.start()
+	
+	if has_node("/root/WebRTCManager"):
+		var wm = get_node_or_null("/root/WebRTCManager")
+		if wm and not wm.connection_lost.is_connected(_on_connection_lost):
+			wm.connection_lost.connect(_on_connection_lost)
 
 	# Check immediately
 	_check_all_actions()
@@ -214,13 +219,18 @@ func _on_force_progress_pressed(current_moves: Array) -> void:
 
 func _resolve_player_id(uid: String) -> String:
 	var my_id = "player"
-	if has_node("/root/BackendManager"):
-		var bm = get_node("/root/BackendManager")
-		if bm.logged_in_uuid != "":
-			my_id = bm.logged_in_uuid
+	if has_node("/root/WebRTCManager"):
+		var wm = get_node_or_null("/root/WebRTCManager")
+		if wm and wm.multiplayer_service and wm.multiplayer_service.my_peer_id > 0:
+			my_id = str(wm.multiplayer_service.my_peer_id)
 
 	if uid == "player" and my_id != "player":
 		return my_id
 	return uid
 
-# _on_connection_lost and _on_reconnect_succeeded removed since we use WebRTC now
+func _on_connection_lost() -> void:
+	if not is_inside_tree():
+		return
+	status_lbl.text = "通信エラー発生"
+	status_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+	_show_timeout_fallback_button()

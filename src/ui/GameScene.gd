@@ -1,87 +1,38 @@
 extends Control
 
-# Preload Phase Scripts
 const ChickenRacePhaseClass = preload("res://src/ui/phases/ChickenRacePhase.gd")
 const ReportPhaseClass = preload("res://src/ui/phases/ReportPhase.gd")
 const DailyLikesPhaseClass = preload("res://src/ui/phases/DailyLikesPhase.gd")
 const DayTransitionPhaseClass = preload("res://src/ui/phases/DayTransitionPhase.gd")
 const WaitingPhaseClass = preload("res://src/ui/phases/WaitingPhase.gd")
 
-
-
 var session: GameSession
 var active_phase_node: PhaseBase
 
-# Desk background
 var bg_color_rect: ColorRect
-var bg_texture: TextureRect
-var smartphone_pane: Control
-var notebook_pane: Control
 var phase_layer: Control
 
 func _ready() -> void:
-	# Add Desk background mahogany wood tone
 	bg_color_rect = ColorRect.new()
-	bg_color_rect.color = DeskTheme.COLOR_MAHOGANY
+	bg_color_rect.color = DeskTheme.COLOR_CRAFT
 	bg_color_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg_color_rect)
 	
-	# Load background texture if exists
-	bg_texture = TextureRect.new()
-	bg_texture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	bg_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	if ResourceLoader.exists("res://assets/机の背景画像-ノート無し.png"):
-		bg_texture.texture = load("res://assets/机の背景画像-ノート無し.png")
-	elif ResourceLoader.exists("res://assets/机の背景画像.png"):
-		bg_texture.texture = load("res://assets/机の背景画像.png")
-	bg_texture.modulate = Color.WHITE
-	add_child(bg_texture)
-	
-	# Notebook Pane (Add first so it is rendered behind smartphone_pane)
-	notebook_pane = Control.new()
-	notebook_pane.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	notebook_pane.mouse_filter = Control.MOUSE_FILTER_PASS
-	add_child(notebook_pane)
-	
-	# Layout for persistent 2-pane structure - Add smartphone_pane after notebook_pane to make it topmost
-	smartphone_pane = Control.new()
-	smartphone_pane.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	smartphone_pane.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(smartphone_pane)
-	
-	# Global references for phases to attach to
-	phase_layer = notebook_pane # notebook_pane is the layer for phases
-	# Note: smartphone_pane is left empty. Phases that need it will add children to it.
+	phase_layer = Control.new()
+	phase_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(phase_layer)
 	
 	session = GameSession.new()
-	var starting_deck = Global.current_deck
-	if Global.game_mode == Constants.MODE_OVERNIGHT:
-		starting_deck = Global.get_cram_season_deck()
-	session.start_session(starting_deck)
+	session.start_session()
 	
-	# Start loop with ChickenRacePhase directly
 	change_phase(Constants.PHASE_CHICKEN_RACE)
 
 func change_phase(phase_type: String, setup_data: Dictionary = {}) -> void:
 	var old_node = active_phase_node
 	active_phase_node = null
 	
-	# If a phone panel is passed in setup_data, detach it from the outgoing phase to preserve it
-	var passed_phone = setup_data.get("phone_panel", null)
-	if is_instance_valid(passed_phone):
-		if passed_phone.get_parent() == old_node:
-			old_node.remove_child(passed_phone)
-	
-	if is_instance_valid(smartphone_pane):
-		for child in smartphone_pane.get_children():
-			if child != passed_phone:
-				child.queue_free()
-	
-	# 同期状態機械の更新
 	var target_state = GameSession.SessionPhaseState.LOBBY
 	match phase_type:
-		Constants.PHASE_BAG_BUILDER:
-			target_state = GameSession.SessionPhaseState.STUDY
 		Constants.PHASE_CHICKEN_RACE:
 			target_state = GameSession.SessionPhaseState.STUDY
 		Constants.PHASE_REPORT:
@@ -95,7 +46,6 @@ func change_phase(phase_type: String, setup_data: Dictionary = {}) -> void:
 	if session:
 		session.change_state(target_state)
 
-	# Instantiate correct class
 	match phase_type:
 		Constants.PHASE_CHICKEN_RACE:
 			active_phase_node = ChickenRacePhaseClass.new()
@@ -109,31 +59,24 @@ func change_phase(phase_type: String, setup_data: Dictionary = {}) -> void:
 			active_phase_node = WaitingPhaseClass.new()
 			
 	if active_phase_node:
-		active_phase_node.smartphone_pane = smartphone_pane
-		active_phase_node.notebook_pane = notebook_pane
 		active_phase_node.phase_finished.connect(_on_phase_finished.bind(phase_type))
 		phase_layer.add_child(active_phase_node)
 		active_phase_node.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		
-		# Initialize
 		active_phase_node.setup(session, setup_data)
 		
-		# Hide smartphone pane if no children were added, so notebook can center on the whole screen
-		if is_instance_valid(smartphone_pane):
-			smartphone_pane.visible = smartphone_pane.get_child_count() > 0
-		
-		# Use a page-flip transition for phase swaps.
 		if old_node and old_node.is_inside_tree():
-			DeskTheme.animate_page_flip(old_node, active_phase_node, 0.45)
-		else:
-			DeskTheme.animate_page_flip(old_node, active_phase_node, 0.45)
+			var tween = create_tween().bind_node(old_node).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			tween.tween_property(old_node, "modulate:a", 0.0, 0.3)
+			tween.tween_callback(func(): old_node.queue_free())
+			
+			active_phase_node.modulate.a = 0.0
+			var in_tween = create_tween().bind_node(active_phase_node).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			in_tween.tween_property(active_phase_node, "modulate:a", 1.0, 0.3).set_delay(0.3)
 
 func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
-	# 動的な状態遷移指定（ステートマシン化）
 	if result_data.has("next_phase") and result_data["next_phase"] != "":
-		var next_p = result_data["next_phase"]
-		# result_data自体をセットアップデータとして次のフェーズに持ち越す
-		change_phase(next_p, result_data)
+		change_phase(result_data["next_phase"], result_data)
 		return
 		
 	match phase_type:
@@ -145,11 +88,11 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 				change_phase(Constants.PHASE_CHICKEN_RACE)
 		Constants.PHASE_REPORT:
 			if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
-				var bm = null
+				var wm = null
 				var main_loop = Engine.get_main_loop()
 				if main_loop is SceneTree:
-					bm = main_loop.root.get_node_or_null("BackendManager")
-				var my_id = bm.logged_in_uuid if (bm and bm.logged_in_uuid != "") else "player"
+					wm = main_loop.root.get_node_or_null("WebRTCManager")
+				var my_id = str(wm.multiplayer_service.my_peer_id) if wm and wm.multiplayer_service and wm.multiplayer_service.my_peer_id > 0 else "player"
 
 				var mid_move = {
 					"user_id": my_id,
@@ -172,38 +115,16 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 				change_phase(Constants.PHASE_DAILY_LIKES, setup)
 				
 		Constants.PHASE_DAILY_LIKES:
-			# Day ends. Compute AIs and compile doubts.
 			session.end_day()
 			
-			if Global.game_mode == Constants.MODE_DAILY:
-				Global.daily_current_day = session.current_day
-				Global.save_game()
-				
+			if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
 				if session.current_day > Constants.MAX_DAYS:
-					# Match complete! Show results and reset daily exam progression state
-					Global.daily_current_day = 1
-					Global.daily_my_records.clear()
-					Global.daily_opponent_ghosts.clear()
-					Global.save_game()
-					
-					Global.active_showdown_results = session.calculate_final_showdown()
-					Global.change_scene_with_fade(get_tree(), "res://ResultScene.tscn")
-				else:
-					show_daily_finished_modal()
-			elif Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
-				# In friend match, current_day was advanced in end_day()
-				if session.current_day > Constants.MAX_DAYS:
-					# Final doubts submitted. Now wait for everyone to finish before final reveal
 					change_phase(Constants.PHASE_WAITING, {"day": Constants.MAX_DAYS, "final_wait": true})
 				else:
-					# For earlier days, we can advance immediately without waiting for other's doubts
 					change_phase(Constants.PHASE_DAY_TRANSITION)
 			else:
-				# Check if match is complete
 				if session.is_game_over():
-					# Store showdown results globally to persist across scene change
 					Global.active_showdown_results = session.calculate_final_showdown()
-					# Route to Result Scene
 					Global.change_scene_with_fade(get_tree(), "res://ResultScene.tscn")
 				else:
 					change_phase(Constants.PHASE_DAY_TRANSITION)
@@ -213,102 +134,17 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 			var prev_moves = result_data.get("prev_moves", [])
 			var is_final = result_data.get("final_wait", false)
 			
-			if is_final or (session.current_day > Constants.MAX_DAYS and moves.size() > 0): # Final results wait complete
-				# Process final doubts resolution
+			if is_final or (session.current_day > Constants.MAX_DAYS and moves.size() > 0):
 				session.evaluate_friend_day_moves(Constants.MAX_DAYS, moves)
-				
-				# Store showdown results globally to persist across scene change
 				Global.active_showdown_results = session.calculate_final_showdown()
-				# Route to Result Scene
 				Global.change_scene_with_fade(get_tree(), "res://ResultScene.tscn")
 			else:
-				# Day X (X <= 5) chicken race complete wait.
-				# Evaluate previous day's doubts if target day > 1
 				var target_day = result_data.get("day", session.current_day)
 				if target_day > 1 and prev_moves.size() > 0:
 					session.evaluate_friend_day_moves(target_day - 1, prev_moves)
 					
-				# Also populate today's moves into current day session match history
-				# so that DailyLikesPhase can render their timeline posts
 				session.evaluate_friend_day_moves(target_day, moves)
-				
-				# Proceed to DailyLikesPhase (timeline and doubt choosing)
 				change_phase(Constants.PHASE_DAILY_LIKES)
 
 		Constants.PHASE_DAY_TRANSITION:
 			change_phase(Constants.PHASE_CHICKEN_RACE)
-
-func show_daily_finished_modal() -> void:
-	var modal = PanelContainer.new()
-	modal.custom_minimum_size = Vector2(600, 300)
-	modal.size = Vector2(600, 300)
-	modal.pivot_offset = Vector2(300, 150)
-	
-	var style = StyleBoxFlat.new()
-	style.bg_color = DeskTheme.COLOR_CRAFT
-	style.border_color = DeskTheme.COLOR_INK
-	style.border_width_left = 4
-	style.border_width_right = 4
-	style.border_width_top = 4
-	style.border_width_bottom = 4
-	style.corner_radius_top_left = 12
-	style.corner_radius_top_right = 12
-	style.corner_radius_bottom_left = 12
-	style.corner_radius_bottom_right = 12
-	style.shadow_color = Color(0, 0, 0, 0.3)
-	style.shadow_size = 15
-	style.shadow_offset = Vector2(6, 6)
-	modal.add_theme_stylebox_override("panel", style)
-	
-	add_child(modal)
-	var viewport_size = get_viewport_rect().size
-	modal.position = viewport_size * 0.5 - modal.pivot_offset
-	
-	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 30)
-	margin.add_theme_constant_override("margin_right", 30)
-	margin.add_theme_constant_override("margin_top", 30)
-	margin.add_theme_constant_override("margin_bottom", 30)
-	modal.add_child(margin)
-	
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 24)
-	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	margin.add_child(vbox)
-	
-	var title = Label.new()
-	title.text = "今日の自習完了！"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_override("font", DeskTheme.get_font())
-	title.add_theme_font_size_override("font_size", 26)
-	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	vbox.add_child(title)
-	
-	var desc = Label.new()
-	desc.text = "本日のデイリー試験の成績はチキスタに投稿されました。\n明日になると次の日（Day %d）に進むことができます！" % Global.daily_current_day
-	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	desc.add_theme_font_override("font", DeskTheme.get_font())
-	desc.add_theme_font_size_override("font_size", 16)
-	desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.8))
-	vbox.add_child(desc)
-	
-	var ok_btn = Button.new()
-	ok_btn.text = "タイトルへ戻る"
-	ok_btn.custom_minimum_size = Vector2(180, 45)
-	ok_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	ok_btn.add_theme_font_override("font", DeskTheme.get_font())
-	ok_btn.add_theme_font_size_override("font_size", 18)
-	vbox.add_child(ok_btn)
-	
-	ok_btn.pressed.connect(func():
-		DeskTheme.animate_click(ok_btn, Vector2.ONE, 0.08)
-		var timer = get_tree().create_timer(0.2)
-		timer.timeout.connect(func():
-			modal.queue_free()
-			Global.change_scene_with_fade(get_tree(), "res://Title.tscn")
-		)
-	)
-	
-	modal.scale = Vector2.ZERO
-	var tween = create_tween().bind_node(modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(modal, "scale", Vector2.ONE, 0.3)

@@ -21,14 +21,8 @@ func _on_setup(setup_data: Dictionary) -> void:
 	size = Vector2(1500, 850)
 	actual_score = setup_data.get("actual_score", 0)
 	
-	# Determine player's active bluff limit based on slotted items
+	# Default bluff limit is 24
 	max_bluff_limit = 24
-	for slot in Global.current_deck.keys():
-		var item = Global.current_deck[slot]
-		if item == "item_cheat_sheet":
-			max_bluff_limit += 16
-		elif item == "item_copy_answer":
-			max_bluff_limit += 25
 			
 	ReportUIBuilder.build_layout(self)
 	

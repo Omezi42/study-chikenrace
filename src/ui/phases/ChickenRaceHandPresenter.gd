@@ -62,22 +62,12 @@ func arrange_hand_fan() -> void:
 		child.position = child.get_meta("fan_position", Vector2(center_x, base_y))
 
 func _on_card_ui_pressed(card: Dictionary, card_ui: Button) -> void:
-	if phase.is_animating or card_ui.is_queued_for_deletion() or card_ui.disabled:
-		return
-	if phase.is_selecting_card:
-		card_ui.disabled = true
-		var hand_idx = card_ui.get_meta("hand_index", -1)
-		if hand_idx != -1:
-			phase._on_card_selected_from_hand(hand_idx, card)
-	else:
-		phase.show_card_detail(card)
+	pass
 
 func _on_card_ui_mouse_entered(card: Dictionary, card_ui: Button) -> void:
 	if phase.hovered_card_ui and phase.hovered_card_ui != card_ui:
 		_clear_hovered_card()
 	phase.hovered_card_ui = card_ui
-	if not phase.is_selecting_card:
-		phase.show_card_detail(card)
 	
 	card_ui.z_index = 10
 	if is_instance_valid(phase.hovered_card_tween):
@@ -85,18 +75,15 @@ func _on_card_ui_mouse_entered(card: Dictionary, card_ui: Button) -> void:
 	
 	var tween = phase.create_tween().bind_node(card_ui).set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	phase.hovered_card_tween = tween
-	var scale_mult = 1.15 if phase.is_selecting_card else 1.12
+	var scale_mult = 1.12
 	var base_scale = float(card_ui.get_meta("fan_scale", 1.0))
 	var base_pos = card_ui.get_meta("fan_position", card_ui.position)
 	var base_rot = float(card_ui.get_meta("fan_rotation", card_ui.rotation_degrees))
 	tween.tween_property(card_ui, "scale", Vector2.ONE * (base_scale * scale_mult), 0.12 / phase.speed_mult)
 	
-	var lift_y = -35 if phase.is_selecting_card else -25
+	var lift_y = -25
 	tween.tween_property(card_ui, "position", base_pos + Vector2(0, lift_y), 0.12 / phase.speed_mult)
 	tween.tween_property(card_ui, "rotation_degrees", base_rot, 0.12 / phase.speed_mult)
-	
-	if phase.is_selecting_card:
-		card_ui.modulate = Color(1.2, 1.2, 1.2, 1.0)
 
 func _on_card_ui_mouse_exited(card_ui: Button) -> void:
 	if phase.hovered_card_ui == card_ui:
@@ -104,7 +91,6 @@ func _on_card_ui_mouse_exited(card_ui: Button) -> void:
 			phase.hovered_card_tween.kill()
 		phase.hovered_card_tween = null
 		phase.hovered_card_ui = null
-	phase.show_card_detail({})
 	
 	_reset_hovered_card(card_ui)
 
@@ -130,5 +116,4 @@ func _clear_hovered_card() -> void:
 	if phase.hovered_card_ui:
 		_reset_hovered_card(phase.hovered_card_ui)
 		phase.hovered_card_ui = null
-	phase.show_card_detail({})
 	arrange_hand_fan()

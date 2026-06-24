@@ -163,15 +163,11 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	
 	random_btn.pressed.connect(func():
 		DeskTheme.animate_click(random_btn, Vector2.ONE, 0.08)
-		if not parent.has_node("/root/BackendManager"):
+		if not parent.has_node("/root/WebRTCManager"):
 			return
-		var bm = parent.get_node("/root/BackendManager")
-		if bm.auth_token == "" or bm.logged_in_uuid == "":
-			_show_login_warning(parent, mode_modal, national_names_pool, on_friend_match_pressed)
-			return
-			
+		var wrm = parent.get_node("/root/WebRTCManager")
 		Global.game_mode = Constants.MODE_RANDOM
-		_show_matching_lobby(parent, mode_modal, bm, national_names_pool, on_friend_match_pressed)
+		_show_matching_lobby(parent, mode_modal, wrm, national_names_pool, on_friend_match_pressed)
 	)
 	
 	cancel_btn.pressed.connect(func():
@@ -473,6 +469,14 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 	status_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
 	vbox.add_child(status_lbl)
 	
+	var countdown_lbl = Label.new()
+	countdown_lbl.text = ""
+	countdown_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	countdown_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	countdown_lbl.add_theme_font_size_override("font_size", 16)
+	countdown_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+	vbox.add_child(countdown_lbl)
+	
 	var members_vbox = VBoxContainer.new()
 	members_vbox.add_theme_constant_override("separation", 8)
 	members_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -519,9 +523,23 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 	var _is_starting_game = false
 	
 	var force_start_timer = Timer.new()
-	force_start_timer.wait_time = 15.0
+	force_start_timer.wait_time = 30.0
 	force_start_timer.one_shot = true
 	lobby.add_child(force_start_timer)
+	
+	var ui_update_timer = Timer.new()
+	ui_update_timer.wait_time = 0.1
+	ui_update_timer.autostart = true
+	lobby.add_child(ui_update_timer)
+	
+	ui_update_timer.timeout.connect(func():
+		if _is_starting_game or not is_instance_valid(countdown_lbl) or not is_instance_valid(force_start_timer):
+			return
+		if force_start_timer.time_left > 0 and bm.webrtc_multiplayer._participants.size() > 0:
+			countdown_lbl.text = "強制開始まで: %d 秒" % ceil(force_start_timer.time_left)
+		else:
+			countdown_lbl.text = ""
+	)
 	
 	var start_game_func = func():
 		if _is_starting_game:
@@ -533,8 +551,6 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 		var participants = bm.webrtc_multiplayer._participants
 		status_lbl.text = "マッチング完了！ゲームを開始します..."
 		
-		bm.fetch_participants_deviation(participants)
-		
 		Global.game_mode = Constants.MODE_RANDOM
 		Global.friend_member_list.assign(participants)
 		Global.friend_is_host = bm.webrtc_multiplayer._is_host
@@ -544,11 +560,12 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 		Global.save_game()
 		
 		Global.opponent_profiles.clear()
+		var my_id = bm.get_uuid()
 		var idx = 0
 		var slots = ["cpu_sato", "cpu_suzuki", "cpu_takahashi"]
 		for p in participants:
 			var uid = p.get("user_id", "")
-			if uid != bm.logged_in_uuid:
+			if uid != my_id:
 				if idx < slots.size():
 					var slot_id = slots[idx]
 					Global.opponent_profiles[slot_id] = {

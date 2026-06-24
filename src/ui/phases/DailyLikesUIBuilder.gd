@@ -587,48 +587,7 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 			
 			cards_hbox.add_child(mini_card)
 			
-		if h.has("used_items") and h["used_items"].size() > 0:
-			var items_hbox = HBoxContainer.new()
-			items_hbox.add_theme_constant_override("separation", 8)
-			line2.add_child(items_hbox)
-			
-			var shown_roles = []
-			for item_id in h["used_items"]:
-				if item_id == "item_sticky_note":
-					continue
-				var item = CardData.ITEMS.get(item_id, {"name": "不明", "role": CardData.ROLE_PREP})
-				var role = item["role"]
-				if role in shown_roles:
-					continue
-				shown_roles.append(role)
-				
-				var role_name = CardData.get_role_name(role)
-				var label = Label.new()
-				label.text = " %s系 " % role_name
-				label.add_theme_font_override("font", DeskTheme.get_font())
-				label.add_theme_font_size_override("font_size", 12)
-				label.add_theme_color_override("font_color", Color.WHITE)
-				
-				var badge = PanelContainer.new()
-				var b_style = StyleBoxFlat.new()
-				b_style.bg_color = CardData.get_role_color(role)
-				b_style.border_color = CardData.get_role_color(role).darkened(0.2)
-				b_style.border_width_left = 1
-				b_style.border_width_right = 1
-				b_style.border_width_top = 1
-				b_style.border_width_bottom = 1
-				b_style.corner_radius_top_left = 4
-				b_style.corner_radius_top_right = 4
-				b_style.corner_radius_bottom_left = 4
-				b_style.corner_radius_bottom_right = 4
-				b_style.content_margin_left = 4
-				b_style.content_margin_right = 4
-				b_style.content_margin_top = 2
-				b_style.content_margin_bottom = 2
-				badge.add_theme_stylebox_override("panel", b_style)
-				
-				badge.add_child(label)
-				items_hbox.add_child(badge)
+		pass
 				
 	DeskTheme.shake_control(phase.detail_modal, 4.0, 0.2)
 

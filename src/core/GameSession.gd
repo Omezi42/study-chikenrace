@@ -36,7 +36,7 @@ func change_state(new_state: SessionPhaseState) -> void:
 		current_state = new_state
 		state_changed.emit(current_state)
 
-func start_session(deck_config: Dictionary) -> void:
+func start_session() -> void:
 	current_day = 1
 	current_hour = 1
 	max_hours_today = 3
@@ -48,30 +48,9 @@ func start_session(deck_config: Dictionary) -> void:
 	match_history.clear()
 
 	player_deck = StudyDeck.new()
-	player_deck.initialize_deck(deck_config)
+	player_deck.initialize_deck()
 
-	if Global.game_mode == Constants.MODE_CRAM:
-		current_day = max(Global.daily_current_day, 1)
-		max_hours_today = 1
-	elif Global.game_mode == Constants.MODE_OVERNIGHT:
-		current_day = 1
-		max_hours_today = 3
-		for d in range(1, current_day + 1):
-			match_history[d] = {}
-			var day_str = str(d)
-			if Global.daily_my_records.has(day_str):
-				match_history[d]["player"] = Global.normalize_participant_record(Global.daily_my_records[day_str], "player", Global.player_name)
-			if Global.daily_opponent_ghosts.has(day_str):
-				var ghosts = Global.daily_opponent_ghosts[day_str]
-				var slots = ["cpu_sato", "cpu_suzuki", "cpu_takahashi"]
-				for i in range(min(ghosts.size(), slots.size())):
-					var g = ghosts[i]
-					match_history[d][slots[i]] = Global.normalize_participant_record(
-						g.get("record", {}),
-						str(g.get("user_id", slots[i])),
-						str(g.get("username", Localization.JP_PLAYER))
-					)
-	elif Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
+	if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
 		current_day = max(Global.friend_current_day, 1)
 		var new_history = {}
 		var dup = Global.friend_match_history.duplicate(true)
@@ -95,7 +74,7 @@ func simulate_cpus_for_day(day_idx: int) -> void:
 		var cpu_emote = AIManager.select_cpu_emote(cpu_id, decl - sim["actual_score"], sim["actual_score"])
 		day_data[cpu_id] = {
 			"id": cpu_id,
-			"name": Global.opponent_profiles[cpu_id].get("name", Localization.JP_RIVAL),
+			"name": Global.opponent_profiles[cpu_id].get("name", "ライバル"),
 			"actual_score": sim["actual_score"],
 			"declared_score": decl,
 			"hours": sim["hours"],
@@ -106,11 +85,9 @@ func simulate_cpus_for_day(day_idx: int) -> void:
 			"emote": cpu_emote
 		}
 
-func add_player_hour_result(draws: int, used_items: Array, bursted: bool, score: int, reaction: String = "") -> void:
-	# used_items はString配列だが呼び出し元からVariant Arrayが渡される可能性を考慮しキャストを避けるか、安全に扱う
+func add_player_hour_result(draws: int, bursted: bool, score: int, reaction: String = "") -> void:
 	player_hours_history_today.append({
 		"draws": draws,
-		"used_items": used_items,
 		"bursted": bursted,
 		"score": score,
 		"reaction": reaction
@@ -122,8 +99,7 @@ func submit_player_declaration(declared_score: int, emote: String = "normal") ->
 	player_emote_today = emote
 	
 	if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
-		var bm = _get_backend_manager()
-		var my_id = bm.logged_in_uuid if (bm and bm.logged_in_uuid != "") else "player"
+		var my_id = "player"
 		
 		var my_move = {
 			"user_id": my_id,
@@ -186,7 +162,6 @@ func _finalize_day_data() -> void:
 		if day_data.has(target_id) and day_data[target_id] is Dictionary:
 			day_data[target_id]["doubts_received"].append("player")
 
-	# Pre-calculate auto-exposure and doubt exposure for deterministic results
 	for p_id in day_data.keys():
 		var p = day_data[p_id]
 		if not (p is Dictionary):
@@ -196,30 +171,16 @@ func _finalize_day_data() -> void:
 		if exposed_by_doubt:
 			p["is_doubt_exposed"] = true
 
-	for hour in player_hours_history_today:
-		for item in hour.get("used_items", []):
-			Global.add_item_usage(str(item), 1)
-
 func _save_and_upload_day() -> void:
 	if not match_history.has(current_day):
 		return
 	var day_data: Dictionary = match_history[current_day]
 
-	if Global.game_mode == Constants.MODE_CRAM or Global.game_mode == Constants.MODE_OVERNIGHT:
-		Global.daily_my_records[str(current_day)] = Global.normalize_participant_record(day_data.get("player", {}), "player", Global.player_name)
-		Global.daily_last_played_date = Time.get_date_string_from_system()
-
-		var bm = _get_backend_manager()
-		if bm and Global.logged_in_user_id != "":
-			bm.upload_daily_record(current_day, day_data["player"]["actual_score"], day_data["player"])
-
-		Global.save_game()
-	elif Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
+	if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
 		Global.friend_match_history = match_history.duplicate(true)
 		Global.save_game()
 
-		var bm = _get_backend_manager()
-		var my_id = bm.logged_in_uuid if (bm and bm.logged_in_uuid != "") else "player"
+		var my_id = "player"
 
 		var my_move = {
 			"user_id": my_id,
@@ -238,7 +199,6 @@ func _save_and_upload_day() -> void:
 
 func _advance_to_next_day() -> void:
 	_reset_daily_variables()
-	_calculate_max_hours()
 	if current_day <= Constants.MAX_DAYS:
 		_prepare_opponents_for_day(current_day)
 
@@ -251,48 +211,12 @@ func _reset_daily_variables() -> void:
 	player_doubts_made_today.clear()
 	player_emote_today = "normal"
 
-	if Global.game_mode == Constants.MODE_CRAM or Global.game_mode == Constants.MODE_OVERNIGHT:
-		Global.daily_current_day = current_day
-	elif Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
+	if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
 		Global.friend_current_day = current_day
 	Global.save_game()
 
-func _calculate_max_hours() -> void:
-	max_hours_today = 3
-	if Global.game_mode == Constants.MODE_CRAM:
-		max_hours_today = 1
-
-	for slot in Global.current_deck.keys():
-		if Global.current_deck[slot] == "item_night_note":
-			max_hours_today += 1
-			break
-
 func _prepare_opponents_for_day(day_idx: int) -> void:
-	if Global.game_mode == Constants.MODE_CRAM or Global.game_mode == Constants.MODE_OVERNIGHT:
-		var next_day_str = str(day_idx)
-		if not Global.daily_opponent_ghosts.has(next_day_str):
-			var bm = _get_backend_manager()
-			var dummy_ghosts = []
-			if bm:
-				dummy_ghosts = bm.generate_simulated_ghosts(day_idx)
-			else:
-				dummy_ghosts = [
-					{"username": Localization.CPU_SATO, "score": 40, "record": {"actual_score": 40, "declared_score": 45, "hours": []}},
-					{"username": Localization.CPU_SUZUKI, "score": 48, "record": {"actual_score": 48, "declared_score": 48, "hours": []}},
-					{"username": Localization.CPU_TAKAHASHI, "score": 38, "record": {"actual_score": 38, "declared_score": 45, "hours": []}}
-				]
-			Global.daily_opponent_ghosts[next_day_str] = dummy_ghosts
-			Global.save_game()
-	elif Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
-		simulate_cpus_for_day(day_idx)
-	else:
-		simulate_cpus_for_day(day_idx)
-
-func _get_backend_manager() -> Node:
-	var main_loop: MainLoop = Engine.get_main_loop()
-	if main_loop is SceneTree:
-		return (main_loop as SceneTree).root.get_node_or_null("BackendManager")
-	return null
+	simulate_cpus_for_day(day_idx)
 
 func calculate_final_showdown() -> Dictionary:
 	return ScoreEvaluator.calculate_final_showdown(self)
@@ -303,10 +227,6 @@ func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 	var day_data: Dictionary = match_history[day_idx]
 
 	var my_uuid = "player"
-	var bm = _get_backend_manager()
-	if bm and bm.logged_in_uuid != "":
-		my_uuid = bm.logged_in_uuid
-
 	var slots = ["cpu_sato", "cpu_suzuki", "cpu_takahashi"]
 	var slot_idx = 0
 
@@ -330,7 +250,7 @@ func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 			else:
 				continue
 
-		day_data[slot_name] = Global.normalize_participant_record(m, uid, str(m.get("username", Localization.JP_PLAYER)))
+		day_data[slot_name] = Global.normalize_participant_record(m, uid, str(m.get("username", "プレイヤー")))
 
 	if not day_data.has("player"):
 		day_data["player"] = Global.get_default_participant_record("player", Global.player_name)
@@ -359,14 +279,10 @@ func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 		if is_liar and p.get("doubts_received", []).size() > 0:
 			p["is_doubt_exposed"] = true
 
-
-
 	Global.friend_match_history = match_history.duplicate(true)
 	Global.save_game()
 
 func is_game_over() -> bool:
-	if Global.game_mode == Constants.MODE_OVERNIGHT:
-		return current_day > 1
 	return current_day > Constants.MAX_DAYS
 
 func advance_friend_day() -> void:

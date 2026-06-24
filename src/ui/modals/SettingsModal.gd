@@ -39,118 +39,46 @@ func _ready() -> void:
 	
 	# Title
 	var title = Label.new()
-	title.text = "オプション設定"
+	title.text = "設定・プレイヤー情報"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 26)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
 	
-	var audio = get_node("/root/AudioManager")
+	# Player Name
+	var name_vbox = VBoxContainer.new()
+	name_vbox.add_theme_constant_override("separation", 5)
+	vbox.add_child(name_vbox)
 	
-	# BGM Volume
-	var bgm_vbox = VBoxContainer.new()
-	bgm_vbox.add_theme_constant_override("separation", 5)
-	vbox.add_child(bgm_vbox)
+	var name_label = Label.new()
+	name_label.text = "プレイヤーネーム"
+	name_label.add_theme_font_override("font", DeskTheme.get_font())
+	name_label.add_theme_font_size_override("font_size", 16)
+	name_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	name_vbox.add_child(name_label)
 	
-	var bgm_label = Label.new()
-	bgm_label.text = "BGM 音量: %d%%" % int(audio.bgm_volume * 100)
-	bgm_label.add_theme_font_override("font", DeskTheme.get_font())
-	bgm_label.add_theme_font_size_override("font_size", 16)
-	bgm_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	bgm_vbox.add_child(bgm_label)
+	var name_input = LineEdit.new()
+	name_input.text = Global.player_name
+	name_input.placeholder_text = "名前を入力 (例: あなた)"
+	name_input.custom_minimum_size = Vector2(0, 45)
+	name_input.add_theme_font_override("font", DeskTheme.get_font())
+	name_input.add_theme_font_size_override("font_size", 18)
+	var line_style = StyleBoxFlat.new()
+	line_style.bg_color = Color("faf6f0")
+	line_style.border_color = Color("d7ccc8")
+	line_style.border_width_bottom = 2
+	line_style.content_margin_left = 10
+	name_input.add_theme_stylebox_override("normal", line_style)
+	name_input.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	name_vbox.add_child(name_input)
 	
-	var bgm_slider = HSlider.new()
-	bgm_slider.min_value = 0.0
-	bgm_slider.max_value = 1.0
-	bgm_slider.step = 0.05
-	bgm_slider.value = audio.bgm_volume
-	bgm_vbox.add_child(bgm_slider)
-	bgm_slider.value_changed.connect(func(val):
-		audio.bgm_volume = val
-		bgm_label.text = "BGM 音量: %d%%" % int(val * 100)
+	name_input.text_changed.connect(func(new_text):
+		Global.player_name = new_text
+		Global.save_game()
 	)
 	
-	# SE Volume
-	var se_vbox = VBoxContainer.new()
-	se_vbox.add_theme_constant_override("separation", 5)
-	vbox.add_child(se_vbox)
-	
-	var se_label = Label.new()
-	se_label.text = "SE 音量: %d%%" % int(audio.se_volume * 100)
-	se_label.add_theme_font_override("font", DeskTheme.get_font())
-	se_label.add_theme_font_size_override("font_size", 16)
-	se_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	se_vbox.add_child(se_label)
-	
-	var se_slider = HSlider.new()
-	se_slider.min_value = 0.0
-	se_slider.max_value = 1.0
-	se_slider.step = 0.05
-	se_slider.value = audio.se_volume
-	se_vbox.add_child(se_slider)
-	se_slider.value_changed.connect(func(val):
-		audio.se_volume = val
-		se_label.text = "SE 音量: %d%%" % int(val * 100)
-	)
-	
-	# Mute Checkbox HBox
-	var mute_hbox = HBoxContainer.new()
-	mute_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	vbox.add_child(mute_hbox)
-	
-	var mute_label = Label.new()
-	mute_label.text = "すべての音声をミュートする: "
-	mute_label.add_theme_font_override("font", DeskTheme.get_font())
-	mute_label.add_theme_font_size_override("font_size", 16)
-	mute_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	mute_hbox.add_child(mute_label)
-	
-	var mute_check = CheckButton.new()
-	mute_check.button_pressed = audio.is_muted
-	mute_check.toggled.connect(func(pressed):
-		audio.is_muted = pressed
-	)
-	mute_hbox.add_child(mute_check)
-	
-	# Font Switch Checkbox HBox
-	var font_hbox = HBoxContainer.new()
-	font_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	vbox.add_child(font_hbox)
-	
-	var font_label = Label.new()
-	font_label.text = "手書き風フォントを使用する: "
-	font_label.add_theme_font_override("font", DeskTheme.get_font())
-	font_label.add_theme_font_size_override("font_size", 16)
-	font_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	font_hbox.add_child(font_label)
-	
-	var font_check = CheckButton.new()
-	var global_singleton = get_node_or_null("/root/Global")
-	font_check.button_pressed = global_singleton.use_handwriting_font if global_singleton else true
-	font_check.toggled.connect(func(pressed):
-		if global_singleton:
-			global_singleton.use_handwriting_font = pressed
-			global_singleton.save_game()
-			if has_node("/root/UIHelper"):
-				get_node("/root/UIHelper").refresh_typography()
-	)
-	font_hbox.add_child(font_check)
-	
-	# Rules button inside Settings
-	var rule_btn = Button.new()
-	rule_btn.text = "あそびかたをみる"
-	rule_btn.custom_minimum_size = Vector2(300, 45)
-	rule_btn.add_theme_font_override("font", DeskTheme.get_font())
-	rule_btn.add_theme_font_size_override("font_size", 16)
-	DeskTheme.apply_white_button_style(rule_btn)
-	rule_btn.pressed.connect(func():
-		rule_btn.release_focus()
-		DeskTheme.animate_click(rule_btn, Vector2.ONE, 0.08)
-		RulebookModal.create_and_show(get_parent())
-	)
-	vbox.add_child(rule_btn)
-	
+	# Simplified: only player name is configurable.
 
 	# Bottom Buttons HBox
 	var bottom_hbox = HBoxContainer.new()
