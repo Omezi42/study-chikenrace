@@ -226,9 +226,11 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	vbox.add_child(exit_btn)
 	# Polling Logic via SceneTree timers
 	var is_polling_active = true
+	var cleanup_signals = Callable()
 	
 	var start_game_transition = func(final_participants: Array):
 		is_polling_active = false
+		cleanup_signals.call()
 		if bm:
 			bm.disconnect_realtime_lobby()
 		Global.game_mode = Constants.MODE_FRIEND
@@ -317,9 +319,21 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 			is_polling_active = false
 			start_game_transition.call(state.get("participants", []))
 
+	var on_player_connected_cb = func(id): on_polled.call()
+	var on_player_disconnected_cb = func(id): on_polled.call()
+
+	cleanup_signals = func():
+		if bm and bm.webrtc_multiplayer:
+			if bm.webrtc_multiplayer.player_connected.is_connected(on_player_connected_cb):
+				bm.webrtc_multiplayer.player_connected.disconnect(on_player_connected_cb)
+			if bm.webrtc_multiplayer.player_disconnected.is_connected(on_player_disconnected_cb):
+				bm.webrtc_multiplayer.player_disconnected.disconnect(on_player_disconnected_cb)
+		if MatchState.game_state_synced.is_connected(on_game_state_synced):
+			MatchState.game_state_synced.disconnect(on_game_state_synced)
+
 	if bm and bm.webrtc_multiplayer:
-		bm.webrtc_multiplayer.player_connected.connect(func(id): on_polled.call())
-		bm.webrtc_multiplayer.player_disconnected.connect(func(id): on_polled.call())
+		bm.webrtc_multiplayer.player_connected.connect(on_player_connected_cb)
+		bm.webrtc_multiplayer.player_disconnected.connect(on_player_disconnected_cb)
 		MatchState.game_state_synced.connect(on_game_state_synced)
 		on_polled.call()
 	else:
@@ -349,10 +363,9 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		exit_btn.release_focus()
 		DeskTheme.animate_click(exit_btn, Vector2.ONE, 0.08)
 		is_polling_active = false
+		cleanup_signals.call()
 		if bm:
 			bm.disconnect_realtime_lobby()
-			if MatchState.game_state_synced.is_connected(on_game_state_synced):
-				MatchState.game_state_synced.disconnect(on_game_state_synced)
 		lobby_modal.queue_free()
 	)
 	

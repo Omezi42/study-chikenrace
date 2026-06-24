@@ -493,16 +493,18 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 	poll_timer.autostart = false
 	lobby.add_child(poll_timer)
 	
-	var on_status_changed: Callable
-	var on_room_polled: Callable
+	var on_room_joined: Callable
+	var on_player_connected: Callable
 	
 	var clean_up_lobby = func():
-		poll_timer.stop()
-		if bm.random_match_status_updated.is_connected(on_status_changed):
-			bm.random_match_status_updated.disconnect(on_status_changed)
-		if bm.room_polled.is_connected(on_room_polled):
-			bm.room_polled.disconnect(on_room_polled)
-		lobby.queue_free()
+		if is_instance_valid(poll_timer):
+			poll_timer.stop()
+		if bm.webrtc_multiplayer.room_joined.is_connected(on_room_joined):
+			bm.webrtc_multiplayer.room_joined.disconnect(on_room_joined)
+		if bm.webrtc_multiplayer.player_connected.is_connected(on_player_connected):
+			bm.webrtc_multiplayer.player_connected.disconnect(on_player_connected)
+		if is_instance_valid(lobby):
+			lobby.queue_free()
 		
 	cancel_btn.pressed.connect(func():
 		DeskTheme.animate_click(cancel_btn, Vector2.ONE, 0.08)
@@ -514,17 +516,18 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 			ModeSelectionModal.create_and_show(parent, on_friend_match_pressed, national_names_pool)
 	)
 	
-	on_status_changed = func(status: String, message: String):
+	var _is_starting_game = false
+	
+	on_room_joined = func(success: bool, participants: Array):
 		if not is_instance_valid(status_lbl):
 			return
-	var _is_starting_game = false
-	bm.webrtc_multiplayer.room_joined.connect(func(success: bool, participants: Array):
 		if success:
 			status_lbl.text = "マッチング成立！ 他のプレイヤーの参加を待っています..."
-	)
+			
+	bm.webrtc_multiplayer.room_joined.connect(on_room_joined)
 	
-	bm.webrtc_multiplayer.player_connected.connect(func(id: int):
-		if not is_instance_valid(lobby):
+	on_player_connected = func(id: int):
+		if not is_instance_valid(lobby) or not is_instance_valid(status_lbl):
 			return
 		
 		# participants array is managed by bm.webrtc_multiplayer._participants
@@ -573,12 +576,20 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 						}
 						idx += 1
 					
-			var timer = parent.get_tree().create_timer(1.2)
-			timer.timeout.connect(func():
-				clean_up_lobby.call()
-				Global.change_scene_with_fade(parent.get_tree(), "res://Main.tscn")
-			)
-	)
+			var timer = Timer.new()
+			timer.wait_time = 1.2
+			timer.one_shot = true
+			if is_instance_valid(lobby):
+				lobby.add_child(timer)
+				timer.timeout.connect(func():
+					var tree = parent.get_tree()
+					clean_up_lobby.call()
+					if is_instance_valid(tree):
+						Global.change_scene_with_fade(tree, "res://Main.tscn")
+				)
+				timer.start()
+				
+	bm.webrtc_multiplayer.player_connected.connect(on_player_connected)
 	
 	Global.game_mode = Constants.MODE_RANDOM
 	bm.webrtc_multiplayer.join_random_room()
