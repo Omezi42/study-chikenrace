@@ -179,7 +179,7 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 				Global.daily_current_day = session.current_day
 				Global.save_game()
 				
-				if session.current_day > 5:
+				if session.current_day > Constants.MAX_DAYS:
 					# Match complete! Show results and reset daily exam progression state
 					Global.daily_current_day = 1
 					Global.daily_my_records.clear()
@@ -191,15 +191,15 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 				else:
 					show_daily_finished_modal()
 			elif Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
-				# In friend match, current_day was advanced in end_day() (e.g. from 5 to 6)
-				if session.current_day > 5:
-					# Day 5 doubts submitted. Now wait for everyone to finish Day 5 doubts before final reveal
-					change_phase(Constants.PHASE_WAITING, {"day": 5, "final_wait": true})
+				# In friend match, current_day was advanced in end_day()
+				if session.current_day > Constants.MAX_DAYS:
+					# Final doubts submitted. Now wait for everyone to finish before final reveal
+					change_phase(Constants.PHASE_WAITING, {"day": Constants.MAX_DAYS, "final_wait": true})
 				else:
-					# For Day 1-4, we can advance immediately without waiting for other's doubts
+					# For earlier days, we can advance immediately without waiting for other's doubts
 					change_phase(Constants.PHASE_DAY_TRANSITION)
 			else:
-				# Check if match is complete (5 days for normal, 1 day for overnight)
+				# Check if match is complete
 				if session.is_game_over():
 					# Store showdown results globally to persist across scene change
 					Global.active_showdown_results = session.calculate_final_showdown()
@@ -213,9 +213,9 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 			var prev_moves = result_data.get("prev_moves", [])
 			var is_final = result_data.get("final_wait", false)
 			
-			if is_final or (session.current_day > 5 and moves.size() > 0): # Day 5 results wait complete
-				# Process Day 5 doubts resolution
-				session.evaluate_friend_day_moves(5, moves)
+			if is_final or (session.current_day > Constants.MAX_DAYS and moves.size() > 0): # Final results wait complete
+				# Process final doubts resolution
+				session.evaluate_friend_day_moves(Constants.MAX_DAYS, moves)
 				
 				# Store showdown results globally to persist across scene change
 				Global.active_showdown_results = session.calculate_final_showdown()

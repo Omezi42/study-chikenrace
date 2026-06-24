@@ -178,7 +178,7 @@ func test_session_showdown() -> bool:
 	session.start_session(mock_deck_config)
 	
 	# Simulate days 1 to 5 manually for testing
-	for day in range(1, 6):
+	for day in range(1, Constants.MAX_DAYS + 1):
 		session.current_day = day
 		session.player_actual_score_today = 50
 		session.player_declared_score_today = 60 # Player bluffs by +10
@@ -376,7 +376,7 @@ func test_game_session_states() -> bool:
 	
 	# Progress days 1 to 5
 	var pass_transitions = true
-	for day in range(1, 6):
+	for day in range(1, Constants.MAX_DAYS + 1):
 		session.simulate_cpus_for_day(day)
 		
 		session.player_actual_score_today = 30

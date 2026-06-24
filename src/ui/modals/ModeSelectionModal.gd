@@ -499,9 +499,9 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 	var clean_up_lobby = func():
 		if is_instance_valid(poll_timer):
 			poll_timer.stop()
-		if bm.webrtc_multiplayer.room_joined.is_connected(on_room_joined):
+		if on_room_joined.is_valid() and bm.webrtc_multiplayer.room_joined.is_connected(on_room_joined):
 			bm.webrtc_multiplayer.room_joined.disconnect(on_room_joined)
-		if bm.webrtc_multiplayer.player_connected.is_connected(on_player_connected):
+		if on_player_connected.is_valid() and bm.webrtc_multiplayer.player_connected.is_connected(on_player_connected):
 			bm.webrtc_multiplayer.player_connected.disconnect(on_player_connected)
 		if is_instance_valid(lobby):
 			lobby.queue_free()
@@ -509,7 +509,7 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 	cancel_btn.pressed.connect(func():
 		DeskTheme.animate_click(cancel_btn, Vector2.ONE, 0.08)
 		if Global.friend_room_code != "":
-			bm.leave_or_delete_random_room(Global.friend_room_code)
+			bm.webrtc_multiplayer.disconnect_room()
 		Global.friend_room_code = ""
 		clean_up_lobby.call()
 		if from_mode_selection:
@@ -517,6 +517,61 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 	)
 	
 	var _is_starting_game = false
+	
+	var force_start_timer = Timer.new()
+	force_start_timer.wait_time = 15.0
+	force_start_timer.one_shot = true
+	lobby.add_child(force_start_timer)
+	
+	var start_game_func = func():
+		if _is_starting_game:
+			return
+		_is_starting_game = true
+		if is_instance_valid(force_start_timer):
+			force_start_timer.stop()
+			
+		var participants = bm.webrtc_multiplayer._participants
+		status_lbl.text = "マッチング完了！ゲームを開始します..."
+		
+		bm.fetch_participants_deviation(participants)
+		
+		Global.game_mode = Constants.MODE_RANDOM
+		Global.friend_member_list.assign(participants)
+		Global.friend_is_host = bm.webrtc_multiplayer._is_host
+		Global.friend_current_day = 1
+		Global.friend_match_history.clear()
+		MatchState.current_match_actions.clear()
+		Global.save_game()
+		
+		Global.opponent_profiles.clear()
+		var idx = 0
+		var slots = ["cpu_sato", "cpu_suzuki", "cpu_takahashi"]
+		for p in participants:
+			var uid = p.get("user_id", "")
+			if uid != bm.logged_in_uuid:
+				if idx < slots.size():
+					var slot_id = slots[idx]
+					Global.opponent_profiles[slot_id] = {
+						"id": uid,
+						"name": p.get("username", "ライバル"),
+						"deviation": 50.0
+					}
+					idx += 1
+				
+		var timer = Timer.new()
+		timer.wait_time = 1.2
+		timer.one_shot = true
+		if is_instance_valid(lobby):
+			lobby.add_child(timer)
+			timer.timeout.connect(func():
+				var tree = parent.get_tree()
+				clean_up_lobby.call()
+				if is_instance_valid(tree):
+					Global.change_scene_with_fade(tree, "res://Main.tscn")
+			)
+			timer.start()
+	
+	force_start_timer.timeout.connect(start_game_func)
 	
 	on_room_joined = func(success: bool, participants: Array):
 		if not is_instance_valid(status_lbl):
@@ -530,7 +585,6 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 		if not is_instance_valid(lobby) or not is_instance_valid(status_lbl):
 			return
 		
-		# participants array is managed by bm.webrtc_multiplayer._participants
 		var participants = bm.webrtc_multiplayer._participants
 		
 		for child in members_vbox.get_children():
@@ -546,50 +600,11 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 			p_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 			members_vbox.add_child(p_lbl)
 			
-		if participants.size() >= 2 and not _is_starting_game:
-			_is_starting_game = true
-			status_lbl.text = "マッチング完了！ゲームを開始します..."
-			
-			bm.fetch_participants_deviation(participants)
-			
-			Global.game_mode = Constants.MODE_RANDOM
-			# Global.friend_room_code is set by WebRTCMultiplayerService on 'room_joined'
-			Global.friend_member_list.assign(participants)
-			Global.friend_is_host = bm.webrtc_multiplayer._is_host
-			Global.friend_current_day = 1
-			Global.friend_match_history.clear()
-			MatchState.current_match_actions.clear()
-			Global.save_game()
-			
-			Global.opponent_profiles.clear()
-			var idx = 0
-			var slots = ["cpu_sato", "cpu_suzuki", "cpu_takahashi"]
-			for p in participants:
-				var uid = p.get("user_id", "")
-				if uid != bm.logged_in_uuid:
-					if idx < slots.size():
-						var slot_id = slots[idx]
-						Global.opponent_profiles[slot_id] = {
-							"id": uid,
-							"name": p.get("username", "ライバル"),
-							"deviation": 50.0
-						}
-						idx += 1
-					
-			var timer = Timer.new()
-			timer.wait_time = 1.2
-			timer.one_shot = true
-			if is_instance_valid(lobby):
-				lobby.add_child(timer)
-				timer.timeout.connect(func():
-					var tree = parent.get_tree()
-					clean_up_lobby.call()
-					if is_instance_valid(tree):
-						Global.change_scene_with_fade(tree, "res://Main.tscn")
-				)
-				timer.start()
+		if participants.size() >= 4 and not _is_starting_game:
+			start_game_func.call()
 				
 	bm.webrtc_multiplayer.player_connected.connect(on_player_connected)
 	
 	Global.game_mode = Constants.MODE_RANDOM
 	bm.webrtc_multiplayer.join_random_room()
+	force_start_timer.start()

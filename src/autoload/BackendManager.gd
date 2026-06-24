@@ -84,6 +84,7 @@ func _ready() -> void:
 	webrtc_signaling = WebRTCSignaling.new()
 	add_child(webrtc_signaling)
 	webrtc_multiplayer = WebRTCMultiplayerService.new(self, webrtc_signaling)
+	add_child(webrtc_multiplayer)
 	
 	webrtc_multiplayer.room_created.connect(func(s, c): room_created.emit(s, c))
 	webrtc_multiplayer.room_joined.connect(func(s, p): room_joined.emit(s, p))

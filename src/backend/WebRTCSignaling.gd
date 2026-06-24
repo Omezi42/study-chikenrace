@@ -8,7 +8,7 @@ signal peer_disconnected(id: int)
 signal offer_received(id: int, offer: String)
 signal answer_received(id: int, answer: String)
 signal ice_candidate_received(id: int, media: String, index: int, name: String)
-signal room_joined(room_code: String)
+signal room_joined(data: Dictionary)
 
 var ws: WebSocketPeer = WebSocketPeer.new()
 var is_connected_to_server: bool = false
@@ -108,7 +108,7 @@ func _handle_message(msg_str: String) -> void:
 	match type:
 		"room_joined":
 			room_code = msg.get("room", "")
-			room_joined.emit(room_code)
+			room_joined.emit(msg)
 		"id":
 			is_connected_to_server = true
 			var my_id = int(msg.get("id", 0))

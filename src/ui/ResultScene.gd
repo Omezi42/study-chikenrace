@@ -62,7 +62,7 @@ func _ready() -> void:
 		if Global.game_mode == Constants.MODE_OVERNIGHT:
 			starting_deck = Global.get_cram_season_deck()
 		dummy_session.start_session(starting_deck)
-		for day in range(1, 6):
+		for day in range(1, Constants.MAX_DAYS + 1):
 			dummy_session.current_day = day
 			dummy_session.player_actual_score_today = randi_range(30, 60)
 			dummy_session.player_declared_score_today = dummy_session.player_actual_score_today + (10 if randf() < 0.5 else 0)
@@ -835,7 +835,7 @@ func trigger_report_card() -> void:
 		# 段階的な累積スコアの計算
 		var score_history: Array[int] = []
 		var cum_score = 0
-		for day in range(1, 6):
+		for day in range(1, Constants.MAX_DAYS + 1):
 			if showdown_data.get("details", {}).has(day):
 				var day_details = showdown_data["details"][day]
 				if day_details.has(r["id"]):
@@ -844,8 +844,8 @@ func trigger_report_card() -> void:
 		
 		# 最終日の累積値を最終得点と強制的に一致させ、それ以前のスコアがそれを超えないようにする
 		var final_score_val = int(r["score"])
-		score_history[4] = final_score_val
-		for i in range(4):
+		score_history[Constants.MAX_DAYS - 1] = final_score_val
+		for i in range(Constants.MAX_DAYS - 1):
 			if score_history[i] > final_score_val:
 				score_history[i] = final_score_val
 

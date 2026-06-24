@@ -33,6 +33,8 @@ func save_game(save_dict: Dictionary) -> void:
 				push_warning("バックアップ1世代目の更新に失敗しました。Error: %d" % err)
 				
 		# アトミックリネーム
+		if dir.file_exists(SAVE_PATH):
+			dir.remove(SAVE_PATH)
 		var err = dir.rename(temp_path, SAVE_PATH)
 		if err != OK:
 			push_error("セーブファイルの更新（リネーム）に失敗しました。Error: %d" % err)
