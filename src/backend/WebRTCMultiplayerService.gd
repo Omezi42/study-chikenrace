@@ -69,6 +69,8 @@ func join_random_room() -> void:
 
 func disconnect_room() -> void:
 	signaling.disconnect_from_room()
+	if bm and bm.multiplayer and bm.multiplayer.peer_connected.is_connected(_on_webrtc_peer_connected):
+		bm.multiplayer.peer_connected.disconnect(_on_webrtc_peer_connected)
 	if webrtc_peer:
 		webrtc_peer.close()
 	bm.multiplayer.multiplayer_peer = null
@@ -78,6 +80,9 @@ func _on_signaling_connected(my_id: int) -> void:
 	webrtc_peer = WebRTCMultiplayerPeer.new()
 	webrtc_peer.create_mesh(my_id)
 	bm.multiplayer.multiplayer_peer = webrtc_peer
+	
+	if not bm.multiplayer.peer_connected.is_connected(_on_webrtc_peer_connected):
+		bm.multiplayer.peer_connected.connect(_on_webrtc_peer_connected)
 	
 	_is_host = (my_id == 1)
 	
@@ -98,14 +103,22 @@ func _on_random_room_joined(data: Dictionary) -> void:
 	_is_host = data.get("is_host", false)
 	# For random match, signaling server handles the rest (making offers/answers)
 
-@rpc("any_peer", "call_remote")
+@rpc("any_peer", "call_remote", "reliable")
 func sync_player_info(username: String) -> void:
 	var sender_id = bm.multiplayer.get_remote_sender_id()
+	var found = false
 	for i in range(_participants.size()):
 		if _participants[i].get("user_id", "") == str(sender_id):
 			_participants[i]["username"] = username
-			room_joined.emit(true, _participants)
+			found = true
 			break
+	if not found:
+		_participants.append({"user_id": str(sender_id), "username": username})
+	room_joined.emit(true, _participants)
+
+func _on_webrtc_peer_connected(id: int) -> void:
+	var my_name = Global.player_name if Global.player_name != "" else "あなた"
+	sync_player_info.rpc_id(id, my_name)
 
 func _on_signaling_disconnected() -> void:
 	pass
@@ -129,7 +142,7 @@ func _on_peer_connected(id: int) -> void:
 		pc.create_offer()
 		
 	# Update participants info. In a real game, you might RPC names over.
-	_participants.append({"user_id": str(id), "username": "Player " + str(id)})
+	_participants.append({"user_id": str(id), "username": "プレイヤー " + str(id)})
 	player_connected.emit(id)
 	
 	var my_name = Global.player_name if Global.player_name != "" else "あなた"

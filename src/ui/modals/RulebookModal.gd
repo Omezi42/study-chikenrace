@@ -69,7 +69,7 @@ func _ready() -> void:
 	header_hbox.add_child(title)
 	
 	var close_btn = Button.new()
-	close_btn.text = " × 閉じる "
+	close_btn.text = " 閉じる "
 	close_btn.add_theme_font_override("font", DeskTheme.get_font())
 	close_btn.add_theme_font_size_override("font_size", 18)
 	close_btn.custom_minimum_size = Vector2(120, 40)
@@ -161,6 +161,15 @@ func _ready() -> void:
 	_apply_tutorial_button_style(play_tutorial_btn)
 	play_tutorial_btn.pressed.connect(_start_tutorial)
 	footer_hbox.add_child(play_tutorial_btn)
+	
+	var is_in_game = false
+	var parent_node = get_parent()
+	if parent_node and parent_node.get_tree() and parent_node.get_tree().current_scene:
+		if not (parent_node.get_tree().current_scene is TitleScene):
+			is_in_game = true
+	if is_in_game:
+		play_tutorial_btn.visible = false
+		spacer.visible = false
 	
 	modal.scale = Vector2.ZERO
 	var tween = create_tween().bind_node(modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

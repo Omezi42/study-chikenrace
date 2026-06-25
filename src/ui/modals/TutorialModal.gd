@@ -110,20 +110,16 @@ func update_tutorial_slide() -> void:
 	tutorial_page_lbl.text = "%d / 4" % current_tutorial_page
 	tutorial_back_btn.disabled = (current_tutorial_page == 1)
 	if current_tutorial_page == 4:
-		tutorial_next_btn.text = "閉じる ×"
+		tutorial_next_btn.text = "閉じる"
 	else:
 		tutorial_next_btn.text = "次へ >"
 		
 	# Update description text
 	match current_tutorial_page:
-		1:
-			tutorial_desc_lbl.text = "【① ゲームの基本ルール】\n『テスト勉強チキンレース』は、実点と申告点を競い合う勉強チキンレースゲームです（3日間）。毎日3時限の自習を行い、カードを引いて勉強成果（実点）を高めます。"
-		2:
-			tutorial_desc_lbl.text = "【② 自習ノートと眠気（バースト）】\n山札からカードを引いて点数を積み上げます。ただし、手札と同じ数字のカードを引くと「寝落ち（バースト）」となり、その時限の点数はすべて0点になります！適度なところで「休憩する」を押して点数を確保しましょう。"
-		3:
-			tutorial_desc_lbl.text = "【③ 勉強報告と『嘘（ブラフ）』】\n一日の終わりに、今日の点数を勉強SNSに投稿します。実際の点数より高く「嘘（ブラフ）」の点数を申告してライバルを焦らせることができます。ただし、盛りすぎるとダウトされる危険性が高まります！"
-		4:
-			tutorial_desc_lbl.text = "【④ 最終答え合わせと勝敗】\nマッチ終了後（3日目の終わり）、全員の「実点」「申告点」「ダウト結果」が大公開されます！ダウトに成功すれば相手の盛り点をもらえ、失敗すればペナルティを受けます。最終的に最も点数の高い人が合格（優勝）です！"
+		1: tutorial_desc_lbl.text = "【① ゲームの基本ルール】\n『テスト勉強チキンレース』は、実点と申告点を競い合う勉強チキンレースゲームです（3日間）。毎日3時限の自習を行い、カードを引いて勉強成果（実点）を高めます。"
+		2: tutorial_desc_lbl.text = "【② 自習ノートと眠気（バースト）】\n山札からカードを引いて点数を積み上げます。ただし、手札と同じ数字のカードを引くと「寝落ち（バースト）」となり、その時限の点数はすべて0点になります！適度なところで「休憩する」を押して点数を確保しましょう。"
+		3: tutorial_desc_lbl.text = "【③ 勉強報告と『嘘（ブラフ）』】\n一日の終わりに、今日の点数を勉強SNSに投稿します。実際の点数より高く「嘘（ブラフ）」の点数を申告してライバルを焦らせることができます。ただし、盛りすぎるとダウトされる危険性が高まります！"
+		4: tutorial_desc_lbl.text = "【④ 最終答え合わせと勝敗】\nマッチ終了後（3日目の終わり）、全員の「実点」「申告点」「ダウト結果」が大公開されます！ダウトに成功すれば相手の盛り点をもらえ、失敗すればペナルティを受けます。最終的に最も点数の高い人が合格（優勝）です！"
 
 func _on_tutorial_back_pressed() -> void:
 	DeskTheme.animate_click(tutorial_back_btn, Vector2.ONE, 0.08)

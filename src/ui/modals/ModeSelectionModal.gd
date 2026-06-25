@@ -49,7 +49,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	btn_vbox.add_theme_constant_override("separation", 20)
 	vbox.add_child(btn_vbox)
 	
-	# ── 📝 模試 (National Mode) ──
+	# -- 模試 (National Mode) --
 	var national_btn = Button.new()
 	national_btn.custom_minimum_size = Vector2(660, 100)
 	Global.apply_white_button_style(national_btn)
@@ -78,7 +78,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	
 	btn_vbox.add_child(national_btn)
 	
-	# ── 🤝 フレンド戦 (Friend Mode) ──
+	# -- フレンド戦 (Friend Mode) --
 	var friend_btn = Button.new()
 	friend_btn.custom_minimum_size = Vector2(660, 100)
 	Global.apply_white_button_style(friend_btn)
@@ -107,7 +107,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	
 	btn_vbox.add_child(friend_btn)
 	
-	# ── 🎲 ランダムマッチ (Random Match Mode) ──
+	# -- ランダムマッチ (Random Match Mode) --
 	var random_btn = Button.new()
 	random_btn.custom_minimum_size = Vector2(660, 100)
 	Global.apply_white_button_style(random_btn)
@@ -134,6 +134,19 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	random_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	random_inner.add_child(random_desc)
 	
+	var online_status = Label.new()
+	online_status.text = "（リアルタイム状況を確認中...）"
+	online_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	online_status.add_theme_font_override("font", DeskTheme.get_font())
+	online_status.add_theme_font_size_override("font_size", 13)
+	online_status.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
+	random_inner.add_child(online_status)
+	
+	_fetch_server_status(parent, func(online: int, waiting: int):
+		if is_instance_valid(online_status):
+			online_status.text = "（現在オンライン: %d人 / マッチング待機中: %d人）" % [online, waiting]
+	)
+	
 	btn_vbox.add_child(random_btn)
 	
 	# Cancel Button
@@ -146,14 +159,14 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	Global.apply_white_button_style(cancel_btn)
 	vbox.add_child(cancel_btn)
 	
-	# ── Connect: 📝 模試 ──
+	# -- Connect: 模試 --
 	national_btn.pressed.connect(func():
 		DeskTheme.animate_click(national_btn, Vector2.ONE, 0.08)
 		Global.game_mode = Constants.MODE_NATIONAL
 		show_difficulty_selection(parent, mode_modal, on_friend_match_pressed, national_names_pool)
 	)
 	
-	# ── Connect: 🤝 フレンド戦 ──
+	# -- Connect: フレンド戦 --
 	friend_btn.pressed.connect(func():
 		DeskTheme.animate_click(friend_btn, Vector2.ONE, 0.08)
 		mode_modal.queue_free()
@@ -390,13 +403,20 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 	status_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
 	vbox.add_child(status_lbl)
 	
-	var countdown_lbl = Label.new()
-	countdown_lbl.text = ""
-	countdown_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	countdown_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	countdown_lbl.add_theme_font_size_override("font_size", 16)
-	countdown_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
-	vbox.add_child(countdown_lbl)
+	var online_lbl = Label.new()
+	online_lbl.text = "オンライン接続状況を確認中..."
+	online_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	online_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	online_lbl.add_theme_font_size_override("font_size", 14)
+	online_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
+	vbox.add_child(online_lbl)
+	
+	_fetch_server_status(parent, func(online: int, waiting: int):
+		if is_instance_valid(online_lbl):
+			online_lbl.text = "現在オンラインユーザー数: %d人 (待機中: %d人)" % [online, waiting]
+	)
+	
+
 	
 	var members_vbox = VBoxContainer.new()
 	members_vbox.add_theme_constant_override("separation", 8)
@@ -443,31 +463,15 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 	
 	var _is_starting_game = false
 	
-	var force_start_timer = Timer.new()
-	force_start_timer.wait_time = 30.0
-	force_start_timer.one_shot = true
-	lobby.add_child(force_start_timer)
-	
-	var ui_update_timer = Timer.new()
-	ui_update_timer.wait_time = 0.1
-	ui_update_timer.autostart = true
-	lobby.add_child(ui_update_timer)
-	
-	ui_update_timer.timeout.connect(func():
-		if _is_starting_game or not is_instance_valid(countdown_lbl) or not is_instance_valid(force_start_timer):
-			return
-		if force_start_timer.time_left > 0 and bm.webrtc_multiplayer._participants.size() > 0:
-			countdown_lbl.text = "強制開始まで: %d 秒" % ceil(force_start_timer.time_left)
-		else:
-			countdown_lbl.text = ""
-	)
+
 	
 	var start_game_func = func():
 		if _is_starting_game:
 			return
 		_is_starting_game = true
-		if is_instance_valid(force_start_timer):
-			force_start_timer.stop()
+		AudioManager.play_se(AudioManager.SE_FANFARE)
+		DisplayServer.window_request_attention()
+
 			
 		var participants = bm.webrtc_multiplayer._participants
 		status_lbl.text = "マッチング完了！ゲームを開始します..."
@@ -481,7 +485,7 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 		Global.save_game()
 		
 		Global.opponent_profiles.clear()
-		var my_id = bm.get_uuid()
+		var my_id = str(parent.multiplayer.get_unique_id()) if parent.multiplayer.has_multiplayer_peer() else "player"
 		var idx = 0
 		var slots = ["cpu_sato", "cpu_suzuki", "cpu_takahashi"]
 		for p in participants:
@@ -508,17 +512,9 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 			)
 			timer.start()
 	
-	force_start_timer.timeout.connect(start_game_func)
+
 	
-	on_room_joined = func(success: bool, participants: Array):
-		if not is_instance_valid(status_lbl):
-			return
-		if success:
-			status_lbl.text = "マッチング成立！ 他のプレイヤーの参加を待っています..."
-			
-	bm.webrtc_multiplayer.room_joined.connect(on_room_joined)
-	
-	on_player_connected = func(id: int):
+	var update_participants_display = func():
 		if not is_instance_valid(lobby) or not is_instance_valid(status_lbl):
 			return
 		
@@ -539,9 +535,46 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 			
 		if participants.size() >= 4 and not _is_starting_game:
 			start_game_func.call()
+
+	on_room_joined = func(success: bool, participants: Array):
+		if not is_instance_valid(status_lbl):
+			return
+		if success:
+			update_participants_display.call()
+			
+	bm.webrtc_multiplayer.room_joined.connect(on_room_joined)
+	
+	on_player_connected = func(id: int):
+		update_participants_display.call()
 				
 	bm.webrtc_multiplayer.player_connected.connect(on_player_connected)
 	
 	Global.game_mode = Constants.MODE_RANDOM
 	bm.webrtc_multiplayer.join_random_room()
-	force_start_timer.start()
+
+static func _fetch_server_status(parent: Node, on_success: Callable) -> void:
+	var ws_url = ProjectSettings.get_setting("backend/signaling_url", "")
+	if ws_url == "":
+		if OS.has_feature("web"):
+			ws_url = "wss://chicken-race-signaling.onrender.com"
+		else:
+			ws_url = "ws://localhost:9080"
+			
+	var http_url = ws_url.replace("wss://", "https://").replace("ws://", "http://") + "/api/status"
+	
+	var http_req = HTTPRequest.new()
+	parent.add_child(http_req)
+	
+	http_req.request_completed.connect(func(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray):
+		if result == HTTPRequest.RESULT_SUCCESS and response_code == 200:
+			var json = JSON.parse_string(body.get_string_from_utf8())
+			if json is Dictionary:
+				var online = int(json.get("online_users", 1))
+				var waiting = int(json.get("waiting_users", 0))
+				on_success.call(online, waiting)
+		http_req.queue_free()
+	)
+	
+	var err = http_req.request(http_url)
+	if err != OK:
+		http_req.queue_free()

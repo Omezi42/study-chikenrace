@@ -195,6 +195,9 @@ static func show_timeout_fallback_buttons(phase: WaitingPhase) -> void:
 	fallback_btn.add_theme_font_size_override("font_size", 18)
 	Global.apply_white_button_style(fallback_btn)
 	fallback_btn.pressed.connect(func():
-		Global.change_scene_with_fade(phase.get_tree(), "res://Title.tscn")
+		var tree = phase.get_tree()
+		if tree and tree.root.has_node("WebRTCManager"):
+			tree.root.get_node("WebRTCManager").disconnect_room()
+		Global.change_scene_with_fade(tree, "res://Title.tscn")
 	)
 	phase.app_vbox.add_child(fallback_btn)

@@ -305,17 +305,16 @@ func reveal_next_day_showdown() -> void:
 		p_idx += 1
 		
 	if any_exposed:
-		get_tree().create_timer(0.8).timeout.connect(func():
+		create_tween().tween_callback(func():
 			if is_instance_valid(self): DeskTheme.shake_control(root_layer, 6.0, 0.25)
-		)
+		).set_delay(0.8)
 		
-	var timer = get_tree().create_timer(2.0)
-	timer.timeout.connect(func():
+	create_tween().tween_callback(func():
 		if not is_instance_valid(self) or not is_inside_tree(): return
 		if is_revealing:
 			current_step_day += 1
 			reveal_next_day_showdown()
-	)
+	).set_delay(2.0)
 
 func _on_skip_pressed() -> void:
 	if not is_revealing or skip_btn.disabled: return
@@ -329,7 +328,7 @@ func _on_skip_pressed() -> void:
 		if _active_score_labels.has(p_id):
 			_active_score_labels[p_id].text = "%d 点" % final_scores[p_id]
 			
-	get_tree().create_timer(0.1).timeout.connect(func(): trigger_report_card())
+	create_tween().tween_callback(func(): trigger_report_card()).set_delay(0.1)
 
 func trigger_report_card() -> void:
 	if is_instance_valid(skip_btn):
@@ -492,7 +491,7 @@ func _show_advice_and_stamp(parent_vbox: Control) -> void:
 			_spawn_confetti()
 		)
 		
-	get_tree().create_timer(1.5).timeout.connect(func(): _show_actions())
+	create_tween().tween_callback(func(): _show_actions()).set_delay(1.5)
 
 func _show_actions() -> void:
 	var act_hbox = HBoxContainer.new()
@@ -549,21 +548,23 @@ func _on_share_pressed() -> void:
 	share_btn.disabled = true
 	DeskTheme.animate_click(share_btn, Vector2.ONE, 0.08)
 	ShareCardGenerator.generate_and_copy_share_image(self, showdown_data)
-	get_tree().create_timer(3.0).timeout.connect(func(): if is_instance_valid(share_btn): share_btn.disabled = false)
+	create_tween().tween_callback(func(): if is_instance_valid(share_btn): share_btn.disabled = false).set_delay(3.0)
 
 func _on_play_again_pressed() -> void:
 	if play_again_btn.disabled: return
 	play_again_btn.disabled = true
 	DeskTheme.animate_click(play_again_btn, Vector2.ONE, 0.08)
 	Global.set("active_showdown_results", {})
-	get_tree().create_timer(0.2).timeout.connect(func(): Global.change_scene_with_fade(get_tree(), "res://Main.tscn"))
+	create_tween().tween_callback(func(): Global.change_scene_with_fade(get_tree(), "res://Main.tscn")).set_delay(0.2)
 
 func _on_restart_pressed() -> void:
 	if restart_btn.disabled: return
 	restart_btn.disabled = true
 	DeskTheme.animate_click(restart_btn, Vector2.ONE, 0.08)
 	Global.set("active_showdown_results", {})
-	get_tree().create_timer(0.2).timeout.connect(func(): Global.change_scene_with_fade(get_tree(), "res://Title.tscn"))
+	if get_tree().root.has_node("WebRTCManager"):
+		get_tree().root.get_node("WebRTCManager").disconnect_room()
+	create_tween().tween_callback(func(): Global.change_scene_with_fade(get_tree(), "res://Title.tscn")).set_delay(0.2)
 
 func _spawn_confetti() -> void:
 	var vp_size = get_viewport_rect().size
@@ -589,8 +590,8 @@ func _spawn_confetti() -> void:
 	confetti.hue_variation_min = -1.0
 	confetti.hue_variation_max = 1.0
 	root_layer.add_child(confetti)
-	get_tree().create_timer(8.0).timeout.connect(func():
+	create_tween().tween_callback(func():
 		if is_instance_valid(confetti):
 			confetti.emitting = false
-			get_tree().create_timer(confetti.lifetime).timeout.connect(func(): if is_instance_valid(confetti): confetti.queue_free())
-	)
+			create_tween().tween_callback(func(): if is_instance_valid(confetti): confetti.queue_free()).set_delay(confetti.lifetime)
+	).set_delay(8.0)

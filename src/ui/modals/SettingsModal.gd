@@ -48,7 +48,7 @@ func _ready() -> void:
 	
 	# Rulebook Button
 	var rule_btn = Button.new()
-	rule_btn.text = "📖 あそびかた・ルールを確認する"
+	rule_btn.text = "あそびかた・ルールを確認する"
 	rule_btn.custom_minimum_size = Vector2(0, 48)
 	rule_btn.add_theme_font_override("font", DeskTheme.get_font())
 	rule_btn.add_theme_font_size_override("font_size", 18)
@@ -200,6 +200,8 @@ func _ready() -> void:
 			show_confirm_dialog(parent_node, "本当にタイトルへ戻りますか？\n（進行状況は破棄されます）", func():
 				# Close settings and change scene
 				queue_free()
+				if parent_node.get_tree().root.has_node("WebRTCManager"):
+					parent_node.get_tree().root.get_node("WebRTCManager").disconnect_room()
 				if parent_node.get_tree().root.has_node("Global"):
 					parent_node.get_tree().root.get_node("Global").change_scene_with_fade(parent_node.get_tree(), "res://Title.tscn")
 			)
@@ -208,7 +210,7 @@ func _ready() -> void:
 	
 	# Close Button
 	var close_btn = Button.new()
-	close_btn.text = " × 閉じる "
+	close_btn.text = " 閉じる "
 	close_btn.custom_minimum_size = Vector2(200, 45)
 	close_btn.add_theme_font_override("font", DeskTheme.get_font())
 	close_btn.add_theme_font_size_override("font_size", 18)

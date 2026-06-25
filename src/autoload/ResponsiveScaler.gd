@@ -8,7 +8,7 @@ extends Node
 const DESIGN_WIDTH: float = 1500.0
 const DESIGN_HEIGHT: float = 850.0
 
-# |scale_changed| = (new_scale: float) — スケール変動時に全購読者に通知
+# |scale_changed| = (new_scale: float) - スケール変動時に全購読者に通知
 signal scale_changed(new_scale: float)
 
 var current_scale: float = 1.0

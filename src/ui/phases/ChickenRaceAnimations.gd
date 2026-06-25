@@ -15,11 +15,10 @@ static func animate_draw_card(phase: ChickenRacePhase, card: Dictionary, card_ui
 			card_vbox.visible = true
 	)
 	
-	var timer = phase.get_tree().create_timer(0.4 / speed_mult)
-	timer.timeout.connect(func():
+	phase.create_tween().tween_callback(func():
 		if on_complete.is_valid():
 			on_complete.call()
-	)
+	).set_delay(0.4 / speed_mult)
 
 static func show_hour_result_popup(phase: ChickenRacePhase, score: int, is_burst: bool) -> void:
 	var popup = PanelContainer.new()
@@ -64,14 +63,13 @@ static func show_hour_result_popup(phase: ChickenRacePhase, score: int, is_burst
 	var tween = phase.create_tween().set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(popup, "scale", Vector2.ONE, 0.3 / speed_mult)
 	
-	var timer = phase.get_tree().create_timer(1.2 / speed_mult)
-	timer.timeout.connect(func():
+	phase.create_tween().tween_callback(func():
 		if is_instance_valid(popup):
 			var fade_tween = phase.create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 			fade_tween.tween_property(popup, "scale", Vector2(0.8, 0.8), 0.3 / speed_mult)
 			fade_tween.tween_property(popup, "modulate:a", 0.0, 0.25 / speed_mult)
 			fade_tween.chain().tween_callback(popup.queue_free)
-	)
+	).set_delay(1.2 / speed_mult)
 
 static func play_burst_animation(phase: ChickenRacePhase, duplicate_values: Array, on_complete: Callable = Callable()) -> void:
 	var speed_mult = phase.speed_mult
@@ -106,8 +104,7 @@ static func play_burst_animation(phase: ChickenRacePhase, duplicate_values: Arra
 				var tween = phase.create_tween().bind_node(child).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 				tween.tween_property(child, "scale", child.scale * 1.2, 0.2)
 	
-	var timer = phase.get_tree().create_timer(1.2 / speed_mult)
-	timer.timeout.connect(func():
+	phase.create_tween().tween_callback(func():
 		if is_instance_valid(dark_bg):
 			dark_bg.queue_free()
 		
@@ -161,23 +158,21 @@ static func play_burst_animation(phase: ChickenRacePhase, duplicate_values: Arra
 		
 		_spawn_zzz_scribbles(phase)
 		
-		var fade_out_timer = phase.get_tree().create_timer(1.4 / speed_mult)
-		fade_out_timer.timeout.connect(func():
+		phase.create_tween().tween_callback(func():
 			if is_instance_valid(phase):
 				var fade_tween = phase.create_tween().set_parallel(true)
 				fade_tween.tween_property(phase.alert_banner, "color:a", 0.0, 0.4 / speed_mult)
 				fade_tween.tween_property(phase.alert_label, "modulate:a", 0.0, 0.4 / speed_mult)
-		)
+		).set_delay(1.4 / speed_mult)
 		
-		var end_timer = phase.get_tree().create_timer(1.8 / speed_mult)
-		end_timer.timeout.connect(func():
+		phase.create_tween().tween_callback(func():
 			if is_instance_valid(phase):
 				phase.alert_label.text = ""
 				phase.alert_label.modulate.a = 1.0
 			if on_complete.is_valid():
 				on_complete.call()
-		)
-	)
+		).set_delay(1.8 / speed_mult)
+	).set_delay(1.2 / speed_mult)
 
 static func _spawn_zzz_scribbles(phase: ChickenRacePhase) -> void:
 	var speed_mult = phase.speed_mult

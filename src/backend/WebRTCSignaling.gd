@@ -36,29 +36,40 @@ func _process(_delta: float) -> void:
 func connect_to_room(url: String, code: String) -> Error:
 	server_url = url
 	room_code = code
+	if ws.get_ready_state() != WebSocketPeer.STATE_CLOSED:
+		ws.close()
+		ws = WebSocketPeer.new()
+	is_connected_to_server = false
 	var err = ws.connect_to_url(server_url)
 	if err == OK:
-		_send_join_when_ready("join")
+		_send_join_when_ready(ws, "join")
 	return err
 
 func connect_random(url: String) -> Error:
 	server_url = url
 	room_code = ""
+	if ws.get_ready_state() != WebSocketPeer.STATE_CLOSED:
+		ws.close()
+		ws = WebSocketPeer.new()
+	is_connected_to_server = false
 	var err = ws.connect_to_url(server_url)
 	if err == OK:
-		_send_join_when_ready("random_join")
+		_send_join_when_ready(ws, "random_join")
 	return err
 
-func _send_join_when_ready(join_type: String) -> void:
-	while ws.get_ready_state() == WebSocketPeer.STATE_CONNECTING:
+func _send_join_when_ready(peer: WebSocketPeer, join_type: String) -> void:
+	while peer.get_ready_state() == WebSocketPeer.STATE_CONNECTING:
 		await get_tree().process_frame
-		ws.poll()
+		peer.poll()
 	
-	if ws.get_ready_state() == WebSocketPeer.STATE_OPEN:
+	if peer != ws:
+		return
+		
+	if peer.get_ready_state() == WebSocketPeer.STATE_OPEN:
 		var msg = {"type": join_type}
 		if join_type == "join":
 			msg["room"] = room_code
-		ws.send_text(JSON.stringify(msg))
+		peer.send_text(JSON.stringify(msg))
 
 func disconnect_from_room() -> void:
 	if ws.get_ready_state() == WebSocketPeer.STATE_OPEN:

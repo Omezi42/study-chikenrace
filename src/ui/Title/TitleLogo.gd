@@ -90,6 +90,6 @@ func _start_animations() -> void:
 	add_child(wobble_timer)
 
 func _on_wobble_timeout() -> void:
-	# 回転角度を小さく (±0.4度)
+	# 回転角度を小さく (+-0.4度)
 	label_test_study.rotation_degrees = randf_range(-0.4, 0.4)
 	label_chicken_race.rotation_degrees = randf_range(-0.4, 0.4)

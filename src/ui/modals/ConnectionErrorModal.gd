@@ -76,9 +76,12 @@ func _ready() -> void:
 		out_tween.tween_callback(func():
 			queue_free()
 			var tree = get_tree()
-			if tree and tree.root.has_node("Global"):
-				var global = tree.root.get_node("Global")
-				global.change_scene_with_fade(tree, "res://Title.tscn")
+			if tree:
+				if tree.root.has_node("WebRTCManager"):
+					tree.root.get_node("WebRTCManager").disconnect_room()
+				if tree.root.has_node("Global"):
+					var global = tree.root.get_node("Global")
+					global.change_scene_with_fade(tree, "res://Title.tscn")
 		)
 	)
 	

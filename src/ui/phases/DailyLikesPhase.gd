@@ -37,10 +37,11 @@ func _on_setup(setup_data: Dictionary) -> void:
 	var max_doubts = 3
 	local_doubts_count = max_doubts - session.player_doubts_made_today.size()
 	
-	if has_node("/root/BackendManager"):
-		var bm = get_node_or_null("/root/BackendManager")
-		if bm and not bm.connection_lost.is_connected(_on_connection_lost):
-			bm.connection_lost.connect(_on_connection_lost)
+	var net_mgr = get_node_or_null("/root/WebRTCManager")
+	if not net_mgr:
+		net_mgr = get_node_or_null("/root/BackendManager")
+	if net_mgr and net_mgr.has_signal("connection_lost") and not net_mgr.connection_lost.is_connected(_on_connection_lost):
+		net_mgr.connection_lost.connect(_on_connection_lost)
 	
 	DailyLikesUIBuilder.build_layout(self, setup_data)
 

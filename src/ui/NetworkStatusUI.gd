@@ -52,18 +52,26 @@ func _ready() -> void:
 	status_label.add_theme_color_override("font_color", Color.WHITE)
 	hbox.add_child(status_label)
 	
-	# Connect to BackendManager if exists
-	if has_node("/root/BackendManager"):
-		var bm = get_node("/root/BackendManager")
-		if bm.has_signal("connection_lost"):
-			bm.connection_lost.connect(_on_connection_lost)
-		if bm.has_signal("reconnect_succeeded"):
-			bm.reconnect_succeeded.connect(_on_reconnect_succeeded)
-		if bm.has_signal("reconnect_failed"):
-			bm.reconnect_failed.connect(_on_reconnect_failed)
+	# Connect to Network Manager if exists
+	var net_mgr = get_node_or_null("/root/WebRTCManager")
+	if not net_mgr:
+		net_mgr = get_node_or_null("/root/BackendManager")
+	if net_mgr:
+		if net_mgr.has_signal("connection_lost"):
+			net_mgr.connection_lost.connect(_on_connection_lost)
+		if net_mgr.has_signal("reconnect_succeeded"):
+			net_mgr.reconnect_succeeded.connect(_on_reconnect_succeeded)
+		if net_mgr.has_signal("reconnect_failed"):
+			net_mgr.reconnect_failed.connect(_on_reconnect_failed)
 			
 		# Check initial state
-		if bm.is_mock_room or bm.auth_token == "":
+		var is_offline = (Global.game_mode == Constants.MODE_CPU)
+		if ("is_mock_room" in net_mgr) and net_mgr.is_mock_room:
+			is_offline = true
+		if ("auth_token" in net_mgr) and net_mgr.auth_token == "":
+			is_offline = true
+			
+		if is_offline:
 			_set_offline_mode()
 		else:
 			_set_online_mode()

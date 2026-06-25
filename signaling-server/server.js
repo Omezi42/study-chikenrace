@@ -3,6 +3,15 @@ const http = require('http');
 
 const PORT = process.env.PORT || 9080;
 const server = http.createServer((req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    if (req.url === '/api/status') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+            online_users: wss.clients.size,
+            waiting_users: matchmakingQueue.size
+        }));
+        return;
+    }
     res.writeHead(200);
     res.end('Study Chicken Race Signaling Server is running.');
 });

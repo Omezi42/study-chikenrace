@@ -39,7 +39,7 @@ func _on_setup(setup_data: Dictionary) -> void:
 	
 	if has_node("/root/WebRTCManager"):
 		var wm = get_node_or_null("/root/WebRTCManager")
-		if wm and not wm.connection_lost.is_connected(_on_connection_lost):
+		if wm and wm.has_signal("connection_lost") and not wm.connection_lost.is_connected(_on_connection_lost):
 			wm.connection_lost.connect(_on_connection_lost)
 
 	# Check immediately
@@ -73,10 +73,16 @@ func _check_all_actions() -> void:
 	
 	var moves = []
 	for p_id in actions.keys():
-		if actions[p_id].has("declare"):
-			moves.append(actions[p_id]["declare"])
-		elif actions[p_id].has("doubts"):
-			moves.append(actions[p_id]["doubts"])
+		if is_final_reveal_wait:
+			if actions[p_id].has("doubts"):
+				moves.append(actions[p_id]["doubts"])
+			elif actions[p_id].has("declare"):
+				moves.append(actions[p_id]["declare"])
+		else:
+			if actions[p_id].has("declare"):
+				moves.append(actions[p_id]["declare"])
+			elif actions[p_id].has("doubts"):
+				moves.append(actions[p_id]["doubts"])
 
 	var prev_moves = []
 	for p_id in prev_actions.keys():
@@ -129,7 +135,7 @@ func _transition_out(moves: Array, prev_moves: Array) -> void:
 	var tween = create_tween().bind_node(phone_panel).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	tween.tween_property(phone_panel, "scale", Vector2.ZERO, 0.3)
 	tween.tween_callback(func():
-		finish_phase({"moves": moves, "prev_moves": prev_moves})
+		finish_phase({"moves": moves, "prev_moves": prev_moves, "final_wait": is_final_reveal_wait, "day": target_day})
 	)
 
 func update_members_ui(submitted_moves: Array) -> void:
@@ -145,7 +151,7 @@ func update_members_ui(submitted_moves: Array) -> void:
 			continue
 		var uid = _resolve_player_id(m.get("user_id", ""))
 		submitted_ids[uid] = true
-		if m.get("doubts_submitted", false):
+		if m.get("doubts_submitted", false) or m.get("phase", "") == "doubts":
 			doubts_submitted_ids[uid] = true
 
 	# Render each member
@@ -203,7 +209,8 @@ func _on_force_progress_pressed(current_moves: Array) -> void:
 				"declared_score": 0,
 				"hours_history": [{"draws": 0, "used_items": [], "bursted": true, "score": 0}],
 				"doubts_made": [],
-				"doubts_submitted": true
+				"doubts_submitted": is_final_reveal_wait,
+				"phase": "doubts" if is_final_reveal_wait else "mid_day"
 			}
 			simulated_moves.append(dummy_move)
 
@@ -219,10 +226,8 @@ func _on_force_progress_pressed(current_moves: Array) -> void:
 
 func _resolve_player_id(uid: String) -> String:
 	var my_id = "player"
-	if has_node("/root/WebRTCManager"):
-		var wm = get_node_or_null("/root/WebRTCManager")
-		if wm and wm.multiplayer_service and wm.multiplayer_service.my_peer_id > 0:
-			my_id = str(wm.multiplayer_service.my_peer_id)
+	if multiplayer.has_multiplayer_peer():
+		my_id = str(multiplayer.get_unique_id())
 
 	if uid == "player" and my_id != "player":
 		return my_id

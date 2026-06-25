@@ -45,7 +45,7 @@ func _ready() -> void:
 	header_margin.add_child(header_hbox)
 	
 	var hist_btn = Button.new()
-	hist_btn.text = "📜 点数履歴"
+	hist_btn.text = "点数履歴"
 	hist_btn.custom_minimum_size = Vector2(140, 45)
 	hist_btn.add_theme_font_override("font", DeskTheme.get_font())
 	hist_btn.add_theme_font_size_override("font_size", 18)
@@ -132,11 +132,7 @@ func _on_phase_finished(result_data: Dictionary, phase_type: String) -> void:
 				change_phase(Constants.PHASE_CHICKEN_RACE)
 		Constants.PHASE_REPORT:
 			if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
-				var wm = null
-				var main_loop = Engine.get_main_loop()
-				if main_loop is SceneTree:
-					wm = main_loop.root.get_node_or_null("WebRTCManager")
-				var my_id = str(wm.multiplayer_service.my_peer_id) if wm and wm.multiplayer_service and wm.multiplayer_service.my_peer_id > 0 else "player"
+				var my_id = str(multiplayer.get_unique_id()) if multiplayer.has_multiplayer_peer() else "player"
 
 				var mid_move = {
 					"user_id": my_id,

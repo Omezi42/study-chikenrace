@@ -99,7 +99,7 @@ func submit_player_declaration(declared_score: int, emote: String = "normal") ->
 	player_emote_today = emote
 	
 	if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
-		var my_id = "player"
+		var my_id = str(MatchState.multiplayer.get_unique_id()) if MatchState.multiplayer.has_multiplayer_peer() else "player"
 		
 		var my_move = {
 			"user_id": my_id,
@@ -180,7 +180,7 @@ func _save_and_upload_day() -> void:
 		Global.friend_match_history = match_history.duplicate(true)
 		Global.save_game()
 
-		var my_id = "player"
+		var my_id = str(MatchState.multiplayer.get_unique_id()) if MatchState.multiplayer.has_multiplayer_peer() else "player"
 
 		var my_move = {
 			"user_id": my_id,
@@ -226,7 +226,7 @@ func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 		match_history[day_idx] = {}
 	var day_data: Dictionary = match_history[day_idx]
 
-	var my_uuid = "player"
+	var my_uuid = str(MatchState.multiplayer.get_unique_id()) if MatchState.multiplayer.has_multiplayer_peer() else "player"
 	var slots = ["cpu_sato", "cpu_suzuki", "cpu_takahashi"]
 	var slot_idx = 0
 
@@ -235,11 +235,15 @@ func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 			continue
 		var uid = str(m.get("user_id", ""))
 		if uid == my_uuid or uid == "player":
+			if m.get("declared_score", 0) > 0 or m.get("actual_score", 0) > 0:
+				var my_rec = Global.normalize_participant_record(m, "player", Global.player_name)
+				my_rec["id"] = my_uuid
+				day_data["player"] = my_rec
 			continue
 
 		var slot_name = ""
 		for s in Global.opponent_profiles.keys():
-			if Global.opponent_profiles[s].get("id", s) == uid:
+			if str(Global.opponent_profiles[s].get("id", s)) == uid:
 				slot_name = s
 				break
 
@@ -250,26 +254,60 @@ func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 			else:
 				continue
 
-		day_data[slot_name] = Global.normalize_participant_record(m, uid, str(m.get("username", "プレイヤー")))
+		var uname = str(m.get("username", "プレイヤー"))
+		if slot_name != "" and uname != "" and Global.opponent_profiles.has(slot_name):
+			Global.opponent_profiles[slot_name]["name"] = uname
+
+		var p_rec = Global.normalize_participant_record(m, uid, uname)
+		p_rec["id"] = uid
+		day_data[slot_name] = p_rec
 
 	if not day_data.has("player"):
-		day_data["player"] = Global.get_default_participant_record("player", Global.player_name)
+		var my_name = Global.player_name if Global.player_name != "" else "あなた"
+		var my_rec = Global.get_default_participant_record("player", my_name)
+		my_rec["actual_score"] = player_actual_score_today
+		my_rec["declared_score"] = player_declared_score_today
+		my_rec["hours"] = player_hours_history_today.duplicate(true)
+		my_rec["doubts_made"] = player_doubts_made_today.duplicate(true)
+		my_rec["emote"] = player_emote_today
+		my_rec["id"] = my_uuid
+		day_data["player"] = my_rec
+	else:
+		if day_data["player"] is Dictionary:
+			day_data["player"]["id"] = my_uuid
+			if player_doubts_made_today.size() > 0:
+				day_data["player"]["doubts_made"] = player_doubts_made_today.duplicate(true)
+
+	var uid_to_slot = {}
+	for s_key in day_data.keys():
+		if day_data[s_key] is Dictionary:
+			var u = str(day_data[s_key].get("id", ""))
+			if u != "":
+				uid_to_slot[u] = s_key
+	uid_to_slot["player"] = "player"
+	uid_to_slot[my_uuid] = "player"
 
 	for p_id in day_data.keys():
 		var p = day_data[p_id]
 		if not (p is Dictionary):
 			continue
-		if not p.has("doubts_made"):
-			p["doubts_made"] = []
-		if not p.has("doubts_received"):
-			p["doubts_received"] = []
-		for target_uid in p["doubts_made"]:
-			if target_uid == my_uuid or target_uid == "player":
-				day_data["player"]["doubts_received"].append(p_id)
-			else:
-				for s in day_data.keys():
-					if day_data[s] is Dictionary and day_data[s].get("id", "") == target_uid:
-						day_data[s]["doubts_received"].append(p_id)
+		p["doubts_received"] = []
+
+	for p_id in day_data.keys():
+		var p = day_data[p_id]
+		if not (p is Dictionary):
+			continue
+		var raw_doubts = p.get("doubts_made", [])
+		if not (raw_doubts is Array):
+			raw_doubts = []
+		var mapped_doubts = []
+		for target_uid in raw_doubts:
+			var t_slot = uid_to_slot.get(str(target_uid), "")
+			if t_slot != "":
+				mapped_doubts.append(t_slot)
+				if day_data.has(t_slot) and day_data[t_slot] is Dictionary:
+					day_data[t_slot]["doubts_received"].append(p_id)
+		p["doubts_made"] = mapped_doubts
 
 	for p_id in day_data.keys():
 		var p = day_data[p_id]

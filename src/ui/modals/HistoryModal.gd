@@ -41,7 +41,7 @@ func _ready() -> void:
 	
 	# Title
 	var title = Label.new()
-	title.text = "📜 スコア・行動履歴"
+	title.text = "スコア・行動履歴"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 28)
@@ -85,7 +85,7 @@ func _ready() -> void:
 	root_vbox.add_child(bottom_hbox)
 	
 	var close_btn = Button.new()
-	close_btn.text = " × 閉じる "
+	close_btn.text = " 閉じる "
 	close_btn.custom_minimum_size = Vector2(220, 45)
 	close_btn.add_theme_font_override("font", DeskTheme.get_font())
 	close_btn.add_theme_font_size_override("font_size", 18)
@@ -112,7 +112,7 @@ func _build_today_section(container: VBoxContainer) -> void:
 	container.add_child(sec_vbox)
 	
 	var header = Label.new()
-	header.text = "■ 本日の時限履歴 (第%d日目)" % session.current_day
+	header.text = "本日の時限履歴 (第%d日目)" % session.current_day
 	header.add_theme_font_override("font", DeskTheme.get_font())
 	header.add_theme_font_size_override("font_size", 20)
 	header.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
@@ -136,7 +136,7 @@ func _build_today_section(container: VBoxContainer) -> void:
 			
 			var row_lbl = Label.new()
 			var status_str = "バースト！ (0点)" if bursted else "+%d点" % score
-			row_lbl.text = "  %d時限目 : %d枚引いた ── %s" % [hour_idx, draws, status_str]
+			row_lbl.text = "  %d時限目 : %d枚引いた -- %s" % [hour_idx, draws, status_str]
 			row_lbl.add_theme_font_override("font", DeskTheme.get_font())
 			row_lbl.add_theme_font_size_override("font_size", 16)
 			if bursted:
@@ -146,7 +146,7 @@ func _build_today_section(container: VBoxContainer) -> void:
 			sec_vbox.add_child(row_lbl)
 			
 	var total_lbl = Label.new()
-	total_lbl.text = "▶ 本日の獲得合計点 : %d点" % session.player_actual_score_today
+	total_lbl.text = "> 本日の獲得合計点 : %d点" % session.player_actual_score_today
 	total_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	total_lbl.add_theme_font_size_override("font_size", 18)
 	total_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
@@ -174,7 +174,7 @@ func _build_past_days_section(container: VBoxContainer) -> void:
 	container.add_child(sec_vbox)
 	
 	var header = Label.new()
-	header.text = "■ これまでのスコア履歴"
+	header.text = "これまでのスコア履歴"
 	header.add_theme_font_override("font", DeskTheme.get_font())
 	header.add_theme_font_size_override("font_size", 20)
 	header.add_theme_color_override("font_color", DeskTheme.COLOR_INK)

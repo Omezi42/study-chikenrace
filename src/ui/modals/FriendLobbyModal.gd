@@ -175,9 +175,34 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	code_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	vbox.add_child(code_lbl)
 	
+	var copy_btn = Button.new()
+	copy_btn.text = "招待文をコピー"
+	copy_btn.custom_minimum_size = Vector2(220, 45)
+	copy_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	copy_btn.add_theme_font_override("font", DeskTheme.get_font())
+	copy_btn.add_theme_font_size_override("font_size", 16)
+	Global.apply_white_button_style(copy_btn)
+	vbox.add_child(copy_btn)
+	
+	copy_btn.pressed.connect(func():
+		copy_btn.release_focus()
+		DeskTheme.animate_click(copy_btn, Vector2.ONE, 0.08)
+		var invite_text = "チキスタ対戦ルーム【%s】に招待されています！ゲームを開いて友達対戦ロビーからコードを入力して参加してね！" % room_code
+		DisplayServer.clipboard_set(invite_text)
+		var orig_text = copy_btn.text
+		copy_btn.text = "コピーしました！"
+		copy_btn.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
+		var t = parent.get_tree().create_timer(1.5)
+		t.timeout.connect(func():
+			if is_instance_valid(copy_btn):
+				copy_btn.text = orig_text
+				copy_btn.remove_theme_color_override("font_color")
+		)
+	)
+	
 	var hint_lbl = Label.new()
 	if is_mock:
-		hint_lbl.text = "※接続エラーまたは未ログインのため、CPU対戦となります"
+		hint_lbl.text = "注: 接続エラーまたは未ログインのため、CPU対戦となります"
 		hint_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
 	else:
 		hint_lbl.text = "（友達にこのコードを教えて入室させてね！）"
@@ -217,7 +242,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		
 	# Exit Button
 	var exit_btn = Button.new()
-	exit_btn.text = "ロビーを出る ×"
+	exit_btn.text = "ロビーを出る"
 	exit_btn.custom_minimum_size = Vector2(160, 45)
 	exit_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	Global.apply_white_button_style(exit_btn)
@@ -229,6 +254,8 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	var cleanup_signals = Callable()
 	
 	var start_game_transition = func(final_participants: Array):
+		AudioManager.play_se(AudioManager.SE_FANFARE)
+		DisplayServer.window_request_attention()
 		is_polling_active = false
 		cleanup_signals.call()
 		Global.game_mode = Constants.MODE_FRIEND
@@ -243,7 +270,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		# Set slots for opponent profiles
 		var slots = ["cpu_sato", "cpu_suzuki", "cpu_takahashi"]
 		var slot_idx = 0
-		var my_id = wrm.get_uuid() if (wrm and wrm.get_uuid() != "") else "player"
+		var my_id = str(parent.multiplayer.get_unique_id()) if parent.multiplayer.has_multiplayer_peer() else "player"
 		
 		Global.opponent_profiles.clear()
 		for p in final_participants:
@@ -295,8 +322,8 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 			
 		for p in parts:
 			var name_lbl = Label.new()
-			name_lbl.text = "● " + p.get("username", "プレイヤー")
-			if p.get("user_id") == (wrm.get_uuid() if (wrm and wrm.get_uuid() != "") else "player"):
+			name_lbl.text = "- " + p.get("username", "プレイヤー")
+			if p.get("user_id") == (str(parent.multiplayer.get_unique_id()) if parent.multiplayer.has_multiplayer_peer() else "player"):
 				name_lbl.text += " (あなた)"
 				name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 			else:
@@ -317,6 +344,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 
 	var on_player_connected_cb = func(id): on_polled.call()
 	var on_player_disconnected_cb = func(id): on_polled.call()
+	var on_room_joined_cb = func(success, parts): on_polled.call()
 
 	cleanup_signals = func():
 		if wrm and wrm.webrtc_multiplayer:
@@ -324,12 +352,15 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 				wrm.webrtc_multiplayer.player_connected.disconnect(on_player_connected_cb)
 			if wrm.webrtc_multiplayer.player_disconnected.is_connected(on_player_disconnected_cb):
 				wrm.webrtc_multiplayer.player_disconnected.disconnect(on_player_disconnected_cb)
+			if wrm.webrtc_multiplayer.room_joined.is_connected(on_room_joined_cb):
+				wrm.webrtc_multiplayer.room_joined.disconnect(on_room_joined_cb)
 		if MatchState.game_state_synced.is_connected(on_game_state_synced):
 			MatchState.game_state_synced.disconnect(on_game_state_synced)
 
 	if wrm and wrm.webrtc_multiplayer:
 		wrm.webrtc_multiplayer.player_connected.connect(on_player_connected_cb)
 		wrm.webrtc_multiplayer.player_disconnected.connect(on_player_disconnected_cb)
+		wrm.webrtc_multiplayer.room_joined.connect(on_room_joined_cb)
 		MatchState.game_state_synced.connect(on_game_state_synced)
 		on_polled.call()
 	else:
