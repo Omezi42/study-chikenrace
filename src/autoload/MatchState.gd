@@ -33,18 +33,15 @@ func sync_game_state(state: Dictionary) -> void:
 var opponent_profiles: Dictionary = {
 	"cpu_sato": {
 		"id": "cpu_sato",
-		"name": "佐藤くん",
-		"deviation": 51.5
+		"name": "佐藤くん"
 	},
 	"cpu_suzuki": {
 		"id": "cpu_suzuki",
-		"name": "鈴木さん",
-		"deviation": 48.0
+		"name": "鈴木さん"
 	},
 	"cpu_takahashi": {
 		"id": "cpu_takahashi",
-		"name": "高橋くん",
-		"deviation": 54.2
+		"name": "高橋くん"
 	}
 }
 

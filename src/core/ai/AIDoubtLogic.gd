@@ -45,11 +45,7 @@ static func make_cpu_doubts(cpu_id: String, participants: Array[Dictionary]) -> 
 	var cpu_type = cpu_info["type"]
 	var doubts: Array[String] = []
 	
-	var deviation = 50.0
-	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("deviation"):
-		deviation = Global.opponent_profiles[cpu_id]["deviation"]
-	var dev_doubt_mod = clamp(deviation / 50.0, 0.5, 1.5)
-	
+
 	var main_loop = Engine.get_main_loop()
 	var session = null
 	if main_loop is SceneTree:
@@ -83,11 +79,8 @@ static func make_cpu_doubts(cpu_id: String, participants: Array[Dictionary]) -> 
 			is_actually_lying = true
 		
 		if is_actually_lying:
-			# CPUの強さ（deviation）やクラスに応じて直感補正を強める
-			var intuition_bonus = 0.05 + (deviation - 50.0) * 0.005 # 偏差値50で+5%、偏差値70で+15%
-			if Global and Global.game_mode != Constants.MODE_RANDOM:
-				if Global.selected_class == "advanced":
-					intuition_bonus += 0.1
+			# 少しだけダウトされやすくする（直感補正）
+			var intuition_bonus = 0.05
 			suspiciousness = clamp(suspiciousness + intuition_bonus, 0.0, 1.0)
 		# ------------------------------------------------------------------------------------------
 			
@@ -121,9 +114,7 @@ static func make_cpu_doubts(cpu_id: String, participants: Array[Dictionary]) -> 
 			AIProfile.TYPE_BLUFFER: ev_threshold = 0.0    # プラマイ0でGO
 			AIProfile.TYPE_HIGHROLLER: ev_threshold = -5.0 # リスクを恐れない
 			
-		# 偏差値による閾値の微調整（頭がいいほど無謀なダウトを避けるが、確信があれば刺す）
-		ev_threshold *= (2.0 - dev_doubt_mod)
-		
+
 		suspect_list.append({
 			"id": p["id"],
 			"ev": expected_value,

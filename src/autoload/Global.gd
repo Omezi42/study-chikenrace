@@ -134,16 +134,13 @@ func validate_opponent_profiles() -> void:
 		if not opponent_profiles[key] is Dictionary:
 			opponent_profiles[key] = {
 				"id": default_ids.get(key, "cpu_sato"),
-				"name": "佐藤くん",
-				"deviation": 50.0
+				"name": "佐藤くん"
 			}
 			continue
 		if not opponent_profiles[key].has("id"):
 			opponent_profiles[key]["id"] = default_ids.get(key, "cpu_sato")
 		if not opponent_profiles[key].has("name") or str(opponent_profiles[key]["name"]) == "":
 			opponent_profiles[key]["name"] = AIManager.get_cpu_name(opponent_profiles[key]["id"])
-		if not opponent_profiles[key].has("deviation"):
-			opponent_profiles[key]["deviation"] = 50.0
 
 func get_default_participant_record(participant_id: String, display_name: String = "") -> Dictionary:
 	var name_to_use = display_name
@@ -234,8 +231,7 @@ func select_random_opponents() -> void:
 		
 		opponent_profiles[target_slot] = {
 			"id": source_key,
-			"name": profile.get("name", source_key),
-			"deviation": 50.0
+			"name": profile.get("name", source_key)
 		}
 	save_game()
 

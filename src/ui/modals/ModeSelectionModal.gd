@@ -299,18 +299,15 @@ static func show_difficulty_selection(parent: Node, mode_modal: PanelContainer, 
 				Global.opponent_profiles = {
 					"cpu_sato": {
 						"id": cpu_pool_keys[0],
-						"name": pool[0],
-						"deviation": clamp(randf_range(dev_min, dev_max), 35.0, 80.0)
+						"name": pool[0]
 					},
 					"cpu_suzuki": {
 						"id": cpu_pool_keys[1],
-						"name": pool[1],
-						"deviation": clamp(randf_range(dev_min, dev_max), 35.0, 80.0)
+						"name": pool[1]
 					},
 					"cpu_takahashi": {
 						"id": cpu_pool_keys[2],
-						"name": pool[2],
-						"deviation": clamp(randf_range(dev_min, dev_max), 35.0, 80.0)
+						"name": pool[2]
 					}
 				}
 				Global.save_game()
@@ -494,8 +491,7 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 					var slot_id = slots[idx]
 					Global.opponent_profiles[slot_id] = {
 						"id": uid,
-						"name": p.get("username", "ライバル"),
-						"deviation": 50.0
+						"name": p.get("username", "ライバル")
 					}
 					idx += 1
 				

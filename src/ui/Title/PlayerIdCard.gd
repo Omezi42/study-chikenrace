@@ -5,7 +5,7 @@ signal profile_pressed
 
 var name_lbl: Label
 var title_lbl: Label
-var deviation_lbl: Label
+
 var coin_lbl: Label
 var profile_btn: Button
 var parent_scene: Node
@@ -39,29 +39,6 @@ func _ready() -> void:
 	card_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header_hbox.add_child(card_title)
 	
-	# コイン表示（黄色い付箋バッジ）
-	var coin_panel = PanelContainer.new()
-	var coin_style = StyleBoxFlat.new()
-	coin_style.bg_color = Color("fff9c4")
-	coin_style.corner_radius_top_left = 12
-	coin_style.corner_radius_top_right = 12
-	coin_style.corner_radius_bottom_left = 12
-	coin_style.corner_radius_bottom_right = 12
-	coin_style.content_margin_left = 10
-	coin_style.content_margin_right = 10
-	coin_style.content_margin_top = 2
-	coin_style.content_margin_bottom = 2
-	coin_style.border_width_bottom = 2
-	coin_style.border_color = Color("fbc02d")
-	coin_panel.add_theme_stylebox_override("panel", coin_style)
-	
-	coin_lbl = Label.new()
-	coin_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	coin_lbl.add_theme_font_size_override("font_size", 18)
-	coin_lbl.add_theme_color_override("font_color", Color("f57c00"))
-	coin_panel.add_child(coin_lbl)
-	header_hbox.add_child(coin_panel)
-	
 	# 称号
 	title_lbl = Label.new()
 	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
@@ -77,11 +54,7 @@ func _ready() -> void:
 	main_vbox.add_child(name_lbl)
 	
 	# 偏差値表示
-	deviation_lbl = Label.new()
-	deviation_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	deviation_lbl.add_theme_font_size_override("font_size", 26)
-	deviation_lbl.add_theme_color_override("font_color", Color("5d4d3d"))
-	main_vbox.add_child(deviation_lbl)
+
 	
 	# プロフィール/ログインボタン
 	profile_btn = Button.new()
@@ -99,17 +72,9 @@ func _ready() -> void:
 	)
 	main_vbox.add_child(profile_btn)
 
-func update_data(player_name: String, player_title: String, deviation: float, coins: int, logged_in: bool) -> void:
-	title_lbl.text = "【" + player_title + "】" if player_title != "" else "【ただの凡人】"
+func update_data(player_name: String, player_title: String, logged_in: bool) -> void:
 	name_lbl.text = player_name
-	
-	# 偏差値のフォーマット
-	if deviation > 0:
-		deviation_lbl.text = "偏差値: %0.1f" % deviation
-	else:
-		deviation_lbl.text = "偏差値: 未測定"
-		
-	coin_lbl.text = "%d コイン" % coins
+	title_lbl.text = "称号: " + player_title
 	
 	if logged_in:
 		profile_btn.text = " プロフィール詳細"

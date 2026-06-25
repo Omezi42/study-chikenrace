@@ -155,9 +155,9 @@ func _start_tutorial() -> void:
 	Global.is_tutorial_mode = true
 	Global.game_mode = Constants.MODE_CPU
 	Global.opponent_profiles = {
-		"cpu_sato": {"name": "佐藤くん", "deviation": 51.5},
-		"cpu_suzuki": {"name": "鈴木さん", "deviation": 48.0},
-		"cpu_takahashi": {"name": "高橋くん", "deviation": 54.2}
+		"cpu_sato": {"name": "佐藤くん"},
+		"cpu_suzuki": {"name": "鈴木さん"},
+		"cpu_takahashi": {"name": "高橋くん"}
 	}
 	if Global.player_name == "":
 		Global.player_name = "プレイヤー"
@@ -303,21 +303,21 @@ func _setup_page_1(visual_area: Control, rtb: RichTextLabel) -> void:
 	
 	var cards_ctrl = Control.new()
 	cards_ctrl.custom_minimum_size = Vector2(280, 240)
-	var c1 = CardVisual.create({"value": 7, "item_id": "item_mech_pencil", "name": "シャーペン"})
+	var c1 = CardVisual.create({"value": 7})
 	c1.scale = Vector2(0.8, 0.8)
 	c1.position = Vector2(0, 20)
 	c1.rotation_degrees = -10
 	c1.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cards_ctrl.add_child(c1)
 	
-	var c2 = CardVisual.create({"value": 10, "item_id": "item_ruler", "name": "定規"})
+	var c2 = CardVisual.create({"value": 10})
 	c2.scale = Vector2(0.8, 0.8)
 	c2.position = Vector2(60, 0)
 	c2.rotation_degrees = 0
 	c2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cards_ctrl.add_child(c2)
 	
-	var c3 = CardVisual.create({"value": 8, "item_id": "item_blue_pen", "name": "青ペン"})
+	var c3 = CardVisual.create({"value": 8})
 	c3.scale = Vector2(0.8, 0.8)
 	c3.position = Vector2(120, 20)
 	c3.rotation_degrees = 10
@@ -454,12 +454,12 @@ func _setup_page_2(visual_area: Control, rtb: RichTextLabel) -> void:
 	var burst_ctrl = Control.new()
 	burst_ctrl.custom_minimum_size = Vector2(200, 240)
 	
-	var c7_1 = CardVisual.create({"value": 7, "item_id": "", "name": "通常"})
+	var c7_1 = CardVisual.create({"value": 7})
 	c7_1.position = Vector2(0, 0)
 	c7_1.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	burst_ctrl.add_child(c7_1)
 	
-	var c7_2 = CardVisual.create({"value": 7, "item_id": "", "name": "通常"})
+	var c7_2 = CardVisual.create({"value": 7})
 	c7_2.position = Vector2(40, 40) # ズラして配置
 	c7_2.modulate = Color(1.0, 0.3, 0.3) # 強い赤
 	c7_2.mouse_filter = Control.MOUSE_FILTER_IGNORE

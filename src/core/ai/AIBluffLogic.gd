@@ -14,11 +14,7 @@ static func calculate_cpu_bluff(cpu_id: String, actual_score: int, day_idx: int 
 	var is_losing = standing["is_losing"]
 	var is_winning = standing["is_winning"]
 
-	if "item_cheat_sheet" in deck_config.values():
-		base_bluff_limit += 16
-	if "item_copy_answer" in deck_config.values():
-		base_bluff_limit += 25
-		
+
 	if is_losing:
 		base_bluff_limit += 8
 	elif is_winning:
@@ -28,12 +24,8 @@ static func calculate_cpu_bluff(cpu_id: String, actual_score: int, day_idx: int 
 		base_bluff_limit = min(base_bluff_limit, 14)
 		
 	var bluff_amount = 0
-	var deviation = 50.0
-	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("deviation"):
-		deviation = Global.opponent_profiles[cpu_id]["deviation"]
-	var dev_bluff_mod = clamp(50.0 / deviation, 0.5, 1.5) if deviation > 0.0 else 1.5
 	
-	var bluff_chance_mod = randf_range(0.85, 1.15) * dev_bluff_mod
+	var bluff_chance_mod = randf_range(0.85, 1.15)
 	if is_losing:
 		bluff_chance_mod *= 1.3
 	elif is_winning:

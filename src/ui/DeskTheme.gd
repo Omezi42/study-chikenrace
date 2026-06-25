@@ -23,14 +23,6 @@ const FONT_HANDWRITING = "res://assets/hgrsmp.ttf"
 const _preloaded_font = preload(FONT_HANDWRITING)
 
 static func get_font() -> Font:
-	var root = Engine.get_main_loop().root
-	if root and root.has_node("Global"):
-		var global = root.get_node("Global")
-		if not global.use_handwriting_font:
-			var temp = Control.new()
-			var font = temp.get_theme_font("font")
-			temp.free()
-			return font
 	return _preloaded_font
 
 static var _stylebox_cache: Dictionary = {}

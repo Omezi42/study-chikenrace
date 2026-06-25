@@ -25,9 +25,7 @@ var day_bar_rows: Dictionary = {}
 var showdown_data: Dictionary
 var current_step_day: int = 1
 var is_revealing: bool = true
-var old_deviation: float = 50.0
-var new_deviation: float = 50.0
-var deviation_change: float = 0.0
+
 var _active_score_labels: Dictionary = {}
 var _anim_line1: Line2D
 var _anim_line2: Line2D
@@ -74,10 +72,7 @@ func _ready() -> void:
 	if not showdown_data.has("final_scores"):
 		showdown_data["final_scores"] = {"player": 0}
 		
-	# Calculate deviation changes before proceeding
-	_calculate_deviation()
-	Global.evaluate_achievements()
-		
+
 	ResultReportUI.build_report_notebook(self)
 	
 	_reflow_layout()
@@ -122,10 +117,7 @@ func reveal_next_day_showdown() -> void:
 		# Reveal complete! Trigger report card overlay or deviation animation
 		if is_revealing:
 			is_revealing = false
-			if Global.game_mode == Constants.MODE_RANDOM:
-				_play_chalk_deviation_animation()
-			else:
-				trigger_report_card()
+			trigger_report_card()
 		return
 		
 	# Clear older elements so we only show the current day's reveal
@@ -536,85 +528,7 @@ func trigger_report_card() -> void:
 	score_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	report_left_page.add_child(score_lbl)
 	
-	# Display Deviation Value if playing random match
-	if Global.game_mode == Constants.MODE_RANDOM:
-		var deviation_change_lbl = Label.new()
-		var old_league = showdown_data.get("old_league", "")
-		var new_league = showdown_data.get("new_league", "")
-		
-		var league_text = "全国ランダムマッチ 偏差値: %.1f (前回: %.1f)\n" % [new_deviation, old_deviation]
-		league_text += "所属リーグ: %s" % Global.get_deviation_league_name(new_league)
-		
-		if old_league != new_league and old_league != "":
-			if showdown_data.get("league_upgraded", false):
-				league_text += " 【昇格！】"
-			elif showdown_data.get("league_downgraded", false):
-				league_text += " 【降格...】"
-		
-		league_text += "\n"
-		if deviation_change >= 0:
-			league_text += "→ 偏差値が %.1f アップしました！" % deviation_change
-			deviation_change_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_BONUS)
-		else:
-			league_text += "→ 偏差値が %.1f ダウンしました..." % abs(deviation_change)
-			deviation_change_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
-			
-		deviation_change_lbl.text = league_text
-		deviation_change_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		deviation_change_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
-		report_left_page.add_child(deviation_change_lbl)
-	
-	# Coins, levels, and star bonuses removed.
-	
-	# 称号スタンプ風UI & アニメーション演出
-	var title_container = VBoxContainer.new()
-	title_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	title_container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	report_left_page.add_child(title_container)
-	
-	var title_desc = Label.new()
-	var is_title_new = showdown_data.get("is_title_new", false)
-	if is_title_new:
-		title_desc.text = "【 新称号獲得！ 】"
-	else:
-		title_desc.text = "現在の称号"
-	title_desc.add_theme_font_override("font", DeskTheme.get_font())
-	title_desc.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
-	if is_title_new:
-		title_desc.add_theme_color_override("font_color", Color("c62828"))
-	else:
-		title_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
-	title_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_container.add_child(title_desc)
-	
-	var stamp_color = Color("c62828") if is_title_new else Color("455a64")
-	var stamp_bg = Color(1, 0.9, 0.9, 0.3) if is_title_new else Color(0.9, 0.9, 1.0, 0.3)
-	var stamp_style = DeskTheme.create_stamp_style(stamp_color, stamp_bg)
-	
-	var stamp_panel = PanelContainer.new()
-	stamp_panel.add_theme_stylebox_override("panel", stamp_style)
-	stamp_panel.pivot_offset = Vector2(100, 25)
-	stamp_panel.rotation_degrees = -6.0
-	title_container.add_child(stamp_panel)
-	
-	var title_lbl = Label.new()
-	title_lbl.text = "【 " + showdown_data["title"] + " 】"
-	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	title_lbl.add_theme_font_size_override("font_size", 20)
-	title_lbl.add_theme_color_override("font_color", stamp_color)
-	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stamp_panel.add_child(title_lbl)
-	
-	var s_tween = create_tween().set_parallel(true)
-	if is_title_new:
-		stamp_panel.scale = Vector2(3.0, 3.0)
-		stamp_panel.modulate.a = 0.0
-		s_tween.tween_property(stamp_panel, "scale", Vector2(1.0, 1.0), 0.35).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-		s_tween.tween_property(stamp_panel, "modulate:a", 1.0, 0.15)
-	else:
-		stamp_panel.scale = Vector2(1.0, 1.0)
-		stamp_panel.modulate.a = 0.0
-		s_tween.tween_property(stamp_panel, "modulate:a", 1.0, 0.25)
+
 	# If S-grade (250+ points), stamp a huge hanamaru (花丸スタンプ)
 	if my_score >= 250:
 		var hanamaru_parent = Control.new()
@@ -957,214 +871,7 @@ func _on_play_again_pressed() -> void:
 		Global.change_scene_with_fade(get_tree(), "res://Main.tscn")
 	)
 
-func _calculate_deviation() -> void:
-	# Calculate player win/lose rank
-	var my_rank = 3
-	if showdown_data.has("my_rank"):
-		my_rank = showdown_data["my_rank"]
-	else:
-		var ranks_temp = showdown_data.get("rankings", []).duplicate()
-		ranks_temp.sort_custom(func(a, b):
-			if a["score"] != b["score"]:
-				return a["score"] > b["score"]
-			if a["bursts"] != b["bursts"]:
-				return a["bursts"] < b["bursts"]
-			return a["id"] < b["id"]
-		)
-		for r_idx in range(ranks_temp.size()):
-			if ranks_temp[r_idx]["id"] == "player":
-				my_rank = r_idx + 1
-				break
-		showdown_data["my_rank"] = my_rank
-				
-	var is_player_win = (my_rank == 1)
-	
-	# Record match result (updates recent results, wins, and triggers grade promotion if applicable)
-	var prog_report = PlayerState.record_match_result(is_player_win)
-	showdown_data["prog_report"] = prog_report
-	
-	if Global.game_mode == Constants.MODE_RANDOM:
-		if not showdown_data.has("deviation_change"):
-			# フォールバック処理 (テストコード実行時など)
-			var change = 0.0
-			if my_rank == 1:
-				change = randf_range(3.2, 4.8) + max(0.0, (60.0 - Global.deviation_value) * 0.15)
-			elif my_rank == 2:
-				change = randf_range(0.8, 1.6) + (55.0 - Global.deviation_value) * 0.05
-			elif my_rank == 3:
-				change = -randf_range(0.8, 1.6) - (Global.deviation_value - 45.0) * 0.05
-			elif my_rank == 4:
-				change = -randf_range(3.2, 4.8) - max(0.0, (Global.deviation_value - 40.0) * 0.15)
-			
-			change = clamp(change, -8.0, 8.0)
-			var old_dev = Global.deviation_value
-			var new_dev = clamp(old_dev + change, 30.0, 90.0)
-			
-			showdown_data["old_deviation"] = old_dev
-			showdown_data["new_deviation"] = new_dev
-			showdown_data["deviation_change"] = new_dev - old_dev
-			showdown_data["old_league"] = Global.get_deviation_league(old_dev)
-			showdown_data["new_league"] = Global.get_deviation_league(new_dev)
-			showdown_data["league_upgraded"] = false
-			showdown_data["league_downgraded"] = false
 
-		old_deviation = showdown_data.get("old_deviation", Global.deviation_value)
-		new_deviation = showdown_data.get("new_deviation", Global.deviation_value)
-		deviation_change = showdown_data.get("deviation_change", 0.0)
-		
-		Global.deviation_value = snapped(new_deviation, 0.1)
-		if Global.deviation_value > Global.max_deviation_value:
-			Global.max_deviation_value = Global.deviation_value
-		
-		# サーバーへのスコア/レートアップロード
-		var root = Engine.get_main_loop().root
-		if root and root.has_node("BackendManager"):
-			var bm = root.get_node("BackendManager")
-			bm.upload_random_match_result(
-				showdown_data.get("final_scores", {}).get("player", 0),
-				my_rank,
-				new_deviation,
-				Global.get_deviation_league(new_deviation)
-			)
-	else:
-		old_deviation = Global.deviation_value
-		new_deviation = Global.deviation_value
-		deviation_change = 0.0
-		
-	# Always save game at the end of showdown calculations
-	Global.save_game()
-
-func _play_chalk_deviation_animation() -> void:
-	if is_instance_valid(skip_btn):
-		skip_btn.queue_free()
-		
-	var fade_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	for child in blackboard_vbox.get_children():
-		if child != scorecard_label:
-			fade_tween.tween_property(child, "modulate:a", 0.0, 0.4)
-			
-	await fade_tween.finished
-	
-	for child in blackboard_vbox.get_children():
-		if child != scorecard_label:
-			child.queue_free()
-			
-	var chalk_container = VBoxContainer.new()
-	chalk_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	chalk_container.add_theme_constant_override("separation", DeskTheme.MARGIN_MEDIUM)
-	blackboard_vbox.add_child(chalk_container)
-	
-	var title_lbl = Label.new()
-	title_lbl.text = "今回の偏差値判定"
-	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	title_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TITLE_LARGE)
-	title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_WHITE)
-	chalk_container.add_child(title_lbl)
-	
-	var val_hbox = HBoxContainer.new()
-	val_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	val_hbox.add_theme_constant_override("separation", DeskTheme.MARGIN_LARGE)
-	chalk_container.add_child(val_hbox)
-	
-	var old_val_box = Control.new()
-	old_val_box.custom_minimum_size = Vector2(180, 80)
-	val_hbox.add_child(old_val_box)
-	
-	var old_lbl = Label.new()
-	old_lbl.text = "%.1f" % old_deviation
-	old_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	old_lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	old_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	old_lbl.add_theme_font_size_override("font_size", 64)
-	old_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_WHITE)
-	old_val_box.add_child(old_lbl)
-	
-	var arrow_lbl = Label.new()
-	arrow_lbl.text = "→"
-	arrow_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	arrow_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_GIANT)
-	arrow_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_WHITE)
-	val_hbox.add_child(arrow_lbl)
-	
-	var new_lbl = Label.new()
-	new_lbl.text = "%.1f" % new_deviation
-	new_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	new_lbl.add_theme_font_size_override("font_size", 72)
-	
-	if deviation_change >= 0:
-		new_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_YELLOW)
-	else:
-		new_lbl.add_theme_color_override("font_color", Color("ff6b6b"))
-	val_hbox.add_child(new_lbl)
-	
-	new_lbl.pivot_offset = Vector2(40, 40)
-	new_lbl.scale = Vector2.ZERO
-	
-	var change_lbl = Label.new()
-	if deviation_change >= 0:
-		change_lbl.text = "+%.1f アップ！" % deviation_change
-		change_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_CHALK_YELLOW)
-	else:
-		change_lbl.text = "-%.1f ダウン..." % abs(deviation_change)
-		change_lbl.add_theme_color_override("font_color", Color("ff6b6b"))
-	change_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	change_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	change_lbl.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SUBTITLE)
-	change_lbl.modulate.a = 0.0
-	chalk_container.add_child(change_lbl)
-	
-	var line1 = Line2D.new()
-	line1.width = 6.0
-	line1.default_color = Color("ff4444", 0.9)
-	line1.points = PackedVector2Array([Vector2(-10, 20), Vector2(-10, 20)])
-	old_val_box.add_child(line1)
-	
-	var line2 = Line2D.new()
-	line2.width = 6.0
-	line2.default_color = Color("ff4444", 0.9)
-	line2.points = PackedVector2Array([Vector2(-10, 45), Vector2(-10, 45)])
-	old_val_box.add_child(line2)
-	
-	_anim_line1 = line1
-	_anim_line2 = line2
-	
-	DeskTheme.shake_control(blackboard_panel, 2.0, 0.15)
-	
-	var timer_anim = get_tree().create_timer(0.8)
-	await timer_anim.timeout
-	if not is_instance_valid(self) or not is_inside_tree(): return
-	
-	var draw_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	draw_tween.tween_method(_set_line1_point, Vector2(-10, 20), Vector2(190, 60), 0.3)
-	draw_tween.tween_method(_set_line2_point, Vector2(-10, 45), Vector2(190, 85), 0.3).set_delay(0.1)
-	
-	await draw_tween.finished
-	if not is_instance_valid(self) or not is_inside_tree(): return
-	DeskTheme.shake_control(blackboard_panel, 4.0, 0.2)
-	
-	var timer_pop = get_tree().create_timer(0.4)
-	await timer_pop.timeout
-	if not is_instance_valid(self) or not is_inside_tree(): return
-	
-	var pop_tween = create_tween().set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-	pop_tween.tween_property(new_lbl, "scale", Vector2.ONE, 0.4)
-	pop_tween.parallel().tween_property(change_lbl, "modulate:a", 1.0, 0.3).set_delay(0.15)
-	
-	await pop_tween.finished
-	if not is_instance_valid(self) or not is_inside_tree(): return
-	DeskTheme.shake_control(blackboard_panel, 6.0, 0.25)
-	
-	var timer_end = get_tree().create_timer(2.2)
-	await timer_end.timeout
-	if not is_instance_valid(self) or not is_inside_tree(): return
-	
-	var out_tween = create_tween().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	out_tween.tween_property(chalk_container, "modulate:a", 0.0, 0.4)
-	await out_tween.finished
-	if not is_instance_valid(self) or not is_inside_tree(): return
-	
-	trigger_report_card()
 
 func _set_score_player(val: float) -> void:
 	if _active_score_labels.has("player") and is_instance_valid(_active_score_labels["player"]):

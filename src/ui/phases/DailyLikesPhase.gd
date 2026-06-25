@@ -213,14 +213,7 @@ func _update_ellipsis_visibility() -> void:
 			return
 	detail_ellipsis.visible = false
 
-func _get_target_deck(p_id: String) -> Dictionary:
-	if Global.opponent_profiles.has(p_id):
-		var opp_id = Global.opponent_profiles[p_id].get("id", p_id)
-		if AIManager.CPU_OPPONENTS.has(opp_id):
-			return AIManager.CPU_OPPONENTS[opp_id].get("deck", {})
-	if AIManager.CPU_OPPONENTS.has(p_id):
-		return AIManager.CPU_OPPONENTS[p_id].get("deck", {})
-	return {}
+
 
 func _on_doubt_pressed(target_id: String, card_node: Control, btn: Button) -> void:
 	if tutorial_dialog_node:

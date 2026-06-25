@@ -252,8 +252,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 				var slot = slots[slot_idx]
 				Global.opponent_profiles[slot] = {
 					"id": uid,
-					"name": p.get("username", "プレイヤー"),
-					"deviation": clamp(Global.deviation_value + randf_range(-5.0, 5.0), 35.0, 80.0)
+					"name": p.get("username", "プレイヤー")
 				}
 				slot_idx += 1
 				
@@ -265,8 +264,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 			var profile = AIManager.CPU_OPPONENTS.get(def_id, {"name": "CPU"})
 			Global.opponent_profiles[slot] = {
 				"id": def_id,
-				"name": profile["name"] + " (CPU)",
-				"deviation": 50.0
+				"name": profile["name"] + " (CPU)"
 			}
 			slot_idx += 1
 			
@@ -362,7 +360,6 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		DeskTheme.animate_click(exit_btn, Vector2.ONE, 0.08)
 		is_polling_active = false
 		cleanup_signals.call()
-		var wrm = parent.get_node_or_null("/root/WebRTCManager")
 		if wrm:
 			wrm.webrtc_multiplayer.disconnect_room()
 		lobby_modal.queue_free()

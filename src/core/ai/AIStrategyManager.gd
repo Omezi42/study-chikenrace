@@ -71,12 +71,7 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 		AIProfile.TYPE_BLUFFER: risk_tolerance = 0.24
 		AIProfile.TYPE_HIGHROLLER: risk_tolerance = 0.48
 		
-	var deviation = 50.0
-	if Global and Global.opponent_profiles.has(cpu_id) and Global.opponent_profiles[cpu_id].has("deviation"):
-		deviation = Global.opponent_profiles[cpu_id]["deviation"]
-	var dev_factor = clamp(deviation / 50.0, 0.7, 1.3)
-	
-	risk_tolerance *= randf_range(0.85, 1.15) * dev_factor
+	risk_tolerance *= randf_range(0.85, 1.15)
 	
 	var standing = _evaluate_cpu_standing(cpu_id, day_idx)
 	var is_losing = standing["is_losing"]

@@ -140,18 +140,15 @@ func _start_cpu_match() -> void:
 	Global.opponent_profiles = {
 		"cpu_sato": {
 			"id": cpu_pool_keys[0],
-			"name": pool[0],
-			"deviation": 50.0
+			"name": pool[0]
 		},
 		"cpu_suzuki": {
 			"id": cpu_pool_keys[1],
-			"name": pool[1],
-			"deviation": 50.0
+			"name": pool[1]
 		},
 		"cpu_takahashi": {
 			"id": cpu_pool_keys[2],
-			"name": pool[2],
-			"deviation": 50.0
+			"name": pool[2]
 		}
 	}
 	Global.save_game()
