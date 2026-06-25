@@ -14,8 +14,8 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	phone_panel.pivot_offset = Vector2(210, 420)
 	
 	var phone_style = StyleBoxFlat.new()
-	phone_style.bg_color = Color("#111111") # Dark mode
-	phone_style.border_color = Color("#222222") # Subtle border
+	phone_style.bg_color = Color("#1a1a1a") # Realistic phone body (dark bezel)
+	phone_style.border_color = Color("#2e2e2e") # Subtle bezel edge
 	phone_style.border_width_left = 6
 	phone_style.border_width_right = 6
 	phone_style.border_width_top = 6
@@ -35,7 +35,7 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	var notch = Panel.new()
 	notch.custom_minimum_size = Vector2(120, 24)
 	var notch_style = StyleBoxFlat.new()
-	notch_style.bg_color = Color("#000000")
+	notch_style.bg_color = Color("#111111")
 	notch_style.corner_radius_bottom_left = 12
 	notch_style.corner_radius_bottom_right = 12
 	notch.add_theme_stylebox_override("panel", notch_style)
@@ -55,10 +55,15 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	
 	var status_bar = HBoxContainer.new()
 	status_margin.add_child(status_bar)
+	# Studyplus-style light app screen background behind status bar
+	var screen_bg = StyleBoxFlat.new()
+	screen_bg.bg_color = Color("#ffffff")
+	phone_vbox.add_theme_stylebox_override("panel", screen_bg)
+
 	var time_lbl = Label.new()
 	time_lbl.text = "16:00"
 	time_lbl.add_theme_font_size_override("font_size", 14)
-	time_lbl.add_theme_color_override("font_color", Color.WHITE)
+	time_lbl.add_theme_color_override("font_color", Color("#333333"))
 	status_bar.add_child(time_lbl)
 	
 	var spacer = Control.new()
@@ -68,7 +73,7 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	var app_name = Label.new()
 	app_name.text = "Tikista"
 	app_name.add_theme_font_size_override("font_size", 14)
-	app_name.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
+	app_name.add_theme_color_override("font_color", Color("#999999"))
 	status_bar.add_child(app_name)
 	
 	# Header (New Post)
@@ -78,16 +83,16 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	phone_vbox.add_child(header_margin)
 	
 	var header_title = Label.new()
-	header_title.text = "New Post"
+	header_title.text = "新規投稿"
 	header_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header_title.add_theme_font_override("font", DeskTheme.get_font())
 	header_title.add_theme_font_size_override("font_size", 20)
-	header_title.add_theme_color_override("font_color", Color.WHITE)
+	header_title.add_theme_color_override("font_color", Color("#1a1a1a"))
 	header_margin.add_child(header_title)
 	
 	var sep = ColorRect.new()
 	sep.custom_minimum_size = Vector2(0, 1)
-	sep.color = Color(1, 1, 1, 0.1)
+	sep.color = Color("#e0e0e0")
 	phone_vbox.add_child(sep)
 	
 	# App content
@@ -110,11 +115,11 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	app_vbox.add_child(score_vbox)
 	
 	var decl_title = Label.new()
-	decl_title.text = "Score to share"
+	decl_title.text = "シェアする点数"
 	decl_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	decl_title.add_theme_font_override("font", DeskTheme.get_font())
 	decl_title.add_theme_font_size_override("font_size", 16)
-	decl_title.add_theme_color_override("font_color", Color(1, 1, 1, 0.6))
+	decl_title.add_theme_color_override("font_color", Color("#999999"))
 	score_vbox.add_child(decl_title)
 	
 	var declared_score_label = Label.new()
@@ -122,8 +127,8 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	declared_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	declared_score_label.add_theme_font_override("font", DeskTheme.get_font())
 	declared_score_label.add_theme_font_size_override("font_size", 80)
-	# Default green for honest, but more vibrant
-	declared_score_label.add_theme_color_override("font_color", Color("#00e676")) 
+	# Studyplus-style: default orange accent for honest score
+	declared_score_label.add_theme_color_override("font_color", Color("#ff8c00")) 
 	score_vbox.add_child(declared_score_label)
 	phase.declared_score_label = declared_score_label
 	
@@ -133,10 +138,10 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	score_vbox.add_child(actual_hbox)
 	
 	var actual_val = Label.new()
-	actual_val.text = "Actual: " + str(phase.actual_score)
+	actual_val.text = "実際の点数: " + str(phase.actual_score)
 	actual_val.add_theme_font_override("font", DeskTheme.get_font())
 	actual_val.add_theme_font_size_override("font_size", 16)
-	actual_val.add_theme_color_override("font_color", Color(1, 1, 1, 0.4))
+	actual_val.add_theme_color_override("font_color", Color("#aaaaaa"))
 	actual_hbox.add_child(actual_val)
 	
 	# Modern Slider
@@ -152,7 +157,7 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	report_slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	
 	var slider_bg = StyleBoxFlat.new()
-	slider_bg.bg_color = Color("#2c2c35")
+	slider_bg.bg_color = Color("#e8e8e8") # Studyplus-style light gray track
 	slider_bg.corner_radius_top_left = 20
 	slider_bg.corner_radius_top_right = 20
 	slider_bg.corner_radius_bottom_left = 20
@@ -160,6 +165,16 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	slider_bg.expand_margin_top = 10
 	slider_bg.expand_margin_bottom = 10
 	report_slider.add_theme_stylebox_override("slider", slider_bg)
+	# Orange fill for slider
+	var slider_fill = StyleBoxFlat.new()
+	slider_fill.bg_color = Color("#ff8c00")
+	slider_fill.corner_radius_top_left = 20
+	slider_fill.corner_radius_top_right = 20
+	slider_fill.corner_radius_bottom_left = 20
+	slider_fill.corner_radius_bottom_right = 20
+	slider_fill.expand_margin_top = 10
+	slider_fill.expand_margin_bottom = 10
+	report_slider.add_theme_stylebox_override("grabber_area", slider_fill)
 	
 	var grabber_icon = _create_modern_grabber()
 	report_slider.add_theme_icon_override("grabber", grabber_icon)
@@ -175,11 +190,11 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	app_vbox.add_child(emote_vbox)
 	
 	var emote_title = Label.new()
-	emote_title.text = "Mood"
+	emote_title.text = "今の気分"
 	emote_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	emote_title.add_theme_font_override("font", DeskTheme.get_font())
 	emote_title.add_theme_font_size_override("font_size", 14)
-	emote_title.add_theme_color_override("font_color", Color(1, 1, 1, 0.6))
+	emote_title.add_theme_color_override("font_color", Color("#999999"))
 	emote_vbox.add_child(emote_title)
 	
 	var emote_hbox = HBoxContainer.new()
@@ -188,14 +203,19 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	emote_vbox.add_child(emote_hbox)
 	
 	var emotes = [
-		{"key": "normal", "text": "🙂 Normal"},
-		{"key": "confident", "text": "😎 Confident"},
-		{"key": "anxious", "text": "😰 Anxious"}
+		{"key": "normal", "text": "🙂 ふつう"},
+		{"key": "confident", "text": "😎 自信あり"},
+		{"key": "anxious", "text": "😰 不安"}
 	]
 	
 	var emote_buttons = []
 	var emote_btn_style_normal = StyleBoxFlat.new()
-	emote_btn_style_normal.bg_color = Color("#1c1c1e")
+	emote_btn_style_normal.bg_color = Color("#f5f5f5") # Studyplus-style light pill button
+	emote_btn_style_normal.border_color = Color("#e0e0e0")
+	emote_btn_style_normal.border_width_left = 1
+	emote_btn_style_normal.border_width_right = 1
+	emote_btn_style_normal.border_width_top = 1
+	emote_btn_style_normal.border_width_bottom = 1
 	emote_btn_style_normal.corner_radius_top_left = 20
 	emote_btn_style_normal.corner_radius_top_right = 20
 	emote_btn_style_normal.corner_radius_bottom_left = 20
@@ -206,7 +226,8 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	emote_btn_style_normal.content_margin_bottom = 10
 	
 	var emote_btn_style_selected = emote_btn_style_normal.duplicate()
-	emote_btn_style_selected.bg_color = Color("#007aff") # iOS Blue
+	emote_btn_style_selected.bg_color = Color("#ff8c00") # Studyplus-style orange selected
+	emote_btn_style_selected.border_color = Color("#e07800")
 
 	var update_emote_buttons = func():
 		for btn_data in emote_buttons:
@@ -221,7 +242,7 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 				btn.add_theme_stylebox_override("normal", emote_btn_style_normal)
 				btn.add_theme_stylebox_override("hover", emote_btn_style_normal)
 				btn.add_theme_stylebox_override("pressed", emote_btn_style_normal)
-				btn.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
+				btn.add_theme_color_override("font_color", Color("#444444"))
 
 	for e in emotes:
 		var btn = Button.new()
@@ -244,7 +265,12 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	# Warning Panel
 	var warning_panel = PanelContainer.new()
 	var warn_style = StyleBoxFlat.new()
-	warn_style.bg_color = Color("#3e1414") # Dark red bg
+	warn_style.bg_color = Color("#fff3e0") # Studyplus-style warm orange warning bg
+	warn_style.border_color = Color("#ff8c00")
+	warn_style.border_width_left = 3
+	warn_style.border_width_right = 1
+	warn_style.border_width_top = 1
+	warn_style.border_width_bottom = 1
 	warn_style.corner_radius_top_left = 12
 	warn_style.corner_radius_top_right = 12
 	warn_style.corner_radius_bottom_left = 12
@@ -261,11 +287,11 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	warning_panel.add_child(warn_margin)
 	
 	var warning_text = Label.new()
-	warning_text.text = "⚠️ 申告が実点を超えています。ダウトされる危険性があります！"
+	warning_text.text = "申告が実点を超えています。ダウトされる危険性があります！"
 	warning_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	warning_text.add_theme_font_override("font", DeskTheme.get_font())
 	warning_text.add_theme_font_size_override("font_size", 13)
-	warning_text.add_theme_color_override("font_color", Color("#ff4d4d"))
+	warning_text.add_theme_color_override("font_color", Color("#e65100"))
 	warn_margin.add_child(warning_text)
 	phase.warning_text = warning_text
 	
@@ -277,14 +303,17 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	app_vbox.add_child(spacer2)
 
 	var submit_btn = Button.new()
-	submit_btn.text = "Share to Feed"
+	submit_btn.text = "フィードにシェア"
 	submit_btn.custom_minimum_size = Vector2(340, 56)
 	submit_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	submit_btn.add_theme_font_override("font", DeskTheme.get_font())
 	submit_btn.add_theme_font_size_override("font_size", 18)
 	
 	var submit_style = StyleBoxFlat.new()
-	submit_style.bg_color = Color("#ff2a5f") # Modern pink/red gradient-like flat color (TikTok/Insta vibe)
+	submit_style.bg_color = Color("#ff8c00") # Studyplus-style orange CTA button
+	submit_style.shadow_color = Color("#e07800", 0.4)
+	submit_style.shadow_size = 6
+	submit_style.shadow_offset = Vector2(0, 3)
 	submit_style.corner_radius_top_left = 28
 	submit_style.corner_radius_top_right = 28
 	submit_style.corner_radius_bottom_left = 28
@@ -321,11 +350,19 @@ static func show_stamp_animation(phase: ReportPhase) -> void:
 	popup.custom_minimum_size = Vector2(160, 160)
 	
 	var p_style = StyleBoxFlat.new()
-	p_style.bg_color = Color(0, 0, 0, 0.8)
+	p_style.bg_color = Color("#ffffff") # Studyplus-style white popup
+	p_style.border_color = Color("#ff8c00")
+	p_style.border_width_left = 2
+	p_style.border_width_right = 2
+	p_style.border_width_top = 2
+	p_style.border_width_bottom = 2
 	p_style.corner_radius_top_left = 24
 	p_style.corner_radius_top_right = 24
 	p_style.corner_radius_bottom_left = 24
 	p_style.corner_radius_bottom_right = 24
+	p_style.shadow_color = Color(0, 0, 0, 0.18)
+	p_style.shadow_size = 16
+	p_style.shadow_offset = Vector2(0, 6)
 	popup.add_theme_stylebox_override("panel", p_style)
 	phase.phone_panel.add_child(popup)
 	
@@ -341,15 +378,15 @@ static func show_stamp_animation(phase: ReportPhase) -> void:
 	check.text = "✓"
 	check.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	check.add_theme_font_size_override("font_size", 64)
-	check.add_theme_color_override("font_color", Color("#00e676"))
+	check.add_theme_color_override("font_color", Color("#ff8c00")) # Orange checkmark
 	p_vbox.add_child(check)
 	
 	var lbl = Label.new()
-	lbl.text = "Shared"
+	lbl.text = "シェア完了"
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	lbl.add_theme_font_override("font", DeskTheme.get_font())
 	lbl.add_theme_font_size_override("font_size", 16)
-	lbl.add_theme_color_override("font_color", Color.WHITE)
+	lbl.add_theme_color_override("font_color", Color("#1a1a1a"))
 	p_vbox.add_child(lbl)
 	
 	popup.scale = Vector2(0.8, 0.8)

@@ -14,7 +14,7 @@ static func build_layout(phase: WaitingPhase) -> void:
 	phone_panel.pivot_offset = Vector2(275, 390)
 
 	var phone_style = StyleBoxFlat.new()
-	phone_style.bg_color = DeskTheme.COLOR_INK
+	phone_style.bg_color = DeskTheme.COLOR_INK # Dark phone body (realistic bezel)
 	phone_style.border_color = Color("37474f")
 	phone_style.border_width_left = 16
 	phone_style.border_width_right = 16
@@ -37,14 +37,14 @@ static func build_layout(phase: WaitingPhase) -> void:
 	status_bar.text = "16:30  |  チキスタ同期中"
 	status_bar.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	status_bar.add_theme_font_size_override("font_size", 16)
-	status_bar.add_theme_color_override("font_color", Color.WHITE)
+	status_bar.add_theme_color_override("font_color", Color("#cccccc")) # Light text on dark phone body
 	phone_vbox.add_child(status_bar)
 
-	# Card inside phone (Mocking app screen)
+	# Card inside phone (Studyplus-style light app screen)
 	var app_card = PanelContainer.new()
 	app_card.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var app_style = StyleBoxFlat.new()
-	app_style.bg_color = DeskTheme.COLOR_CRAFT
+	app_style.bg_color = Color("#ffffff") # Studyplus-style white app screen
 	app_style.corner_radius_top_left = 8
 	app_style.corner_radius_top_right = 8
 	app_style.corner_radius_bottom_left = 8
@@ -70,7 +70,7 @@ static func build_layout(phase: WaitingPhase) -> void:
 	app_vbox.add_child(indicator_container)
 
 	var loading_rect = ColorRect.new()
-	loading_rect.color = DeskTheme.COLOR_INK
+	loading_rect.color = Color("#ff8c00") # Studyplus-style orange loading spinner
 	loading_rect.custom_minimum_size = Vector2(40, 40)
 	loading_rect.pivot_offset = Vector2(20, 20)
 	indicator_container.add_child(loading_rect)
@@ -87,7 +87,7 @@ static func build_layout(phase: WaitingPhase) -> void:
 	status_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	status_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	status_lbl.add_theme_font_size_override("font_size", 24)
-	status_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	status_lbl.add_theme_color_override("font_color", Color("#333333")) # Studyplus-style dark ink on white
 	app_vbox.add_child(status_lbl)
 	phase.status_lbl = status_lbl
 
@@ -95,7 +95,7 @@ static func build_layout(phase: WaitingPhase) -> void:
 	var line_ctrl = Control.new()
 	line_ctrl.custom_minimum_size = Vector2(0, 2)
 	var line_rect = ColorRect.new()
-	line_rect.color = Color(DeskTheme.COLOR_INK, 0.15)
+	line_rect.color = Color("#e0e0e0") # Studyplus-style light separator
 	line_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	line_ctrl.add_child(line_rect)
 	app_vbox.add_child(line_ctrl)
@@ -105,7 +105,7 @@ static func build_layout(phase: WaitingPhase) -> void:
 	list_title.text = "ルームメンバー (Day %d)" % phase.target_day
 	list_title.add_theme_font_override("font", DeskTheme.get_font())
 	list_title.add_theme_font_size_override("font_size", 20)
-	list_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
+	list_title.add_theme_color_override("font_color", Color("#999999")) # Studyplus-style muted label
 	app_vbox.add_child(list_title)
 
 	# Members list Container

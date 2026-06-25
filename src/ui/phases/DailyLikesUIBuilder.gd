@@ -49,8 +49,8 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 		phone_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 		
 		var phone_style = StyleBoxFlat.new()
-		phone_style.bg_color = Color("#111111")
-		phone_style.border_color = Color("#222222")
+		phone_style.bg_color = Color("#f8f8f8") # Studyplus-style light gray feed background
+		phone_style.border_color = Color("#dddddd")
 		phone_style.border_width_left = 6
 		phone_style.border_width_right = 6
 		phone_style.border_width_top = 6
@@ -67,7 +67,7 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	var notch = Panel.new()
 	notch.custom_minimum_size = Vector2(120, 24)
 	var notch_style = StyleBoxFlat.new()
-	notch_style.bg_color = Color("#000000")
+	notch_style.bg_color = Color("#111111")
 	notch_style.corner_radius_bottom_left = 12
 	notch_style.corner_radius_bottom_right = 12
 	notch.add_theme_stylebox_override("panel", notch_style)
@@ -90,7 +90,7 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	var time_lbl = Label.new()
 	time_lbl.text = "16:00"
 	time_lbl.add_theme_font_size_override("font_size", 14)
-	time_lbl.add_theme_color_override("font_color", Color.WHITE)
+	time_lbl.add_theme_color_override("font_color", Color("#333333"))
 	status_bar.add_child(time_lbl)
 	
 	var spacer = Control.new()
@@ -100,7 +100,7 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	var app_name = Label.new()
 	app_name.text = "Feed"
 	app_name.add_theme_font_size_override("font_size", 14)
-	app_name.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
+	app_name.add_theme_color_override("font_color", Color("#999999"))
 	status_bar.add_child(app_name)
 	
 	var header_margin = MarginContainer.new()
@@ -111,12 +111,12 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	title_lbl.text = "Explore"
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_lbl.add_theme_font_size_override("font_size", 18)
-	title_lbl.add_theme_color_override("font_color", Color.WHITE)
+	title_lbl.add_theme_color_override("font_color", Color("#1a1a1a"))
 	header_margin.add_child(title_lbl)
 	
 	var sep = ColorRect.new()
 	sep.custom_minimum_size = Vector2(0, 1)
-	sep.color = Color(1, 1, 1, 0.1)
+	sep.color = Color("#e0e0e0")
 	phone_vbox.add_child(sep)
 	
 	var scroll = ScrollContainer.new()
@@ -150,16 +150,19 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	detail_modal.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	
 	var detail_style = StyleBoxFlat.new()
-	detail_style.bg_color = Color("#111111")
-	detail_style.corner_radius_top_left = 24
-	detail_style.corner_radius_top_right = 24
-	detail_style.corner_radius_bottom_left = 24
-	detail_style.corner_radius_bottom_right = 24
+	detail_style.bg_color = Color("#ffffff") # Studyplus-style white detail panel
+	detail_style.border_color = Color("#e0e0e0")
 	detail_style.border_width_left = 1
 	detail_style.border_width_right = 1
 	detail_style.border_width_top = 1
 	detail_style.border_width_bottom = 1
-	detail_style.border_color = Color(1, 1, 1, 0.1)
+	detail_style.corner_radius_top_left = 24
+	detail_style.corner_radius_top_right = 24
+	detail_style.corner_radius_bottom_left = 24
+	detail_style.corner_radius_bottom_right = 24
+	detail_style.shadow_color = Color(0, 0, 0, 0.08)
+	detail_style.shadow_size = 12
+	detail_style.shadow_offset = Vector2(0, 4)
 	detail_modal.add_theme_stylebox_override("panel", detail_style)
 	right_vbox.add_child(detail_modal)
 	phase.detail_modal = detail_modal
@@ -181,7 +184,7 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	detail_title.text = "ライバル詳細ログ"
 	detail_title.add_theme_font_override("font", DeskTheme.get_font())
 	detail_title.add_theme_font_size_override("font_size", 24)
-	detail_title.add_theme_color_override("font_color", Color.WHITE)
+	detail_title.add_theme_color_override("font_color", Color("#1a1a1a"))
 	detail_vbox.add_child(detail_title)
 	phase.detail_title = detail_title
 	
@@ -190,7 +193,7 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	detail_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail_body.add_theme_font_override("font", DeskTheme.get_font())
 	detail_body.add_theme_font_size_override("font_size", 18)
-	detail_body.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
+	detail_body.add_theme_color_override("font_color", Color("#777777"))
 	detail_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_body.custom_minimum_size = Vector2(0, 80)
 	detail_vbox.add_child(detail_body)
@@ -216,7 +219,7 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	detail_ellipsis.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	detail_ellipsis.add_theme_font_override("font", DeskTheme.get_font())
 	detail_ellipsis.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TINY)
-	detail_ellipsis.add_theme_color_override("font_color", Color(1, 1, 1, 0.5))
+	detail_ellipsis.add_theme_color_override("font_color", Color("#aaaaaa"))
 	detail_ellipsis.visible = false
 	detail_vbox.add_child(detail_ellipsis)
 	phase.detail_ellipsis = detail_ellipsis
@@ -229,14 +232,19 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	likes_skip_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
 	
 	var skip_style = StyleBoxFlat.new()
-	skip_style.bg_color = Color(1, 1, 1, 0.1)
+	skip_style.bg_color = Color("#f0f0f0") # Studyplus-style light skip button
+	skip_style.border_color = Color("#dddddd")
+	skip_style.border_width_left = 1
+	skip_style.border_width_right = 1
+	skip_style.border_width_top = 1
+	skip_style.border_width_bottom = 1
 	skip_style.corner_radius_top_left = 25
 	skip_style.corner_radius_top_right = 25
 	skip_style.corner_radius_bottom_left = 25
 	skip_style.corner_radius_bottom_right = 25
 	likes_skip_btn.add_theme_stylebox_override("normal", skip_style)
 	likes_skip_btn.add_theme_stylebox_override("hover", skip_style)
-	likes_skip_btn.add_theme_color_override("font_color", Color.WHITE)
+	likes_skip_btn.add_theme_color_override("font_color", Color("#555555"))
 	
 	likes_skip_btn.pressed.connect(func():
 		likes_skip_btn.visible = false
@@ -266,7 +274,10 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	next_day_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
 	
 	var action_style = StyleBoxFlat.new()
-	action_style.bg_color = Color("#007aff") # iOS Blue
+	action_style.bg_color = Color("#ff8c00") # Studyplus-style orange CTA
+	action_style.shadow_color = Color("#e07800", 0.35)
+	action_style.shadow_size = 6
+	action_style.shadow_offset = Vector2(0, 3)
 	action_style.corner_radius_top_left = 32
 	action_style.corner_radius_top_right = 32
 	action_style.corner_radius_bottom_left = 32
@@ -286,11 +297,14 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	card.pivot_offset = Vector2(240, 100)
 	
 	var card_style = StyleBoxFlat.new()
-	card_style.bg_color = Color("#1c1c1e")
+	card_style.bg_color = Color("#ffffff") # Studyplus-style white card
 	card_style.corner_radius_top_left = 24
 	card_style.corner_radius_top_right = 24
 	card_style.corner_radius_bottom_left = 24
 	card_style.corner_radius_bottom_right = 24
+	card_style.shadow_color = Color(0, 0, 0, 0.08)
+	card_style.shadow_size = 10
+	card_style.shadow_offset = Vector2(0, 3)
 	
 	var is_suspicious = false
 	var suspiciousness = 0.0
@@ -300,18 +314,18 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 			is_suspicious = true
 	
 	if is_suspicious:
-		card_style.bg_color = Color("#2a1616") # Subtle dark red
-		card_style.border_color = Color("#ff4d4d")
-		card_style.border_width_left = 2
-		card_style.border_width_right = 2
-		card_style.border_width_top = 2
-		card_style.border_width_bottom = 2
+		card_style.bg_color = Color("#fff8f0") # Warm alert tint (Studyplus-style)
+		card_style.border_color = Color("#ff8c00")
+		card_style.border_width_left = 3
+		card_style.border_width_right = 1
+		card_style.border_width_top = 1
+		card_style.border_width_bottom = 1
 	else:
 		card_style.border_width_left = 1
 		card_style.border_width_right = 1
 		card_style.border_width_top = 1
 		card_style.border_width_bottom = 1
-		card_style.border_color = Color(1, 1, 1, 0.1)
+		card_style.border_color = Color("#eeeeee")
 		
 	card.add_theme_stylebox_override("panel", card_style)
 	card.clip_contents = true
@@ -349,12 +363,12 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	
 	var name_lbl = Label.new()
 	if is_suspicious:
-		name_lbl.text = p["name"] + " ⚠️"
+		name_lbl.text = p["name"] + " !"
 	else:
 		name_lbl.text = p["name"]
 	name_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	name_lbl.add_theme_font_size_override("font_size", 18)
-	name_lbl.add_theme_color_override("font_color", Color.WHITE)
+	name_lbl.add_theme_color_override("font_color", Color("#1a1a1a"))
 	header_hbox.add_child(name_lbl)
 	
 	var emote_key = p.get("emote", "normal")
@@ -372,17 +386,17 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	
 	match emote_key:
 		"normal":
-			emote_badge.text = "🙂 Normal"
-			badge_style.bg_color = Color("#2c2c2e")
-			emote_badge.add_theme_color_override("font_color", Color.WHITE)
+			emote_badge.text = "Normal"
+			badge_style.bg_color = Color("#f0f0f0") # Studyplus-style light badge
+			emote_badge.add_theme_color_override("font_color", Color("#555555"))
 		"confident":
-			emote_badge.text = "😎 Confident"
-			badge_style.bg_color = Color("#003314").lerp(Color("#00e676"), 0.2)
-			emote_badge.add_theme_color_override("font_color", Color("#00e676"))
+			emote_badge.text = "Confident"
+			badge_style.bg_color = Color("#e8f5e9") # Soft green
+			emote_badge.add_theme_color_override("font_color", Color("#2e7d32"))
 		"anxious":
-			emote_badge.text = "😰 Anxious"
-			badge_style.bg_color = Color("#330000").lerp(Color("#ff4d4d"), 0.2)
-			emote_badge.add_theme_color_override("font_color", Color("#ff4d4d"))
+			emote_badge.text = "Anxious"
+			badge_style.bg_color = Color("#fbe9e7") # Soft red-orange
+			emote_badge.add_theme_color_override("font_color", Color("#c62828"))
 			
 	emote_badge.add_theme_stylebox_override("normal", badge_style)
 	emote_badge.add_theme_font_override("font", DeskTheme.get_font())
@@ -398,7 +412,7 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	toggle_btn.flat = true
 	toggle_btn.add_theme_font_override("font", DeskTheme.get_font())
 	toggle_btn.add_theme_font_size_override("font_size", 16)
-	toggle_btn.add_theme_color_override("font_color", Color(1, 1, 1, 0.5))
+	toggle_btn.add_theme_color_override("font_color", Color("#aaaaaa"))
 	header_hbox.add_child(toggle_btn)
 	
 	# Content (Score)
@@ -415,7 +429,7 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	score_val.text = str(p["declared_score"]) + "点"
 	score_val.add_theme_font_override("font", DeskTheme.get_font())
 	score_val.add_theme_font_size_override("font_size", 64)
-	score_val.add_theme_color_override("font_color", Color.WHITE)
+	score_val.add_theme_color_override("font_color", Color("#1a1a1a"))
 	score_hbox.add_child(score_val)
 	
 	# Actions (Details / Doubt)
@@ -433,7 +447,12 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	inspect_btn.add_theme_font_size_override("font_size", 14)
 	
 	var btn_style_flat = StyleBoxFlat.new()
-	btn_style_flat.bg_color = Color(1, 1, 1, 0.1)
+	btn_style_flat.bg_color = Color("#f0f0f0") # Studyplus-style light action button
+	btn_style_flat.border_color = Color("#dddddd")
+	btn_style_flat.border_width_left = 1
+	btn_style_flat.border_width_right = 1
+	btn_style_flat.border_width_top = 1
+	btn_style_flat.border_width_bottom = 1
 	btn_style_flat.corner_radius_top_left = 16
 	btn_style_flat.corner_radius_top_right = 16
 	btn_style_flat.corner_radius_bottom_left = 16
@@ -444,7 +463,7 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	btn_style_flat.content_margin_bottom = 8
 	inspect_btn.add_theme_stylebox_override("normal", btn_style_flat)
 	inspect_btn.add_theme_stylebox_override("hover", btn_style_flat)
-	inspect_btn.add_theme_color_override("font_color", Color.WHITE)
+	inspect_btn.add_theme_color_override("font_color", Color("#333333"))
 	
 	inspect_btn.pressed.connect(phase._on_inspect_pressed.bind(p))
 	act_hbox.add_child(inspect_btn)
@@ -456,16 +475,18 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 		doubt_btn.add_theme_font_size_override("font_size", 14)
 		
 		var danger_style = btn_style_flat.duplicate()
-		danger_style.bg_color = Color("#ff2a5f")
+		danger_style.bg_color = Color("#ff8c00") # Orange doubt button on light bg
+		danger_style.border_color = Color("#e07800")
 		doubt_btn.add_theme_stylebox_override("normal", danger_style)
 		doubt_btn.add_theme_stylebox_override("hover", danger_style)
 		doubt_btn.add_theme_color_override("font_color", Color.WHITE)
 		
 		if p["id"] in phase.session.player_doubts_made_today:
 			doubt_btn.text = "Doubted"
-			danger_style.bg_color = Color(1, 1, 1, 0.2)
+			danger_style.bg_color = Color("#eeeeee")
+			danger_style.border_color = Color("#dddddd")
 			doubt_btn.disabled = true
-			doubt_btn.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.5))
+			doubt_btn.add_theme_color_override("font_disabled_color", Color("#aaaaaa"))
 			
 		doubt_btn.pressed.connect(phase._on_doubt_pressed.bind(p["id"], card, doubt_btn))
 		act_hbox.add_child(doubt_btn)
@@ -490,16 +511,16 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 	# 1. 相手のサマリー情報のカード化
 	var summary_card = PanelContainer.new()
 	var summary_style = StyleBoxFlat.new()
-	summary_style.bg_color = Color("#1c1c1e")
-	summary_style.corner_radius_top_left = 16
-	summary_style.corner_radius_top_right = 16
-	summary_style.corner_radius_bottom_left = 16
-	summary_style.corner_radius_bottom_right = 16
+	summary_style.bg_color = Color("#fafafa") # Studyplus-style light card
+	summary_style.border_color = Color("#e0e0e0")
 	summary_style.border_width_left = 1
 	summary_style.border_width_right = 1
 	summary_style.border_width_top = 1
 	summary_style.border_width_bottom = 1
-	summary_style.border_color = Color(1, 1, 1, 0.1)
+	summary_style.corner_radius_top_left = 16
+	summary_style.corner_radius_top_right = 16
+	summary_style.corner_radius_bottom_left = 16
+	summary_style.corner_radius_bottom_right = 16
 	summary_card.add_theme_stylebox_override("panel", summary_style)
 	phase.detail_log_vbox.add_child(summary_card)
 	
@@ -541,7 +562,7 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 		lbl_title.text = pair[0]
 		lbl_title.add_theme_font_override("font", DeskTheme.get_font())
 		lbl_title.add_theme_font_size_override("font_size", 18)
-		lbl_title.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
+		lbl_title.add_theme_color_override("font_color", Color("#888888"))
 		info_grid.add_child(lbl_title)
 		
 		var lbl_val = Label.new()
@@ -549,9 +570,9 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 		lbl_val.add_theme_font_override("font", DeskTheme.get_font())
 		lbl_val.add_theme_font_size_override("font_size", 22)
 		if "ブラフ率" in pair[0] and bluff_rate > 65.0:
-			lbl_val.add_theme_color_override("font_color", Color("#ff4d4d"))
+			lbl_val.add_theme_color_override("font_color", Color("#e65100"))
 		else:
-			lbl_val.add_theme_color_override("font_color", Color.WHITE)
+			lbl_val.add_theme_color_override("font_color", Color("#1a1a1a"))
 		info_grid.add_child(lbl_val)
 	
 	if p["id"] != "player":
@@ -601,8 +622,8 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 		hour_lbl.add_theme_constant_override("outline_size", 0)
 		
 		var hour_style = StyleBoxFlat.new()
-		hour_style.bg_color = Color("#333333")
-		hour_style.border_color = Color(1, 1, 1, 0.1)
+		hour_style.bg_color = Color("#eeeeee") # Studyplus-style light label
+		hour_style.border_color = Color("#e0e0e0")
 		hour_style.border_width_left = 1
 		hour_style.border_width_right = 1
 		hour_style.border_width_top = 1
@@ -613,6 +634,7 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 		hour_style.corner_radius_bottom_right = 4
 		hour_style.content_margin_left = 6
 		hour_lbl.add_theme_stylebox_override("normal", hour_style)
+		hour_lbl.add_theme_color_override("font_color", Color("#555555"))
 		line1.add_child(hour_lbl)
 		
 		var count_lbl = Label.new()
@@ -677,8 +699,8 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 			mini_card.custom_minimum_size = Vector2(18, 24)
 			
 			var m_style = StyleBoxFlat.new()
-			m_style.bg_color = Color("#111111")
-			m_style.border_color = Color(1, 1, 1, 0.2)
+			m_style.bg_color = Color("#f5f5f5") # Studyplus-style light mini card
+			m_style.border_color = Color("#cccccc")
 			m_style.border_width_left = 1
 			m_style.border_width_right = 1
 			m_style.border_width_top = 1
@@ -727,19 +749,22 @@ static func show_doubt_result_modal(
 	modal.pivot_offset = Vector2(375, 250)
 	
 	var base_style = StyleBoxFlat.new()
-	base_style.bg_color = Color("#111111")
+	base_style.bg_color = Color("#ffffff") # Studyplus-style white doubt modal
 	base_style.corner_radius_top_left = 24
 	base_style.corner_radius_top_right = 24
 	base_style.corner_radius_bottom_left = 24
 	base_style.corner_radius_bottom_right = 24
-	base_style.border_width_left = 2
-	base_style.border_width_right = 2
-	base_style.border_width_top = 2
-	base_style.border_width_bottom = 2
+	base_style.border_width_left = 3
+	base_style.border_width_right = 3
+	base_style.border_width_top = 3
+	base_style.border_width_bottom = 3
+	base_style.shadow_color = Color(0, 0, 0, 0.15)
+	base_style.shadow_size = 20
+	base_style.shadow_offset = Vector2(0, 8)
 	if is_bluff:
-		base_style.border_color = Color("#00e676")
+		base_style.border_color = Color("#2e7d32") # Green success border
 	else:
-		base_style.border_color = Color("#ff4d4d")
+		base_style.border_color = Color("#e65100") # Orange failure border
 	modal.add_theme_stylebox_override("panel", base_style)
 	canvas.add_child(modal)
 	
@@ -766,10 +791,10 @@ static func show_doubt_result_modal(
 	
 	if is_bluff:
 		title_lbl.text = "ダウト成功！"
-		title_lbl.add_theme_color_override("font_color", Color("#00e676"))
+		title_lbl.add_theme_color_override("font_color", Color("#2e7d32")) # Studyplus-style green
 	else:
 		title_lbl.text = "ダウト失敗..."
-		title_lbl.add_theme_color_override("font_color", Color("#ff4d4d"))
+		title_lbl.add_theme_color_override("font_color", Color("#e65100")) # Studyplus-style orange warning
 	vbox.add_child(title_lbl)
 	
 	var desc_lbl = Label.new()
@@ -777,7 +802,7 @@ static func show_doubt_result_modal(
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	desc_lbl.add_theme_font_size_override("font_size", 18)
-	desc_lbl.add_theme_color_override("font_color", Color.WHITE)
+	desc_lbl.add_theme_color_override("font_color", Color("#333333"))
 	
 	if is_bluff:
 		desc_lbl.text = "%s は勉強報告で嘘をついていた！\n【申告】 %d 点  ➡  【実際】 %d 点" % [opp_name, declared_score, actual_score]
@@ -796,11 +821,11 @@ static func show_doubt_result_modal(
 	
 	var my_style = StyleBoxFlat.new()
 	if is_bluff:
-		my_style.bg_color = Color("#1a2b21")
-		my_style.border_color = Color("#00e676")
+		my_style.bg_color = Color("#e8f5e9") # Studyplus-style soft green
+		my_style.border_color = Color("#2e7d32")
 	else:
-		my_style.bg_color = Color("#2a1616")
-		my_style.border_color = Color("#ff4d4d")
+		my_style.bg_color = Color("#fff8f0") # Studyplus-style soft orange
+		my_style.border_color = Color("#e65100")
 	my_style.border_width_left = 2
 	my_style.border_width_right = 2
 	my_style.border_width_top = 2
@@ -828,7 +853,7 @@ static func show_doubt_result_modal(
 	my_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	my_title.add_theme_font_override("font", DeskTheme.get_font())
 	my_title.add_theme_font_size_override("font_size", 16)
-	my_title.add_theme_color_override("font_color", Color.WHITE)
+	my_title.add_theme_color_override("font_color", Color("#1a1a1a"))
 	my_vbox.add_child(my_title)
 	
 	var my_diff_lbl = Label.new()
@@ -850,7 +875,7 @@ static func show_doubt_result_modal(
 	my_detail_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	my_detail_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	my_detail_lbl.add_theme_font_size_override("font_size", 13)
-	my_detail_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.75))
+	my_detail_lbl.add_theme_color_override("font_color", Color("#666666"))
 	my_vbox.add_child(my_detail_lbl)
 	
 	var opp_card = PanelContainer.new()
@@ -859,11 +884,11 @@ static func show_doubt_result_modal(
 	
 	var opp_style = StyleBoxFlat.new()
 	if is_bluff:
-		opp_style.bg_color = Color("#2a1616")
-		opp_style.border_color = Color("#ff4d4d")
+		opp_style.bg_color = Color("#fbe9e7") # Studyplus-style soft red
+		opp_style.border_color = Color("#c62828")
 	else:
-		opp_style.bg_color = Color("#1c1c1e")
-		opp_style.border_color = Color(1, 1, 1, 0.2)
+		opp_style.bg_color = Color("#fafafa") # Neutral light
+		opp_style.border_color = Color("#e0e0e0")
 	opp_style.border_width_left = 2
 	opp_style.border_width_right = 2
 	opp_style.border_width_top = 2
@@ -891,7 +916,7 @@ static func show_doubt_result_modal(
 	opp_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	opp_title.add_theme_font_override("font", DeskTheme.get_font())
 	opp_title.add_theme_font_size_override("font_size", 16)
-	opp_title.add_theme_color_override("font_color", Color.WHITE)
+	opp_title.add_theme_color_override("font_color", Color("#1a1a1a"))
 	opp_vbox.add_child(opp_title)
 	
 	var opp_diff_lbl = Label.new()
@@ -913,7 +938,7 @@ static func show_doubt_result_modal(
 	opp_detail_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	opp_detail_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	opp_detail_lbl.add_theme_font_size_override("font_size", 13)
-	opp_detail_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.75))
+	opp_detail_lbl.add_theme_color_override("font_color", Color("#666666"))
 	opp_vbox.add_child(opp_detail_lbl)
 	
 	var close_btn = Button.new()
@@ -959,17 +984,17 @@ static func show_tutorial_finish_modal(phase: DailyLikesPhase) -> void:
 	modal.pivot_offset = Vector2(325, 200)
 	
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color("#111111")
-	style.border_color = Color("#00e676")
-	style.border_width_left = 2
-	style.border_width_right = 2
-	style.border_width_top = 2
-	style.border_width_bottom = 2
+	style.bg_color = Color("#ffffff") # Studyplus-style white tutorial modal
+	style.border_color = Color("#ff8c00") # Orange success accent
+	style.border_width_left = 3
+	style.border_width_right = 1
+	style.border_width_top = 1
+	style.border_width_bottom = 1
 	style.corner_radius_top_left = 24
 	style.corner_radius_top_right = 24
 	style.corner_radius_bottom_left = 24
 	style.corner_radius_bottom_right = 24
-	style.shadow_color = Color(0, 0, 0, 0.5)
+	style.shadow_color = Color(0, 0, 0, 0.15)
 	style.shadow_size = 30
 	style.shadow_offset = Vector2(0, 10)
 	modal.add_theme_stylebox_override("panel", style)

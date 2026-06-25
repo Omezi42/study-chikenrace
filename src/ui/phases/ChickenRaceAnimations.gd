@@ -161,8 +161,19 @@ static func play_burst_animation(phase: ChickenRacePhase, duplicate_values: Arra
 		
 		_spawn_zzz_scribbles(phase)
 		
+		var fade_out_timer = phase.get_tree().create_timer(1.4 / speed_mult)
+		fade_out_timer.timeout.connect(func():
+			if is_instance_valid(phase):
+				var fade_tween = phase.create_tween().set_parallel(true)
+				fade_tween.tween_property(phase.alert_banner, "color:a", 0.0, 0.4 / speed_mult)
+				fade_tween.tween_property(phase.alert_label, "modulate:a", 0.0, 0.4 / speed_mult)
+		)
+		
 		var end_timer = phase.get_tree().create_timer(1.8 / speed_mult)
 		end_timer.timeout.connect(func():
+			if is_instance_valid(phase):
+				phase.alert_label.text = ""
+				phase.alert_label.modulate.a = 1.0
 			if on_complete.is_valid():
 				on_complete.call()
 		)
