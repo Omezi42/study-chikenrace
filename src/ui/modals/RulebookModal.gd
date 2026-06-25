@@ -33,6 +33,7 @@ func _ready() -> void:
 	modal.custom_minimum_size = Vector2(1050, 750)
 	modal.pivot_offset = Vector2(525, 375)
 	modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
+	DeskTheme.add_ruled_lines(modal)
 	add_child(modal)
 	
 	var viewport_size = get_viewport().get_visible_rect().size
@@ -74,18 +75,7 @@ func _ready() -> void:
 	var content_container = PanelContainer.new()
 	content_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content_container.clip_contents = true
-	var content_style = StyleBoxFlat.new()
-	content_style.bg_color = Color("faf6f0")
-	content_style.border_color = DeskTheme.COLOR_INK
-	content_style.border_width_left = 2
-	content_style.border_width_right = 2
-	content_style.border_width_top = 2
-	content_style.border_width_bottom = 2
-	content_style.corner_radius_top_left = 12
-	content_style.corner_radius_top_right = 12
-	content_style.corner_radius_bottom_left = 12
-	content_style.corner_radius_bottom_right = 12
-	content_container.add_theme_stylebox_override("panel", content_style)
+	content_container.add_theme_stylebox_override("panel", DeskTheme.create_white_panel())
 	vbox.add_child(content_container)
 	
 	content_clip = Control.new()
@@ -342,12 +332,7 @@ func _build_page(idx: int) -> Control:
 	var text_panel = PanelContainer.new()
 	text_panel.custom_minimum_size = Vector2(0, 140)
 	var tp_style = StyleBoxFlat.new()
-	tp_style.bg_color = Color.WHITE
-	tp_style.border_color = Color(0, 0, 0, 0.1)
-	tp_style.border_width_left = 2
-	tp_style.border_width_right = 2
-	tp_style.border_width_top = 2
-	tp_style.border_width_bottom = 2
+	tp_style.bg_color = Color(0, 0, 0, 0.03)
 	tp_style.corner_radius_top_left = 8
 	tp_style.corner_radius_top_right = 8
 	tp_style.corner_radius_bottom_left = 8
