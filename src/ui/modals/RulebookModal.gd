@@ -804,16 +804,22 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	
 	var post_btn = Button.new()
 	post_btn.text = "投稿する"
-	post_btn.custom_minimum_size = Vector2(160, 40)
-	post_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var btn_style = StyleBoxFlat.new()
-	btn_style.bg_color = DeskTheme.COLOR_INK
-	btn_style.corner_radius_top_left = 20
-	btn_style.corner_radius_top_right = 20
-	btn_style.corner_radius_bottom_left = 20
-	btn_style.corner_radius_bottom_right = 20
-	post_btn.add_theme_stylebox_override("normal", btn_style)
-	post_btn.add_theme_color_override("font_color", Color.WHITE)
+	post_btn.custom_minimum_size = Vector2(240, 50)
+	post_btn.add_theme_font_override("font", DeskTheme.get_font())
+	post_btn.add_theme_font_size_override("font_size", 24)
+	if page.has_node("/root/UIHelper"):
+		page.get_node("/root/UIHelper").apply_action_button_style(post_btn)
+	else:
+		var p_style = StyleBoxFlat.new()
+		p_style.bg_color = Color("#2979ff")
+		p_style.corner_radius_top_left = 6
+		p_style.corner_radius_top_right = 6
+		p_style.corner_radius_bottom_left = 6
+		p_style.corner_radius_bottom_right = 6
+		post_btn.add_theme_stylebox_override("normal", p_style)
+		post_btn.add_theme_stylebox_override("hover", p_style)
+		post_btn.add_theme_stylebox_override("pressed", p_style)
+		post_btn.add_theme_color_override("font_color", Color.WHITE)
 	phone_vbox.add_child(post_btn)
 	
 	rtb.text = "[center][b][font_size=24]スライダーで点数を盛れ！[/font_size][/b][/center]\n1日の終わりに成果を投稿します。ここで実際の点数より高く「[color=#d500f9][b]嘘（ブラフ）[/b][/color]」を申告してライバルを焦らせることも可能！"
@@ -908,20 +914,23 @@ func _setup_page_4(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	
 	var doubt_btn = Button.new()
 	doubt_btn.text = "ダウト！"
-	doubt_btn.custom_minimum_size = Vector2(200, 80)
+	doubt_btn.custom_minimum_size = Vector2(200, 60)
 	doubt_btn.position = Vector2(390, 220)
 	doubt_btn.add_theme_font_override("font", DeskTheme.get_font())
 	doubt_btn.add_theme_font_size_override("font_size", 40)
-	var d_bstyle = StyleBoxFlat.new()
-	d_bstyle.bg_color = Color("#e53935")
-	d_bstyle.border_width_bottom = 8
-	d_bstyle.border_color = Color("#b71c1c")
-	d_bstyle.corner_radius_top_left = 20
-	d_bstyle.corner_radius_top_right = 20
-	d_bstyle.corner_radius_bottom_left = 20
-	d_bstyle.corner_radius_bottom_right = 20
-	doubt_btn.add_theme_stylebox_override("normal", d_bstyle)
-	doubt_btn.add_theme_color_override("font_color", Color.WHITE)
+	if page.has_node("/root/UIHelper"):
+		page.get_node("/root/UIHelper").apply_danger_button_style(doubt_btn)
+	else:
+		var d_bstyle = StyleBoxFlat.new()
+		d_bstyle.bg_color = Color("#e53935")
+		d_bstyle.border_width_bottom = 8
+		d_bstyle.border_color = Color("#b71c1c")
+		d_bstyle.corner_radius_top_left = 20
+		d_bstyle.corner_radius_top_right = 20
+		d_bstyle.corner_radius_bottom_left = 20
+		d_bstyle.corner_radius_bottom_right = 20
+		doubt_btn.add_theme_stylebox_override("normal", d_bstyle)
+		doubt_btn.add_theme_color_override("font_color", Color.WHITE)
 	doubt_btn.pivot_offset = doubt_btn.custom_minimum_size / 2.0
 	ctrl.add_child(doubt_btn)
 	
