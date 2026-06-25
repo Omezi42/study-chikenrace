@@ -182,6 +182,14 @@ func _save_and_upload_day() -> void:
 
 		var my_id = str(MatchState.multiplayer.get_unique_id()) if MatchState.multiplayer.has_multiplayer_peer() else "player"
 
+		var global_doubts = []
+		for target_slot in player_doubts_made_today:
+			if day_data.has(target_slot) and day_data[target_slot] is Dictionary:
+				var uid_val = str(day_data[target_slot].get("id", target_slot))
+				global_doubts.append(uid_val)
+			else:
+				global_doubts.append(target_slot)
+
 		var my_move = {
 			"user_id": my_id,
 			"username": Global.player_name if Global.player_name != "" else "あなた",
@@ -189,7 +197,7 @@ func _save_and_upload_day() -> void:
 			"actual_score": player_actual_score_today,
 			"declared_score": player_declared_score_today,
 			"hours_history": player_hours_history_today.duplicate(true),
-			"doubts_made": player_doubts_made_today.duplicate(true),
+			"doubts_made": global_doubts,
 			"doubts_submitted": true,
 			"phase": "doubts",
 			"emote": player_emote_today,
@@ -302,7 +310,10 @@ func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 			raw_doubts = []
 		var mapped_doubts = []
 		for target_uid in raw_doubts:
-			var t_slot = uid_to_slot.get(str(target_uid), "")
+			var t_str = str(target_uid)
+			var t_slot = uid_to_slot.get(t_str, "")
+			if t_slot == "" and day_data.has(t_str):
+				t_slot = t_str
 			if t_slot != "":
 				mapped_doubts.append(t_slot)
 				if day_data.has(t_slot) and day_data[t_slot] is Dictionary:

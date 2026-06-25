@@ -438,23 +438,28 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 	poll_timer.autostart = false
 	lobby.add_child(poll_timer)
 	
-	var on_room_joined: Callable
-	var on_player_connected: Callable
+	var cbs = {}
+	
+	var disconnect_cbs_func = func():
+		if cbs.has("room_joined") and bm.webrtc_multiplayer.room_joined.is_connected(cbs["room_joined"]):
+			bm.webrtc_multiplayer.room_joined.disconnect(cbs["room_joined"])
+		if cbs.has("player_connected") and bm.webrtc_multiplayer.player_connected.is_connected(cbs["player_connected"]):
+			bm.webrtc_multiplayer.player_connected.disconnect(cbs["player_connected"])
+		if cbs.has("player_disconnected") and bm.webrtc_multiplayer.player_disconnected.is_connected(cbs["player_disconnected"]):
+			bm.webrtc_multiplayer.player_disconnected.disconnect(cbs["player_disconnected"])
+			
+	lobby.tree_exiting.connect(disconnect_cbs_func)
 	
 	var clean_up_lobby = func():
 		if is_instance_valid(poll_timer):
 			poll_timer.stop()
-		if on_room_joined.is_valid() and bm.webrtc_multiplayer.room_joined.is_connected(on_room_joined):
-			bm.webrtc_multiplayer.room_joined.disconnect(on_room_joined)
-		if on_player_connected.is_valid() and bm.webrtc_multiplayer.player_connected.is_connected(on_player_connected):
-			bm.webrtc_multiplayer.player_connected.disconnect(on_player_connected)
+		disconnect_cbs_func.call()
 		if is_instance_valid(lobby):
 			lobby.queue_free()
 		
 	cancel_btn.pressed.connect(func():
 		DeskTheme.animate_click(cancel_btn, Vector2.ONE, 0.08)
-		if Global.friend_room_code != "":
-			bm.webrtc_multiplayer.disconnect_room()
+		bm.webrtc_multiplayer.disconnect_room()
 		Global.friend_room_code = ""
 		clean_up_lobby.call()
 		if from_mode_selection:
@@ -536,18 +541,23 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 		if participants.size() >= 4 and not _is_starting_game:
 			start_game_func.call()
 
-	on_room_joined = func(success: bool, participants: Array):
+	cbs["room_joined"] = func(success: bool, participants: Array):
 		if not is_instance_valid(status_lbl):
 			return
 		if success:
 			update_participants_display.call()
 			
-	bm.webrtc_multiplayer.room_joined.connect(on_room_joined)
+	bm.webrtc_multiplayer.room_joined.connect(cbs["room_joined"])
 	
-	on_player_connected = func(id: int):
+	cbs["player_connected"] = func(id: int):
 		update_participants_display.call()
 				
-	bm.webrtc_multiplayer.player_connected.connect(on_player_connected)
+	bm.webrtc_multiplayer.player_connected.connect(cbs["player_connected"])
+	
+	cbs["player_disconnected"] = func(id: int):
+		update_participants_display.call()
+				
+	bm.webrtc_multiplayer.player_disconnected.connect(cbs["player_disconnected"])
 	
 	Global.game_mode = Constants.MODE_RANDOM
 	bm.webrtc_multiplayer.join_random_room()

@@ -145,9 +145,6 @@ func _on_peer_connected(id: int) -> void:
 	_participants.append({"user_id": str(id), "username": "プレイヤー " + str(id)})
 	player_connected.emit(id)
 	
-	var my_name = Global.player_name if Global.player_name != "" else "あなた"
-	sync_player_info.rpc_id(id, my_name)
-	
 	# If we are guest and a peer connected, emit room_joined with updated participants if needed
 	if not _is_host:
 		room_joined.emit(true, _participants)

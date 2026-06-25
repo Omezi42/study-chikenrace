@@ -72,6 +72,7 @@ static func create_selection_modal(parent: Node) -> void:
 	
 	# Logic Bindings
 	var wrm = parent.get_node_or_null("/root/WebRTCManager")
+	var pending_cbs = {}
 	
 	create_btn.pressed.connect(func():
 		create_btn.release_focus()
@@ -88,6 +89,7 @@ static func create_selection_modal(parent: Node) -> void:
 				join_btn.disabled = false
 				
 		if wrm:
+			pending_cbs["created"] = on_created
 			wrm.webrtc_multiplayer.room_created.connect(on_created, CONNECT_ONE_SHOT)
 			wrm.webrtc_multiplayer.create_room()
 		else:
@@ -113,11 +115,20 @@ static func create_selection_modal(parent: Node) -> void:
 				join_btn.disabled = false
 				
 		if wrm:
+			pending_cbs["joined"] = on_joined
 			wrm.webrtc_multiplayer.room_joined.connect(on_joined, CONNECT_ONE_SHOT)
 			wrm.webrtc_multiplayer.join_room(code)
 		else:
 			# Mock Fallback
 			on_joined.call(true, [])
+	)
+	
+	sel_modal.tree_exiting.connect(func():
+		if wrm and wrm.webrtc_multiplayer:
+			if pending_cbs.has("created") and wrm.webrtc_multiplayer.room_created.is_connected(pending_cbs["created"]):
+				wrm.webrtc_multiplayer.room_created.disconnect(pending_cbs["created"])
+			if pending_cbs.has("joined") and wrm.webrtc_multiplayer.room_joined.is_connected(pending_cbs["joined"]):
+				wrm.webrtc_multiplayer.room_joined.disconnect(pending_cbs["joined"])
 	)
 	
 	cancel_btn.pressed.connect(func():
@@ -356,6 +367,8 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 				wrm.webrtc_multiplayer.room_joined.disconnect(on_room_joined_cb)
 		if MatchState.game_state_synced.is_connected(on_game_state_synced):
 			MatchState.game_state_synced.disconnect(on_game_state_synced)
+
+	lobby_modal.tree_exiting.connect(cleanup_signals)
 
 	if wrm and wrm.webrtc_multiplayer:
 		wrm.webrtc_multiplayer.player_connected.connect(on_player_connected_cb)
