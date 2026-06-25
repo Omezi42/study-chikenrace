@@ -58,10 +58,7 @@ func _ready() -> void:
 	else:
 		# Fallback simulation for testing/standalone play
 		var dummy_session = GameSession.new()
-		var starting_deck = Global.current_deck
-		if Global.game_mode == Constants.MODE_OVERNIGHT:
-			starting_deck = Global.get_cram_season_deck()
-		dummy_session.start_session(starting_deck)
+		dummy_session.start_session()
 		for day in range(1, Constants.MAX_DAYS + 1):
 			dummy_session.current_day = day
 			dummy_session.player_actual_score_today = randi_range(30, 60)
@@ -672,22 +669,7 @@ func trigger_report_card() -> void:
 	report_left_page.add_child(advice_box)
 	
 	var advice_lbl = Label.new()
-	var advice_text = "【担任からの評価】\n"
-	var t = showdown_data.get("title", "")
-	if "正直" in t or "堅実" in t or t == Constants.TITLE_SAFE_CHAMP or t == Constants.TITLE_CRAM_HONEST:
-		advice_text += "堅実な勉強態度が素晴らしいです。"
-	elif "嵐" in t or t == Constants.TITLE_STORM:
-		advice_text += "無理しすぎです。休むことも覚えましょう。"
-	elif "オオカミ" in t or t == Constants.TITLE_WOLF_BOY:
-		advice_text += "嘘が多すぎます。次は正直に申告しましょう。"
-	elif "スナイパー" in t or "探知機" in t or t == Constants.TITLE_SNIPER or t == Constants.TITLE_LIE_DETECTOR:
-		advice_text += "相手の嘘を見抜く洞察力が見事でした！"
-	elif t == Constants.TITLE_RED_FAIL or t == Constants.TITLE_UNDERACHIEVER:
-		advice_text += "今回は残念でしたが、次の勉強で挽回しましょう！"
-	elif t == Constants.TITLE_DEV_GOD or t == Constants.TITLE_CRAM_GENIUS:
-		advice_text += "言うことなしの完璧な成績です！"
-	else:
-		advice_text += "本日の勉強お疲れ様でした！次もこの調子で頑張りましょう！"
+	var advice_text = "【担任からの評価】\n本日の勉強お疲れ様でした！次もこの調子で頑張りましょう！"
 		
 	advice_lbl.text = advice_text
 	advice_lbl.add_theme_font_override("font", DeskTheme.get_font())

@@ -21,8 +21,6 @@ extends RefCounted
 static func calculate_final_showdown(session: GameSession) -> Dictionary:
 	var final_scores := { "player": 0 }
 	var max_days := Constants.MAX_DAYS
-	if Global.game_mode == Constants.MODE_OVERNIGHT:
-		max_days = 1
 	
 	# 参加者IDを動的に収集する
 	for day_idx in range(1, max_days + 1):
@@ -55,7 +53,7 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 			var actual: int = p["actual_score"]
 			var declared: int = p["declared_score"]
 			var is_liar: bool = declared > actual
-			var deck_config: Dictionary = _get_deck_config(p_id)
+			
 			
 			# Count burst occurrences
 			for h in p.get("hours", []):
@@ -172,154 +170,12 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 			break
 			
 	# === Step 6: Level/Coin logic removed ===
-	var coins_earned := 0
-	var perfect_bonus := 0
-	var level_bonus := 0
-	
-	# Update lifetime accumulated statistics
-	Global.total_burst_count += total_bursts.get("player", 0)
-	# Note: total_doubt_successes and total_doubt_failures are already calculated
-	# in real-time within DailyLikesPhase.gd upon each press to prevent double-counting.
-	if perfect_bonus > 0:
-		Global.total_perfect_crimes += 1
-	
-	# Update best score
-	if final_scores["player"] > Global.best_score:
-		Global.best_score = final_scores["player"]
-		
-	Global.play_count += 1
-	
-	# === Step 7: Title Determination ===
-	var title := _determine_title(
-		final_scores["player"], my_rank, total_bursts["player"],
-		player_lies_count, player_caught_lies_count, doubt_success_count,
-		Global.game_mode
-	)
-	
-	var is_title_new := not title in Global.unlocked_titles
-	if is_title_new:
-		Global.unlocked_titles.append(title)
-		
-	# === Step 6.5: Deviation & League calculation (MODE_RANDOM only) ===
-	var old_deviation = Global.deviation_value
-	var new_deviation = old_deviation
-	var deviation_change = 0.0
-	var old_league = Global.get_deviation_league(old_deviation)
-	var new_league = old_league
-	var league_upgraded = false
-	var league_downgraded = false
- 
-	if Global.game_mode == Constants.MODE_RANDOM:
-		# Elo風レーティング計算
-		var opponent_count = 0
-		var opponent_dev_sum = 0.0
-		for p_id in final_scores.keys():
-			if p_id != "player":
-				if Global.opponent_profiles.has(p_id):
-					opponent_dev_sum += Global.opponent_profiles[p_id].get("deviation", 50.0)
-					opponent_count += 1
-		var avg_opponent_dev = opponent_dev_sum / opponent_count if opponent_count > 0 else 50.0
- 
-		var K = 8.0 # 変動幅スケーラー
-		var actual_score_factor = 0.0
-		match my_rank:
-			1: actual_score_factor = 1.0
-			2: actual_score_factor = 0.6
-			3: actual_score_factor = 0.3
-			4: actual_score_factor = 0.0
- 
-		var rating_diff = avg_opponent_dev - old_deviation
-		var expected_score_factor = 1.0 / (pow(10.0, rating_diff / 20.0) + 1.0)
-		deviation_change = K * (actual_score_factor - expected_score_factor)
-		deviation_change = clamp(deviation_change, -8.0, 8.0)
-		
-		new_deviation = clamp(old_deviation + deviation_change, 30.0, 90.0)
-		deviation_change = new_deviation - old_deviation
-		
-		Global.deviation_value = snapped(new_deviation, 0.1)
-		if Global.deviation_value > Global.max_deviation_value:
-			Global.max_deviation_value = Global.deviation_value
-			
-		new_league = Global.get_deviation_league(new_deviation)
-		
-		var leagues_order = [Constants.LEAGUE_F, Constants.LEAGUE_C, Constants.LEAGUE_B, Constants.LEAGUE_A, Constants.LEAGUE_S]
-		var old_idx = leagues_order.find(old_league)
-		var new_idx = leagues_order.find(new_league)
-		if new_idx > old_idx:
-			league_upgraded = true
-		elif new_idx < old_idx:
-			league_downgraded = true
- 
-	Global.save_game()
-	
 	return {
 		"final_scores": final_scores,
 		"rankings": rank_list,
 		"my_rank": my_rank,
-		"coins_earned": coins_earned,
-		"perfect_bonus": perfect_bonus,
-		"level_bonus": level_bonus,
-		"title": title,
-		"is_title_new": is_title_new,
-		"details": showdown_details,
-		"old_deviation": old_deviation,
-		"new_deviation": new_deviation,
-		"deviation_change": deviation_change,
-		"old_league": old_league,
-		"new_league": new_league,
-		"league_upgraded": league_upgraded,
-		"league_downgraded": league_downgraded
+		"details": showdown_details
 	}
- 
-# === Private Helpers ===
- 
-# Item logic removed
- 
-# Determine title unlocked based on match criteria.
-# Uses a table-driven approach: each entry is checked in order, first match wins.
-# This makes the priority explicit and safe to reorder or extend.
-static func _determine_title(
-	score: int, my_rank: int, bursts: int,
-	lies_count: int, caught_lies: int, doubt_successes: int,
-	game_mode: String = ""
-) -> String:
-	var is_cram := (game_mode == Constants.MODE_CRAM or game_mode == Constants.MODE_OVERNIGHT)
-	var max_days := Constants.MAX_DAYS
-	
-	# Title rules table with explicit priorities (higher priority value wins)
-	var rules: Array[Dictionary] = [
-		{"title": Constants.TITLE_DEV_GOD,            "priority": 100, "check": func(): return Global.deviation_value >= 70.0},
-		{"title": Constants.TITLE_CRAM_GENIUS,         "priority": 95,  "check": func(): return is_cram and score >= (100 if game_mode == Constants.MODE_OVERNIGHT else 150) and my_rank == 1},
-		{"title": Constants.TITLE_SAFE_CHAMP,          "priority": 90,  "check": func(): return bursts == 0 and my_rank == 1},
-		{"title": Constants.TITLE_STORM,               "priority": 85,  "check": func(): return bursts >= 3},
-		{"title": Constants.TITLE_OVERACHIEVER,        "priority": 82,  "check": func(): return lies_count == 0 and score >= (150 if is_cram else 200)},
-		{"title": Constants.TITLE_SNIPER,              "priority": 80,  "check": func(): return lies_count == 0 and doubt_successes >= 2},
-		{"title": Constants.TITLE_CHIKEN_HERO,         "priority": 78,  "check": func(): return bursts <= 1 and score >= (180 if is_cram else 250)},
-		{"title": Constants.TITLE_POKER_FACE,          "priority": 75,  "check": func(): return lies_count >= max_days and caught_lies == 0},
-		{"title": Constants.TITLE_SPEED_RUNNER,        "priority": 68,  "check": func(): return Global.play_count >= 50},
-		{"title": Constants.TITLE_WOLF_BOY,            "priority": 65,  "check": func(): return caught_lies >= 3},
-		{"title": Constants.TITLE_DOUBT_SPAMMER,       "priority": 62, "check": func(): return doubt_successes >= 4},
-		{"title": Constants.TITLE_LIE_DETECTOR,        "priority": 60,  "check": func(): return doubt_successes >= 3},
-		{"title": Constants.TITLE_CHARISMA,            "priority": 55,  "check": func(): return lies_count >= 2 and caught_lies == 0 and score >= (150 if is_cram else 200)},
-		{"title": Constants.TITLE_TODAI,               "priority": 50,  "check": func(): return score >= (200 if is_cram else 300)},
-		{"title": Constants.TITLE_LUCKY_SEVEN,         "priority": 48,  "check": func(): return score % 10 == 7 and my_rank == 1},
-		{"title": Constants.TITLE_RED_FAIL,            "priority": 45,  "check": func(): return score <= 50},
-		{"title": Constants.TITLE_CRAM_HONEST,         "priority": 40,  "check": func(): return lies_count == 0 and score >= (120 if is_cram else 180)},
-		{"title": Constants.TITLE_SAFETY_FIRST,        "priority": 35,  "check": func(): return bursts == 0},
-		{"title": Constants.TITLE_EASY_TARGET,         "priority": 30,  "check": func(): return doubt_successes == 0 and caught_lies > 0},
-		{"title": Constants.TITLE_GLASS_HEART,         "priority": 25,  "check": func(): return lies_count >= 2 and caught_lies == lies_count},
-		{"title": Constants.TITLE_EXCELLENT,           "priority": 20,  "check": func(): return my_rank == 1},
-		{"title": Constants.TITLE_UNDERACHIEVER,       "priority": 15,  "check": func(): return my_rank == 4},
-	]
-	
-	# Sort rules by priority descending
-	rules.sort_custom(func(a, b): return a["priority"] > b["priority"])
-	
-	for rule in rules:
-		if rule["check"].call():
-			return rule["title"]
-	
-	return Constants.TITLE_AVERAGE
  
 
 

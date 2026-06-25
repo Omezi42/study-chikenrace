@@ -22,13 +22,10 @@ func _build_ui() -> void:
 	custom_minimum_size = Vector2(160, 220)
 	pivot_offset = Vector2(80, 110)
 	
-	var item_id: String = card_data.get("item_id", "")
-	var item_info: Dictionary = CardData.ITEMS.get(item_id, {"role": CardData.ROLE_PREP, "name": card_data.get("name", "アイテム")})
-	
 	# カード外枠スタイル（役割別の枠色）
 	var card_style = StyleBoxFlat.new()
 	card_style.bg_color = DeskTheme.COLOR_CRAFT
-	card_style.border_color = CardData.get_role_color(item_info.get("role", CardData.ROLE_PREP))
+	card_style.border_color = DeskTheme.COLOR_INK
 	card_style.border_width_left = 3
 	card_style.border_width_right = 3
 	card_style.border_width_top = 3
@@ -75,45 +72,8 @@ func _build_ui() -> void:
 	val_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	card_vbox.add_child(val_label)
 	
-	# アイテム画像
-	var img_path = CardData.get_item_image_path(item_id)
-	if img_path != "":
-		var tex_rect = TextureRect.new()
-		tex_rect.texture = load(img_path)
-		tex_rect.custom_minimum_size = Vector2(80, 80)
-		tex_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		tex_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		tex_rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		card_vbox.add_child(tex_rect)
-	else:
-		var spacer = Control.new()
-		spacer.custom_minimum_size = Vector2(80, 20)
-		card_vbox.add_child(spacer)
-	
-	# アイテム名
-	var name_lbl = Label.new()
-	name_lbl.text = item_info.get("name", "カード")
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	name_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	name_lbl.add_theme_font_size_override("font_size", 16)
-	name_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.75))
-	card_vbox.add_child(name_lbl)
-	
-	# 効果の短い説明
-	var short_eff = CardData.get_item_short_effect(item_id)
-	if short_eff != "":
-		var effect_lbl = Label.new()
-		effect_lbl.text = "【" + short_eff + "】"
-		effect_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		effect_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		effect_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		effect_lbl.add_theme_font_size_override("font_size", 10)
-		var role = item_info.get("role", CardData.ROLE_PREP)
-		var eff_color = Color("ff4081") if role == CardData.ROLE_PUSH else Color(DeskTheme.COLOR_INK, 0.6)
-		effect_lbl.add_theme_color_override("font_color", eff_color)
-		card_vbox.add_child(effect_lbl)
 
+	
 	# 共通ホバーアニメーションの接続（自習画面の扇状配置以外で有効）
 	mouse_entered.connect(func():
 		if not has_meta("fan_position"):

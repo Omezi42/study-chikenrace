@@ -19,8 +19,7 @@ static func get_cpu_name(actual_id: String) -> String:
 static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 	return AIStrategyManager.simulate_cpu_day(cpu_id, day_idx)
 
-static func decide_and_apply_cpu_items(deck: StudyDeck, deck_config: Dictionary, used_items: Array[String], day_idx: int, cpu_id: String) -> void:
-	AIStrategyManager.decide_and_apply_cpu_items(deck, deck_config, used_items, day_idx, cpu_id)
+
 
 static func calculate_cpu_bluff(cpu_id: String, actual_score: int, day_idx: int = 1) -> int:
 	return AIBluffLogic.calculate_cpu_bluff(cpu_id, actual_score, day_idx)

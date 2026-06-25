@@ -29,22 +29,22 @@ build.bat
 **1プレイ = 5日間 × 1日3時間**
 
 ```
-タイトル → プロフィール（初回のみ） → チュートリアル（初回のみ） → メインゲーム
+タイトル → プロフィール（初回のみ） → メインゲーム
   └ 1日のループ（×5）
-       アイテム選択 → チキンレース（×3時間） → 学習報告 → 日めくり
+       チキンレース（×3時間） → 学習報告 → 日めくり
   └ 5日目終了後 → 最終結果（Showdown）
 ```
 
-タイトルから **デッキ編成 / 図鑑 / ガチャ** にも遷移できます（メタ進行）。
+※現在、アイテム要素や収集要素（メタ進行）は削除され、純粋に「カードを引く」「点数を報告する」「ダウトする」という心理戦にフォーカスしています。
 
 ## プレイモード
 
 | モード | 状態 | 説明 |
 |--------|------|------|
-| チュートリアル | **実装済み** | 初回プレイ用。1日2時間制の短縮版で、固定ドローと専用の付箋テキストによる解説付き |
-| CPU戦 | **実装済み** | 通信なし。`AIManager` がライバルをシミュレート |
-| 全世界対戦 | **実装済み** | Supabase連携によるスコアランキング機能実装済み |
-| 友達対戦 | 準備中 | ルーム方式は未実装 |
+| チュートリアル | 実装済み | 初回プレイ用。専用の解説付き |
+| ソロ模試 | 実装済み | 通信なし。CPUライバル3人と対戦 |
+| ランダム対戦 | 実装済み | WebRTCを用いた全世界P2P対戦 |
+| フレンド対戦 | 実装済み | 合言葉を用いたルームマッチ |
 
 ## 技術構成
 
@@ -52,7 +52,7 @@ build.bat
 - **UI:** ほぼコード生成（`VBoxContainer` / `HBoxContainer` + `DeskTheme`）
 - **アーキテクチャ:** `GameScene` がフェーズを切り替えるオーケストレーター方式
 - **永続化:** `user://savegame.json`（`Global.gd`）
-- **オンライン:** Supabase REST（`BackendManager.gd`）
+- **オンライン:** WebRTC（`WebRTCManager.gd` / `WebRTCMultiplayerService.gd`）
 
 ## ディレクトリ構成
 
@@ -60,9 +60,8 @@ build.bat
 study-chikenrace/
 ├── project.godot
 ├── Title.tscn / Main.tscn / Profile.tscn / ResultScene.tscn
-├── LoadoutScene.tscn / GachaScene.tscn / ZukanScene.tscn
 ├── scripts/
-│   ├── core/       # Global, GameSession, StudyDeck, BackendManager, AIManager…
+│   ├── core/       # Global, GameSession, StudyDeck, WebRTCManager, AIManager…
 │   ├── data/       # CardData
 │   └── ui/         # シーン・DeskTheme・phases・components
 └── assets/         # 画像・SE・BGM・フォント

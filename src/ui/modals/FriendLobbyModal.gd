@@ -362,8 +362,9 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		DeskTheme.animate_click(exit_btn, Vector2.ONE, 0.08)
 		is_polling_active = false
 		cleanup_signals.call()
-		if bm:
-			bm.disconnect_realtime_lobby()
+		var wrm = parent.get_node_or_null("/root/WebRTCManager")
+		if wrm:
+			wrm.webrtc_multiplayer.disconnect_room()
 		lobby_modal.queue_free()
 	)
 	

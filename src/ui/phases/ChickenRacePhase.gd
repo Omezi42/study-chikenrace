@@ -42,7 +42,7 @@ var cpu_presenter: ChickenRaceCPUPresenter
 var smartphone_presenter: ChickenRaceSmartphonePresenter
 
 func _on_setup(setup_data: Dictionary) -> void:
-	speed_mult = 1.8 if Global.game_mode == Constants.MODE_OVERNIGHT else 1.0
+	speed_mult = 1.0
 	engine = ChickenRaceEngine.new()
 	engine.setup(session)
 	
@@ -277,7 +277,7 @@ func trigger_burst_sequence() -> void:
 	timer.timeout.connect(func():
 		var final_score = engine.calculate_hand_score()
 		var reaction = CardData.get_reaction_text(current_max_burst_prob)
-		session.add_player_hour_result(session.player_deck.hand.size(), [], true, final_score, reaction)
+		session.add_player_hour_result(session.player_deck.hand.size(), true, final_score, reaction)
 		finish_hour_and_transition(final_score, true)
 	)
 
@@ -324,7 +324,7 @@ func _on_stop_pressed() -> void:
 			stamp.queue_free()
 		var final_score = engine.calculate_hand_score()
 		var reaction = CardData.get_reaction_text(current_max_burst_prob)
-		session.add_player_hour_result(session.player_deck.hand.size(), [], false, final_score, reaction)
+		session.add_player_hour_result(session.player_deck.hand.size(), false, final_score, reaction)
 		
 		fast_forward_cpus_to_end()
 		smartphone_presenter.update_member_badge_ui("player")

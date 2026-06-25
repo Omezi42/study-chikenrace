@@ -188,11 +188,7 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	phase.likes_skip_btn = likes_skip_btn
 	
 	var next_day_btn = Button.new()
-	var is_last_day = false
-	if Global.game_mode == Constants.MODE_OVERNIGHT:
-		is_last_day = true
-	else:
-		is_last_day = phase.session.current_day >= Constants.MAX_DAYS
+	var is_last_day = phase.session.current_day >= Constants.MAX_DAYS
 		
 	if is_last_day:
 		next_day_btn.text = "結果発表へ進む"

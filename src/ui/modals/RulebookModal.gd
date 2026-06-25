@@ -487,47 +487,7 @@ func _setup_page_3(visual_area: Control, rtb: RichTextLabel) -> void:
 	hbox.add_theme_constant_override("separation", 60)
 	visual_area.add_child(hbox)
 	
-	var item1_v = VBoxContainer.new()
-	item1_v.alignment = BoxContainer.ALIGNMENT_CENTER
-	item1_v.add_theme_constant_override("separation", 20)
-	
-	var t1 = TextureRect.new()
-	t1.texture = load(CardData.get_item_image_path("item_eraser"))
-	t1.custom_minimum_size = Vector2(120, 120)
-	t1.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	t1.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	item1_v.add_child(t1)
-	
-	var l_eraser = Label.new()
-	l_eraser.text = "【消しゴム】\n重複したカードを山札に戻して\nドローをやり直す！"
-	l_eraser.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l_eraser.add_theme_font_override("font", DeskTheme.get_font())
-	l_eraser.add_theme_font_size_override("font_size", 20)
-	l_eraser.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	item1_v.add_child(l_eraser)
-	hbox.add_child(item1_v)
-	
-	var item2_v = VBoxContainer.new()
-	item2_v.alignment = BoxContainer.ALIGNMENT_CENTER
-	item2_v.add_theme_constant_override("separation", 20)
-	
-	var t2 = TextureRect.new()
-	t2.texture = load(CardData.get_item_image_path("item_blue_pen"))
-	t2.custom_minimum_size = Vector2(120, 120)
-	t2.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	t2.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	item2_v.add_child(t2)
-	
-	var l_pen = Label.new()
-	l_pen.text = "【青ペン】\n最終得点に\n倍率をかける！"
-	l_pen.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l_pen.add_theme_font_override("font", DeskTheme.get_font())
-	l_pen.add_theme_font_size_override("font_size", 20)
-	l_pen.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	item2_v.add_child(l_pen)
-	hbox.add_child(item2_v)
-	
-	rtb.text = "[center]数字ポケットに[b]アイテムを割り当てる[/b]\n強力な効果で[color=#ff9900][b]勉強を有利に！[/b][/color][/center]"
+	rtb.text = "[center]引いたカードの合計が[b]あなたの実際のスコア[/b]になります。\nバーストしないように気をつけながら高得点を目指しましょう。[/center]"
 
 func _setup_page_4(visual_area: Control, rtb: RichTextLabel) -> void:
 	var vbox = VBoxContainer.new()

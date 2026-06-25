@@ -21,6 +21,15 @@ func _ready() -> void:
 	bg_color.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg_color)
 	
+	var bg_tex = TextureRect.new()
+	if ResourceLoader.exists("res://assets/ノートの背景.png"):
+		bg_tex.texture = load("res://assets/ノートの背景.png")
+	bg_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg_tex.stretch_mode = TextureRect.STRETCH_TILE
+	bg_tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg_tex.modulate = Color(1, 1, 1, 0.4)
+	add_child(bg_tex)
+	
 	var main_vbox = VBoxContainer.new()
 	main_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	main_vbox.add_theme_constant_override("separation", 60)
