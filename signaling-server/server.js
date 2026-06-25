@@ -23,6 +23,7 @@ const rooms = new Map();
 // Random Matchmaking State
 const matchmakingQueue = new Set();
 let matchTimer = null;
+let soloTimer = null;
 
 wss.on('connection', (ws) => {
     ws.currentRoom = null;
@@ -89,6 +90,8 @@ wss.on('connection', (ws) => {
                 
             case 'leave': {
                 leaveRoom(ws);
+                matchmakingQueue.delete(ws);
+                checkQueueEmpty();
                 break;
             }
         }
@@ -97,8 +100,20 @@ wss.on('connection', (ws) => {
     ws.on('close', () => {
         leaveRoom(ws);
         matchmakingQueue.delete(ws);
+        checkQueueEmpty();
     });
 });
+
+function checkQueueEmpty() {
+    if (matchmakingQueue.size < 2 && matchTimer) {
+        clearTimeout(matchTimer);
+        matchTimer = null;
+    }
+    if (matchmakingQueue.size < 1 && soloTimer) {
+        clearTimeout(soloTimer);
+        soloTimer = null;
+    }
+}
 
 function leaveRoom(ws) {
     if (ws.currentRoom && rooms.has(ws.currentRoom)) {
@@ -122,19 +137,36 @@ function leaveRoom(ws) {
 function processMatchmaking() {
     if (matchmakingQueue.size >= 4) {
         createMatch(4);
-    } else if (matchmakingQueue.size >= 2) {
-        if (!matchTimer) {
+    } else if (matchmakingQueue.size >= 1) {
+        if (!matchTimer && matchmakingQueue.size >= 2) {
             matchTimer = setTimeout(() => {
                 matchTimer = null;
                 if (matchmakingQueue.size >= 2) {
                     createMatch(Math.min(4, matchmakingQueue.size));
                 }
-            }, 5000);
+            }, 25000);
+        }
+        if (!soloTimer) {
+            soloTimer = setTimeout(() => {
+                soloTimer = null;
+                if (matchmakingQueue.size >= 1) {
+                    createMatch(Math.min(4, matchmakingQueue.size));
+                }
+            }, 35000);
         }
     }
 }
 
 function createMatch(playerCount) {
+    if (matchTimer) {
+        clearTimeout(matchTimer);
+        matchTimer = null;
+    }
+    if (soloTimer) {
+        clearTimeout(soloTimer);
+        soloTimer = null;
+    }
+
     const roomCode = 'RND' + Math.floor(Math.random() * 100000);
     rooms.set(roomCode, new Map());
     const room = rooms.get(roomCode);
@@ -154,7 +186,7 @@ function createMatch(playerCount) {
     
     for (const ws of matchedPeers) {
         ws.send(JSON.stringify({ type: 'id', id: ws.peerId }));
-        ws.send(JSON.stringify({ type: 'room_joined', room: roomCode }));
+        ws.send(JSON.stringify({ type: 'room_joined', room: roomCode, match_count: matchedPeers.length }));
         
         for (const other of matchedPeers) {
             if (other.peerId !== ws.peerId) {
@@ -163,10 +195,8 @@ function createMatch(playerCount) {
         }
     }
     
-    // Clear timer if not enough players left in queue
-    if (matchmakingQueue.size < 2 && matchTimer) {
-        clearTimeout(matchTimer);
-        matchTimer = null;
+    if (matchmakingQueue.size >= 2) {
+        processMatchmaking();
     }
 }
 

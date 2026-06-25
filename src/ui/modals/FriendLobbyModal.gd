@@ -198,16 +198,16 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	copy_btn.pressed.connect(func():
 		copy_btn.release_focus()
 		DeskTheme.animate_click(copy_btn, Vector2.ONE, 0.08)
-		var invite_text = "チキスタ対戦ルーム【%s】に招待されています！ゲームを開いて友達対戦ロビーからコードを入力して参加してね！" % room_code
+		var invite_text = "チキスタ対戦ルーム【%s】に招待されています！\n下記URLからゲームを開いて、フレンド対戦ロビーからコードを入力して参加してね！\nhttps://unityroom.com/games/studychikenrace" % room_code
 		DisplayServer.clipboard_set(invite_text)
 		var orig_text = copy_btn.text
 		copy_btn.text = "コピーしました！"
 		copy_btn.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
-		var t = parent.get_tree().create_timer(1.5)
-		t.timeout.connect(func():
-			if is_instance_valid(copy_btn):
-				copy_btn.text = orig_text
-				copy_btn.remove_theme_color_override("font_color")
+		var tw = copy_btn.create_tween()
+		tw.tween_interval(1.5)
+		tw.tween_callback(func():
+			copy_btn.text = orig_text
+			copy_btn.remove_theme_color_override("font_color")
 		)
 	)
 	
@@ -262,13 +262,14 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	vbox.add_child(exit_btn)
 	# Polling Logic via SceneTree timers
 	var is_polling_active = true
-	var cleanup_signals = Callable()
+	var cbs = {}
 	
-	var start_game_transition = func(final_participants: Array):
+	cbs.start_game_transition = func(final_participants: Array):
 		AudioManager.play_se(AudioManager.SE_FANFARE)
 		DisplayServer.window_request_attention()
 		is_polling_active = false
-		cleanup_signals.call()
+		if cbs.has("cleanup_signals"):
+			cbs.cleanup_signals.call()
 		Global.game_mode = Constants.MODE_FRIEND
 		Global.friend_room_code = room_code
 		Global.friend_is_host = is_host
@@ -311,15 +312,15 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		# Go to Profile (if name blank) or Main game
 		var fade_timer = parent.get_tree().create_timer(0.2)
 		fade_timer.timeout.connect(func():
-			lobby_modal.queue_free()
+			if is_instance_valid(lobby_modal):
+				lobby_modal.queue_free()
 			if Global.player_name == "":
 				Global.change_scene_with_fade(parent.get_tree(), "res://Profile.tscn")
 			else:
 				Global.change_scene_with_fade(parent.get_tree(), "res://Main.tscn")
 		)
 		
-	var on_polled = Callable()
-	on_polled = func():
+	cbs.on_polled = func():
 		if not is_polling_active:
 			return
 		
@@ -348,34 +349,34 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		if is_host:
 			start_btn_lobby.disabled = (parts.size() < 2)
 
-	var on_game_state_synced = func(state: Dictionary):
+	cbs.on_game_state_synced = func(state: Dictionary):
 		if state.get("action", "") == "start_game":
 			is_polling_active = false
-			start_game_transition.call(state.get("participants", []))
+			cbs.start_game_transition.call(state.get("participants", []))
 
-	var on_player_connected_cb = func(id): on_polled.call()
-	var on_player_disconnected_cb = func(id): on_polled.call()
-	var on_room_joined_cb = func(success, parts): on_polled.call()
+	cbs.on_player_connected_cb = func(id): cbs.on_polled.call()
+	cbs.on_player_disconnected_cb = func(id): cbs.on_polled.call()
+	cbs.on_room_joined_cb = func(success, parts): cbs.on_polled.call()
 
-	cleanup_signals = func():
+	cbs.cleanup_signals = func():
 		if wrm and wrm.webrtc_multiplayer:
-			if wrm.webrtc_multiplayer.player_connected.is_connected(on_player_connected_cb):
-				wrm.webrtc_multiplayer.player_connected.disconnect(on_player_connected_cb)
-			if wrm.webrtc_multiplayer.player_disconnected.is_connected(on_player_disconnected_cb):
-				wrm.webrtc_multiplayer.player_disconnected.disconnect(on_player_disconnected_cb)
-			if wrm.webrtc_multiplayer.room_joined.is_connected(on_room_joined_cb):
-				wrm.webrtc_multiplayer.room_joined.disconnect(on_room_joined_cb)
-		if MatchState.game_state_synced.is_connected(on_game_state_synced):
-			MatchState.game_state_synced.disconnect(on_game_state_synced)
+			if wrm.webrtc_multiplayer.player_connected.is_connected(cbs.on_player_connected_cb):
+				wrm.webrtc_multiplayer.player_connected.disconnect(cbs.on_player_connected_cb)
+			if wrm.webrtc_multiplayer.player_disconnected.is_connected(cbs.on_player_disconnected_cb):
+				wrm.webrtc_multiplayer.player_disconnected.disconnect(cbs.on_player_disconnected_cb)
+			if wrm.webrtc_multiplayer.room_joined.is_connected(cbs.on_room_joined_cb):
+				wrm.webrtc_multiplayer.room_joined.disconnect(cbs.on_room_joined_cb)
+		if MatchState.game_state_synced.is_connected(cbs.on_game_state_synced):
+			MatchState.game_state_synced.disconnect(cbs.on_game_state_synced)
 
-	lobby_modal.tree_exiting.connect(cleanup_signals)
+	lobby_modal.tree_exiting.connect(func(): cbs.cleanup_signals.call())
 
 	if wrm and wrm.webrtc_multiplayer:
-		wrm.webrtc_multiplayer.player_connected.connect(on_player_connected_cb)
-		wrm.webrtc_multiplayer.player_disconnected.connect(on_player_disconnected_cb)
-		wrm.webrtc_multiplayer.room_joined.connect(on_room_joined_cb)
-		MatchState.game_state_synced.connect(on_game_state_synced)
-		on_polled.call()
+		wrm.webrtc_multiplayer.player_connected.connect(cbs.on_player_connected_cb)
+		wrm.webrtc_multiplayer.player_disconnected.connect(cbs.on_player_disconnected_cb)
+		wrm.webrtc_multiplayer.room_joined.connect(cbs.on_room_joined_cb)
+		MatchState.game_state_synced.connect(cbs.on_game_state_synced)
+		cbs.on_polled.call()
 	else:
 		# Offline fallback
 		var mock_parts = [{"user_id": "player", "username": Global.player_name if Global.player_name != "" else "あなた"}]
@@ -390,20 +391,20 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 			if wrm and wrm.webrtc_multiplayer:
 				var parts = wrm.webrtc_multiplayer._participants
 				MatchState.sync_game_state.rpc({"action": "start_game", "participants": parts})
-				start_game_transition.call(parts)
+				cbs.start_game_transition.call(parts)
 			else:
 				var final_parts = [
 					{"user_id": "player", "username": Global.player_name if Global.player_name != "" else "あなた"},
 					{"user_id": "cpu_sato", "username": "佐藤くん (CPU)"}
 				]
-				start_game_transition.call(final_parts)
+				cbs.start_game_transition.call(final_parts)
 		)
 		
 	exit_btn.pressed.connect(func():
 		exit_btn.release_focus()
 		DeskTheme.animate_click(exit_btn, Vector2.ONE, 0.08)
 		is_polling_active = false
-		cleanup_signals.call()
+		cbs.cleanup_signals.call()
 		if wrm:
 			wrm.webrtc_multiplayer.disconnect_room()
 		lobby_modal.queue_free()

@@ -13,6 +13,7 @@ var webrtc_peer: WebRTCMultiplayerPeer
 var _pending_room_code: String = ""
 var _is_host: bool = false
 var _participants: Array = []
+var target_match_count: int = 4
 
 func _init(backend_manager: Node, sig: WebRTCSignaling) -> void:
 	bm = backend_manager
@@ -58,6 +59,7 @@ func join_room(code: String) -> void:
 
 func join_random_room() -> void:
 	_is_host = false # Default to false, updated dynamically if we receive ID 1
+	target_match_count = 4
 	var server_url = ProjectSettings.get_setting("backend/signaling_url", "")
 	if server_url == "":
 		if OS.has_feature("web"):
@@ -101,6 +103,7 @@ func _on_random_room_joined(data: Dictionary) -> void:
 	print("WebRTC Signaling joined random room: ", data)
 	_pending_room_code = data.get("room_code", "")
 	_is_host = data.get("is_host", false)
+	target_match_count = int(data.get("match_count", 4))
 	# For random match, signaling server handles the rest (making offers/answers)
 
 @rpc("any_peer", "call_remote", "reliable")

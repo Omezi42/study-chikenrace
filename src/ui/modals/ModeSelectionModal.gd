@@ -479,7 +479,10 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 
 			
 		var participants = bm.webrtc_multiplayer._participants
-		status_lbl.text = "マッチング完了！ゲームを開始します..."
+		if participants.size() < 4:
+			status_lbl.text = "対戦相手が見つからなかったため、CPUを追加して開始します..."
+		else:
+			status_lbl.text = "マッチング完了！ゲームを開始します..."
 		
 		Global.game_mode = Constants.MODE_RANDOM
 		Global.friend_member_list.assign(participants)
@@ -503,9 +506,32 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 						"name": p.get("username", "ライバル")
 					}
 					idx += 1
+					
+		while idx < 3:
+			var slot_id = slots[idx]
+			var default_ids = ["cpu_sato", "cpu_suzuki", "cpu_takahashi"]
+			var def_id = default_ids[idx]
+			var profile = AIManager.CPU_OPPONENTS.get(def_id, {"name": "CPU"})
+			Global.opponent_profiles[slot_id] = {
+				"id": def_id,
+				"name": profile["name"] + " (CPU)"
+			}
+			idx += 1
+			
+		if participants.size() < 4 and is_instance_valid(members_vbox):
+			for s_id in slots:
+				if Global.opponent_profiles.has(s_id):
+					var prof = Global.opponent_profiles[s_id]
+					if str(prof.get("id", "")).begins_with("cpu_"):
+						var cpu_lbl = Label.new()
+						cpu_lbl.text = "・%s" % prof.get("name", "CPU")
+						cpu_lbl.add_theme_font_override("font", DeskTheme.get_font())
+						cpu_lbl.add_theme_font_size_override("font_size", 16)
+						cpu_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
+						members_vbox.add_child(cpu_lbl)
 				
 		var timer = Timer.new()
-		timer.wait_time = 1.2
+		timer.wait_time = 2.2 if participants.size() < 4 else 1.2
 		timer.one_shot = true
 		if is_instance_valid(lobby):
 			lobby.add_child(timer)
@@ -524,11 +550,12 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 			return
 		
 		var participants = bm.webrtc_multiplayer._participants
+		var target_count = bm.webrtc_multiplayer.target_match_count
 		
 		for child in members_vbox.get_children():
 			child.queue_free()
 			
-		status_lbl.text = "対戦相手を待っています... (%d/4人)" % participants.size()
+		status_lbl.text = "対戦相手を待っています... (%d/%d人)" % [participants.size(), target_count]
 		
 		for p in participants:
 			var p_lbl = Label.new()
@@ -538,7 +565,7 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 			p_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 			members_vbox.add_child(p_lbl)
 			
-		if participants.size() >= 4 and not _is_starting_game:
+		if participants.size() >= target_count and not _is_starting_game:
 			start_game_func.call()
 
 	cbs["room_joined"] = func(success: bool, participants: Array):
