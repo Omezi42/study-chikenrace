@@ -3,207 +3,210 @@ extends RefCounted
 
 static func build_layout(phase: ReportPhase) -> void:
 	_build_smartphone_ui(phase)
-	# _build_notebook_ui(phase) # Do not build notebook UI as requested
 
 static func _build_smartphone_ui(phase: ReportPhase) -> void:
-	# Force targeting the main phase instead of smartphone_pane to center it on screen
 	var target_parent = phase
 
-	# SMARTPHONE CONTAINER (Phone UI Frame) - Manually centered on 1920x1080 canvas
+	# SMARTPHONE CONTAINER (Phone UI Frame) - Modern Bezel-less Design
 	var phone_panel = PanelContainer.new()
-	phone_panel.custom_minimum_size = Vector2(420, 800)
-	phone_panel.size = Vector2(420, 800)
-	phone_panel.pivot_offset = Vector2(210, 400)
+	phone_panel.custom_minimum_size = Vector2(420, 840)
+	phone_panel.size = Vector2(420, 840)
+	phone_panel.pivot_offset = Vector2(210, 420)
 	
 	var phone_style = StyleBoxFlat.new()
-	phone_style.bg_color = DeskTheme.COLOR_INK
-	phone_style.border_color = Color("37474f")
-	phone_style.border_width_left = 12
-	phone_style.border_width_right = 12
-	phone_style.border_width_top = 32
-	phone_style.border_width_bottom = 32
-	phone_style.corner_radius_top_left = 28
-	phone_style.corner_radius_top_right = 28
-	phone_style.corner_radius_bottom_left = 28
-	phone_style.corner_radius_bottom_right = 28
+	phone_style.bg_color = Color("#111111") # Dark mode
+	phone_style.border_color = Color("#222222") # Subtle border
+	phone_style.border_width_left = 6
+	phone_style.border_width_right = 6
+	phone_style.border_width_top = 6
+	phone_style.border_width_bottom = 6
+	phone_style.corner_radius_top_left = 40
+	phone_style.corner_radius_top_right = 40
+	phone_style.corner_radius_bottom_left = 40
+	phone_style.corner_radius_bottom_right = 40
 	phone_panel.add_theme_stylebox_override("panel", phone_style)
 	target_parent.add_child(phone_panel)
 	
-	# Use PRESET_TOP_LEFT with explicit center coords (X=750, Y=140) to prevent engine layout scaling issues
 	phone_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	phone_panel.position = Vector2(750, 140)
+	phone_panel.position = Vector2(750, 120)
 	phase.phone_panel = phone_panel
 	
-	# Inside Phone VBox
+	# Notch / Dynamic Island
+	var notch = Panel.new()
+	notch.custom_minimum_size = Vector2(120, 24)
+	var notch_style = StyleBoxFlat.new()
+	notch_style.bg_color = Color("#000000")
+	notch_style.corner_radius_bottom_left = 12
+	notch_style.corner_radius_bottom_right = 12
+	notch.add_theme_stylebox_override("panel", notch_style)
+	notch.position = Vector2(150, 0)
+	phone_panel.add_child(notch)
+	
 	var phone_vbox = VBoxContainer.new()
-	phone_vbox.add_theme_constant_override("separation", 10)
+	phone_vbox.add_theme_constant_override("separation", 0)
 	phone_panel.add_child(phone_vbox)
 	
-	# Status bar
-	var status_bar = Label.new()
-	status_bar.text = "16:00  |  チキスタ投稿"
-	status_bar.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	status_bar.add_theme_font_size_override("font_size", 16)
-	status_bar.add_theme_color_override("font_color", Color.WHITE)
-	phone_vbox.add_child(status_bar)
+	# Status bar margin
+	var status_margin = MarginContainer.new()
+	status_margin.add_theme_constant_override("margin_top", 10)
+	status_margin.add_theme_constant_override("margin_left", 24)
+	status_margin.add_theme_constant_override("margin_right", 24)
+	phone_vbox.add_child(status_margin)
 	
-	# App content (Margin Container for padding inside phone screen)
+	var status_bar = HBoxContainer.new()
+	status_margin.add_child(status_bar)
+	var time_lbl = Label.new()
+	time_lbl.text = "16:00"
+	time_lbl.add_theme_font_size_override("font_size", 14)
+	time_lbl.add_theme_color_override("font_color", Color.WHITE)
+	status_bar.add_child(time_lbl)
+	
+	var spacer = Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	status_bar.add_child(spacer)
+	
+	var app_name = Label.new()
+	app_name.text = "Tikista"
+	app_name.add_theme_font_size_override("font_size", 14)
+	app_name.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
+	status_bar.add_child(app_name)
+	
+	# Header (New Post)
+	var header_margin = MarginContainer.new()
+	header_margin.add_theme_constant_override("margin_top", 20)
+	header_margin.add_theme_constant_override("margin_bottom", 10)
+	phone_vbox.add_child(header_margin)
+	
+	var header_title = Label.new()
+	header_title.text = "New Post"
+	header_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	header_title.add_theme_font_override("font", DeskTheme.get_font())
+	header_title.add_theme_font_size_override("font_size", 20)
+	header_title.add_theme_color_override("font_color", Color.WHITE)
+	header_margin.add_child(header_title)
+	
+	var sep = ColorRect.new()
+	sep.custom_minimum_size = Vector2(0, 1)
+	sep.color = Color(1, 1, 1, 0.1)
+	phone_vbox.add_child(sep)
+	
+	# App content
 	var app_margin = MarginContainer.new()
 	app_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	app_margin.add_theme_constant_override("margin_left", 20)
 	app_margin.add_theme_constant_override("margin_right", 20)
-	app_margin.add_theme_constant_override("margin_top", 15)
-	app_margin.add_theme_constant_override("margin_bottom", 15)
+	app_margin.add_theme_constant_override("margin_top", 30)
+	app_margin.add_theme_constant_override("margin_bottom", 30)
 	phone_vbox.add_child(app_margin)
 	
-	# App Main Body VBox
 	var app_vbox = VBoxContainer.new()
-	app_vbox.add_theme_constant_override("separation", 24)
+	app_vbox.add_theme_constant_override("separation", 30)
 	app_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	app_margin.add_child(app_vbox)
 	
-	# Post Card container
-	var post_card = PanelContainer.new()
-	var card_style = StyleBoxFlat.new()
-	card_style.bg_color = DeskTheme.COLOR_CRAFT
-	card_style.corner_radius_top_left = 8
-	card_style.corner_radius_top_right = 8
-	card_style.corner_radius_bottom_left = 8
-	card_style.corner_radius_bottom_right = 8
-	card_style.border_color = Color("cfd8dc")
-	card_style.border_width_left = 1
-	card_style.border_width_right = 1
-	card_style.border_width_top = 1
-	card_style.border_width_bottom = 1
-	post_card.add_theme_stylebox_override("panel", card_style)
-	app_vbox.add_child(post_card)
+	# Score Display Area
+	var score_vbox = VBoxContainer.new()
+	score_vbox.add_theme_constant_override("separation", 8)
+	app_vbox.add_child(score_vbox)
 	
-	var card_margin = MarginContainer.new()
-	card_margin.add_theme_constant_override("margin_left", 20)
-	card_margin.add_theme_constant_override("margin_right", 20)
-	card_margin.add_theme_constant_override("margin_top", 20)
-	card_margin.add_theme_constant_override("margin_bottom", 20)
-	post_card.add_child(card_margin)
-	
-	var card_vbox = VBoxContainer.new()
-	card_vbox.add_theme_constant_override("separation", 18)
-	card_margin.add_child(card_vbox)
-	
-	# App Title inside Card
-	var title = Label.new()
-	title.text = "今日の勉強報告"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_override("font", DeskTheme.get_font())
-	title.add_theme_font_size_override("font_size", 28)
-	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	card_vbox.add_child(title)
-	
-	# Honest actual score display
-	var actual_hbox = HBoxContainer.new()
-	actual_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	card_vbox.add_child(actual_hbox)
-	
-	var actual_title = Label.new()
-	actual_title.text = "実際の実点（正直）： "
-	actual_title.add_theme_font_override("font", DeskTheme.get_font())
-	actual_title.add_theme_font_size_override("font_size", 18)
-	actual_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
-	actual_hbox.add_child(actual_title)
-	
-	var actual_val = Label.new()
-	actual_val.text = str(phase.actual_score) + " 点"
-	actual_val.add_theme_font_override("font", DeskTheme.get_font())
-	actual_val.add_theme_font_size_override("font_size", 22)
-	actual_val.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	actual_hbox.add_child(actual_val)
-	
-	# Declared Score header
 	var decl_title = Label.new()
-	decl_title.text = "投稿する申告点数："
+	decl_title.text = "Score to share"
 	decl_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	decl_title.add_theme_font_override("font", DeskTheme.get_font())
-	decl_title.add_theme_font_size_override("font_size", 18)
-	decl_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
-	card_vbox.add_child(decl_title)
+	decl_title.add_theme_font_size_override("font_size", 16)
+	decl_title.add_theme_color_override("font_color", Color(1, 1, 1, 0.6))
+	score_vbox.add_child(decl_title)
 	
 	var declared_score_label = Label.new()
 	declared_score_label.text = str(phase.actual_score) + "点"
 	declared_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	declared_score_label.add_theme_font_override("font", DeskTheme.get_font())
-	declared_score_label.add_theme_font_size_override("font_size", 54)
-	declared_score_label.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
-	card_vbox.add_child(declared_score_label)
+	declared_score_label.add_theme_font_size_override("font_size", 80)
+	# Default green for honest, but more vibrant
+	declared_score_label.add_theme_color_override("font_color", Color("#00e676")) 
+	score_vbox.add_child(declared_score_label)
 	phase.declared_score_label = declared_score_label
 	
-	# Slider inside card
+	# Actual score hint
+	var actual_hbox = HBoxContainer.new()
+	actual_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	score_vbox.add_child(actual_hbox)
+	
+	var actual_val = Label.new()
+	actual_val.text = "Actual: " + str(phase.actual_score)
+	actual_val.add_theme_font_override("font", DeskTheme.get_font())
+	actual_val.add_theme_font_size_override("font_size", 16)
+	actual_val.add_theme_color_override("font_color", Color(1, 1, 1, 0.4))
+	actual_hbox.add_child(actual_val)
+	
+	# Modern Slider
+	var slider_vbox = VBoxContainer.new()
+	app_vbox.add_child(slider_vbox)
+	
 	var report_slider = HSlider.new()
 	report_slider.min_value = phase.actual_score
 	report_slider.max_value = phase.actual_score + phase.max_bluff_limit
 	report_slider.value = phase.actual_score
 	report_slider.step = 1
-	report_slider.custom_minimum_size = Vector2(320, 60)
+	report_slider.custom_minimum_size = Vector2(340, 40)
 	report_slider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	
-	# Eraser and Ruler theme
 	var slider_bg = StyleBoxFlat.new()
-	slider_bg.bg_color = Color("d1bfae") # Ruler wood color
-	slider_bg.border_color = Color("a68a73")
-	slider_bg.border_width_bottom = 2
+	slider_bg.bg_color = Color("#2c2c35")
+	slider_bg.corner_radius_top_left = 20
+	slider_bg.corner_radius_top_right = 20
+	slider_bg.corner_radius_bottom_left = 20
+	slider_bg.corner_radius_bottom_right = 20
 	slider_bg.expand_margin_top = 10
 	slider_bg.expand_margin_bottom = 10
 	report_slider.add_theme_stylebox_override("slider", slider_bg)
 	
-	var grabber_icon = _create_eraser_texture()
+	var grabber_icon = _create_modern_grabber()
 	report_slider.add_theme_icon_override("grabber", grabber_icon)
 	report_slider.add_theme_icon_override("grabber_highlight", grabber_icon)
 	
 	report_slider.value_changed.connect(phase._on_slider_changed)
-	card_vbox.add_child(report_slider)
+	slider_vbox.add_child(report_slider)
 	phase.report_slider = report_slider
-
-	# Emote Selection HBox inside card
+	
+	# Emote Selection
+	var emote_vbox = VBoxContainer.new()
+	emote_vbox.add_theme_constant_override("separation", 12)
+	app_vbox.add_child(emote_vbox)
+	
 	var emote_title = Label.new()
-	emote_title.text = "表情（ポーカーフェイス）："
+	emote_title.text = "Mood"
 	emote_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	emote_title.add_theme_font_override("font", DeskTheme.get_font())
-	emote_title.add_theme_font_size_override("font_size", 16)
-	emote_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
-	card_vbox.add_child(emote_title)
-
+	emote_title.add_theme_font_size_override("font_size", 14)
+	emote_title.add_theme_color_override("font_color", Color(1, 1, 1, 0.6))
+	emote_vbox.add_child(emote_title)
+	
 	var emote_hbox = HBoxContainer.new()
 	emote_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	emote_hbox.add_theme_constant_override("separation", 16)
-	card_vbox.add_child(emote_hbox)
-
+	emote_vbox.add_child(emote_hbox)
+	
 	var emotes = [
-		{"key": "normal", "text": "[普通]"},
-		{"key": "confident", "text": "[自信あり]"},
-		{"key": "anxious", "text": "[不安]"}
+		{"key": "normal", "text": "🙂 Normal"},
+		{"key": "confident", "text": "😎 Confident"},
+		{"key": "anxious", "text": "😰 Anxious"}
 	]
 	
 	var emote_buttons = []
-
 	var emote_btn_style_normal = StyleBoxFlat.new()
-	emote_btn_style_normal.bg_color = Color("eceff1")
-	emote_btn_style_normal.corner_radius_top_left = 6
-	emote_btn_style_normal.corner_radius_top_right = 6
-	emote_btn_style_normal.corner_radius_bottom_left = 6
-	emote_btn_style_normal.corner_radius_bottom_right = 6
-	emote_btn_style_normal.content_margin_left = 12
-	emote_btn_style_normal.content_margin_right = 12
-	emote_btn_style_normal.content_margin_top = 6
-	emote_btn_style_normal.content_margin_bottom = 6
-
-	var emote_btn_style_selected = StyleBoxFlat.new()
-	emote_btn_style_selected.bg_color = Color("1e88e5") # Active blue
-	emote_btn_style_selected.corner_radius_top_left = 6
-	emote_btn_style_selected.corner_radius_top_right = 6
-	emote_btn_style_selected.corner_radius_bottom_left = 6
-	emote_btn_style_selected.corner_radius_bottom_right = 6
-	emote_btn_style_selected.content_margin_left = 12
-	emote_btn_style_selected.content_margin_right = 12
-	emote_btn_style_selected.content_margin_top = 6
-	emote_btn_style_selected.content_margin_bottom = 6
+	emote_btn_style_normal.bg_color = Color("#1c1c1e")
+	emote_btn_style_normal.corner_radius_top_left = 20
+	emote_btn_style_normal.corner_radius_top_right = 20
+	emote_btn_style_normal.corner_radius_bottom_left = 20
+	emote_btn_style_normal.corner_radius_bottom_right = 20
+	emote_btn_style_normal.content_margin_left = 16
+	emote_btn_style_normal.content_margin_right = 16
+	emote_btn_style_normal.content_margin_top = 10
+	emote_btn_style_normal.content_margin_bottom = 10
+	
+	var emote_btn_style_selected = emote_btn_style_normal.duplicate()
+	emote_btn_style_selected.bg_color = Color("#007aff") # iOS Blue
 
 	var update_emote_buttons = func():
 		for btn_data in emote_buttons:
@@ -218,13 +221,13 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 				btn.add_theme_stylebox_override("normal", emote_btn_style_normal)
 				btn.add_theme_stylebox_override("hover", emote_btn_style_normal)
 				btn.add_theme_stylebox_override("pressed", emote_btn_style_normal)
-				btn.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+				btn.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
 
 	for e in emotes:
 		var btn = Button.new()
 		btn.text = e["text"]
 		btn.add_theme_font_override("font", DeskTheme.get_font())
-		btn.add_theme_font_size_override("font_size", 16)
+		btn.add_theme_font_size_override("font_size", 14)
 		emote_hbox.add_child(btn)
 		
 		var key = e["key"]
@@ -238,181 +241,124 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 		
 	update_emote_buttons.call()
 	
-	# Warning Panel inside card
+	# Warning Panel
 	var warning_panel = PanelContainer.new()
 	var warn_style = StyleBoxFlat.new()
-	warn_style.bg_color = Color(DeskTheme.COLOR_TENSION, 0.1)
-	warn_style.border_color = DeskTheme.COLOR_TENSION
-	warn_style.border_width_left = 2
-	warn_style.border_width_right = 2
-	warn_style.border_width_top = 2
-	warn_style.border_width_bottom = 2
-	warn_style.corner_radius_top_left = 6
-	warn_style.corner_radius_top_right = 6
-	warn_style.corner_radius_bottom_left = 6
-	warn_style.corner_radius_bottom_right = 6
+	warn_style.bg_color = Color("#3e1414") # Dark red bg
+	warn_style.corner_radius_top_left = 12
+	warn_style.corner_radius_top_right = 12
+	warn_style.corner_radius_bottom_left = 12
+	warn_style.corner_radius_bottom_right = 12
 	warning_panel.add_theme_stylebox_override("panel", warn_style)
-	card_vbox.add_child(warning_panel)
+	app_vbox.add_child(warning_panel)
 	phase.warning_panel = warning_panel
 	
 	var warn_margin = MarginContainer.new()
-	warn_margin.add_theme_constant_override("margin_left", 12)
-	warn_margin.add_theme_constant_override("margin_right", 12)
-	warn_margin.add_theme_constant_override("margin_top", 8)
-	warn_margin.add_theme_constant_override("margin_bottom", 8)
+	warn_margin.add_theme_constant_override("margin_left", 16)
+	warn_margin.add_theme_constant_override("margin_right", 16)
+	warn_margin.add_theme_constant_override("margin_top", 12)
+	warn_margin.add_theme_constant_override("margin_bottom", 12)
 	warning_panel.add_child(warn_margin)
 	
 	var warning_text = Label.new()
-	warning_text.text = "[注意] 申告が実点を超えています！ダウトされる危険性があります。"
+	warning_text.text = "⚠️ 申告が実点を超えています。ダウトされる危険性があります！"
 	warning_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	warning_text.add_theme_font_override("font", DeskTheme.get_font())
-	warning_text.add_theme_font_size_override("font_size", 14)
-	warning_text.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+	warning_text.add_theme_font_size_override("font_size", 13)
+	warning_text.add_theme_color_override("font_color", Color("#ff4d4d"))
 	warn_margin.add_child(warning_text)
 	phase.warning_text = warning_text
 	
 	warning_panel.visible = false
 	
-	# Submit button inside phone app (under the card)
+	# Submit button
+	var spacer2 = Control.new()
+	spacer2.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	app_vbox.add_child(spacer2)
+
 	var submit_btn = Button.new()
-	submit_btn.text = "タイムラインに投稿"
-	submit_btn.custom_minimum_size = Vector2(400, 60)
+	submit_btn.text = "Share to Feed"
+	submit_btn.custom_minimum_size = Vector2(340, 56)
 	submit_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	submit_btn.add_theme_font_override("font", DeskTheme.get_font())
-	submit_btn.add_theme_font_size_override("font_size", 22)
+	submit_btn.add_theme_font_size_override("font_size", 18)
+	
+	var submit_style = StyleBoxFlat.new()
+	submit_style.bg_color = Color("#ff2a5f") # Modern pink/red gradient-like flat color (TikTok/Insta vibe)
+	submit_style.corner_radius_top_left = 28
+	submit_style.corner_radius_top_right = 28
+	submit_style.corner_radius_bottom_left = 28
+	submit_style.corner_radius_bottom_right = 28
+	submit_btn.add_theme_stylebox_override("normal", submit_style)
+	submit_btn.add_theme_stylebox_override("hover", submit_style)
+	submit_btn.add_theme_stylebox_override("pressed", submit_style)
+	submit_btn.add_theme_color_override("font_color", Color.WHITE)
+	
 	submit_btn.pressed.connect(phase._on_submit_pressed)
 	phase.submit_btn = submit_btn
 	
-	var btn_style = StyleBoxFlat.new()
-	btn_style.bg_color = Color("1e88e5") # Blue app button
-	btn_style.corner_radius_top_left = 8
-	btn_style.corner_radius_top_right = 8
-	btn_style.corner_radius_bottom_left = 8
-	btn_style.corner_radius_bottom_right = 8
-	submit_btn.add_theme_stylebox_override("normal", btn_style)
-	
-	var btn_hover = btn_style.duplicate() as StyleBoxFlat
-	btn_hover.bg_color = Color("1565c0")
-	submit_btn.add_theme_stylebox_override("hover", btn_hover)
-	submit_btn.add_theme_stylebox_override("pressed", btn_hover)
-	
 	app_vbox.add_child(submit_btn)
 	
-	# Entrance slide-in on phone_panel
+	# Entrance slide-in
 	DeskTheme.animate_entrance(phone_panel, phone_panel.position, Vector2(0, 300), 0.5)
 
-static func _build_notebook_ui(phase: ReportPhase) -> void:
-	phase.add_theme_stylebox_override("panel", DeskTheme.create_right_page_style())
-	
-	var margin = MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 60)
-	margin.add_theme_constant_override("margin_top", 60)
-	margin.add_theme_constant_override("margin_right", 60)
-	margin.add_theme_constant_override("margin_bottom", 60)
-	phase.add_child(margin)
-	
-	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 30)
-	margin.add_child(vbox)
-	
-	var title = Label.new()
-	title.text = "本日の自習成果"
-	title.add_theme_font_override("font", DeskTheme.get_font())
-	title.add_theme_font_size_override("font_size", 36)
-	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	vbox.add_child(title)
-	
-	var score_lbl = Label.new()
-	score_lbl.text = "総実点： " + str(phase.actual_score) + "点"
-	score_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	score_lbl.add_theme_font_size_override("font_size", 48)
-	score_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	vbox.add_child(score_lbl)
-	
-	# Show hours history
-	if phase.session and phase.session.player_hours_history_today.size() > 0:
-		var hist_title = Label.new()
-		hist_title.text = "時間割内訳："
-		hist_title.add_theme_font_override("font", DeskTheme.get_font())
-		hist_title.add_theme_font_size_override("font_size", 24)
-		hist_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.8))
-		vbox.add_child(hist_title)
-		
-		for i in range(phase.session.player_hours_history_today.size()):
-			var h = phase.session.player_hours_history_today[i]
-			var line = Label.new()
-			var burst_txt = " (寝落ち)" if h.get("bursted", false) else ""
-			line.text = "%d時限目: %d点%s" % [i+1, h.get("score", 0), burst_txt]
-			line.add_theme_font_override("font", DeskTheme.get_font())
-			line.add_theme_font_size_override("font_size", 20)
-			line.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-			vbox.add_child(line)
-
-static func _create_eraser_texture() -> ImageTexture:
-	# Create a simple red eraser image for the slider grabber
-	var img = Image.create_empty(40, 24, false, Image.FORMAT_RGBA8)
-	img.fill(DeskTheme.COLOR_TENSION)
-	# Add white wrapper band
-	for x in range(12, 28):
-		for y in range(24):
-			img.set_pixel(x, y, Color.WHITE)
+static func _create_modern_grabber() -> ImageTexture:
+	var img = Image.create_empty(32, 32, false, Image.FORMAT_RGBA8)
+	img.fill(Color.TRANSPARENT)
+	# Draw a white circle
+	for x in range(32):
+		for y in range(32):
+			var dist = Vector2(x - 16, y - 16).length()
+			if dist <= 14:
+				img.set_pixel(x, y, Color.WHITE)
+			elif dist <= 16:
+				img.set_pixel(x, y, Color(1, 1, 1, 1.0 - (dist - 14)/2.0))
 	return ImageTexture.create_from_image(img)
 
 static func show_stamp_animation(phase: ReportPhase) -> void:
-	var stamp = PanelContainer.new()
-	stamp.custom_minimum_size = Vector2(160, 90)
-	stamp.size = Vector2(160, 90)
-	phase.phone_panel.add_child(stamp)
+	# Change from stamp to modern "Posted" checkmark popup
+	var popup = PanelContainer.new()
+	popup.custom_minimum_size = Vector2(160, 160)
 	
-	stamp.pivot_offset = Vector2(80, 45)
-	stamp.position = Vector2(210 - 80, 400 - 45)
-	stamp.rotation_degrees = -15.0
+	var p_style = StyleBoxFlat.new()
+	p_style.bg_color = Color(0, 0, 0, 0.8)
+	p_style.corner_radius_top_left = 24
+	p_style.corner_radius_top_right = 24
+	p_style.corner_radius_bottom_left = 24
+	p_style.corner_radius_bottom_right = 24
+	popup.add_theme_stylebox_override("panel", p_style)
+	phase.phone_panel.add_child(popup)
 	
-	var stamp_style = StyleBoxFlat.new()
-	stamp_style.bg_color = Color(1.0, 0.9, 0.9, 0.85) # Semi-transparent light red
-	stamp_style.border_color = Color("d32f2f") # Red stamp ink
-	stamp_style.border_width_left = 4
-	stamp_style.border_width_right = 4
-	stamp_style.border_width_top = 4
-	stamp_style.border_width_bottom = 4
-	stamp_style.corner_radius_top_left = 8
-	stamp_style.corner_radius_top_right = 8
-	stamp_style.corner_radius_bottom_left = 8
-	stamp_style.corner_radius_bottom_right = 8
-	stamp.add_theme_stylebox_override("panel", stamp_style)
+	popup.pivot_offset = Vector2(80, 80)
+	popup.position = Vector2(210 - 80, 420 - 80)
 	
-	var stamp_vbox = VBoxContainer.new()
-	stamp_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	stamp_vbox.add_theme_constant_override("separation", 2)
-	stamp.add_child(stamp_vbox)
+	var p_vbox = VBoxContainer.new()
+	p_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	p_vbox.add_theme_constant_override("separation", 10)
+	popup.add_child(p_vbox)
 	
-	var stamp_circle = Label.new()
-	stamp_circle.text = "[提出済]"
-	stamp_circle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stamp_circle.add_theme_font_override("font", DeskTheme.get_font())
-	stamp_circle.add_theme_font_size_override("font_size", 22)
-	stamp_circle.add_theme_color_override("font_color", Color("d32f2f"))
-	stamp_vbox.add_child(stamp_circle)
+	var check = Label.new()
+	check.text = "✓"
+	check.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	check.add_theme_font_size_override("font_size", 64)
+	check.add_theme_color_override("font_color", Color("#00e676"))
+	p_vbox.add_child(check)
 	
-	var stamp_date = Label.new()
-	stamp_date.text = "合格印"
-	stamp_date.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	stamp_date.add_theme_font_override("font", DeskTheme.get_font())
-	stamp_date.add_theme_font_size_override("font_size", 14)
-	stamp_date.add_theme_color_override("font_color", Color("d32f2f", 0.7))
-	stamp_vbox.add_child(stamp_date)
+	var lbl = Label.new()
+	lbl.text = "Shared"
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_override("font", DeskTheme.get_font())
+	lbl.add_theme_font_size_override("font_size", 16)
+	lbl.add_theme_color_override("font_color", Color.WHITE)
+	p_vbox.add_child(lbl)
 	
-	# Scale animation
-	stamp.scale = Vector2(2.5, 2.5)
-	stamp.modulate.a = 0.0
+	popup.scale = Vector2(0.8, 0.8)
+	popup.modulate.a = 0.0
 	
 	var tween = phase.create_tween()
-	tween.parallel().tween_property(stamp, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.parallel().tween_property(stamp, "modulate:a", 1.0, 0.15)
+	tween.parallel().tween_property(popup, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(popup, "modulate:a", 1.0, 0.2)
 	
-	# Sound effect and screen shake
 	if phase.has_node("/root/AudioManager"):
 		phase.get_node("/root/AudioManager").play_se(AudioManager.SE_PLACE)
-	
-	DeskTheme.shake_control(phase.phone_panel, 8.0, 0.15)
+

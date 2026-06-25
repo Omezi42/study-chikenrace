@@ -87,7 +87,6 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 	var total_periods = 3
 		
 	for h in range(total_periods):
-		deck.reset_status_effects()
 		var draw_count = 0
 		var bursted = false
 		var max_burst_prob = 0.0

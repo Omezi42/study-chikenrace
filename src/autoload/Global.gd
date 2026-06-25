@@ -28,6 +28,8 @@ var friend_match_history: Dictionary = {}
 
 var is_tutorial_mode: bool = false
 
+var total_doubt_successes: int = 0
+var total_doubt_failures: int = 0
 var opponent_profiles: Dictionary:
 	get: return MatchState.opponent_profiles
 	set(val): MatchState.opponent_profiles = val
@@ -51,7 +53,8 @@ func _ready() -> void:
 
 const SIMPLE_SAVE_FIELDS = [
 	"player_name", "bgm_volume", "se_volume", "is_muted",
-	"game_mode", "friend_room_code", "friend_is_host", "friend_member_list"
+	"game_mode", "friend_room_code", "friend_is_host", "friend_member_list",
+	"total_doubt_successes", "total_doubt_failures"
 ]
 
 func save_game() -> void:

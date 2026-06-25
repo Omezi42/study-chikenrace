@@ -26,20 +26,7 @@ static func show_hour_result_popup(phase: ChickenRacePhase, score: int, is_burst
 	popup.custom_minimum_size = Vector2(320, 100)
 	popup.pivot_offset = Vector2(160, 50)
 	
-	var style = StyleBoxFlat.new()
-	style.bg_color = Color("ffebee") if is_burst else Color("e8f5e9")
-	style.border_color = DeskTheme.COLOR_TENSION if is_burst else DeskTheme.COLOR_GREEN
-	style.border_width_left = 3
-	style.border_width_right = 3
-	style.border_width_top = 3
-	style.border_width_bottom = 3
-	style.corner_radius_top_left = 8
-	style.corner_radius_top_right = 8
-	style.corner_radius_bottom_left = 8
-	style.corner_radius_bottom_right = 8
-	style.shadow_color = Color(0, 0, 0, 0.2)
-	style.shadow_size = 6
-	style.shadow_offset = Vector2(3, 3)
+	var style = DeskTheme.create_sticky_note_style("red" if is_burst else "green")
 	popup.add_theme_stylebox_override("panel", style)
 	
 	var vbox = VBoxContainer.new()
@@ -86,29 +73,25 @@ static func show_hour_result_popup(phase: ChickenRacePhase, score: int, is_burst
 			fade_tween.chain().tween_callback(popup.queue_free)
 	)
 
-static func play_burst_animation(phase: ChickenRacePhase, duplicate_values: Array) -> void:
+static func play_burst_animation(phase: ChickenRacePhase, duplicate_values: Array, on_complete: Callable = Callable()) -> void:
 	var speed_mult = phase.speed_mult
-	DeskTheme.shake_control(phase, 20.0, 0.6)
 	
-	# 赤フラッシュ演出を追加
-	var flash = ColorRect.new()
-	flash.color = Color(1.0, 0.0, 0.0, 0.4)
-	flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	phase.add_child(flash)
-	var flash_tween = phase.create_tween()
-	flash_tween.tween_property(flash, "modulate:a", 0.0, 0.45 / speed_mult)
-	flash_tween.tween_callback(flash.queue_free)
+	# ストップモーション演出
+	var dark_bg = ColorRect.new()
+	dark_bg.color = Color(0, 0, 0, 0.0)
+	dark_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dark_bg.z_index = 50
+	phase.add_child(dark_bg)
 	
-	# バーストSEの再生
-	if phase.has_node("/root/AudioManager"):
-		phase.get_node("/root/AudioManager").play_se(AudioManager.SE_BURST, 0.0, -8.0)
+	var sm_tween = phase.create_tween()
+	sm_tween.tween_property(dark_bg, "color:a", 0.6, 0.1)
 	
-	phase.actual_score_label.text = "0点"
-	
+	# 重複したカードを強調表示
 	for child in phase.hand_container.get_children():
 		if child is CardVisual:
 			var card_val = child.card_data.get("value", 0)
 			if card_val in duplicate_values:
+				child.z_index = 51
 				var style = child.get_theme_stylebox("normal").duplicate() as StyleBoxFlat
 				if style:
 					style.border_color = Color("ff1744")
@@ -119,15 +102,71 @@ static func play_burst_animation(phase: ChickenRacePhase, duplicate_values: Arra
 					child.add_theme_stylebox_override("normal", style)
 					child.add_theme_stylebox_override("hover", style)
 					child.add_theme_stylebox_override("pressed", style)
-					
 				child.modulate = Color("ff8a80")
-				var base_pos = child.position
-				var tween = phase.create_tween().bind_node(child).set_parallel(true).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
-				var base_scale = child.scale
-				tween.tween_property(child, "scale", base_scale * 1.15, 0.3 / speed_mult)
-				tween.tween_property(child, "position:y", base_pos.y - 25.0, 0.25 / speed_mult)
+				var tween = phase.create_tween().bind_node(child).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+				tween.tween_property(child, "scale", child.scale * 1.2, 0.2)
 	
-	_spawn_zzz_scribbles(phase)
+	var timer = phase.get_tree().create_timer(1.2 / speed_mult)
+	timer.timeout.connect(func():
+		if is_instance_valid(dark_bg):
+			dark_bg.queue_free()
+		
+		# ド派手なバースト演出
+		DeskTheme.shake_control(phase, 30.0, 0.8)
+		
+		var flash = ColorRect.new()
+		flash.color = Color(1.0, 0.0, 0.0, 0.8)
+		flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		flash.z_index = 100
+		phase.add_child(flash)
+		var flash_tween = phase.create_tween()
+		flash_tween.tween_property(flash, "modulate:a", 0.0, 0.6 / speed_mult)
+		flash_tween.tween_callback(flash.queue_free)
+		
+		if phase.has_node("/root/AudioManager"):
+			phase.get_node("/root/AudioManager").play_se(AudioManager.SE_BURST, 0.0, -5.0)
+		
+		# テキスト表示
+		phase.alert_banner.color.a = 0.5
+		phase.alert_banner.z_index = 90
+		phase.alert_label.text = "バースト！"
+		phase.actual_score_label.text = "0点"
+		
+		phase.alert_label.scale = Vector2(0.1, 0.1)
+		phase.alert_label.pivot_offset = phase.alert_label.size / 2.0
+		var alert_tween = phase.create_tween()
+		alert_tween.tween_property(phase.alert_label, "scale", Vector2(1.5, 1.5), 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		alert_tween.tween_property(phase.alert_label, "scale", Vector2(1.0, 1.0), 0.2)
+		
+		# カードはじけ飛び演出
+		for child in phase.hand_container.get_children():
+			if child is CardVisual:
+				child.z_index = 80
+				var center = phase.hand_container.size / 2.0
+				var dir = (child.position - center).normalized()
+				if dir.length() < 0.1:
+					dir = Vector2(randf_range(-1, 1), randf_range(-1, -0.5)).normalized()
+				
+				dir.y -= 1.5
+				dir = dir.normalized()
+				
+				var throw_power = randf_range(600, 1200)
+				var target_pos = child.position + dir * throw_power
+				var target_rot = child.rotation_degrees + randf_range(-360, 360)
+				
+				var tween = phase.create_tween().bind_node(child).set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+				tween.tween_property(child, "position", target_pos, 0.7 / speed_mult)
+				tween.tween_property(child, "rotation_degrees", target_rot, 0.7 / speed_mult)
+				tween.tween_property(child, "modulate:a", 0.0, 0.7 / speed_mult)
+		
+		_spawn_zzz_scribbles(phase)
+		
+		var end_timer = phase.get_tree().create_timer(1.8 / speed_mult)
+		end_timer.timeout.connect(func():
+			if on_complete.is_valid():
+				on_complete.call()
+		)
+	)
 
 static func _spawn_zzz_scribbles(phase: ChickenRacePhase) -> void:
 	var speed_mult = phase.speed_mult

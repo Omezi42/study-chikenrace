@@ -190,21 +190,46 @@ static func create_craft_panel() -> StyleBoxFlat:
 		var style = StyleBoxFlat.new()
 		style.bg_color = COLOR_CRAFT
 		style.border_color = COLOR_INK
-		style.border_width_left = 3
-		style.border_width_right = 3
-		style.border_width_top = 3
-		style.border_width_bottom = 3
-		style.corner_radius_top_left = 8
-		style.corner_radius_top_right = 8
-		style.corner_radius_bottom_left = 8
-		style.corner_radius_bottom_right = 8
-		style.shadow_color = Color(0.12, 0.08, 0.05, 0.25)
-		style.shadow_size = 12
-		style.shadow_offset = Vector2(5, 5)
-		style.content_margin_left = 20
-		style.content_margin_right = 20
-		style.content_margin_top = 20
-		style.content_margin_bottom = 20
+		style.border_width_left = 2
+		style.border_width_right = 2
+		style.border_width_top = 2
+		style.border_width_bottom = 6
+		style.corner_radius_top_left = 16
+		style.corner_radius_top_right = 16
+		style.corner_radius_bottom_left = 16
+		style.corner_radius_bottom_right = 16
+		style.shadow_color = Color(0, 0, 0, 0.15)
+		style.shadow_size = 15
+		style.shadow_offset = Vector2(0, 8)
+		style.content_margin_left = 24
+		style.content_margin_right = 24
+		style.content_margin_top = 24
+		style.content_margin_bottom = 24
+		return style
+	)
+	return cached.duplicate()
+
+# Helper to create a semi-transparent glass panel stylebox
+static func create_glass_panel() -> StyleBoxFlat:
+	var cached = _get_cached_style("glass_panel", func():
+		var style = StyleBoxFlat.new()
+		style.bg_color = Color(1.0, 1.0, 1.0, 0.85)
+		style.border_color = Color(1.0, 1.0, 1.0, 0.5)
+		style.border_width_left = 2
+		style.border_width_right = 2
+		style.border_width_top = 2
+		style.border_width_bottom = 2
+		style.corner_radius_top_left = 20
+		style.corner_radius_top_right = 20
+		style.corner_radius_bottom_left = 20
+		style.corner_radius_bottom_right = 20
+		style.shadow_color = Color(0, 0, 0, 0.1)
+		style.shadow_size = 20
+		style.shadow_offset = Vector2(0, 10)
+		style.content_margin_left = 24
+		style.content_margin_right = 24
+		style.content_margin_top = 24
+		style.content_margin_bottom = 24
 		return style
 	)
 	return cached.duplicate()

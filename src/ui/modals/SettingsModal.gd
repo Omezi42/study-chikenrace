@@ -78,8 +78,62 @@ func _ready() -> void:
 		Global.save_game()
 	)
 	
-	# Simplified: only player name is configurable.
+	
+	var spacer = Control.new()
+	spacer.custom_minimum_size = Vector2(0, 10)
+	vbox.add_child(spacer)
 
+	# BGM Volume
+	var bgm_vbox = VBoxContainer.new()
+	bgm_vbox.add_theme_constant_override("separation", 5)
+	vbox.add_child(bgm_vbox)
+	
+	var bgm_label = Label.new()
+	bgm_label.text = "BGM 音量"
+	bgm_label.add_theme_font_override("font", DeskTheme.get_font())
+	bgm_label.add_theme_font_size_override("font_size", 16)
+	bgm_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	bgm_vbox.add_child(bgm_label)
+	
+	var bgm_slider = HSlider.new()
+	bgm_slider.min_value = 0.0
+	bgm_slider.max_value = 1.0
+	bgm_slider.step = 0.05
+	bgm_slider.value = SettingsState.bgm_volume
+	bgm_slider.custom_minimum_size = Vector2(300, 30)
+	bgm_vbox.add_child(bgm_slider)
+	
+	bgm_slider.value_changed.connect(func(val):
+		SettingsState.bgm_volume = val
+		SettingsState.apply_settings()
+		Global.save_game()
+	)
+	
+	# SE Volume
+	var se_vbox = VBoxContainer.new()
+	se_vbox.add_theme_constant_override("separation", 5)
+	vbox.add_child(se_vbox)
+	
+	var se_label = Label.new()
+	se_label.text = "SE 音量"
+	se_label.add_theme_font_override("font", DeskTheme.get_font())
+	se_label.add_theme_font_size_override("font_size", 16)
+	se_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	se_vbox.add_child(se_label)
+	
+	var se_slider = HSlider.new()
+	se_slider.min_value = 0.0
+	se_slider.max_value = 1.0
+	se_slider.step = 0.05
+	se_slider.value = SettingsState.se_volume
+	se_slider.custom_minimum_size = Vector2(300, 30)
+	se_vbox.add_child(se_slider)
+	
+	se_slider.value_changed.connect(func(val):
+		SettingsState.se_volume = val
+		SettingsState.apply_settings()
+		Global.save_game()
+	)
 	# Bottom Buttons HBox
 	var bottom_hbox = HBoxContainer.new()
 	bottom_hbox.alignment = BoxContainer.ALIGNMENT_CENTER

@@ -81,7 +81,7 @@ func _init() -> void:
 	nav_hbox.add_child(tutorial_back_btn)
 	
 	tutorial_page_lbl = Label.new()
-	tutorial_page_lbl.text = "1 / 5"
+	tutorial_page_lbl.text = "1 / 4"
 	tutorial_page_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	tutorial_page_lbl.add_theme_font_size_override("font_size", 20)
 	tutorial_page_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
@@ -107,9 +107,9 @@ func update_tutorial_slide() -> void:
 	var path = "res://assets/tutorial/slide%d.png" % current_tutorial_page
 	if ResourceLoader.exists(path):
 		tutorial_slide_tex.texture = load(path)
-	tutorial_page_lbl.text = "%d / 5" % current_tutorial_page
+	tutorial_page_lbl.text = "%d / 4" % current_tutorial_page
 	tutorial_back_btn.disabled = (current_tutorial_page == 1)
-	if current_tutorial_page == 5:
+	if current_tutorial_page == 4:
 		tutorial_next_btn.text = "閉じる ×"
 	else:
 		tutorial_next_btn.text = "次へ >"
@@ -117,15 +117,13 @@ func update_tutorial_slide() -> void:
 	# Update description text
 	match current_tutorial_page:
 		1:
-			tutorial_desc_lbl.text = "【① ゲームの基本ルール】\n『テスト勉強チキンレース』は、実点と申告点を競い合う勉強チキンレースゲームです（3日間）。毎日3時限（または4時限）の自習を行い、カードを引いて勉強成果（実点）を高めます。"
+			tutorial_desc_lbl.text = "【① ゲームの基本ルール】\n『テスト勉強チキンレース』は、実点と申告点を競い合う勉強チキンレースゲームです（3日間）。毎日3時限の自習を行い、カードを引いて勉強成果（実点）を高めます。"
 		2:
 			tutorial_desc_lbl.text = "【② 自習ノートと眠気（バースト）】\n山札からカードを引いて点数を積み上げます。ただし、手札と同じ数字のカードを引くと「寝落ち（バースト）」となり、その時限の点数はすべて0点になります！適度なところで「休憩する」を押して点数を確保しましょう。"
 		3:
-			tutorial_desc_lbl.text = "【③ アイテム（文房具）の活用】\nカードには様々な効果があります。消しゴムでバーストを無効化したり、定規や塾プリントで点数を大きくアップできます。手札に組み込んだアイテムの効果を活かして、有利に自習を進めましょう！"
+			tutorial_desc_lbl.text = "【③ 勉強報告と『嘘（ブラフ）』】\n一日の終わりに、今日の点数を勉強SNSに投稿します。実際の点数より高く「嘘（ブラフ）」の点数を申告してライバルを焦らせることができます。ただし、盛りすぎるとダウトされる危険性が高まります！"
 		4:
-			tutorial_desc_lbl.text = "【④ チキスタへの投稿と『嘘（ブラフ）』】\n一日の終わりに、今日の点数を勉強SNS『チキスタ』に投稿します。実際の点数より高く「嘘（ブラフ）」の点数を申告してライバルを焦らせることができます。ただし、盛りすぎるとダウトされる危険性が高まります！"
-		5:
-			tutorial_desc_lbl.text = "【⑤ 最終答え合わせと勝敗】\nマッチ終了後（3日目の終わり）、全員の「実点」「申告点」「ダウト結果」が黒板で大公開されます！ダウトに成功すれば相手の盛り点をもらえ、失敗すればペナルティを受けます。最終的に最も点数の高い人が合格（優勝）です！"
+			tutorial_desc_lbl.text = "【④ 最終答え合わせと勝敗】\nマッチ終了後（3日目の終わり）、全員の「実点」「申告点」「ダウト結果」が大公開されます！ダウトに成功すれば相手の盛り点をもらえ、失敗すればペナルティを受けます。最終的に最も点数の高い人が合格（優勝）です！"
 
 func _on_tutorial_back_pressed() -> void:
 	DeskTheme.animate_click(tutorial_back_btn, Vector2.ONE, 0.08)
@@ -135,7 +133,7 @@ func _on_tutorial_back_pressed() -> void:
 
 func _on_tutorial_next_pressed() -> void:
 	DeskTheme.animate_click(tutorial_next_btn, Vector2.ONE, 0.08)
-	if current_tutorial_page < 5:
+	if current_tutorial_page < 4:
 		current_tutorial_page += 1
 		update_tutorial_slide()
 	else:

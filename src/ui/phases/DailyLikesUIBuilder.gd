@@ -26,11 +26,11 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 		phone_panel.anchor_bottom = 0.0
 		phone_panel.offset_left = 120
 		phone_panel.offset_right = 540
-		phone_panel.offset_top = 140
-		phone_panel.offset_bottom = 940
-		phone_panel.custom_minimum_size = Vector2(420, 800)
-		phone_panel.size = Vector2(420, 800)
-		phone_panel.position = Vector2(120, 140)
+		phone_panel.offset_top = 120
+		phone_panel.offset_bottom = 960
+		phone_panel.custom_minimum_size = Vector2(420, 840)
+		phone_panel.size = Vector2(420, 840)
+		phone_panel.position = Vector2(120, 120)
 		phone_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	else:
 		# Fallback: Create new phone panel if not reused
@@ -41,40 +41,83 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 		phone_panel.anchor_bottom = 0.0
 		phone_panel.offset_left = 120
 		phone_panel.offset_right = 540
-		phone_panel.offset_top = 140
-		phone_panel.offset_bottom = 940
-		phone_panel.custom_minimum_size = Vector2(420, 800)
-		phone_panel.size = Vector2(420, 800)
-		phone_panel.position = Vector2(120, 140)
+		phone_panel.offset_top = 120
+		phone_panel.offset_bottom = 960
+		phone_panel.custom_minimum_size = Vector2(420, 840)
+		phone_panel.size = Vector2(420, 840)
+		phone_panel.position = Vector2(120, 120)
 		phone_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 		
 		var phone_style = StyleBoxFlat.new()
-		phone_style.bg_color = DeskTheme.COLOR_INK
-		phone_style.border_color = Color("37474f")
-		phone_style.border_width_left = 12
-		phone_style.border_width_right = 12
-		phone_style.border_width_top = 32
-		phone_style.border_width_bottom = 32
-		phone_style.corner_radius_top_left = 28
-		phone_style.corner_radius_top_right = 28
-		phone_style.corner_radius_bottom_left = 28
-		phone_style.corner_radius_bottom_right = 28
+		phone_style.bg_color = Color("#111111")
+		phone_style.border_color = Color("#222222")
+		phone_style.border_width_left = 6
+		phone_style.border_width_right = 6
+		phone_style.border_width_top = 6
+		phone_style.border_width_bottom = 6
+		phone_style.corner_radius_top_left = 40
+		phone_style.corner_radius_top_right = 40
+		phone_style.corner_radius_bottom_left = 40
+		phone_style.corner_radius_bottom_right = 40
 		phone_panel.add_theme_stylebox_override("panel", phone_style)
 		phone_target.add_child(phone_panel)
 		
 	phase.phone_panel = phone_panel
+	
+	var notch = Panel.new()
+	notch.custom_minimum_size = Vector2(120, 24)
+	var notch_style = StyleBoxFlat.new()
+	notch_style.bg_color = Color("#000000")
+	notch_style.corner_radius_bottom_left = 12
+	notch_style.corner_radius_bottom_right = 12
+	notch.add_theme_stylebox_override("panel", notch_style)
+	notch.position = Vector2(150, 0)
+	phone_panel.add_child(notch)
 	
 	var phone_vbox = VBoxContainer.new()
 	phone_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
 	phone_panel.add_child(phone_vbox)
 	
 	# Status bar
-	var status_bar = Label.new()
-	status_bar.text = "16:00  |  チキスタ"
-	status_bar.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	status_bar.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TINY)
-	status_bar.add_theme_color_override("font_color", Color.WHITE)
-	phone_vbox.add_child(status_bar)
+	var status_margin = MarginContainer.new()
+	status_margin.add_theme_constant_override("margin_top", 10)
+	status_margin.add_theme_constant_override("margin_left", 24)
+	status_margin.add_theme_constant_override("margin_right", 24)
+	phone_vbox.add_child(status_margin)
+	
+	var status_bar = HBoxContainer.new()
+	status_margin.add_child(status_bar)
+	var time_lbl = Label.new()
+	time_lbl.text = "16:00"
+	time_lbl.add_theme_font_size_override("font_size", 14)
+	time_lbl.add_theme_color_override("font_color", Color.WHITE)
+	status_bar.add_child(time_lbl)
+	
+	var spacer = Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	status_bar.add_child(spacer)
+	
+	var app_name = Label.new()
+	app_name.text = "Feed"
+	app_name.add_theme_font_size_override("font_size", 14)
+	app_name.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
+	status_bar.add_child(app_name)
+	
+	var header_margin = MarginContainer.new()
+	header_margin.add_theme_constant_override("margin_top", 10)
+	header_margin.add_theme_constant_override("margin_bottom", 10)
+	phone_vbox.add_child(header_margin)
+	var title_lbl = Label.new()
+	title_lbl.text = "Explore"
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.add_theme_font_size_override("font_size", 18)
+	title_lbl.add_theme_color_override("font_color", Color.WHITE)
+	header_margin.add_child(title_lbl)
+	
+	var sep = ColorRect.new()
+	sep.custom_minimum_size = Vector2(0, 1)
+	sep.color = Color(1, 1, 1, 0.1)
+	phone_vbox.add_child(sep)
 	
 	var scroll = ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -105,7 +148,19 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	detail_modal.mouse_filter = Control.MOUSE_FILTER_STOP
 	detail_modal.custom_minimum_size = Vector2(780, 600)
 	detail_modal.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail_modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
+	
+	var detail_style = StyleBoxFlat.new()
+	detail_style.bg_color = Color("#111111")
+	detail_style.corner_radius_top_left = 24
+	detail_style.corner_radius_top_right = 24
+	detail_style.corner_radius_bottom_left = 24
+	detail_style.corner_radius_bottom_right = 24
+	detail_style.border_width_left = 1
+	detail_style.border_width_right = 1
+	detail_style.border_width_top = 1
+	detail_style.border_width_bottom = 1
+	detail_style.border_color = Color(1, 1, 1, 0.1)
+	detail_modal.add_theme_stylebox_override("panel", detail_style)
 	right_vbox.add_child(detail_modal)
 	phase.detail_modal = detail_modal
 	
@@ -126,7 +181,7 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	detail_title.text = "ライバル詳細ログ"
 	detail_title.add_theme_font_override("font", DeskTheme.get_font())
 	detail_title.add_theme_font_size_override("font_size", 24)
-	detail_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	detail_title.add_theme_color_override("font_color", Color.WHITE)
 	detail_vbox.add_child(detail_title)
 	phase.detail_title = detail_title
 	
@@ -135,7 +190,7 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	detail_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail_body.add_theme_font_override("font", DeskTheme.get_font())
 	detail_body.add_theme_font_size_override("font_size", 18)
-	detail_body.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
+	detail_body.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
 	detail_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_body.custom_minimum_size = Vector2(0, 80)
 	detail_vbox.add_child(detail_body)
@@ -161,7 +216,7 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	detail_ellipsis.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	detail_ellipsis.add_theme_font_override("font", DeskTheme.get_font())
 	detail_ellipsis.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TINY)
-	detail_ellipsis.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.5))
+	detail_ellipsis.add_theme_color_override("font_color", Color(1, 1, 1, 0.5))
 	detail_ellipsis.visible = false
 	detail_vbox.add_child(detail_ellipsis)
 	phase.detail_ellipsis = detail_ellipsis
@@ -172,7 +227,17 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	likes_skip_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	likes_skip_btn.add_theme_font_override("font", DeskTheme.get_font())
 	likes_skip_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
-	DeskTheme.apply_white_button_style(likes_skip_btn)
+	
+	var skip_style = StyleBoxFlat.new()
+	skip_style.bg_color = Color(1, 1, 1, 0.1)
+	skip_style.corner_radius_top_left = 25
+	skip_style.corner_radius_top_right = 25
+	skip_style.corner_radius_bottom_left = 25
+	skip_style.corner_radius_bottom_right = 25
+	likes_skip_btn.add_theme_stylebox_override("normal", skip_style)
+	likes_skip_btn.add_theme_stylebox_override("hover", skip_style)
+	likes_skip_btn.add_theme_color_override("font_color", Color.WHITE)
+	
 	likes_skip_btn.pressed.connect(func():
 		likes_skip_btn.visible = false
 		for tw in phase.active_timeline_tweens:
@@ -182,7 +247,7 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 		for card in phase.timeline_list.get_children():
 			if is_instance_valid(card):
 				card.modulate.a = 1.0
-				card.custom_minimum_size = Vector2(480, 185)
+				card.custom_minimum_size = Vector2(480, 200)
 	)
 	right_vbox.add_child(likes_skip_btn)
 	phase.likes_skip_btn = likes_skip_btn
@@ -199,7 +264,17 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	next_day_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	next_day_btn.add_theme_font_override("font", DeskTheme.get_font())
 	next_day_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
-	DeskTheme.apply_white_button_style(next_day_btn)
+	
+	var action_style = StyleBoxFlat.new()
+	action_style.bg_color = Color("#007aff") # iOS Blue
+	action_style.corner_radius_top_left = 32
+	action_style.corner_radius_top_right = 32
+	action_style.corner_radius_bottom_left = 32
+	action_style.corner_radius_bottom_right = 32
+	next_day_btn.add_theme_stylebox_override("normal", action_style)
+	next_day_btn.add_theme_stylebox_override("hover", action_style)
+	next_day_btn.add_theme_color_override("font_color", Color.WHITE)
+	
 	next_day_btn.pressed.connect(phase._on_next_day_pressed)
 	right_vbox.add_child(next_day_btn)
 	phase.next_day_btn = next_day_btn
@@ -207,19 +282,15 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 
 static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int) -> Control:
 	var card = PanelContainer.new()
-	card.custom_minimum_size = Vector2(480, 185)
-	card.pivot_offset = Vector2(240, 92)
+	card.custom_minimum_size = Vector2(480, 200)
+	card.pivot_offset = Vector2(240, 100)
 	
 	var card_style = StyleBoxFlat.new()
-	card_style.bg_color = DeskTheme.COLOR_CRAFT
-	card_style.corner_radius_top_left = 6
-	card_style.corner_radius_top_right = 6
-	card_style.corner_radius_bottom_left = 6
-	card_style.corner_radius_bottom_right = 6
-	card_style.border_width_left = 4
-	card_style.border_width_right = 1
-	card_style.border_width_top = 1
-	card_style.border_width_bottom = 1
+	card_style.bg_color = Color("#1c1c1e")
+	card_style.corner_radius_top_left = 24
+	card_style.corner_radius_top_right = 24
+	card_style.corner_radius_bottom_left = 24
+	card_style.corner_radius_bottom_right = 24
 	
 	var is_suspicious = false
 	var suspiciousness = 0.0
@@ -229,22 +300,18 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 			is_suspicious = true
 	
 	if is_suspicious:
-		card_style.border_color = DeskTheme.COLOR_TENSION
-		card_style.border_width_left = 6
-		card_style.border_width_right = 6
-		card_style.border_width_top = 6
-		card_style.border_width_bottom = 6
-		# Background slightly reddish
-		card_style.bg_color = Color("ffebee")
+		card_style.bg_color = Color("#2a1616") # Subtle dark red
+		card_style.border_color = Color("#ff4d4d")
+		card_style.border_width_left = 2
+		card_style.border_width_right = 2
+		card_style.border_width_top = 2
+		card_style.border_width_bottom = 2
 	else:
-		if idx == 0:
-			card_style.border_color = Color("ffd700")
-		elif idx == 1:
-			card_style.border_color = Color("c0c0c0")
-		elif idx == 2:
-			card_style.border_color = Color("cd7f32")
-		else:
-			card_style.border_color = Color("37474f")
+		card_style.border_width_left = 1
+		card_style.border_width_right = 1
+		card_style.border_width_top = 1
+		card_style.border_width_bottom = 1
+		card_style.border_color = Color(1, 1, 1, 0.1)
 		
 	card.add_theme_stylebox_override("panel", card_style)
 	card.clip_contents = true
@@ -252,115 +319,153 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	card.modulate.a = 0.0
 	card.custom_minimum_size = Vector2(480, 0)
 	
-	if is_suspicious:
-		DeskTheme.pulse_vignette(card, Color.WHITE, suspiciousness)
-	
 	var card_margin = MarginContainer.new()
-	card_margin.add_theme_constant_override("margin_left", 12)
-	card_margin.add_theme_constant_override("margin_right", 12)
-	card_margin.add_theme_constant_override("margin_top", 12)
-	card_margin.add_theme_constant_override("margin_bottom", 12)
+	card_margin.add_theme_constant_override("margin_left", 20)
+	card_margin.add_theme_constant_override("margin_right", 20)
+	card_margin.add_theme_constant_override("margin_top", 20)
+	card_margin.add_theme_constant_override("margin_bottom", 20)
 	card.add_child(card_margin)
-	
-	var card_hbox = HBoxContainer.new()
-	card_hbox.add_theme_constant_override("separation", 15)
-	card_margin.add_child(card_hbox)
-	
-	var avatar = ColorRect.new()
-	avatar.custom_minimum_size = Vector2(48, 48)
-	avatar.color = p["avatar_color"]
-	card_hbox.add_child(avatar)
 	
 	var text_vbox = VBoxContainer.new()
 	text_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	text_vbox.add_theme_constant_override("separation", 6)
-	card_hbox.add_child(text_vbox)
+	text_vbox.add_theme_constant_override("separation", 16)
+	card_margin.add_child(text_vbox)
 	
+	# Header (Avatar + Name)
 	var header_hbox = HBoxContainer.new()
-	header_hbox.add_theme_constant_override("separation", 10)
+	header_hbox.add_theme_constant_override("separation", 12)
 	text_vbox.add_child(header_hbox)
+	
+	var avatar_panel = Panel.new()
+	avatar_panel.custom_minimum_size = Vector2(40, 40)
+	var av_style = StyleBoxFlat.new()
+	av_style.bg_color = p["avatar_color"]
+	av_style.corner_radius_top_left = 20
+	av_style.corner_radius_top_right = 20
+	av_style.corner_radius_bottom_left = 20
+	av_style.corner_radius_bottom_right = 20
+	avatar_panel.add_theme_stylebox_override("panel", av_style)
+	header_hbox.add_child(avatar_panel)
 	
 	var name_lbl = Label.new()
 	if is_suspicious:
-		name_lbl.text = p["name"] + " (怪しい...)"
+		name_lbl.text = p["name"] + " ⚠️"
 	else:
 		name_lbl.text = p["name"]
 	name_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	name_lbl.add_theme_font_size_override("font_size", 22)
-	name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	name_lbl.add_theme_font_size_override("font_size", 18)
+	name_lbl.add_theme_color_override("font_color", Color.WHITE)
 	header_hbox.add_child(name_lbl)
 	
 	var emote_key = p.get("emote", "normal")
 	var emote_badge = Label.new()
 	
 	var badge_style = StyleBoxFlat.new()
-	badge_style.content_margin_left = 6
-	badge_style.content_margin_right = 6
-	badge_style.content_margin_top = 2
-	badge_style.content_margin_bottom = 2
-	badge_style.corner_radius_top_left = 4
-	badge_style.corner_radius_top_right = 4
-	badge_style.corner_radius_bottom_left = 4
-	badge_style.corner_radius_bottom_right = 4
+	badge_style.content_margin_left = 8
+	badge_style.content_margin_right = 8
+	badge_style.content_margin_top = 4
+	badge_style.content_margin_bottom = 4
+	badge_style.corner_radius_top_left = 12
+	badge_style.corner_radius_top_right = 12
+	badge_style.corner_radius_bottom_left = 12
+	badge_style.corner_radius_bottom_right = 12
 	
 	match emote_key:
 		"normal":
-			emote_badge.text = "[普通]"
-			badge_style.bg_color = Color("eceff1")
-			emote_badge.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+			emote_badge.text = "🙂 Normal"
+			badge_style.bg_color = Color("#2c2c2e")
+			emote_badge.add_theme_color_override("font_color", Color.WHITE)
 		"confident":
-			emote_badge.text = "[自信あり]"
-			badge_style.bg_color = Color("e8f5e9")
-			emote_badge.add_theme_color_override("font_color", Color("2e7d32"))
+			emote_badge.text = "😎 Confident"
+			badge_style.bg_color = Color("#003314").lerp(Color("#00e676"), 0.2)
+			emote_badge.add_theme_color_override("font_color", Color("#00e676"))
 		"anxious":
-			emote_badge.text = "[不安]"
-			badge_style.bg_color = Color("ffebee")
-			emote_badge.add_theme_color_override("font_color", Color("c62828"))
+			emote_badge.text = "😰 Anxious"
+			badge_style.bg_color = Color("#330000").lerp(Color("#ff4d4d"), 0.2)
+			emote_badge.add_theme_color_override("font_color", Color("#ff4d4d"))
 			
 	emote_badge.add_theme_stylebox_override("normal", badge_style)
 	emote_badge.add_theme_font_override("font", DeskTheme.get_font())
 	emote_badge.add_theme_font_size_override("font_size", 13)
 	header_hbox.add_child(emote_badge)
 	
+	var spacer = Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_hbox.add_child(spacer)
+	
 	var toggle_btn = Button.new()
-	toggle_btn.text = " ▲ "
+	toggle_btn.text = "•••"
 	toggle_btn.flat = true
 	toggle_btn.add_theme_font_override("font", DeskTheme.get_font())
-	toggle_btn.add_theme_font_size_override("font_size", 14)
+	toggle_btn.add_theme_font_size_override("font_size", 16)
+	toggle_btn.add_theme_color_override("font_color", Color(1, 1, 1, 0.5))
 	header_hbox.add_child(toggle_btn)
 	
-	var collapsible_container = VBoxContainer.new()
-	collapsible_container.add_theme_constant_override("separation", 6)
-	text_vbox.add_child(collapsible_container)
+	# Content (Score)
+	var content_margin = MarginContainer.new()
+	content_margin.add_theme_constant_override("margin_top", 10)
+	content_margin.add_theme_constant_override("margin_bottom", 10)
+	text_vbox.add_child(content_margin)
 	
-	var decl_lbl = Label.new()
-	decl_lbl.text = "今日の勉強報告：" + str(p["declared_score"]) + " 点！"
-	decl_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	decl_lbl.add_theme_font_size_override("font_size", 18)
-	decl_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.8))
-	collapsible_container.add_child(decl_lbl)
+	var score_hbox = HBoxContainer.new()
+	score_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	content_margin.add_child(score_hbox)
+	
+	var score_val = Label.new()
+	score_val.text = str(p["declared_score"]) + "点"
+	score_val.add_theme_font_override("font", DeskTheme.get_font())
+	score_val.add_theme_font_size_override("font_size", 64)
+	score_val.add_theme_color_override("font_color", Color.WHITE)
+	score_hbox.add_child(score_val)
+	
+	# Actions (Details / Doubt)
+	var collapsible_container = VBoxContainer.new()
+	collapsible_container.add_theme_constant_override("separation", 10)
+	text_vbox.add_child(collapsible_container)
 	
 	var act_hbox = HBoxContainer.new()
 	act_hbox.alignment = BoxContainer.ALIGNMENT_END
-	act_hbox.add_theme_constant_override("separation", 10)
+	act_hbox.add_theme_constant_override("separation", 15)
 	collapsible_container.add_child(act_hbox)
 	
 	var inspect_btn = Button.new()
-	inspect_btn.text = "詳細確認"
+	inspect_btn.text = "View Details"
 	inspect_btn.add_theme_font_size_override("font_size", 14)
+	
+	var btn_style_flat = StyleBoxFlat.new()
+	btn_style_flat.bg_color = Color(1, 1, 1, 0.1)
+	btn_style_flat.corner_radius_top_left = 16
+	btn_style_flat.corner_radius_top_right = 16
+	btn_style_flat.corner_radius_bottom_left = 16
+	btn_style_flat.corner_radius_bottom_right = 16
+	btn_style_flat.content_margin_left = 16
+	btn_style_flat.content_margin_right = 16
+	btn_style_flat.content_margin_top = 8
+	btn_style_flat.content_margin_bottom = 8
+	inspect_btn.add_theme_stylebox_override("normal", btn_style_flat)
+	inspect_btn.add_theme_stylebox_override("hover", btn_style_flat)
+	inspect_btn.add_theme_color_override("font_color", Color.WHITE)
+	
 	inspect_btn.pressed.connect(phase._on_inspect_pressed.bind(p))
 	act_hbox.add_child(inspect_btn)
 	
 	if p["id"] != "player":
 		var doubt_btn = Button.new()
 		doubt_btn.name = "DoubtButton"
-		doubt_btn.text = "ダウト!"
+		doubt_btn.text = "Doubt!"
 		doubt_btn.add_theme_font_size_override("font_size", 14)
-		doubt_btn.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+		
+		var danger_style = btn_style_flat.duplicate()
+		danger_style.bg_color = Color("#ff2a5f")
+		doubt_btn.add_theme_stylebox_override("normal", danger_style)
+		doubt_btn.add_theme_stylebox_override("hover", danger_style)
+		doubt_btn.add_theme_color_override("font_color", Color.WHITE)
 		
 		if p["id"] in phase.session.player_doubts_made_today:
-			doubt_btn.text = "ダウト済"
+			doubt_btn.text = "Doubted"
+			danger_style.bg_color = Color(1, 1, 1, 0.2)
 			doubt_btn.disabled = true
+			doubt_btn.add_theme_color_override("font_disabled_color", Color(1, 1, 1, 0.5))
 			
 		doubt_btn.pressed.connect(phase._on_doubt_pressed.bind(p["id"], card, doubt_btn))
 		act_hbox.add_child(doubt_btn)
@@ -368,11 +473,9 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	toggle_btn.pressed.connect(func():
 		collapsible_container.visible = not collapsible_container.visible
 		if collapsible_container.visible:
-			toggle_btn.text = " ▲ "
-			card.custom_minimum_size.y = 185
+			card.custom_minimum_size.y = 200
 		else:
-			toggle_btn.text = " ▼ "
-			card.custom_minimum_size.y = 75
+			card.custom_minimum_size.y = 100
 	)
 	
 	return card
@@ -386,8 +489,17 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 		
 	# 1. 相手のサマリー情報のカード化
 	var summary_card = PanelContainer.new()
-	var summary_style = DeskTheme.create_craft_panel()
-	summary_style.bg_color = Color("eceff1")
+	var summary_style = StyleBoxFlat.new()
+	summary_style.bg_color = Color("#1c1c1e")
+	summary_style.corner_radius_top_left = 16
+	summary_style.corner_radius_top_right = 16
+	summary_style.corner_radius_bottom_left = 16
+	summary_style.corner_radius_bottom_right = 16
+	summary_style.border_width_left = 1
+	summary_style.border_width_right = 1
+	summary_style.border_width_top = 1
+	summary_style.border_width_bottom = 1
+	summary_style.border_color = Color(1, 1, 1, 0.1)
 	summary_card.add_theme_stylebox_override("panel", summary_style)
 	phase.detail_log_vbox.add_child(summary_card)
 	
@@ -429,7 +541,7 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 		lbl_title.text = pair[0]
 		lbl_title.add_theme_font_override("font", DeskTheme.get_font())
 		lbl_title.add_theme_font_size_override("font_size", 18)
-		lbl_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
+		lbl_title.add_theme_color_override("font_color", Color(1, 1, 1, 0.7))
 		info_grid.add_child(lbl_title)
 		
 		var lbl_val = Label.new()
@@ -437,9 +549,9 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 		lbl_val.add_theme_font_override("font", DeskTheme.get_font())
 		lbl_val.add_theme_font_size_override("font_size", 22)
 		if "ブラフ率" in pair[0] and bluff_rate > 65.0:
-			lbl_val.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+			lbl_val.add_theme_color_override("font_color", Color("#ff4d4d"))
 		else:
-			lbl_val.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+			lbl_val.add_theme_color_override("font_color", Color.WHITE)
 		info_grid.add_child(lbl_val)
 	
 	if p["id"] != "player":
@@ -450,7 +562,8 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 		doubt_btn.add_theme_font_override("font", DeskTheme.get_font())
 		doubt_btn.add_theme_font_size_override("font_size", 24)
 		doubt_btn.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
-		DeskTheme.apply_white_button_style(doubt_btn)
+		if phase.has_node("/root/UIHelper"):
+			phase.get_node("/root/UIHelper").apply_danger_button_style(doubt_btn)
 		
 		if p["id"] in phase.session.player_doubts_made_today:
 			doubt_btn.text = "ダウト済"
@@ -484,13 +597,12 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 		hour_lbl.text = " %d時限目 " % (h_idx + 1)
 		hour_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		hour_lbl.add_theme_font_size_override("font_size", 18)
-		hour_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-		hour_lbl.add_theme_constant_override("outline_size", 3)
-		hour_lbl.add_theme_color_override("font_outline_color", Color.WHITE)
+		hour_lbl.add_theme_color_override("font_color", Color.WHITE)
+		hour_lbl.add_theme_constant_override("outline_size", 0)
 		
 		var hour_style = StyleBoxFlat.new()
-		hour_style.bg_color = Color(DeskTheme.COLOR_MAHOGANY, 0.08)
-		hour_style.border_color = Color(DeskTheme.COLOR_INK, 0.3)
+		hour_style.bg_color = Color("#333333")
+		hour_style.border_color = Color(1, 1, 1, 0.1)
 		hour_style.border_width_left = 1
 		hour_style.border_width_right = 1
 		hour_style.border_width_top = 1
@@ -505,27 +617,26 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 		
 		var count_lbl = Label.new()
 		var count_text = "(%d枚ドロー)" % h.get("draws", 0)
-		var text_color = Color(DeskTheme.COLOR_INK, 0.8) # Sightly higher contrast ink
+		var text_color = Color(1, 1, 1, 0.8)
 		var status_icon_tex: Texture = null
 		
 		if p["id"] == "player":
 			if h.get("bursted", false):
 				count_text = "寝落ち [0点] (%d枚)" % h.get("draws", 0)
-				text_color = DeskTheme.COLOR_TENSION
+				text_color = Color("#ff4d4d")
 				status_icon_tex = load("res://assets/sleep_icon.png")
 			else:
 				count_text = "実点: %d点 (%d枚)" % [h.get("score", 0), h.get("draws", 0)]
-				text_color = DeskTheme.COLOR_GREEN
+				text_color = Color("#00e676")
 				status_icon_tex = load("res://assets/pencil_icon.png")
 		else:
-			text_color = DeskTheme.COLOR_INK
+			text_color = Color.WHITE
 				
 		count_lbl.text = count_text
 		count_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		count_lbl.add_theme_font_size_override("font_size", 18)
 		count_lbl.add_theme_color_override("font_color", text_color)
-		count_lbl.add_theme_constant_override("outline_size", 3)
-		count_lbl.add_theme_color_override("font_outline_color", Color.WHITE)
+		count_lbl.add_theme_constant_override("outline_size", 0)
 		
 		if status_icon_tex:
 			var stat_rect = TextureRect.new()
@@ -566,8 +677,8 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 			mini_card.custom_minimum_size = Vector2(18, 24)
 			
 			var m_style = StyleBoxFlat.new()
-			m_style.bg_color = DeskTheme.COLOR_CRAFT
-			m_style.border_color = DeskTheme.COLOR_INK
+			m_style.bg_color = Color("#111111")
+			m_style.border_color = Color(1, 1, 1, 0.2)
 			m_style.border_width_left = 1
 			m_style.border_width_right = 1
 			m_style.border_width_top = 1
@@ -615,15 +726,20 @@ static func show_doubt_result_modal(
 	modal.custom_minimum_size = Vector2(750, 500)
 	modal.pivot_offset = Vector2(375, 250)
 	
-	var base_style = DeskTheme.create_craft_panel()
+	var base_style = StyleBoxFlat.new()
+	base_style.bg_color = Color("#111111")
+	base_style.corner_radius_top_left = 24
+	base_style.corner_radius_top_right = 24
+	base_style.corner_radius_bottom_left = 24
+	base_style.corner_radius_bottom_right = 24
+	base_style.border_width_left = 2
+	base_style.border_width_right = 2
+	base_style.border_width_top = 2
+	base_style.border_width_bottom = 2
 	if is_bluff:
-		base_style.border_color = DeskTheme.COLOR_GREEN
+		base_style.border_color = Color("#00e676")
 	else:
-		base_style.border_color = DeskTheme.COLOR_TENSION
-	base_style.border_width_left = 6
-	base_style.border_width_right = 6
-	base_style.border_width_top = 6
-	base_style.border_width_bottom = 6
+		base_style.border_color = Color("#ff4d4d")
 	modal.add_theme_stylebox_override("panel", base_style)
 	canvas.add_child(modal)
 	
@@ -650,10 +766,10 @@ static func show_doubt_result_modal(
 	
 	if is_bluff:
 		title_lbl.text = "ダウト成功！"
-		title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
+		title_lbl.add_theme_color_override("font_color", Color("#00e676"))
 	else:
 		title_lbl.text = "ダウト失敗..."
-		title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
+		title_lbl.add_theme_color_override("font_color", Color("#ff4d4d"))
 	vbox.add_child(title_lbl)
 	
 	var desc_lbl = Label.new()
@@ -661,7 +777,7 @@ static func show_doubt_result_modal(
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	desc_lbl.add_theme_font_size_override("font_size", 18)
-	desc_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	desc_lbl.add_theme_color_override("font_color", Color.WHITE)
 	
 	if is_bluff:
 		desc_lbl.text = "%s は勉強報告で嘘をついていた！\n【申告】 %d 点  ➡  【実際】 %d 点" % [opp_name, declared_score, actual_score]
@@ -680,11 +796,11 @@ static func show_doubt_result_modal(
 	
 	var my_style = StyleBoxFlat.new()
 	if is_bluff:
-		my_style.bg_color = Color("e8f5e9")
-		my_style.border_color = Color("81c784")
+		my_style.bg_color = Color("#1a2b21")
+		my_style.border_color = Color("#00e676")
 	else:
-		my_style.bg_color = Color("ffebee")
-		my_style.border_color = Color("e57373")
+		my_style.bg_color = Color("#2a1616")
+		my_style.border_color = Color("#ff4d4d")
 	my_style.border_width_left = 2
 	my_style.border_width_right = 2
 	my_style.border_width_top = 2
@@ -712,7 +828,7 @@ static func show_doubt_result_modal(
 	my_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	my_title.add_theme_font_override("font", DeskTheme.get_font())
 	my_title.add_theme_font_size_override("font_size", 16)
-	my_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	my_title.add_theme_color_override("font_color", Color.WHITE)
 	my_vbox.add_child(my_title)
 	
 	var my_diff_lbl = Label.new()
@@ -734,7 +850,7 @@ static func show_doubt_result_modal(
 	my_detail_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	my_detail_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	my_detail_lbl.add_theme_font_size_override("font_size", 13)
-	my_detail_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.75))
+	my_detail_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.75))
 	my_vbox.add_child(my_detail_lbl)
 	
 	var opp_card = PanelContainer.new()
@@ -743,11 +859,11 @@ static func show_doubt_result_modal(
 	
 	var opp_style = StyleBoxFlat.new()
 	if is_bluff:
-		opp_style.bg_color = Color("ffebee")
-		opp_style.border_color = Color("e57373")
+		opp_style.bg_color = Color("#2a1616")
+		opp_style.border_color = Color("#ff4d4d")
 	else:
-		opp_style.bg_color = Color("eceff1")
-		opp_style.border_color = Color("b0bec5")
+		opp_style.bg_color = Color("#1c1c1e")
+		opp_style.border_color = Color(1, 1, 1, 0.2)
 	opp_style.border_width_left = 2
 	opp_style.border_width_right = 2
 	opp_style.border_width_top = 2
@@ -775,7 +891,7 @@ static func show_doubt_result_modal(
 	opp_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	opp_title.add_theme_font_override("font", DeskTheme.get_font())
 	opp_title.add_theme_font_size_override("font_size", 16)
-	opp_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	opp_title.add_theme_color_override("font_color", Color.WHITE)
 	opp_vbox.add_child(opp_title)
 	
 	var opp_diff_lbl = Label.new()
@@ -797,7 +913,7 @@ static func show_doubt_result_modal(
 	opp_detail_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	opp_detail_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	opp_detail_lbl.add_theme_font_size_override("font_size", 13)
-	opp_detail_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.75))
+	opp_detail_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.75))
 	opp_vbox.add_child(opp_detail_lbl)
 	
 	var close_btn = Button.new()
@@ -843,19 +959,19 @@ static func show_tutorial_finish_modal(phase: DailyLikesPhase) -> void:
 	modal.pivot_offset = Vector2(325, 200)
 	
 	var style = StyleBoxFlat.new()
-	style.bg_color = DeskTheme.COLOR_CRAFT
-	style.border_color = DeskTheme.COLOR_GREEN
-	style.border_width_left = 6
-	style.border_width_right = 6
-	style.border_width_top = 6
-	style.border_width_bottom = 6
-	style.corner_radius_top_left = 12
-	style.corner_radius_top_right = 12
-	style.corner_radius_bottom_left = 12
-	style.corner_radius_bottom_right = 12
-	style.shadow_color = Color(0, 0, 0, 0.3)
-	style.shadow_size = 20
-	style.shadow_offset = Vector2(5, 5)
+	style.bg_color = Color("#111111")
+	style.border_color = Color("#00e676")
+	style.border_width_left = 2
+	style.border_width_right = 2
+	style.border_width_top = 2
+	style.border_width_bottom = 2
+	style.corner_radius_top_left = 24
+	style.corner_radius_top_right = 24
+	style.corner_radius_bottom_left = 24
+	style.corner_radius_bottom_right = 24
+	style.shadow_color = Color(0, 0, 0, 0.5)
+	style.shadow_size = 30
+	style.shadow_offset = Vector2(0, 10)
 	modal.add_theme_stylebox_override("panel", style)
 	
 	phase.add_child(modal)
@@ -879,7 +995,7 @@ static func show_tutorial_finish_modal(phase: DailyLikesPhase) -> void:
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 32)
-	title.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
+	title.add_theme_color_override("font_color", Color("#00e676"))
 	vbox.add_child(title)
 	
 	var body = Label.new()
@@ -887,7 +1003,7 @@ static func show_tutorial_finish_modal(phase: DailyLikesPhase) -> void:
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_theme_font_override("font", DeskTheme.get_font())
 	body.add_theme_font_size_override("font_size", 18)
-	body.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	body.add_theme_color_override("font_color", Color.WHITE)
 	vbox.add_child(body)
 	
 	var btn = Button.new()

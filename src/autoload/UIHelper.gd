@@ -211,34 +211,34 @@ func apply_white_button_style(btn: Button) -> void:
 	var style_normal = StyleBoxFlat.new()
 	style_normal.bg_color = Color.WHITE
 	style_normal.border_color = DeskTheme.COLOR_INK
-	style_normal.border_width_left = 3
-	style_normal.border_width_right = 3
-	style_normal.border_width_top = 3
-	style_normal.border_width_bottom = 3
-	style_normal.corner_radius_top_left = 6
-	style_normal.corner_radius_top_right = 6
-	style_normal.corner_radius_bottom_left = 6
-	style_normal.corner_radius_bottom_right = 6
-	style_normal.shadow_color = Color(0.12, 0.08, 0.05, 0.15)
-	style_normal.shadow_size = 4
-	style_normal.shadow_offset = Vector2(2, 2)
+	style_normal.border_width_left = 2
+	style_normal.border_width_right = 2
+	style_normal.border_width_top = 2
+	style_normal.border_width_bottom = 5
+	style_normal.corner_radius_top_left = 12
+	style_normal.corner_radius_top_right = 12
+	style_normal.corner_radius_bottom_left = 12
+	style_normal.corner_radius_bottom_right = 12
+	style_normal.shadow_color = Color(0, 0, 0, 0.1)
+	style_normal.shadow_size = 6
+	style_normal.shadow_offset = Vector2(0, 4)
+	style_normal.content_margin_left = 20
+	style_normal.content_margin_right = 20
 	
-	# Hover stylebox (very light cream tint)
+	# Hover stylebox
 	var style_hover = style_normal.duplicate() as StyleBoxFlat
-	style_hover.bg_color = Color("fffde7")
-	style_hover.border_width_left = 4
-	style_hover.border_width_right = 4
-	style_hover.border_width_top = 4
-	style_hover.border_width_bottom = 4
-	style_hover.shadow_size = 6
-	style_hover.shadow_offset = Vector2(3, 3)
+	style_hover.bg_color = Color("f8f9fa")
+	style_hover.border_width_bottom = 6
+	style_hover.shadow_size = 8
+	style_hover.shadow_offset = Vector2(0, 6)
 	
-	# Pressed stylebox (slightly darker grey)
+	# Pressed stylebox
 	var style_pressed = style_normal.duplicate() as StyleBoxFlat
-	style_pressed.bg_color = Color("e0e0e0")
-	style_pressed.shadow_size = 1
-	style_pressed.shadow_offset = Vector2(1, 1)
-
+	style_pressed.bg_color = Color("e9ecef")
+	style_pressed.border_width_bottom = 2
+	style_pressed.shadow_size = 0
+	style_pressed.shadow_offset = Vector2(0, 0)
+	
 	var style_focus = StyleBoxEmpty.new()
 	
 	btn.add_theme_stylebox_override("normal", style_normal)
@@ -250,13 +250,79 @@ func apply_white_button_style(btn: Button) -> void:
 	btn.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	btn.add_theme_color_override("font_hover_color", DeskTheme.COLOR_INK)
 	btn.add_theme_color_override("font_pressed_color", DeskTheme.COLOR_INK)
-	btn.add_theme_color_override("font_focus_color", DeskTheme.COLOR_INK)
-	btn.add_theme_color_override("font_hover_pressed_color", DeskTheme.COLOR_INK)
+
+func apply_action_button_style(btn: Button) -> void:
+	if not btn: return
+	var style_normal = StyleBoxFlat.new()
+	style_normal.bg_color = DeskTheme.COLOR_BONUS # Green
+	style_normal.border_color = DeskTheme.COLOR_INK
+	style_normal.border_width_left = 2
+	style_normal.border_width_right = 2
+	style_normal.border_width_top = 2
+	style_normal.border_width_bottom = 6
+	style_normal.corner_radius_top_left = 12
+	style_normal.corner_radius_top_right = 12
+	style_normal.corner_radius_bottom_left = 12
+	style_normal.corner_radius_bottom_right = 12
+	style_normal.shadow_color = Color(0, 0, 0, 0.15)
+	style_normal.shadow_size = 8
+	style_normal.shadow_offset = Vector2(0, 5)
 	
-	# Check children for labels
-	for child in btn.get_children():
-		if child is Label:
-			child.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	var style_hover = style_normal.duplicate() as StyleBoxFlat
+	style_hover.bg_color = DeskTheme.COLOR_BONUS.lightened(0.1)
+	style_hover.border_width_bottom = 7
+	style_hover.shadow_offset = Vector2(0, 7)
+	
+	var style_pressed = style_normal.duplicate() as StyleBoxFlat
+	style_pressed.bg_color = DeskTheme.COLOR_BONUS.darkened(0.1)
+	style_pressed.border_width_bottom = 2
+	style_pressed.shadow_offset = Vector2(0, 0)
+	
+	btn.add_theme_stylebox_override("normal", style_normal)
+	btn.add_theme_stylebox_override("hover", style_hover)
+	btn.add_theme_stylebox_override("pressed", style_pressed)
+	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	
+	btn.add_theme_color_override("font_color", Color.WHITE)
+	btn.add_theme_color_override("font_hover_color", Color.WHITE)
+	btn.add_theme_color_override("font_pressed_color", Color.WHITE)
+
+func apply_danger_button_style(btn: Button) -> void:
+	if not btn: return
+	var style_normal = StyleBoxFlat.new()
+	style_normal.bg_color = DeskTheme.COLOR_TENSION # Pink/Red
+	style_normal.border_color = DeskTheme.COLOR_INK
+	style_normal.border_width_left = 2
+	style_normal.border_width_right = 2
+	style_normal.border_width_top = 2
+	style_normal.border_width_bottom = 6
+	style_normal.corner_radius_top_left = 12
+	style_normal.corner_radius_top_right = 12
+	style_normal.corner_radius_bottom_left = 12
+	style_normal.corner_radius_bottom_right = 12
+	style_normal.shadow_color = Color(0, 0, 0, 0.15)
+	style_normal.shadow_size = 8
+	style_normal.shadow_offset = Vector2(0, 5)
+	
+	var style_hover = style_normal.duplicate() as StyleBoxFlat
+	style_hover.bg_color = DeskTheme.COLOR_TENSION.lightened(0.1)
+	style_hover.border_width_bottom = 7
+	style_hover.shadow_offset = Vector2(0, 7)
+	
+	var style_pressed = style_normal.duplicate() as StyleBoxFlat
+	style_pressed.bg_color = DeskTheme.COLOR_TENSION.darkened(0.1)
+	style_pressed.border_width_bottom = 2
+	style_pressed.shadow_offset = Vector2(0, 0)
+	
+	btn.add_theme_stylebox_override("normal", style_normal)
+	btn.add_theme_stylebox_override("hover", style_hover)
+	btn.add_theme_stylebox_override("pressed", style_pressed)
+	btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	
+	btn.add_theme_color_override("font_color", Color.WHITE)
+	btn.add_theme_color_override("font_hover_color", Color.WHITE)
+	btn.add_theme_color_override("font_pressed_color", Color.WHITE)
+
 
 func _on_node_added(node: Node) -> void:
 	if node is Control:
@@ -268,7 +334,7 @@ func _apply_improved_typography(node: Node) -> void:
 		
 	var root = get_tree().root
 	var global = root.get_node_or_null("Global")
-	var use_handwriting = global.use_handwriting_font if global else true
+
 	var current_font = DeskTheme.get_font()
 
 	if node is Label:

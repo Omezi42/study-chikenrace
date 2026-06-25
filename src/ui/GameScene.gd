@@ -14,9 +14,17 @@ var phase_layer: Control
 
 func _ready() -> void:
 	bg_color_rect = ColorRect.new()
-	bg_color_rect.color = DeskTheme.COLOR_CRAFT
+	bg_color_rect.color = Color(1, 1, 1, 1.0) # Base white just in case
 	bg_color_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg_color_rect)
+	
+	var bg_tex = TextureRect.new()
+	if ResourceLoader.exists("res://assets/机の背景画像-ノート無し.png"):
+		bg_tex.texture = load("res://assets/机の背景画像-ノート無し.png")
+	bg_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	bg_tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(bg_tex)
 	
 	phase_layer = Control.new()
 	phase_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

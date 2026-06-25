@@ -158,7 +158,7 @@ func populate_timeline() -> void:
 		active_timeline_tweens.append(tween)
 		var delay = idx * 0.12
 		
-		tween.tween_property(card, "custom_minimum_size:y", 185.0, 0.35)\
+		tween.tween_property(card, "custom_minimum_size:y", 200.0, 0.35)\
 			.set_trans(Tween.TRANS_CUBIC)\
 			.set_ease(Tween.EASE_OUT)\
 			.set_delay(delay)

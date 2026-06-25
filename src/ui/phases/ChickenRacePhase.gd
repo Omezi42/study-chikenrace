@@ -66,13 +66,29 @@ func _build_ui() -> void:
 	add_child(main_vbox)
 	
 	# Score and Info
+	var score_vbox = VBoxContainer.new()
+	score_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	score_vbox.add_theme_constant_override("separation", 0)
+	main_vbox.add_child(score_vbox)
+	
+	var score_title = Label.new()
+	score_title.text = "現在の得点"
+	score_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	score_title.add_theme_font_override("font", DeskTheme.get_font())
+	score_title.add_theme_font_size_override("font_size", 20)
+	score_title.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
+	score_vbox.add_child(score_title)
+	
 	actual_score_label = Label.new()
 	actual_score_label.add_theme_font_override("font", DeskTheme.get_font())
-	actual_score_label.add_theme_font_size_override("font_size", 64)
+	actual_score_label.add_theme_font_size_override("font_size", 80)
 	actual_score_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	actual_score_label.add_theme_constant_override("shadow_offset_x", 2)
+	actual_score_label.add_theme_constant_override("shadow_offset_y", 2)
+	actual_score_label.add_theme_color_override("font_shadow_color", Color(0,0,0,0.15))
 	actual_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	actual_score_label.text = "0点"
-	main_vbox.add_child(actual_score_label)
+	score_vbox.add_child(actual_score_label)
 	
 	# Decision Panel (Expected value, etc)
 	decision_panel = DecisionPanel.new()
@@ -100,19 +116,21 @@ func _build_ui() -> void:
 	
 	draw_btn = Button.new()
 	draw_btn.text = "カードを引く"
-	draw_btn.custom_minimum_size = Vector2(200, 80)
+	draw_btn.custom_minimum_size = Vector2(240, 80)
 	draw_btn.add_theme_font_override("font", DeskTheme.get_font())
-	draw_btn.add_theme_font_size_override("font_size", 24)
-	Global.apply_white_button_style(draw_btn)
+	draw_btn.add_theme_font_size_override("font_size", 28)
+	if has_node("/root/UIHelper"):
+		get_node("/root/UIHelper").apply_action_button_style(draw_btn)
 	draw_btn.pressed.connect(_on_draw_pressed)
 	action_hbox.add_child(draw_btn)
 	
 	stop_btn = Button.new()
-	stop_btn.text = "ストップ"
-	stop_btn.custom_minimum_size = Vector2(200, 80)
+	stop_btn.text = "休憩する"
+	stop_btn.custom_minimum_size = Vector2(240, 80)
 	stop_btn.add_theme_font_override("font", DeskTheme.get_font())
-	stop_btn.add_theme_font_size_override("font_size", 24)
-	Global.apply_white_button_style(stop_btn)
+	stop_btn.add_theme_font_size_override("font_size", 28)
+	if has_node("/root/UIHelper"):
+		get_node("/root/UIHelper").apply_danger_button_style(stop_btn)
 	stop_btn.pressed.connect(_on_stop_pressed)
 	action_hbox.add_child(stop_btn)
 	
@@ -163,7 +181,7 @@ func _update_decision_panel() -> void:
 				var avg_safe_score = float(safe_points_sum) / safe_count
 				expected_val = (avg_safe_score * safe_prob) - (score * prob)
 			
-	decision_panel.update_info(score, prob, deck_count, hand_count, expected_val)
+	decision_panel.update_info(prob, deck_count, hand_count, expected_val)
 
 func perform_animated_draw(card: Dictionary, on_complete: Callable = Callable()) -> void:
 	is_animating = true
@@ -248,18 +266,6 @@ func trigger_burst_sequence() -> void:
 	fast_forward_cpus_to_end()
 	smartphone_presenter.update_member_badge_ui("player")
 	
-	if has_node("/root/AudioManager"):
-		var am = get_node_or_null("/root/AudioManager")
-		if am: am.play_se(AudioManager.SE_BURST, 0.0, -8.0)
-	
-	DeskTheme.shake_control(self, 15.0, 0.5)
-	
-	var tween = create_tween().bind_node(alert_banner)
-	tween.tween_property(alert_banner, "color:a", 0.5, 0.1)
-	alert_label.text = "BURST!"
-	
-	actual_score_label.text = "0点"
-	
 	var value_counts = {}
 	for c in session.player_deck.hand:
 		var val = c.get("value", 0)
@@ -271,10 +277,7 @@ func trigger_burst_sequence() -> void:
 		if value_counts[val] > 1:
 			duplicate_values.append(val)
 			
-	ChickenRaceAnimations.play_burst_animation(self, duplicate_values)
-	
-	var timer = get_tree().create_timer(1.2 / speed_mult)
-	timer.timeout.connect(func():
+	ChickenRaceAnimations.play_burst_animation(self, duplicate_values, func():
 		var final_score = engine.calculate_hand_score()
 		var reaction = CardData.get_reaction_text(current_max_burst_prob)
 		session.add_player_hour_result(session.player_deck.hand.size(), true, final_score, reaction)

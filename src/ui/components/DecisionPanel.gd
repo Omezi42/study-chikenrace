@@ -2,7 +2,6 @@ class_name DecisionPanel
 extends PanelContainer
 
 # UI Elements
-var score_label: Label
 var burst_gauge: ProgressBar
 var burst_text: Label
 var deck_count_label: Label
@@ -16,25 +15,8 @@ const COLOR_DANGER = Color("ff1744") # Red
 
 func _init() -> void:
 	# Basic styling
-	var style = StyleBoxFlat.new()
-	style.bg_color = DeskTheme.COLOR_CRAFT
-	style.border_color = DeskTheme.COLOR_INK
-	style.border_width_left = 3
-	style.border_width_right = 3
-	style.border_width_top = 3
-	style.border_width_bottom = 3
-	style.corner_radius_top_left = 8
-	style.corner_radius_top_right = 8
-	style.corner_radius_bottom_left = 8
-	style.corner_radius_bottom_right = 8
-	style.content_margin_left = 20
-	style.content_margin_right = 20
-	style.content_margin_top = 15
-	style.content_margin_bottom = 15
-	style.shadow_color = Color(0, 0, 0, 0.1)
-	style.shadow_size = 4
-	style.shadow_offset = Vector2(2, 2)
-	add_theme_stylebox_override("panel", style)
+	add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
+	DeskTheme.add_ruled_lines(self)
 	
 	custom_minimum_size = Vector2(300, 200)
 
@@ -44,7 +26,7 @@ func _init() -> void:
 
 	# 1. Title
 	var title = Label.new()
-	title.text = "決断パネル"
+	title.text = "分析ノート"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 24)
@@ -55,26 +37,6 @@ func _init() -> void:
 	separator.custom_minimum_size = Vector2(0, 2)
 	separator.color = DeskTheme.COLOR_INK
 	vbox.add_child(separator)
-
-	# 2. Score Info
-	var score_hbox = HBoxContainer.new()
-	vbox.add_child(score_hbox)
-	
-	var score_title = Label.new()
-	score_title.text = "現在得点:"
-	score_title.add_theme_font_override("font", DeskTheme.get_font())
-	score_title.add_theme_font_size_override("font_size", 20)
-	score_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	score_hbox.add_child(score_title)
-	
-	score_hbox.add_child(_create_spacer())
-	
-	score_label = Label.new()
-	score_label.text = "0点"
-	score_label.add_theme_font_override("font", DeskTheme.get_font())
-	score_label.add_theme_font_size_override("font_size", 24)
-	score_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	score_hbox.add_child(score_label)
 
 	# 3. Deck Info
 	var deck_hbox = HBoxContainer.new()
@@ -171,8 +133,7 @@ func _create_spacer() -> Control:
 	return spacer
 
 
-func update_info(score: int, burst_prob: float, deck_count: int, hand_count: int, expected_val: float) -> void:
-	score_label.text = str(score) + "点"
+func update_info(burst_prob: float, deck_count: int, hand_count: int, expected_val: float) -> void:
 	deck_count_label.text = "山札: " + str(deck_count) + "枚"
 	draw_count_label.text = "手札: " + str(hand_count) + "枚"
 	
