@@ -64,19 +64,36 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 		
 	phase.phone_panel = phone_panel
 	
+	# SCREEN CONTAINER (液晶画面)
+	var screen_container = PanelContainer.new()
+	screen_container.name = "ScreenContainer"
+	screen_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	screen_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	screen_container.clip_contents = true
+	var screen_bg = StyleBoxFlat.new()
+	screen_bg.bg_color = Color("#ffffff") # 白背景
+	screen_bg.corner_radius_top_left = 34
+	screen_bg.corner_radius_top_right = 34
+	screen_bg.corner_radius_bottom_left = 34
+	screen_bg.corner_radius_bottom_right = 34
+	screen_container.add_theme_stylebox_override("panel", screen_bg)
+	phone_panel.add_child(screen_container)
+
+	# Notch / Dynamic Island
 	var notch = Panel.new()
 	notch.custom_minimum_size = Vector2(120, 24)
+	notch.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	notch.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	var notch_style = StyleBoxFlat.new()
 	notch_style.bg_color = Color("#111111")
 	notch_style.corner_radius_bottom_left = 12
 	notch_style.corner_radius_bottom_right = 12
 	notch.add_theme_stylebox_override("panel", notch_style)
-	notch.position = Vector2(150, 0)
 	phone_panel.add_child(notch)
 	
 	var phone_vbox = VBoxContainer.new()
 	phone_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
-	phone_panel.add_child(phone_vbox)
+	screen_container.add_child(phone_vbox)
 	
 	# Status bar
 	var status_margin = MarginContainer.new()
@@ -98,7 +115,7 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	status_bar.add_child(spacer)
 	
 	var app_name = Label.new()
-	app_name.text = "Feed"
+	app_name.text = "チキスタ"
 	app_name.add_theme_font_size_override("font_size", 14)
 	app_name.add_theme_color_override("font_color", Color("#999999"))
 	status_bar.add_child(app_name)
@@ -189,7 +206,7 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	phase.detail_title = detail_title
 	
 	var detail_body = Label.new()
-	detail_body.text = "タイムラインの「詳細確認」を押すと、ライバルが今日引いたドロー数と使用したアイテムのログがここに表示されます。"
+	detail_body.text = "タイムラインの「詳細確認」を押すと、ライバルが今日引いたドロー数のログがここに表示されます。"
 	detail_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail_body.add_theme_font_override("font", DeskTheme.get_font())
 	detail_body.add_theme_font_size_override("font_size", 18)
@@ -443,7 +460,7 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	collapsible_container.add_child(act_hbox)
 	
 	var inspect_btn = Button.new()
-	inspect_btn.text = "View Details"
+	inspect_btn.text = "詳細を見る"
 	inspect_btn.add_theme_font_size_override("font_size", 14)
 	
 	var btn_style_flat = StyleBoxFlat.new()
@@ -471,7 +488,7 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	if p["id"] != "player":
 		var doubt_btn = Button.new()
 		doubt_btn.name = "DoubtButton"
-		doubt_btn.text = "Doubt!"
+		doubt_btn.text = "ダウト！"
 		doubt_btn.add_theme_font_size_override("font_size", 14)
 		
 		var danger_style = btn_style_flat.duplicate()
@@ -482,7 +499,7 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 		doubt_btn.add_theme_color_override("font_color", Color.WHITE)
 		
 		if p["id"] in phase.session.player_doubts_made_today:
-			doubt_btn.text = "Doubted"
+			doubt_btn.text = "ダウト済"
 			danger_style.bg_color = Color("#eeeeee")
 			danger_style.border_color = Color("#dddddd")
 			doubt_btn.disabled = true
@@ -680,7 +697,7 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 			react_lbl.add_theme_color_override("font_outline_color", Color.WHITE)
 			line1.add_child(react_lbl)
 		
-		# 2行目: ドローしたカードと使用したアイテム (少しインデントを入れる)
+		# 2行目: ドローしたカード (少しインデントを入れる)
 		var line2_margin = MarginContainer.new()
 		line2_margin.add_theme_constant_override("margin_left", 15)
 		row.add_child(line2_margin)
@@ -1024,11 +1041,11 @@ static func show_tutorial_finish_modal(phase: DailyLikesPhase) -> void:
 	vbox.add_child(title)
 	
 	var body = Label.new()
-	body.text = "お疲れ様でした！『テスト勉強チキンレース』の基本的な遊び方（自習、持ち込みアイテム設定、チキスタへの投稿、嘘とダウトの見極め）をマスターしました。\n\n模試やマッチングで、他のライバルたちを実力とブラフで圧倒し、第一志望合格（偏差値アップ）を勝ち取りましょう！"
+	body.text = "お疲れ様でした！『テスト勉強チキンレース』の基本的な遊び方（カードを引く駆け引き、寝落ちのリスク、点数報告でのブラフ、嘘とダウトの見極め）をマスターしました。\n\nソロ模試やランダム対戦でライバルたちを実力と駆け引きで圧倒し、勝利を掴み取りましょう！"
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_theme_font_override("font", DeskTheme.get_font())
 	body.add_theme_font_size_override("font_size", 18)
-	body.add_theme_color_override("font_color", Color.WHITE)
+	body.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(body)
 	
 	var btn = Button.new()

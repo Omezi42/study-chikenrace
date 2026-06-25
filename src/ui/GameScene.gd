@@ -30,6 +30,42 @@ func _ready() -> void:
 	phase_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(phase_layer)
 	
+	var header_margin = MarginContainer.new()
+	header_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	header_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header_margin.add_theme_constant_override("margin_right", 20)
+	header_margin.add_theme_constant_override("margin_top", 20)
+	add_child(header_margin)
+	
+	var header_hbox = HBoxContainer.new()
+	header_hbox.alignment = BoxContainer.ALIGNMENT_END
+	header_hbox.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	header_hbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header_hbox.add_theme_constant_override("separation", 15)
+	header_margin.add_child(header_hbox)
+	
+	var hist_btn = Button.new()
+	hist_btn.text = "📜 点数履歴"
+	hist_btn.custom_minimum_size = Vector2(140, 45)
+	hist_btn.add_theme_font_override("font", DeskTheme.get_font())
+	hist_btn.add_theme_font_size_override("font_size", 18)
+	hist_btn.pressed.connect(func():
+		DeskTheme.animate_click(hist_btn, Vector2.ONE, 0.08)
+		HistoryModal.create_and_show(self, session)
+	)
+	header_hbox.add_child(hist_btn)
+	
+	var opt_btn = Button.new()
+	opt_btn.text = "設定/ルール"
+	opt_btn.custom_minimum_size = Vector2(140, 45)
+	opt_btn.add_theme_font_override("font", DeskTheme.get_font())
+	opt_btn.add_theme_font_size_override("font_size", 18)
+	opt_btn.pressed.connect(func():
+		DeskTheme.animate_click(opt_btn, Vector2.ONE, 0.08)
+		SettingsModal.create_and_show(self)
+	)
+	header_hbox.add_child(opt_btn)
+	
 	session = GameSession.new()
 	session.start_session()
 	

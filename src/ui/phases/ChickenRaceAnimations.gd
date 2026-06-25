@@ -155,9 +155,9 @@ static func play_burst_animation(phase: ChickenRacePhase, duplicate_values: Arra
 				var target_rot = child.rotation_degrees + randf_range(-360, 360)
 				
 				var tween = phase.create_tween().bind_node(child).set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-				tween.tween_property(child, "position", target_pos, 0.7 / speed_mult)
-				tween.tween_property(child, "rotation_degrees", target_rot, 0.7 / speed_mult)
-				tween.tween_property(child, "modulate:a", 0.0, 0.7 / speed_mult)
+				tween.tween_property(child, "position", target_pos, 1.4 / speed_mult)
+				tween.tween_property(child, "rotation_degrees", target_rot, 1.4 / speed_mult)
+				tween.tween_property(child, "modulate:a", 0.0, 1.4 / speed_mult)
 		
 		_spawn_zzz_scribbles(phase)
 		

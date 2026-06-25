@@ -62,6 +62,21 @@ func _ready() -> void:
 	vbox.add_child(mode_button_group)
 	
 	# 各ボタンの追加（付箋風）
+	_add_sticky_button("チュートリアル", "遊び方とルールを対戦しながら学ぶ", "green", 2.0, func():
+		Global.is_tutorial_mode = true
+		Global.game_mode = Constants.MODE_CPU
+		Global.opponent_profiles = {
+			"cpu_sato": {"name": "佐藤くん"},
+			"cpu_suzuki": {"name": "鈴木さん"},
+			"cpu_takahashi": {"name": "高橋くん"}
+		}
+		if Global.player_name == "":
+			Global.player_name = "プレイヤー"
+		var tree = get_tree()
+		if tree:
+			Global.change_scene_with_fade(tree, "res://Main.tscn")
+	)
+	
 	_add_sticky_button("ソロ模試", "CPUと対戦するオフラインモード", "blue", -1.5, func():
 		Global.game_mode = Constants.MODE_CPU
 		_start_cpu_match()
@@ -121,15 +136,7 @@ func _start_entrance_animation() -> void:
 		inner_tween.tween_property(btn, "modulate:a", 1.0, 0.3)
 		inner_tween.parallel().tween_property(btn, "scale", Vector2.ONE, 0.4).from(Vector2(0.5, 0.5))
 		
-		# 効果音 (SE_PAPER_DRAWが無い可能性があるため、安全なSEにフォールバック)
-		if has_node("/root/AudioManager"):
-			var audio = get_node("/root/AudioManager")
-			inner_tween.parallel().tween_callback(func(): 
-				if "SE_PAPER_DRAW" in audio:
-					audio.play_se(audio.SE_PAPER_DRAW)
-				else:
-					audio.play_se(audio.SE_CLICK)
-			).set_delay(delay)
+
 
 func _add_sticky_button(title_text: String, desc_text: String, color: String, rot: float, callback: Callable) -> void:
 	var btn_container = CenterContainer.new()

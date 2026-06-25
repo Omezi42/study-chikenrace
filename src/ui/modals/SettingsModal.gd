@@ -17,8 +17,8 @@ func _ready() -> void:
 	add_child(bg_overlay)
 	
 	var modal = PanelContainer.new()
-	modal.custom_minimum_size = Vector2(500, 520)
-	modal.pivot_offset = Vector2(250, 260)
+	modal.custom_minimum_size = Vector2(500, 560)
+	modal.pivot_offset = Vector2(250, 280)
 	modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	add_child(modal)
 	
@@ -33,18 +33,34 @@ func _ready() -> void:
 	modal.add_child(margin)
 	
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 20)
+	vbox.add_theme_constant_override("separation", 15)
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	margin.add_child(vbox)
 	
 	# Title
 	var title = Label.new()
-	title.text = "設定・プレイヤー情報"
+	title.text = "設定・ルール"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 26)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
+	
+	# Rulebook Button
+	var rule_btn = Button.new()
+	rule_btn.text = "📖 あそびかた・ルールを確認する"
+	rule_btn.custom_minimum_size = Vector2(0, 48)
+	rule_btn.add_theme_font_override("font", DeskTheme.get_font())
+	rule_btn.add_theme_font_size_override("font_size", 18)
+	rule_btn.add_theme_color_override("font_color", Color("1b5e20"))
+	DeskTheme.apply_white_button_style(rule_btn)
+	rule_btn.pressed.connect(func():
+		rule_btn.release_focus()
+		DeskTheme.animate_click(rule_btn, Vector2.ONE, 0.08)
+		if get_parent():
+			RulebookModal.create_and_show(get_parent())
+	)
+	vbox.add_child(rule_btn)
 	
 	# Player Name
 	var name_vbox = VBoxContainer.new()
@@ -83,6 +99,24 @@ func _ready() -> void:
 	spacer.custom_minimum_size = Vector2(0, 10)
 	vbox.add_child(spacer)
 
+	# Mute Checkbox
+	var mute_checkbox = CheckBox.new()
+	mute_checkbox.text = " 全音声をミュート（消音）"
+	mute_checkbox.button_pressed = SettingsState.is_muted
+	mute_checkbox.add_theme_font_override("font", DeskTheme.get_font())
+	mute_checkbox.add_theme_font_size_override("font_size", 16)
+	mute_checkbox.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	mute_checkbox.add_theme_color_override("font_pressed_color", DeskTheme.COLOR_INK)
+	mute_checkbox.add_theme_color_override("font_hover_color", DeskTheme.COLOR_INK)
+	mute_checkbox.add_theme_color_override("font_focus_color", DeskTheme.COLOR_INK)
+	vbox.add_child(mute_checkbox)
+	
+	mute_checkbox.toggled.connect(func(toggled_on):
+		SettingsState.is_muted = toggled_on
+		SettingsState.apply_settings()
+		Global.save_game()
+	)
+
 	# BGM Volume
 	var bgm_vbox = VBoxContainer.new()
 	bgm_vbox.add_theme_constant_override("separation", 5)
@@ -105,6 +139,9 @@ func _ready() -> void:
 	
 	bgm_slider.value_changed.connect(func(val):
 		SettingsState.bgm_volume = val
+		if SettingsState.is_muted and val > 0.0:
+			SettingsState.is_muted = false
+			mute_checkbox.set_pressed_no_signal(false)
 		SettingsState.apply_settings()
 		Global.save_game()
 	)
@@ -131,6 +168,9 @@ func _ready() -> void:
 	
 	se_slider.value_changed.connect(func(val):
 		SettingsState.se_volume = val
+		if SettingsState.is_muted and val > 0.0:
+			SettingsState.is_muted = false
+			mute_checkbox.set_pressed_no_signal(false)
 		SettingsState.apply_settings()
 		Global.save_game()
 	)

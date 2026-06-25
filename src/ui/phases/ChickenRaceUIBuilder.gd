@@ -361,15 +361,4 @@ static func build_ui(phase: ChickenRacePhase) -> void:
 	sticky_vbox.add_child(deck_warning_lbl)
 	phase.deck_warning_lbl = deck_warning_lbl
 	
-	var opt_btn = Button.new()
-	opt_btn.text = "設定/ルール"
-	opt_btn.custom_minimum_size = Vector2(140, 45)
-	opt_btn.add_theme_font_override("font", DeskTheme.get_font())
-	opt_btn.add_theme_font_size_override("font_size", 18)
-	opt_btn.pressed.connect(func():
-		DeskTheme.animate_click(opt_btn, Vector2.ONE, 0.08)
-		SettingsModal.create_and_show(phase)
-	)
-	phase.add_child(opt_btn)
-	var opt_viewport_size = phase.get_viewport_rect().size
-	opt_btn.position = Vector2(max(opt_viewport_size.x - opt_btn.custom_minimum_size.x - 20.0, 0.0), 20)
+

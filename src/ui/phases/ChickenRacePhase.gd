@@ -40,6 +40,7 @@ var speed_mult: float = 1.0
 var hand_presenter: ChickenRaceHandPresenter
 var cpu_presenter: ChickenRaceCPUPresenter
 var smartphone_presenter: ChickenRaceSmartphonePresenter
+var tutorial_controller: ChickenRaceTutorial
 
 func _on_setup(setup_data: Dictionary) -> void:
 	speed_mult = 1.0
@@ -57,6 +58,10 @@ func _on_setup(setup_data: Dictionary) -> void:
 		
 	update_ui()
 	is_animating = false
+	
+	if Global.is_tutorial_mode:
+		tutorial_controller = ChickenRaceTutorial.new(self)
+		tutorial_controller.start()
 
 func _build_ui() -> void:
 	var main_vbox = VBoxContainer.new()
@@ -256,6 +261,8 @@ func _on_draw_pressed() -> void:
 			trigger_burst_sequence()
 		else:
 			update_ui()
+			if tutorial_controller:
+				tutorial_controller.advance_step()
 	)
 
 func trigger_burst_sequence() -> void:
@@ -263,6 +270,9 @@ func trigger_burst_sequence() -> void:
 	draw_btn.disabled = true
 	stop_btn.disabled = true
 	
+	if tutorial_controller:
+		tutorial_controller.on_burst_triggered()
+		
 	fast_forward_cpus_to_end()
 	smartphone_presenter.update_member_badge_ui("player")
 	
@@ -325,6 +335,8 @@ func _on_stop_pressed() -> void:
 	wait_timer.timeout.connect(func():
 		if is_instance_valid(stamp):
 			stamp.queue_free()
+		if tutorial_controller:
+			tutorial_controller.cleanup()
 		var final_score = engine.calculate_hand_score()
 		var reaction = CardData.get_reaction_text(current_max_burst_prob)
 		session.add_player_hour_result(session.player_deck.hand.size(), false, final_score, reaction)
@@ -373,6 +385,12 @@ func reset_phase_for_next_hour() -> void:
 	alert_label.text = ""
 	
 	DeskTheme.show_toast(self, "第 %d 時限目の勉強を開始します！" % session.current_hour)
+	
+	if tutorial_controller:
+		if session.current_hour == 2:
+			tutorial_controller.start_hour_2()
+		elif session.current_hour == 3:
+			tutorial_controller.start_hour_3()
 
 # CPU simulations are handled by CPUPresenter
 func advance_cpu_simulations() -> void:

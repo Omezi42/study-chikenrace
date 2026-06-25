@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 class_name RulebookModal
 extends CanvasLayer
 
@@ -9,7 +10,7 @@ static func create_and_show(parent_node: Node) -> void:
 	parent_node.add_child(canvas)
 
 var current_page: int = 0
-var max_pages: int = 5
+var max_pages: int = 6
 var page_width: float = 982.0
 
 var modal: PanelContainer
@@ -287,44 +288,43 @@ func _play_page_animations(idx: int) -> void:
 # ==========================================
 
 # --- Page 0: Intro ---
-func _setup_page_0(page: Control, visual_area: Control, rtb: RichTextLabel) -> void:
+func _setup_page_0(page: Control, visual_area: Control, rtb: RichTextLabel, title_lbl: Label) -> void:
+	title_lbl.text = "① テストまであと3日！"
+	title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
+	
 	var ctrl = Control.new()
 	ctrl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visual_area.add_child(ctrl)
 	
-	var title = _create_title_label("① テストまであと3日！", DeskTheme.COLOR_GREEN)
-	title.position = Vector2(350, 15)
-	ctrl.add_child(title)
-	
 	# Mock Notebook UI
 	var notebook = PanelContainer.new()
 	notebook.custom_minimum_size = Vector2(400, 250)
-	notebook.position = Vector2(290, 70)
+	notebook.position = Vector2(290, 30)
 	notebook.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	DeskTheme.add_ruled_lines(notebook)
 	ctrl.add_child(notebook)
 	
 	var c1 = CardVisual.create({"value": 4})
 	c1.scale = Vector2(0.8, 0.8)
-	c1.position = Vector2(330, 100)
+	c1.position = Vector2(330, 60)
 	c1.rotation_degrees = -5
 	ctrl.add_child(c1)
 	
 	var c2 = CardVisual.create({"value": 10})
 	c2.scale = Vector2(0.8, 0.8)
-	c2.position = Vector2(450, 100)
+	c2.position = Vector2(450, 60)
 	c2.rotation_degrees = 5
 	ctrl.add_child(c2)
-
+	
 	var c3 = CardVisual.create({"value": 7})
 	c3.scale = Vector2(0.8, 0.8)
-	c3.position = Vector2(570, 100)
+	c3.position = Vector2(570, 60)
 	c3.rotation_degrees = 15
 	ctrl.add_child(c3)
-
+	
 	# ライバルの嘘申告を演出する吹き出し
 	var rival_bubble = PanelContainer.new()
-	rival_bubble.position = Vector2(50, 75)
+	rival_bubble.position = Vector2(50, 50)
 	rival_bubble.pivot_offset = Vector2(80, 45)
 	rival_bubble.scale = Vector2(0.8, 0.8)
 	rival_bubble.modulate.a = 0
@@ -345,61 +345,63 @@ func _setup_page_0(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	bubble_style.content_margin_bottom = 8
 	rival_bubble.add_theme_stylebox_override("panel", bubble_style)
 	ctrl.add_child(rival_bubble)
-
+	
 	var bubble_vbox = VBoxContainer.new()
 	bubble_vbox.add_theme_constant_override("separation", 2)
 	rival_bubble.add_child(bubble_vbox)
-
+	
 	var bubble_name = Label.new()
 	bubble_name.text = "ライバル"
 	bubble_name.add_theme_font_override("font", DeskTheme.get_font())
 	bubble_name.add_theme_font_size_override("font_size", 13)
 	bubble_name.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.55))
 	bubble_vbox.add_child(bubble_name)
-
+	
 	var bubble_declared = Label.new()
 	bubble_declared.text = "「今日は65点！」"
 	bubble_declared.add_theme_font_override("font", DeskTheme.get_font())
 	bubble_declared.add_theme_font_size_override("font_size", 20)
 	bubble_declared.add_theme_color_override("font_color", Color("#d500f9"))
 	bubble_vbox.add_child(bubble_declared)
-
+	
 	var bubble_actual = Label.new()
 	bubble_actual.text = "（実際は30点...）"
 	bubble_actual.add_theme_font_override("font", DeskTheme.get_font())
 	bubble_actual.add_theme_font_size_override("font_size", 13)
 	bubble_actual.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.45))
 	bubble_vbox.add_child(bubble_actual)
-
-	rtb.text = "[center][b][font_size=20]熾烈な勉強レース開幕！[/font_size][/b][/center]\n[b]実点[/b] … 自習カードで稼いだホントの点数　[b]申告点[/b] … SNSに投稿する点数（嘘もOK！）\n[color=#ff4081][b]3日間[/b][/color]の駆け引きの末、最終発表で[b]申告点が一番高い人[/b]が優勝！"
-
-	page.set_meta("play_animations", func() -> Array[Tween]:
+	
+	rtb.text = "自習で稼ぐ[b]実点（ホントの点数）[/b]と、SNSに投稿する[b]申告点（嘘でもOK）[/b]を設定します。\n3日間の騙し合いの末、最終答え合わせで[color=#ff4081][b]最も得点が高いプレイヤー[/b][/color]が優勝です！"
+	
+	page.set_meta("play_animations", func():
 		var tw = page.create_tween().set_loops()
-
+	
 		tw.tween_callback(func():
 			rival_bubble.modulate.a = 0
 			rival_bubble.scale = Vector2(0.8, 0.8)
 		)
-
+	
 		# Cards bob
-		tw.tween_property(c1, "position:y", 90.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		tw.parallel().tween_property(c2, "position:y", 110.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		tw.parallel().tween_property(c3, "position:y", 90.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-
-		tw.tween_property(c1, "position:y", 100.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		tw.parallel().tween_property(c2, "position:y", 100.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		tw.parallel().tween_property(c3, "position:y", 100.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-
+		tw.tween_property(c1, "position:y", 50.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.parallel().tween_property(c2, "position:y", 70.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.parallel().tween_property(c3, "position:y", 50.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	
+		tw.tween_property(c1, "position:y", 60.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.parallel().tween_property(c2, "position:y", 60.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.parallel().tween_property(c3, "position:y", 60.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	
 		# ライバルの嘘申告吹き出しが飛び出す
 		tw.tween_property(rival_bubble, "modulate:a", 1.0, 0.35).set_trans(Tween.TRANS_SINE)
 		tw.parallel().tween_property(rival_bubble, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tw.tween_interval(2.0)
-
+	
 		# 吹き出しフェードアウト
 		tw.tween_property(rival_bubble, "modulate:a", 0.0, 0.4)
 		tw.tween_interval(0.3)
 		return [tw]
 	)
+	
+	_disable_mouse_interactions(visual_area)
 	page.set_script(preload("res://src/ui/modals/RulebookPageProxy.gd"))
 
 func _build_page(idx: int) -> Control:
@@ -408,22 +410,34 @@ func _build_page(idx: int) -> Control:
 	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	page.add_child(vbox)
 	
+	# Title container and label (Unified layout to avoid overlap)
+	var title_margin = MarginContainer.new()
+	title_margin.add_theme_constant_override("margin_top", 12)
+	title_margin.add_theme_constant_override("margin_bottom", 6)
+	vbox.add_child(title_margin)
+	
+	var title_lbl = Label.new()
+	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	title_lbl.add_theme_font_size_override("font_size", 24)
+	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_margin.add_child(title_lbl)
+	
 	var visual_area = Control.new()
 	visual_area.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(visual_area)
 	
 	var text_panel = PanelContainer.new()
-	text_panel.custom_minimum_size = Vector2(0, 120)
+	text_panel.custom_minimum_size = Vector2(0, 140)
 	var tp_style = StyleBoxFlat.new()
 	tp_style.bg_color = Color(0, 0, 0, 0.03)
 	tp_style.corner_radius_top_left = 8
 	tp_style.corner_radius_top_right = 8
 	tp_style.corner_radius_bottom_left = 8
 	tp_style.corner_radius_bottom_right = 8
-	tp_style.content_margin_left = 16
-	tp_style.content_margin_right = 16
-	tp_style.content_margin_top = 12
-	tp_style.content_margin_bottom = 12
+	tp_style.content_margin_left = 20
+	tp_style.content_margin_right = 20
+	tp_style.content_margin_top = 10
+	tp_style.content_margin_bottom = 10
 	text_panel.add_theme_stylebox_override("panel", tp_style)
 	vbox.add_child(text_panel)
 	
@@ -435,21 +449,23 @@ func _build_page(idx: int) -> Control:
 	var rtb = RichTextLabel.new()
 	rtb.bbcode_enabled = true
 	rtb.fit_content = true
-	rtb.scroll_active = true
+	rtb.scroll_active = false
+	rtb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	rtb.add_theme_font_override("normal_font", DeskTheme.get_font())
 	rtb.add_theme_font_override("bold_font", DeskTheme.get_font())
-	rtb.add_theme_font_size_override("normal_font_size", 20)
-	rtb.add_theme_font_size_override("bold_font_size", 22)
+	rtb.add_theme_font_size_override("normal_font_size", 18)
+	rtb.add_theme_font_size_override("bold_font_size", 20)
 	rtb.add_theme_color_override("default_color", DeskTheme.COLOR_INK)
 	rtb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text_vcenter.add_child(rtb)
 	
 	match idx:
-		0: _setup_page_0(page, visual_area, rtb) # Intro
-		1: _setup_page_1(page, visual_area, rtb) # Draw
-		2: _setup_page_2(page, visual_area, rtb) # Burst
-		3: _setup_page_3(page, visual_area, rtb) # Report
-		4: _setup_page_4(page, visual_area, rtb) # Doubt
+		0: _setup_page_0(page, visual_area, rtb, title_lbl) # Intro
+		1: _setup_page_1(page, visual_area, rtb, title_lbl) # Draw
+		2: _setup_page_2(page, visual_area, rtb, title_lbl) # Burst
+		3: _setup_page_3(page, visual_area, rtb, title_lbl) # Report
+		4: _setup_page_4(page, visual_area, rtb, title_lbl) # Doubt
+		5: _setup_page_5(page, visual_area, rtb, title_lbl) # Score calculation
 		
 	return page
 
@@ -463,27 +479,24 @@ func _create_title_label(text: String, color: Color) -> Label:
 	return lbl
 
 # --- Page 1: Overview (Card Drawing) ---
-func _setup_page_1(page: Control, visual_area: Control, rtb: RichTextLabel) -> void:
+func _setup_page_1(page: Control, visual_area: Control, rtb: RichTextLabel, title_lbl: Label) -> void:
+	title_lbl.text = "② 自習で実点を積む"
+	title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
+	
 	var ctrl = Control.new()
 	ctrl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visual_area.add_child(ctrl)
 	
-	var title = _create_title_label("② 自習で実点を積む", DeskTheme.COLOR_GREEN)
-	title.position = Vector2(350, 15)
-	ctrl.add_child(title)
-	
 	# Mock Notebook UI (Target area)
 	var notebook = PanelContainer.new()
 	notebook.custom_minimum_size = Vector2(400, 250)
-	notebook.position = Vector2(480, 70)
+	notebook.position = Vector2(480, 30)
 	notebook.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	DeskTheme.add_ruled_lines(notebook)
 	ctrl.add_child(notebook)
 	
-	var deck = TextureRect.new()
-	if ResourceLoader.exists("res://assets/カード裏面画像.png"):
-		deck.texture = load("res://assets/カード裏面画像.png")
-	deck.position = Vector2(100, 90)
+	var deck = _create_card_back()
+	deck.position = Vector2(100, 40)
 	deck.scale = Vector2(0.8, 0.8)
 	ctrl.add_child(deck)
 	
@@ -497,42 +510,40 @@ func _setup_page_1(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	
 	var c1 = CardVisual.create({"value": 4})
 	c1.scale = Vector2(0.8, 0.8)
-	c1.position = Vector2(520, 100)
+	c1.position = Vector2(520, 60)
 	c1.rotation_degrees = -5
 	ctrl.add_child(c1)
 	
 	var c2 = CardVisual.create({"value": 10})
 	c2.scale = Vector2(0.8, 0.8)
-	c2.position = Vector2(640, 100)
+	c2.position = Vector2(640, 60)
 	c2.rotation_degrees = 5
 	ctrl.add_child(c2)
 	
 	var c3 = CardVisual.create({"value": 7})
 	c3.scale = Vector2(0.8, 0.8)
-	c3.position = Vector2(100, 90)
+	c3.position = Vector2(100, 40)
 	c3.modulate.a = 0
 	ctrl.add_child(c3)
 	
-	var c3_back = TextureRect.new()
-	if ResourceLoader.exists("res://assets/カード裏面画像.png"):
-		c3_back.texture = load("res://assets/カード裏面画像.png")
+	var c3_back = _create_card_back()
 	c3_back.scale = Vector2(0.8, 0.8)
-	c3_back.position = Vector2(100, 90)
+	c3_back.position = Vector2(100, 40)
 	c3_back.modulate.a = 0
 	ctrl.add_child(c3_back)
 	
-	rtb.text = "[center][b][font_size=20]カードを引いて点数を稼げ！[/font_size][/b][/center]\n1日3回ある「自習」で山札からカードを引きます。\n引いたカードの数字がそのままあなたの「実点」になります。"
+	rtb.text = "自習フェーズで山札からカードを引き、カードの[color=#ff4081][b]数字の合計[/b][/color]がその日の「実点」になります。\n[color=#888888]※山札（全55枚）には数字 N（1〜10）のカードがそれぞれ N 枚入っています（10は10枚、1は1枚）。[/color]"
 	
-	page.set_meta("play_animations", func() -> Array[Tween]:
+	page.set_meta("play_animations", func():
 		var tw = page.create_tween().set_loops()
 		# Reset
 		tw.tween_callback(func():
-			c3.position = Vector2(100, 90)
+			c3.position = Vector2(100, 40)
 			c3.modulate.a = 0.0
 			c3.scale = Vector2(0.0, 0.8)
 			c3.rotation_degrees = 15.0
 			
-			c3_back.position = Vector2(100, 90)
+			c3_back.position = Vector2(100, 40)
 			c3_back.modulate.a = 0.0
 			c3_back.scale = Vector2(0.8, 0.8)
 			c3_back.rotation_degrees = 0
@@ -541,7 +552,7 @@ func _setup_page_1(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 		
 		# Draw back
 		tw.tween_property(c3_back, "modulate:a", 1.0, 0.1)
-		tw.parallel().tween_property(c3_back, "position", Vector2(760, 100), 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(c3_back, "position", Vector2(760, 60), 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.parallel().tween_property(c3_back, "rotation_degrees", 15.0, 0.6)
 		
 		# Flip
@@ -558,50 +569,47 @@ func _setup_page_1(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 		tw.tween_property(c3, "modulate:a", 0.0, 0.3)
 		return [tw]
 	)
+	
+	_disable_mouse_interactions(visual_area)
 	page.set_script(preload("res://src/ui/modals/RulebookPageProxy.gd"))
 
 # --- Page 2: Burst (Card draw + Shake + UI) ---
-func _setup_page_2(page: Control, visual_area: Control, rtb: RichTextLabel) -> void:
+func _setup_page_2(page: Control, visual_area: Control, rtb: RichTextLabel, title_lbl: Label) -> void:
+	title_lbl.text = "③ 欲張るな危険！「バースト」"
+	title_lbl.add_theme_color_override("font_color", Color("#ff4081"))
+	
 	var ctrl = Control.new()
 	ctrl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visual_area.add_child(ctrl)
 	
-	var title = _create_title_label("③ 欲張るな危険！「バースト」", Color("#ff4081"))
-	title.position = Vector2(300, 10)
-	ctrl.add_child(title)
-	
 	# Center Notebook
 	var notebook = PanelContainer.new()
 	notebook.custom_minimum_size = Vector2(500, 260)
-	notebook.position = Vector2(240, 50)
+	notebook.position = Vector2(240, 30)
 	notebook.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	DeskTheme.add_ruled_lines(notebook)
 	ctrl.add_child(notebook)
 	
 	var c7_1 = CardVisual.create({"value": 7})
 	c7_1.scale = Vector2(0.8, 0.8)
-	c7_1.position = Vector2(300, 70)
+	c7_1.position = Vector2(300, 50)
 	c7_1.rotation_degrees = -5
 	ctrl.add_child(c7_1)
 	
-	var deck = TextureRect.new()
-	if ResourceLoader.exists("res://assets/カード裏面画像.png"):
-		deck.texture = load("res://assets/カード裏面画像.png")
-	deck.position = Vector2(50, 90)
+	var deck = _create_card_back()
+	deck.position = Vector2(50, 40)
 	deck.scale = Vector2(0.8, 0.8)
 	ctrl.add_child(deck)
 	
 	var c7_2 = CardVisual.create({"value": 7})
 	c7_2.scale = Vector2(0.8, 0.8)
-	c7_2.position = Vector2(50, 90)
+	c7_2.position = Vector2(50, 40)
 	c7_2.modulate.a = 0
 	ctrl.add_child(c7_2)
 	
-	var c7_2_back = TextureRect.new()
-	if ResourceLoader.exists("res://assets/カード裏面画像.png"):
-		c7_2_back.texture = load("res://assets/カード裏面画像.png")
+	var c7_2_back = _create_card_back()
 	c7_2_back.scale = Vector2(0.8, 0.8)
-	c7_2_back.position = Vector2(50, 90)
+	c7_2_back.position = Vector2(50, 40)
 	c7_2_back.modulate.a = 0
 	ctrl.add_child(c7_2_back)
 	
@@ -613,11 +621,11 @@ func _setup_page_2(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	burst_lbl.add_theme_color_override("font_outline_color", Color("#d50000"))
 	burst_lbl.add_theme_constant_override("outline_size", 16)
 	burst_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	burst_lbl.position = Vector2(350, 100)
+	burst_lbl.position = Vector2(350, 80)
 	burst_lbl.rotation_degrees = -10
 	burst_lbl.scale = Vector2.ZERO
 	ctrl.add_child(burst_lbl)
-
+	
 	# バースト確率インジケーター（右上）
 	var prob_panel = PanelContainer.new()
 	prob_panel.position = Vector2(640, 20)
@@ -633,11 +641,11 @@ func _setup_page_2(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	prob_panel_style.content_margin_bottom = 6
 	prob_panel.add_theme_stylebox_override("panel", prob_panel_style)
 	ctrl.add_child(prob_panel)
-
+	
 	var prob_vbox = VBoxContainer.new()
 	prob_vbox.add_theme_constant_override("separation", 4)
 	prob_panel.add_child(prob_vbox)
-
+	
 	var prob_title_lbl = Label.new()
 	prob_title_lbl.text = "バースト確率"
 	prob_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -645,21 +653,21 @@ func _setup_page_2(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	prob_title_lbl.add_theme_font_size_override("font_size", 13)
 	prob_title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	prob_vbox.add_child(prob_title_lbl)
-
+	
 	var prob_bar_bg = Control.new()
 	prob_bar_bg.custom_minimum_size = Vector2(190, 18)
 	prob_vbox.add_child(prob_bar_bg)
-
+	
 	var prob_bar_track = ColorRect.new()
 	prob_bar_track.color = Color(0.78, 0.78, 0.78)
 	prob_bar_track.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	prob_bar_bg.add_child(prob_bar_track)
-
+	
 	var prob_bar_fill = ColorRect.new()
 	prob_bar_fill.color = Color("#4caf50")
 	prob_bar_fill.size = Vector2(27, 18) # 初期値 ~14%
 	prob_bar_bg.add_child(prob_bar_fill)
-
+	
 	var prob_pct_lbl = Label.new()
 	prob_pct_lbl.text = "14%"
 	prob_pct_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -667,35 +675,34 @@ func _setup_page_2(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	prob_pct_lbl.add_theme_font_size_override("font_size", 16)
 	prob_pct_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	prob_vbox.add_child(prob_pct_lbl)
-
-	rtb.text = "[center][b][font_size=24]同じ数字で即寝落ち！[/font_size][/b][/center]\n[color=#ff4081][b]手札と同じ数字[/b][/color]を引くと「[color=#ff4081][b]寝落ち（バースト）[/b][/color]」して[b]0点[/b]に！\nゲーム中は[b]バースト確率[/b]が常時表示される。欲張らず、確率を見ながら「休憩」のタイミングを見極めよう！"
-
-	page.set_meta("play_animations", func() -> Array[Tween]:
+	rtb.text = "すでに手札にあるカードと[color=#ff4081][b]同じ数字を引く[/b][/color]と「[color=#ff4081][b]寝落ち（バースト）[/b][/color]」となり、点数が0点になります。\n画面に表示されるバースト確率を見ながら、欲張らずに「休憩（確定）」しましょう。"
+	
+	page.set_meta("play_animations", func():
 		var tw = page.create_tween().set_loops()
 		tw.tween_callback(func():
-			c7_2.position = Vector2(50, 70)
+			c7_2.position = Vector2(50, 50)
 			c7_2.modulate = Color.TRANSPARENT
 			c7_2.scale = Vector2(0.0, 0.8)
 			c7_2.rotation_degrees = 8.0
-
-			c7_2_back.position = Vector2(50, 70)
+	
+			c7_2_back.position = Vector2(50, 50)
 			c7_2_back.modulate = Color.TRANSPARENT
 			c7_2_back.scale = Vector2(0.8, 0.8)
 			c7_2_back.rotation_degrees = 0
-
+	
 			c7_1.modulate = Color.WHITE
 			burst_lbl.scale = Vector2.ZERO
-			notebook.position = Vector2(240, 50)
+			notebook.position = Vector2(240, 30)
 			prob_bar_fill.size.x = 27
 			prob_bar_fill.color = Color("#4caf50")
 			prob_pct_lbl.text = "14%"
 			prob_pct_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		)
 		tw.tween_interval(0.5)
-
+	
 		# カードを引く → 確率が上昇しオレンジに
 		tw.tween_property(c7_2_back, "modulate:a", 1.0, 0.1)
-		tw.parallel().tween_property(c7_2_back, "position", Vector2(460, 70), 0.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(c7_2_back, "position", Vector2(460, 50), 0.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.parallel().tween_property(c7_2_back, "rotation_degrees", 8.0, 0.5)
 		tw.parallel().tween_property(prob_bar_fill, "size:x", 95.0, 0.5)
 		tw.tween_callback(func():
@@ -703,23 +710,40 @@ func _setup_page_2(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 			prob_pct_lbl.text = "50%"
 			prob_pct_lbl.add_theme_color_override("font_color", Color("#e65100"))
 		)
-
+	
 		# フリップ
 		tw.tween_property(c7_2_back, "scale:x", 0.0, 0.2).set_ease(Tween.EASE_IN)
 		tw.tween_callback(func():
-			# --- Page 3: SNS Share (Phone UI & Slider move) ---
-func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel) -> void:
+			c7_2.position = c7_2_back.position
+			c7_2.rotation_degrees = c7_2_back.rotation_degrees
+			c7_2.modulate = Color.WHITE
+			c7_2_back.modulate = Color.TRANSPARENT
+		)
+		tw.tween_property(c7_2, "scale:x", 0.8, 0.2).set_ease(Tween.EASE_OUT)
+	
+		# バースト！
+		tw.tween_property(burst_lbl, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK)
+		tw.parallel().tween_property(c7_1, "modulate:a", 0.0, 0.2)
+		tw.parallel().tween_property(c7_2, "modulate:a", 0.0, 0.2)
+		tw.tween_interval(1.5)
+		return [tw]
+	)
+	
+	_disable_mouse_interactions(visual_area)
+	page.set_script(preload("res://src/ui/modals/RulebookPageProxy.gd"))
+
+# --- Page 3: SNS Share (Phone UI & Slider move) ---
+func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel, title_lbl: Label) -> void:
+	title_lbl.text = "④ SNS報告は戦場。「嘘」も戦略！"
+	title_lbl.add_theme_color_override("font_color", Color("#ff8c00"))
+	
 	var ctrl = Control.new()
 	ctrl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visual_area.add_child(ctrl)
 	
-	var title = _create_title_label("④ SNS報告は戦場。「嘘」も戦略！", Color("#ff8c00"))
-	title.position = Vector2(300, 0)
-	ctrl.add_child(title)
-	
 	var phone_wrapper = Control.new()
-	phone_wrapper.position = Vector2(500, 185)
-	phone_wrapper.scale = Vector2(0.4, 0.4)
+	phone_wrapper.position = Vector2(490, 150) # Raised to prevent bottom text overlap
+	phone_wrapper.scale = Vector2(0.32, 0.32) # Scaled down slightly to fit better
 	ctrl.add_child(phone_wrapper)
 	
 	# SMARTPHONE CONTAINER (Replica of ReportUIBuilder)
@@ -732,10 +756,10 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	var phone_style = StyleBoxFlat.new()
 	phone_style.bg_color = Color("#1a1a1a") # Bezel
 	phone_style.border_color = Color("#2e2e2e")
-	phone_style.border_width_left = 6
-	phone_style.border_width_right = 6
-	phone_style.border_width_top = 6
-	phone_style.border_width_bottom = 6
+	phone_style.border_width_left = 12
+	phone_style.border_width_right = 12
+	phone_style.border_width_top = 12
+	phone_style.border_width_bottom = 12
 	phone_style.corner_radius_top_left = 40
 	phone_style.corner_radius_top_right = 40
 	phone_style.corner_radius_bottom_left = 40
@@ -743,9 +767,37 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	phone_panel.add_theme_stylebox_override("panel", phone_style)
 	phone_wrapper.add_child(phone_panel)
 	
+	# SCREEN CONTAINER (液晶画面)
+	var screen_container = PanelContainer.new()
+	screen_container.name = "ScreenContainer"
+	screen_container.custom_minimum_size = Vector2(396, 816) # Force minimum size to prevent collapsing
+	screen_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	screen_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	screen_container.clip_contents = true
+	var screen_bg = StyleBoxFlat.new()
+	screen_bg.bg_color = Color("#ffffff") # 白背景
+	screen_bg.corner_radius_top_left = 28
+	screen_bg.corner_radius_top_right = 28
+	screen_bg.corner_radius_bottom_left = 28
+	screen_bg.corner_radius_bottom_right = 28
+	screen_container.add_theme_stylebox_override("panel", screen_bg)
+	phone_panel.add_child(screen_container)
+
+	# Notch / Dynamic Island
+	var notch = Panel.new()
+	notch.custom_minimum_size = Vector2(120, 24)
+	notch.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	notch.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var notch_style = StyleBoxFlat.new()
+	notch_style.bg_color = Color("#111111")
+	notch_style.corner_radius_bottom_left = 12
+	notch_style.corner_radius_bottom_right = 12
+	notch.add_theme_stylebox_override("panel", notch_style)
+	phone_panel.add_child(notch)
+	
 	var phone_vbox = VBoxContainer.new()
 	phone_vbox.add_theme_constant_override("separation", 0)
-	phone_panel.add_child(phone_vbox)
+	screen_container.add_child(phone_vbox)
 	
 	# Status bar margin
 	var status_margin = MarginContainer.new()
@@ -756,10 +808,7 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	
 	var status_bar = HBoxContainer.new()
 	status_margin.add_child(status_bar)
-	var screen_bg = StyleBoxFlat.new()
-	screen_bg.bg_color = Color("#ffffff")
-	phone_vbox.add_theme_stylebox_override("panel", screen_bg)
-
+	
 	var time_lbl = Label.new()
 	time_lbl.text = "16:00"
 	time_lbl.add_theme_font_size_override("font_size", 14)
@@ -771,7 +820,7 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	status_bar.add_child(spacer)
 	
 	var app_name = Label.new()
-	app_name.text = "Tikista"
+	app_name.text = "チキスタ"
 	app_name.add_theme_font_size_override("font_size", 14)
 	app_name.add_theme_color_override("font_color", Color("#999999"))
 	status_bar.add_child(app_name)
@@ -786,8 +835,8 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	header_title.text = "新規投稿"
 	header_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header_title.add_theme_font_override("font", DeskTheme.get_font())
-	header_title.add_theme_font_size_override("font_size", 20)
-	header_title.add_theme_color_override("font_color", Color("#1a1a1a"))
+	header_title.add_theme_font_size_override("font_size", 24)
+	header_title.add_theme_color_override("font_color", Color("#000000"))
 	header_margin.add_child(header_title)
 	
 	var sep = ColorRect.new()
@@ -873,7 +922,7 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	slider_fill.expand_margin_bottom = 10
 	report_slider.add_theme_stylebox_override("grabber_area", slider_fill)
 	
-	# Generate white grabber icon dynamically to avoid missing assets
+	# Generate white grabber icon dynamically
 	var grab_img = Image.create(32, 32, false, Image.FORMAT_RGBA8)
 	grab_img.fill(Color.TRANSPARENT)
 	for x in range(32):
@@ -907,9 +956,9 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	emote_vbox.add_child(emote_hbox)
 	
 	var emotes = [
-		{"key": "normal", "text": "🙂 ふつう"},
-		{"key": "confident", "text": "😎 自信あり"},
-		{"key": "anxious", "text": "😰 不安"}
+		{"key": "normal", "text": "[普通]"},
+		{"key": "confident", "text": "[自信あり]"},
+		{"key": "anxious", "text": "[不安]"}
 	]
 	
 	var emote_btn_style_normal = StyleBoxFlat.new()
@@ -941,18 +990,6 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 		emote_hbox.add_child(btn)
 		emote_buttons.append({"key": e["key"], "btn": btn})
 	
-	# Helper function to update button states visually
-	var set_selected_emote = func(target_key: String):
-		for item in emote_buttons:
-			var btn = item["btn"]
-			if item["key"] == target_key:
-				btn.add_theme_stylebox_override("normal", emote_btn_style_selected)
-				btn.add_theme_color_override("font_color", Color.WHITE)
-			else:
-				btn.add_theme_stylebox_override("normal", emote_btn_style_normal)
-				btn.add_theme_color_override("font_color", Color("#444444"))
-	set_selected_emote.call("normal")
-
 	# Warning Panel
 	var warning_panel = PanelContainer.new()
 	var warn_style = StyleBoxFlat.new()
@@ -984,12 +1021,12 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	warning_text.add_theme_font_size_override("font_size", 13)
 	warning_text.add_theme_color_override("font_color", Color("#e65100"))
 	warn_margin.add_child(warning_text)
-
+	
 	# Submit button
 	var spacer2 = Control.new()
 	spacer2.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	app_vbox.add_child(spacer2)
-
+	
 	var submit_btn = Button.new()
 	submit_btn.text = "フィードにシェア"
 	submit_btn.custom_minimum_size = Vector2(340, 56)
@@ -1016,52 +1053,90 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	report_slider.value_changed.connect(func(v):
 		declared_score_label.text = str(int(v)) + "点"
 		if v > 20:
-			declared_score_label.add_theme_color_override("font_color", Color("#ff3d00")) # Red/Orange color for bluff
+			declared_score_label.add_theme_color_override("font_color", Color("#ff3d00"))
 			warning_panel.visible = true
 		else:
 			declared_score_label.add_theme_color_override("font_color", Color("#ff8c00"))
 			warning_panel.visible = false
 	)
 	
-	rtb.text = "[center][b][font_size=20]スライダーで点数を盛れ！[/font_size][/b][/center]\n1日の終わりに成果を投稿します。実際の点数より高く「[color=#d500f9][b]嘘（ブラフ）[/b][/color]」を申告してライバルを焦らせよう！\n[color=#888888]（1日に盛れる点数には上限あり。盛りすぎると自動でバレることも…）[/color]"
+	rtb.text = "1日の終わりに、実点より高い点数を[color=#d500f9][b]「嘘（ブラフ）の点数」[/b][/color]としてSNSに投稿できます。\nライバルを焦らせることができますが、嘘が暴かれたときは失点するリスクがあります。" # = "[center][b]◆ チキスタ投稿と「嘘（ブラフ）」の戦略 ◆[/b][/center]\n1日の終わりに、その日の勉強成果をSNS『チキスタ』に投稿（報告）します。\nスライダーを操作して、実際の実点より高い[color=#d500f9][b]「嘘（ブラフ）の点数」[/b][/color]を申告し、ライバルを焦らせることができます。\nただし、嘘があまりにも高すぎると、相手に見破られたとき（ダウト）に大損します。"
 	
 	var cursor = _create_cursor()
 	cursor.position = Vector2(600, 300)
 	cursor.modulate.a = 0
 	ctrl.add_child(cursor)
 	
-	page.set_meta("play_animations", func() -> Array[Tween]:
+	page.set_meta("play_animations", func():
 		var tw = page.create_tween().set_loops()
+		
+		var get_target_pos = func(node: Control):
+			return node.global_position + node.size * 0.5 * node.get_global_transform().get_scale() - ctrl.global_position
+			
 		tw.tween_callback(func(): 
 			report_slider.value = 20
-			set_selected_emote.call("normal")
-			cursor.position = Vector2(650, 300)
+			for item in emote_buttons:
+				var btn = item["btn"]
+				if item["key"] == "normal":
+					btn.add_theme_stylebox_override("normal", emote_btn_style_selected)
+					btn.add_theme_color_override("font_color", Color.WHITE)
+				else:
+					btn.add_theme_stylebox_override("normal", emote_btn_style_normal)
+					btn.add_theme_color_override("font_color", Color("#444444"))
+			cursor.position = report_slider.global_position + Vector2(20, report_slider.size.y * 0.5) * report_slider.get_global_transform().get_scale() - ctrl.global_position
 			cursor.modulate.a = 0
 			cursor.scale = Vector2.ONE
 		)
 		tw.tween_interval(0.5)
 		tw.tween_property(cursor, "modulate:a", 1.0, 0.2)
-		# Move cursor to slider (y around 140)
-		tw.tween_property(cursor, "position", Vector2(500, 140), 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		
+		# Move to start of drag
+		var start_drag_pos = func():
+			return report_slider.global_position + Vector2(20, report_slider.size.y * 0.5) * report_slider.get_global_transform().get_scale() - ctrl.global_position
+		var end_drag_pos = func():
+			return report_slider.global_position + Vector2(report_slider.size.x * 0.8, report_slider.size.y * 0.5) * report_slider.get_global_transform().get_scale() - ctrl.global_position
+			
+		tw.tween_method(func(pos): cursor.position = pos, start_drag_pos.call(), start_drag_pos.call(), 0.1)
+		tw.tween_property(cursor, "position", start_drag_pos.call(), 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		
 		# Click and drag (Increase score to 44)
 		tw.tween_property(cursor, "scale", Vector2(0.8, 0.8), 0.1)
 		tw.tween_property(report_slider, "value", 44.0, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		tw.parallel().tween_property(cursor, "position", Vector2(550, 140), 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.parallel().tween_property(cursor, "position", end_drag_pos.call(), 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		
 		# Release
 		tw.tween_property(cursor, "scale", Vector2.ONE, 0.1)
 		tw.tween_interval(0.3)
-
-		# Move to "confident" emote button (y around 200)
-		tw.tween_property(cursor, "position", Vector2(500, 200), 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	
+		# Move to "confident" emote button
+		var confident_btn: Button = null
+		for item in emote_buttons:
+			if item["key"] == "confident":
+				confident_btn = item["btn"]
+				
+		var get_confident_pos = func():
+			return get_target_pos.call(confident_btn)
+			
+		tw.tween_property(cursor, "position", get_confident_pos.call(), 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		tw.tween_property(cursor, "scale", Vector2(0.8, 0.8), 0.1)
-		tw.tween_callback(func(): set_selected_emote.call("confident"))
+		tw.tween_callback(func(): 
+			for item in emote_buttons:
+				var btn = item["btn"]
+				if item["key"] == "confident":
+					btn.add_theme_stylebox_override("normal", emote_btn_style_selected)
+					btn.add_theme_color_override("font_color", Color.WHITE)
+				else:
+					btn.add_theme_stylebox_override("normal", emote_btn_style_normal)
+					btn.add_theme_color_override("font_color", Color("#444444"))
+		)
 		tw.tween_property(cursor, "scale", Vector2.ONE, 0.1)
 		tw.tween_interval(0.3)
 		
-		# Move to submit button (y around 317)
-		tw.tween_property(cursor, "position", Vector2(500, 317), 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		# Move to submit button
+		var get_submit_pos = func():
+			return get_target_pos.call(submit_btn)
+			
+		tw.tween_property(cursor, "position", get_submit_pos.call(), 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		
 		# Post button click simulation
 		tw.tween_property(cursor, "scale", Vector2(0.8, 0.8), 0.1)
@@ -1073,22 +1148,23 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 		tw.tween_interval(1.5)
 		return [tw]
 	)
+	
+	_disable_mouse_interactions(visual_area)
 	page.set_script(preload("res://src/ui/modals/RulebookPageProxy.gd"))
 
 # --- Page 4: Doubt (Click button -> Result pop) ---
-func _setup_page_4(page: Control, visual_area: Control, rtb: RichTextLabel) -> void:
+func _setup_page_4(page: Control, visual_area: Control, rtb: RichTextLabel, title_lbl: Label) -> void:
+	title_lbl.text = "⑤ チキスタでの「ダウト」宣言"
+	title_lbl.add_theme_color_override("font_color", Color("#d50000"))
+	
 	var ctrl = Control.new()
 	ctrl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	visual_area.add_child(ctrl)
 	
-	var title = _create_title_label("⑤ 最終答え合わせで大逆転！", Color("#d50000"))
-	title.position = Vector2(300, 10)
-	ctrl.add_child(title)
-	
 	# Result Timeline Mock
 	var post_panel = PanelContainer.new()
 	post_panel.custom_minimum_size = Vector2(400, 120)
-	post_panel.position = Vector2(290, 70)
+	post_panel.position = Vector2(290, 40)
 	var pp_style = StyleBoxFlat.new()
 	pp_style.bg_color = DeskTheme.COLOR_CRAFT
 	pp_style.border_color = Color("#cfd8dc")
@@ -1126,7 +1202,7 @@ func _setup_page_4(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	var doubt_btn = Button.new()
 	doubt_btn.text = "ダウト！"
 	doubt_btn.custom_minimum_size = Vector2(200, 60)
-	doubt_btn.position = Vector2(390, 205)
+	doubt_btn.position = Vector2(390, 185)
 	doubt_btn.add_theme_font_override("font", DeskTheme.get_font())
 	doubt_btn.add_theme_font_size_override("font_size", 40)
 	if page.has_node("/root/UIHelper"):
@@ -1146,104 +1222,182 @@ func _setup_page_4(page: Control, visual_area: Control, rtb: RichTextLabel) -> v
 	ctrl.add_child(doubt_btn)
 	
 	var result_lbl = Label.new()
-	result_lbl.text = "ダウト成功！ 相手の盛り点を奪った！"
+	result_lbl.text = "ダウト成功！"
 	result_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	result_lbl.add_theme_font_size_override("font_size", 32)
-	result_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
+	result_lbl.add_theme_font_size_override("font_size", 36)
+	result_lbl.add_theme_color_override("font_color", Color("#e53935"))
 	result_lbl.add_theme_color_override("font_outline_color", Color.WHITE)
 	result_lbl.add_theme_constant_override("outline_size", 8)
 	result_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	result_lbl.position = Vector2(200, 150)
+	result_lbl.position = Vector2(290, 80)
 	result_lbl.scale = Vector2.ZERO
-	result_lbl.pivot_offset = Vector2(300, 20)
+	result_lbl.pivot_offset = Vector2(200, 20)
 	ctrl.add_child(result_lbl)
-
-	# 最終発表・黒板プレビュー
-	var board_panel = PanelContainer.new()
-	board_panel.position = Vector2(718, 55)
-	board_panel.modulate.a = 0
-	var board_style = StyleBoxFlat.new()
-	board_style.bg_color = Color("#1b5e20")
-	board_style.border_color = Color("#8d6e63")
-	board_style.border_width_left = 6
-	board_style.border_width_right = 6
-	board_style.border_width_top = 6
-	board_style.border_width_bottom = 6
-	board_style.corner_radius_top_left = 4
-	board_style.corner_radius_top_right = 4
-	board_style.corner_radius_bottom_left = 4
-	board_style.corner_radius_bottom_right = 4
-	board_style.content_margin_left = 14
-	board_style.content_margin_right = 14
-	board_style.content_margin_top = 10
-	board_style.content_margin_bottom = 10
-	board_panel.add_theme_stylebox_override("panel", board_style)
-	ctrl.add_child(board_panel)
-
-	var board_vbox = VBoxContainer.new()
-	board_vbox.add_theme_constant_override("separation", 5)
-	board_panel.add_child(board_vbox)
-
-	var board_title_lbl = Label.new()
-	board_title_lbl.text = "最終発表"
-	board_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	board_title_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	board_title_lbl.add_theme_font_size_override("font_size", 14)
-	board_title_lbl.add_theme_color_override("font_color", Color.WHITE)
-	board_vbox.add_child(board_title_lbl)
-
-	var board_sep = ColorRect.new()
-	board_sep.color = Color(1, 1, 1, 0.3)
-	board_sep.custom_minimum_size = Vector2(0, 1)
-	board_vbox.add_child(board_sep)
-
-	var board_score_lbl = Label.new()
-	board_score_lbl.text = "実点:  30点\n申告:  65点\n嘘バレ → 減点!"
-	board_score_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	board_score_lbl.add_theme_font_size_override("font_size", 13)
-	board_score_lbl.add_theme_color_override("font_color", Color("#ffcc02"))
-	board_vbox.add_child(board_score_lbl)
-
-	rtb.text = "[center][b][font_size=20]嘘を見破って得点を奪え！[/font_size][/b][/center]\n3日目の最後に全員の点数が大公開！\n嘘を「[color=#d50000][b]ダウト[/b][/color]」で見破れば[b]ボーナス点[/b]獲得！\n[color=#d50000]ただし外れると[b]15〜21点の減点ペナルティ[/b]。慎重に仕掛けろ！[/color]"
-
+	
+	rtb.text = "他プレイヤーの投稿とログを見比べ、嘘を疑う相手に「[color=#d50000][b]ダウト[/b][/color]」を宣言できます。\nダウトは1日最大3回まで宣言可能です。詳細ログから相手のドロー枚数を確認しましょう。"
+	
 	var cursor = _create_cursor()
 	cursor.position = Vector2(580, 300)
 	cursor.modulate.a = 0
 	ctrl.add_child(cursor)
-
-	page.set_meta("play_animations", func() -> Array[Tween]:
+	
+	page.set_meta("play_animations", func():
 		var tw = page.create_tween().set_loops()
+		
+		var get_target_pos = func(node: Control):
+			return node.global_position + node.size * 0.5 - ctrl.global_position
+			
 		tw.tween_callback(func():
 			result_lbl.scale = Vector2.ZERO
-			board_panel.modulate.a = 0
-			cursor.position = Vector2(580, 300)
+			post_panel.modulate.a = 1.0
+			cursor.position = doubt_btn.global_position + Vector2(doubt_btn.size.x * 0.8, doubt_btn.size.y * 1.5) - ctrl.global_position
 			cursor.modulate.a = 0
 			cursor.scale = Vector2.ONE
 		)
 		tw.tween_interval(0.5)
-
+	
 		# カーソル移動
 		tw.tween_property(cursor, "modulate:a", 1.0, 0.2)
-		tw.tween_property(cursor, "position", Vector2(490, 245), 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-
+		tw.tween_property(cursor, "position", get_target_pos.call(doubt_btn), 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	
 		# ボタン押下演出
 		tw.tween_property(cursor, "scale", Vector2(0.8, 0.8), 0.1)
 		tw.parallel().tween_property(doubt_btn, "scale", Vector2(0.9, 0.9), 0.1)
-
+	
 		tw.tween_property(cursor, "scale", Vector2.ONE, 0.1)
 		tw.parallel().tween_property(doubt_btn, "scale", Vector2.ONE, 0.1).set_trans(Tween.TRANS_BOUNCE)
-
+	
 		# ダウト成功テキスト
 		tw.tween_property(result_lbl, "scale", Vector2(1.2, 1.2), 0.2).set_trans(Tween.TRANS_BOUNCE)
+		tw.parallel().tween_property(post_panel, "modulate:a", 0.3, 0.2)
 		tw.tween_property(result_lbl, "scale", Vector2.ONE, 0.1)
-
+	
 		tw.tween_property(cursor, "modulate:a", 0.0, 0.2)
-
-		# 最終発表の黒板が浮かび上がる
-		tw.tween_property(board_panel, "modulate:a", 1.0, 0.5).set_trans(Tween.TRANS_SINE)
-		tw.tween_interval(1.5)
+		tw.tween_interval(2.0)
 		return [tw]
 	)
+	
+	_disable_mouse_interactions(visual_area)
+	page.set_script(preload("res://src/ui/modals/RulebookPageProxy.gd"))
+
+# --- Page 5: Score Calculation (Blackboard animation) ---
+func _setup_page_5(page: Control, visual_area: Control, rtb: RichTextLabel, title_lbl: Label) -> void:
+	title_lbl.text = "⑥ 最終答え合わせと得点計算"
+	title_lbl.add_theme_color_override("font_color", Color("#1b5e20"))
+	
+	var ctrl = Control.new()
+	ctrl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	visual_area.add_child(ctrl)
+	
+	# Blackboard UI
+	var board_panel = PanelContainer.new()
+	board_panel.custom_minimum_size = Vector2(400, 250)
+	board_panel.position = Vector2(290, 30)
+	var board_style = StyleBoxFlat.new()
+	board_style.bg_color = Color("#1b5e20")
+	board_style.border_color = Color("#8d6e63")
+	board_style.border_width_left = 8
+	board_style.border_width_right = 8
+	board_style.border_width_top = 8
+	board_style.border_width_bottom = 8
+	board_style.corner_radius_top_left = 6
+	board_style.corner_radius_top_right = 6
+	board_style.corner_radius_bottom_left = 6
+	board_style.corner_radius_bottom_right = 6
+	board_style.content_margin_left = 20
+	board_style.content_margin_right = 20
+	board_style.content_margin_top = 15
+	board_style.content_margin_bottom = 15
+	board_panel.add_theme_stylebox_override("panel", board_style)
+	ctrl.add_child(board_panel)
+	
+	var board_vbox = VBoxContainer.new()
+	board_vbox.add_theme_constant_override("separation", 10)
+	board_panel.add_child(board_vbox)
+	
+	var board_title_lbl = Label.new()
+	board_title_lbl.text = "成績発表 (答え合わせ)"
+	board_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	board_title_lbl.add_theme_font_override("font", DeskTheme.get_font())
+	board_title_lbl.add_theme_font_size_override("font_size", 20)
+	board_title_lbl.add_theme_color_override("font_color", Color.WHITE)
+	board_vbox.add_child(board_title_lbl)
+	
+	var board_sep = ColorRect.new()
+	board_sep.color = Color(1, 1, 1, 0.4)
+	board_sep.custom_minimum_size = Vector2(0, 2)
+	board_vbox.add_child(board_sep)
+	
+	var detail_vbox = VBoxContainer.new()
+	detail_vbox.add_theme_constant_override("separation", 6)
+	board_vbox.add_child(detail_vbox)
+	
+	# Score lines for dynamic animation
+	var line_actual = Label.new()
+	line_actual.text = "① 実際の実点：30点"
+	line_actual.add_theme_font_override("font", DeskTheme.get_font())
+	line_actual.add_theme_font_size_override("font_size", 16)
+	line_actual.add_theme_color_override("font_color", Color.WHITE)
+	line_actual.modulate.a = 0
+	detail_vbox.add_child(line_actual)
+	
+	var line_declared = Label.new()
+	line_declared.text = "② SNS申告点：65点 (盛り幅 +35点)"
+	line_declared.add_theme_font_override("font", DeskTheme.get_font())
+	line_declared.add_theme_font_size_override("font_size", 16)
+	line_declared.add_theme_color_override("font_color", Color.WHITE)
+	line_declared.modulate.a = 0
+	detail_vbox.add_child(line_declared)
+	
+	var line_result = Label.new()
+	line_result.text = "③ ダウト被弾！嘘バレ発生！"
+	line_result.add_theme_font_override("font", DeskTheme.get_font())
+	line_result.add_theme_font_size_override("font_size", 16)
+	line_result.add_theme_color_override("font_color", Color("#ff4444"))
+	line_result.modulate.a = 0
+	detail_vbox.add_child(line_result)
+	
+	var line_penalty = Label.new()
+	line_penalty.text = "④ 獲得点数：30点 (実点に引き下げ)"
+	line_penalty.add_theme_font_override("font", DeskTheme.get_font())
+	line_penalty.add_theme_font_size_override("font_size", 16)
+	line_penalty.add_theme_color_override("font_color", Color("#ffcc02"))
+	line_penalty.modulate.a = 0
+	detail_vbox.add_child(line_penalty)
+	
+	var line_final = Label.new()
+	line_final.text = "⇒ 追加の減点ペナルティは無し！"
+	line_final.add_theme_font_override("font", DeskTheme.get_font())
+	line_final.add_theme_font_size_override("font_size", 18)
+	line_final.add_theme_color_override("font_color", Color("#ffcc02"))
+	line_final.modulate.a = 0
+	detail_vbox.add_child(line_final)
+	
+	rtb.text = "[b]嘘バレ[/b]：ダウトで嘘が暴かれると、点数は[color=#ff4081][b]実点まで引き下げられます[/b][/color]（追加のペナルティは無し）。\n[b]ダウト成功[/b]：相手の盛り幅の75%＋6点を[color=#4caf50][b]加算[/b][/color]。 / [b]失敗[/b]：15〜21点の[color=#ff4081][b]ペナルティ減点[/b][/color]。"
+	
+	page.set_meta("play_animations", func():
+		var tw = page.create_tween().set_loops()
+		tw.tween_callback(func():
+			line_actual.modulate.a = 0
+			line_declared.modulate.a = 0
+			line_result.modulate.a = 0
+			line_penalty.modulate.a = 0
+			line_final.modulate.a = 0
+		)
+		tw.tween_interval(0.5)
+		
+		tw.tween_property(line_actual, "modulate:a", 1.0, 0.4)
+		tw.tween_property(line_declared, "modulate:a", 1.0, 0.4)
+		tw.tween_interval(0.3)
+		tw.tween_property(line_result, "modulate:a", 1.0, 0.4)
+		tw.tween_interval(0.3)
+		tw.tween_property(line_penalty, "modulate:a", 1.0, 0.4)
+		tw.tween_property(line_final, "modulate:a", 1.0, 0.4)
+		tw.tween_interval(2.5)
+		return [tw]
+	)
+	
+	_disable_mouse_interactions(visual_area)
 	page.set_script(preload("res://src/ui/modals/RulebookPageProxy.gd"))
 
 func _create_cursor() -> Polygon2D:
@@ -1266,3 +1420,59 @@ func _create_cursor() -> Polygon2D:
 	shadow.show_behind_parent = true
 	poly.add_child(shadow)
 	return poly
+
+func _disable_mouse_interactions(node: Node) -> void:
+	if node is Control:
+		node.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if node is HSlider:
+			node.focus_mode = Control.FOCUS_NONE
+		if node is Button:
+			node.focus_mode = Control.FOCUS_NONE
+	for child in node.get_children():
+		_disable_mouse_interactions(child)
+
+func _create_card_back() -> PanelContainer:
+	var card = PanelContainer.new()
+	card.custom_minimum_size = Vector2(160, 220)
+	card.size = Vector2(160, 220)
+	card.pivot_offset = Vector2(80, 110)
+	
+	var card_style = StyleBoxFlat.new()
+	card_style.bg_color = DeskTheme.COLOR_CRAFT.darkened(0.12)
+	card_style.border_color = DeskTheme.COLOR_INK
+	card_style.border_width_left = 3
+	card_style.border_width_right = 3
+	card_style.border_width_top = 3
+	card_style.border_width_bottom = 8
+	card_style.corner_radius_top_left = 12
+	card_style.corner_radius_top_right = 12
+	card_style.corner_radius_bottom_left = 12
+	card_style.corner_radius_bottom_right = 12
+	card_style.shadow_color = Color(0, 0, 0, 0.15)
+	card_style.shadow_size = 5
+	card_style.shadow_offset = Vector2(2, 4)
+	card.add_theme_stylebox_override("panel", card_style)
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_bottom", 12)
+	card.add_child(margin)
+	
+	var inner_panel = Panel.new()
+	var inner_style = StyleBoxFlat.new()
+	inner_style.bg_color = Color.TRANSPARENT
+	inner_style.border_color = Color(DeskTheme.COLOR_INK, 0.25)
+	inner_style.border_width_left = 2
+	inner_style.border_width_right = 2
+	inner_style.border_width_top = 2
+	inner_style.border_width_bottom = 2
+	inner_style.corner_radius_top_left = 8
+	inner_style.corner_radius_top_right = 8
+	inner_style.corner_radius_bottom_left = 8
+	inner_style.corner_radius_bottom_right = 8
+	inner_panel.add_theme_stylebox_override("panel", inner_style)
+	margin.add_child(inner_panel)
+	
+	return card

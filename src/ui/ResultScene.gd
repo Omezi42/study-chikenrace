@@ -520,7 +520,7 @@ func _show_actions() -> void:
 	actions_container.add_child(act_hbox)
 	
 	var vp_size = get_viewport_rect().size
-	act_hbox.position = Vector2(0, vp_size.y - 100)
+	act_hbox.position = Vector2(0, vp_size.y - 140)
 	act_hbox.size.x = vp_size.x
 	act_hbox.modulate.a = 0.0
 	

@@ -8,7 +8,7 @@ var current_hour: int = 1
 
 # ハイライト管理用
 var active_tweens: Array[Tween] = []
-var restored_nodes: Dictionary = {} # node -> { "scale": Vector2, "modulate": Color }
+var restored_nodes: Dictionary = {}
 
 func _init(p_phase: ChickenRacePhase) -> void:
 	phase = p_phase
@@ -47,12 +47,12 @@ func start() -> void:
 	DeskTheme.show_toast(phase, "チュートリアルへようこそ！", 2.5, DeskTheme.COLOR_GREEN)
 	
 	var viewport_size = phase.get_viewport_rect().size
-	var dialog_pos = Vector2(viewport_size.x * 0.6, viewport_size.y * 0.08)
+	var dialog_pos = Vector2(viewport_size.x * 0.58, viewport_size.y * 0.08)
 	
 	var t = phase.get_tree().create_timer(0.2)
 	t.timeout.connect(func():
 		tutorial_dialog_node = phase.show_tutorial_dialog(
-			"勉強カードを引くと、カードの数字がそのまま点数（勉強時間）になります。まずは1枚引いてみましょう。",
+			"勉強カードを引くと、数字がそのまま得点になります。このゲームでは『数字が大きいカードほど山札に多く入っていて引きやすい』のが特徴です。まずは1枚引いてみましょう。",
 			dialog_pos
 		)
 		phase.draw_btn.disabled = false
@@ -68,10 +68,10 @@ func start_hour_2() -> void:
 	clear_highlights()
 	
 	var viewport_size = phase.get_viewport_rect().size
-	var dialog_pos = Vector2(viewport_size.x * 0.6, viewport_size.y * 0.08)
+	var dialog_pos = Vector2(viewport_size.x * 0.58, viewport_size.y * 0.08)
 	
 	tutorial_dialog_node = phase.show_tutorial_dialog(
-		"筆記用具（アイテム）を引くと、有利な特殊効果が発動します。カードを引いてみましょう。",
+		"第2時限目です。今度はもう少し枚数を引いて、高得点（10点以上）を狙ってみましょう！まずはカードを引いてください。",
 		dialog_pos
 	)
 	phase.draw_btn.disabled = false
@@ -86,17 +86,14 @@ func start_hour_3() -> void:
 	clear_highlights()
 	
 	var viewport_size = phase.get_viewport_rect().size
-	var dialog_pos = Vector2(viewport_size.x * 0.6, viewport_size.y * 0.08)
+	var dialog_pos = Vector2(viewport_size.x * 0.58, viewport_size.y * 0.08)
 	
 	tutorial_dialog_node = phase.show_tutorial_dialog(
-		"すでに場に出ているカードと同じ数字のカードを引くと「バースト（寝落ち）」になり、その回の点数は0点になります。リスクを体感するため、カードを引いてみましょう。",
+		"最後の時限です。すでに手札にある数字と同じ数字を引き直すと『寝落ち（バースト）』になり、その時限は0点になります。まずは1枚引いてみましょう。",
 		dialog_pos
 	)
 	phase.draw_btn.disabled = false
 	highlight(phase.draw_btn)
-	
-	if is_instance_valid(phase.draw_history_container):
-		highlight(phase.draw_history_container)
 
 func advance_step() -> void:
 	if tutorial_dialog_node:
@@ -107,7 +104,7 @@ func advance_step() -> void:
 	tutorial_step += 1
 	
 	var viewport_size = phase.get_viewport_rect().size
-	var dialog_pos = Vector2(viewport_size.x * 0.6, viewport_size.y * 0.08)
+	var dialog_pos = Vector2(viewport_size.x * 0.58, viewport_size.y * 0.08)
 	
 	if current_hour == 1:
 		match tutorial_step:
@@ -115,7 +112,7 @@ func advance_step() -> void:
 				phase.stop_btn.disabled = true
 				phase.draw_btn.disabled = false
 				tutorial_dialog_node = phase.show_tutorial_dialog(
-					"さらに高い点数を目指して勉強を重ねます。もう一枚引いてみましょう。",
+					"5点のカードを引きました！山札には『5』が5枚、『10』は10枚も入っています。数字が大きいほど高得点を狙えますが、同じ数字を引き直して寝落ち（0点）になる確率も上がります。もう1枚引いてみましょう。",
 					dialog_pos
 				)
 				highlight(phase.draw_btn)
@@ -123,7 +120,7 @@ func advance_step() -> void:
 				phase.draw_btn.disabled = true 
 				phase.stop_btn.disabled = false 
 				tutorial_dialog_node = phase.show_tutorial_dialog(
-					"手札と同じ数字のカードを引くと「バースト（寝落ち）」して0点になります。安全のために『休憩』を押して、現在の合計点を確定させましょう。",
+					"合計9点になりました！これ以上引いて同じ数字が出ると0点になってしまいます。安全のために『休憩』を押して得点を確定させましょう。",
 					dialog_pos
 				)
 				highlight(phase.stop_btn)
@@ -133,35 +130,43 @@ func advance_step() -> void:
 				phase.stop_btn.disabled = true
 				phase.draw_btn.disabled = false
 				tutorial_dialog_node = phase.show_tutorial_dialog(
-					"のぞき見効果で次に引くカードがわかれば、安全にドローを続けられます。もう一枚引いてみましょう。",
+					"6点です。まだまだ安全に伸ばせます。もう1枚引きましょう！",
 					dialog_pos
 				)
 				highlight(phase.draw_btn)
-				if is_instance_valid(phase.active_peek_sticky):
-					highlight(phase.active_peek_sticky)
 			2:
+				phase.stop_btn.disabled = true
+				phase.draw_btn.disabled = false
+				tutorial_dialog_node = phase.show_tutorial_dialog(
+					"合計9点になりました。いい調子！さらにもう1枚攻めてみましょう。",
+					dialog_pos
+				)
+				highlight(phase.draw_btn)
+			3:
 				phase.draw_btn.disabled = true 
 				phase.stop_btn.disabled = false 
 				tutorial_dialog_node = phase.show_tutorial_dialog(
-					"シャーペンの継続効果が発動しました。十分に点数が稼げたので、休憩して時限を終えましょう。",
+					"合計13点になりました！素晴らしい高得点です。寝落ちする前に『休憩』して時限を終えましょう。",
 					dialog_pos
 				)
 				highlight(phase.stop_btn)
-				if is_instance_valid(phase.active_effects_hbox):
-					highlight(phase.active_effects_hbox)
 	elif current_hour == 3:
 		match tutorial_step:
 			1:
 				phase.stop_btn.disabled = true
 				phase.draw_btn.disabled = false
 				tutorial_dialog_node = phase.show_tutorial_dialog(
-					"すでに場にある『3』のカードをもう一度引くとバーストします。あえてもう一枚引いてバースト（0点になること）を体験してみましょう。",
+					"7点のカードです。山札に『7』は多く入っているため、引き直して寝落ちする危険が高いです！リスクを知るため、あえてもう一度引いて寝落ちを体験してみましょう。",
 					dialog_pos
 				)
 				highlight(phase.draw_btn)
-			2:
-				phase.draw_btn.disabled = true
-				phase.stop_btn.disabled = true
+
+func on_burst_triggered() -> void:
+	if tutorial_dialog_node:
+		tutorial_dialog_node.queue_free()
+		tutorial_dialog_node = null
+	clear_highlights()
+	DeskTheme.show_toast(phase, "寝落ち（バースト）してしまい、この時限は0点になりました！欲張りすぎには注意しましょう。", 3.5, DeskTheme.COLOR_TENSION)
 
 func cleanup() -> void:
 	clear_highlights()

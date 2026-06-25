@@ -20,11 +20,39 @@ func draw_card() -> Dictionary:
 	if has_bursted:
 		return {}
 		
+	if Global.is_tutorial_mode:
+		var hour = session.current_hour if session else 1
+		var step = deck.hand.size()
+		var val = 1
+		match hour:
+			1:
+				match step:
+					0: val = 5
+					1: val = 4
+					_: val = 1
+			2:
+				match step:
+					0: val = 6
+					1: val = 3
+					2: val = 4
+					_: val = 1
+			3:
+				match step:
+					0: val = 7
+					1: val = 7 # 意図的にバーストさせる
+					_: val = 7
+					
+		var tut_card = {
+			"value": val,
+			"name": str(val) + "のカード"
+		}
+		deck.hand.append(tut_card)
+		return tut_card
+		
 	var card = deck.draw_card()
 	if card.is_empty():
 		return {}
 		
-	hand_cards.append(card)
 	return card
 
 func apply_deck_startup_items(is_tutorial: bool) -> void:

@@ -31,20 +31,36 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	phone_panel.position = Vector2(750, 120)
 	phase.phone_panel = phone_panel
 	
+	# SCREEN CONTAINER (液晶画面)
+	var screen_container = PanelContainer.new()
+	screen_container.name = "ScreenContainer"
+	screen_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	screen_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	screen_container.clip_contents = true
+	var screen_bg = StyleBoxFlat.new()
+	screen_bg.bg_color = Color("#ffffff") # 白背景
+	screen_bg.corner_radius_top_left = 34
+	screen_bg.corner_radius_top_right = 34
+	screen_bg.corner_radius_bottom_left = 34
+	screen_bg.corner_radius_bottom_right = 34
+	screen_container.add_theme_stylebox_override("panel", screen_bg)
+	phone_panel.add_child(screen_container)
+
 	# Notch / Dynamic Island
 	var notch = Panel.new()
 	notch.custom_minimum_size = Vector2(120, 24)
+	notch.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	notch.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	var notch_style = StyleBoxFlat.new()
 	notch_style.bg_color = Color("#111111")
 	notch_style.corner_radius_bottom_left = 12
 	notch_style.corner_radius_bottom_right = 12
 	notch.add_theme_stylebox_override("panel", notch_style)
-	notch.position = Vector2(150, 0)
 	phone_panel.add_child(notch)
 	
 	var phone_vbox = VBoxContainer.new()
 	phone_vbox.add_theme_constant_override("separation", 0)
-	phone_panel.add_child(phone_vbox)
+	screen_container.add_child(phone_vbox)
 	
 	# Status bar margin
 	var status_margin = MarginContainer.new()
@@ -55,10 +71,6 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	
 	var status_bar = HBoxContainer.new()
 	status_margin.add_child(status_bar)
-	# Studyplus-style light app screen background behind status bar
-	var screen_bg = StyleBoxFlat.new()
-	screen_bg.bg_color = Color("#ffffff")
-	phone_vbox.add_theme_stylebox_override("panel", screen_bg)
 
 	var time_lbl = Label.new()
 	time_lbl.text = "16:00"
@@ -71,7 +83,7 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	status_bar.add_child(spacer)
 	
 	var app_name = Label.new()
-	app_name.text = "Tikista"
+	app_name.text = "チキスタ"
 	app_name.add_theme_font_size_override("font_size", 14)
 	app_name.add_theme_color_override("font_color", Color("#999999"))
 	status_bar.add_child(app_name)
@@ -86,8 +98,8 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	header_title.text = "新規投稿"
 	header_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header_title.add_theme_font_override("font", DeskTheme.get_font())
-	header_title.add_theme_font_size_override("font_size", 20)
-	header_title.add_theme_color_override("font_color", Color("#1a1a1a"))
+	header_title.add_theme_font_size_override("font_size", 24)
+	header_title.add_theme_color_override("font_color", Color("#000000"))
 	header_margin.add_child(header_title)
 	
 	var sep = ColorRect.new()
@@ -203,9 +215,9 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	emote_vbox.add_child(emote_hbox)
 	
 	var emotes = [
-		{"key": "normal", "text": "🙂 ふつう"},
-		{"key": "confident", "text": "😎 自信あり"},
-		{"key": "anxious", "text": "😰 不安"}
+		{"key": "normal", "text": "ふつう"},
+		{"key": "confident", "text": "自信あり"},
+		{"key": "anxious", "text": "不安"}
 	]
 	
 	var emote_buttons = []
