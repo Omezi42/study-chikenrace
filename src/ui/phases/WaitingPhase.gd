@@ -41,6 +41,9 @@ func _on_setup(setup_data: Dictionary) -> void:
 		var wm = get_node_or_null("/root/WebRTCManager")
 		if wm and wm.has_signal("connection_lost") and not wm.connection_lost.is_connected(_on_connection_lost):
 			wm.connection_lost.connect(_on_connection_lost)
+		if wm and wm.webrtc_multiplayer and wm.webrtc_multiplayer.has_signal("player_disconnected"):
+			if not wm.webrtc_multiplayer.player_disconnected.is_connected(_on_peer_disconnected):
+				wm.webrtc_multiplayer.player_disconnected.connect(_on_peer_disconnected)
 
 	# Check immediately
 	_check_all_actions()
@@ -48,6 +51,14 @@ func _on_setup(setup_data: Dictionary) -> void:
 func _exit_tree() -> void:
 	if MatchState.player_action_received.is_connected(_on_player_action_received):
 		MatchState.player_action_received.disconnect(_on_player_action_received)
+	if has_node("/root/WebRTCManager"):
+		var wm = get_node_or_null("/root/WebRTCManager")
+		if wm and wm.webrtc_multiplayer and wm.webrtc_multiplayer.has_signal("player_disconnected"):
+			if wm.webrtc_multiplayer.player_disconnected.is_connected(_on_peer_disconnected):
+				wm.webrtc_multiplayer.player_disconnected.disconnect(_on_peer_disconnected)
+
+func _on_peer_disconnected(_id: int) -> void:
+	_check_all_actions()
 
 func _on_poll_timeout() -> void:
 	# Pulsate loading indicator color slightly
@@ -105,17 +116,29 @@ func _check_all_actions() -> void:
 
 	var all_done = true
 	if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
+		var active_uids = {}
+		if multiplayer.has_multiplayer_peer():
+			active_uids[str(multiplayer.get_unique_id())] = true
+			for p_id in multiplayer.get_peers():
+				active_uids[str(p_id)] = true
+		if has_node("/root/WebRTCManager"):
+			var wm = get_node_or_null("/root/WebRTCManager")
+			if wm and wm.webrtc_multiplayer:
+				for p in wm.webrtc_multiplayer._participants:
+					active_uids[str(p.get("user_id", ""))] = true
+
 		for member in Global.friend_member_list:
 			var uid = _resolve_player_id(member.get("user_id", ""))
 			var is_cpu = uid.begins_with("cpu_")
+			var is_connected = active_uids.has(uid) or is_cpu
 
-			var has_moves = submitted_user_ids.has(uid) or is_cpu
+			var has_moves = submitted_user_ids.has(uid) or is_cpu or not is_connected
 			if not has_moves:
 				all_done = false
 				break
 
 			if is_final_reveal_wait:
-				var has_doubts = doubts_submitted_ids.has(uid) or is_cpu
+				var has_doubts = doubts_submitted_ids.has(uid) or is_cpu or not is_connected
 				if not has_doubts:
 					all_done = false
 					break
@@ -125,10 +148,11 @@ func _check_all_actions() -> void:
 
 	if all_done:
 		poll_timer.stop()
+		var final_moves = _fill_missing_moves(moves)
 		# Add a slight delay before transitioning
 		var t = get_tree().create_timer(0.5)
 		t.timeout.connect(func():
-			_transition_out(moves, prev_moves)
+			_transition_out(final_moves, prev_moves)
 		)
 
 func _transition_out(moves: Array, prev_moves: Array) -> void:
@@ -186,10 +210,7 @@ func _show_timeout_fallback_button() -> void:
 func _on_switch_to_cpu_pressed() -> void:
 	_on_force_progress_pressed(last_polled_moves)
 
-func _on_force_progress_pressed(current_moves: Array) -> void:
-	poll_timer.stop()
-
-	# Fill in missing members with dummy moves when force progressing.
+func _fill_missing_moves(current_moves: Array) -> Array:
 	var simulated_moves = current_moves.duplicate(true)
 	var submitted_ids = {}
 	for m in simulated_moves:
@@ -213,6 +234,12 @@ func _on_force_progress_pressed(current_moves: Array) -> void:
 				"phase": "doubts" if is_final_reveal_wait else "mid_day"
 			}
 			simulated_moves.append(dummy_move)
+	return simulated_moves
+
+func _on_force_progress_pressed(current_moves: Array) -> void:
+	poll_timer.stop()
+
+	var simulated_moves = _fill_missing_moves(current_moves)
 
 	var prev_actions = MatchState.current_match_actions.get(target_day - 1, {}) if target_day > 1 else {}
 	var prev_moves = []

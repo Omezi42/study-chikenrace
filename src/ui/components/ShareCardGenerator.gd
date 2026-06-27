@@ -10,7 +10,7 @@ static func generate_and_copy_share_image(parent: Node, showdown_data: Dictionar
 	tweet_text += "合計得点: %d点 を叩き出しました！\n" % total_score
 	tweet_text += "（称号: %s）\n\n" % title_obtained
 	
-	var game_url = "https://unityroom.com/games/studychikenrace"
+	var game_url = "https://unityroom.com/games/studychickenrace"
 	tweet_text += game_url + "\n"
 	tweet_text += "#テスト勉強チキンレース\n"
 	

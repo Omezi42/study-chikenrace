@@ -12,7 +12,7 @@ signal room_joined(data: Dictionary)
 
 var ws: WebSocketPeer = WebSocketPeer.new()
 var is_connected_to_server: bool = false
-var server_url: String = "ws://localhost:9080"
+var server_url: String = "wss://chicken-race-signaling.onrender.com"
 var room_code: String = ""
 
 func _process(_delta: float) -> void:
@@ -43,6 +43,8 @@ func connect_to_room(url: String, code: String) -> Error:
 	var err = ws.connect_to_url(server_url)
 	if err == OK:
 		_send_join_when_ready(ws, "join")
+	else:
+		call_deferred("emit_signal", "disconnected_from_server")
 	return err
 
 func connect_random(url: String) -> Error:
@@ -55,11 +57,16 @@ func connect_random(url: String) -> Error:
 	var err = ws.connect_to_url(server_url)
 	if err == OK:
 		_send_join_when_ready(ws, "random_join")
+	else:
+		call_deferred("emit_signal", "disconnected_from_server")
 	return err
 
 func _send_join_when_ready(peer: WebSocketPeer, join_type: String) -> void:
-	while peer.get_ready_state() == WebSocketPeer.STATE_CONNECTING:
+	var timeout = 12.0
+	var elapsed = 0.0
+	while peer.get_ready_state() == WebSocketPeer.STATE_CONNECTING and elapsed < timeout:
 		await get_tree().process_frame
+		elapsed += get_process_delta_time()
 		peer.poll()
 	
 	if peer != ws:
@@ -70,6 +77,8 @@ func _send_join_when_ready(peer: WebSocketPeer, join_type: String) -> void:
 		if join_type == "join":
 			msg["room"] = room_code
 		peer.send_text(JSON.stringify(msg))
+	else:
+		disconnected_from_server.emit()
 
 func disconnect_from_room() -> void:
 	if ws.get_ready_state() == WebSocketPeer.STATE_OPEN:

@@ -87,6 +87,7 @@ static func create_selection_modal(parent: Node) -> void:
 			else:
 				create_btn.disabled = false
 				join_btn.disabled = false
+				UIHelper.show_toast("サーバーに接続できませんでした。インターネット接続を確認してください。")
 				
 		if wrm:
 			pending_cbs["created"] = on_created
@@ -113,6 +114,7 @@ static func create_selection_modal(parent: Node) -> void:
 			else:
 				create_btn.disabled = false
 				join_btn.disabled = false
+				UIHelper.show_toast("ルームに参加できませんでした。コードやサーバー状態を確認してください。")
 				
 		if wrm:
 			pending_cbs["joined"] = on_joined
@@ -198,7 +200,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	copy_btn.pressed.connect(func():
 		copy_btn.release_focus()
 		DeskTheme.animate_click(copy_btn, Vector2.ONE, 0.08)
-		var invite_text = "チキスタ対戦ルーム【%s】に招待されています！\n下記URLからゲームを開いて、フレンド対戦ロビーからコードを入力して参加してね！\nhttps://unityroom.com/games/studychikenrace" % room_code
+		var invite_text = "チキスタ対戦ルーム【%s】に招待されています！\n下記URLからゲームを開いて、フレンド対戦ロビーからコードを入力して参加してね！\nhttps://unityroom.com/games/studychickenrace" % room_code
 		DisplayServer.clipboard_set(invite_text)
 		var orig_text = copy_btn.text
 		copy_btn.text = "コピーしました！"

@@ -21,6 +21,8 @@ var share_btn: Button
 var play_again_btn: Button
 var restart_btn: Button
 
+var is_waiting_rematch: bool = false
+
 func _ready() -> void:
 	root_layer = Control.new()
 	root_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -60,6 +62,15 @@ func _ready() -> void:
 	_init_mini_scoreboard()
 	_create_skip_button()
 	
+	if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
+		if not MatchState.player_action_received.is_connected(_on_rematch_action_received):
+			MatchState.player_action_received.connect(_on_rematch_action_received)
+		if has_node("/root/WebRTCManager"):
+			var wm = get_node_or_null("/root/WebRTCManager")
+			if wm and wm.webrtc_multiplayer and wm.webrtc_multiplayer.has_signal("player_disconnected"):
+				if not wm.webrtc_multiplayer.player_disconnected.is_connected(_on_peer_disconnected_in_result):
+					wm.webrtc_multiplayer.player_disconnected.connect(_on_peer_disconnected_in_result)
+
 	is_revealing = true
 	current_step_day = 1
 	
@@ -347,7 +358,6 @@ func trigger_report_card() -> void:
 
 func _show_final_report() -> void:
 	if has_node("/root/AudioManager"):
-		get_node("/root/AudioManager").play_se(AudioManager.SE_FANFARE, 0.0, -10.0)
 		get_node("/root/AudioManager").play_bgm(AudioManager.BGM_RESULT)
 	
 	var vp_size = get_viewport_rect().size
@@ -403,7 +413,11 @@ func _show_final_report() -> void:
 	# Drop animation
 	var d_tween = create_tween().set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
 	d_tween.tween_property(report, "position:y", vp_size.y/2 - 300, 0.6)
-	d_tween.tween_callback(func(): DeskTheme.shake_control(root_layer, 8.0, 0.3))
+	d_tween.tween_callback(func():
+		DeskTheme.shake_control(root_layer, 8.0, 0.3)
+		if has_node("/root/AudioManager"):
+			get_node("/root/AudioManager").play_se(AudioManager.SE_PLACE)
+	)
 	
 	# Reveal ranks 4th -> 1st
 	var ranks = showdown_data.get("rankings", []).duplicate()
@@ -436,6 +450,14 @@ func _show_final_report() -> void:
 		var r_tween = create_tween().set_parallel(true)
 		r_tween.tween_property(rank_lbl, "modulate:a", 1.0, 0.3).set_delay(delay)
 		r_tween.tween_property(rank_lbl, "position:x", 0.0, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT).set_delay(delay)
+		
+		create_tween().tween_callback(func():
+			if has_node("/root/AudioManager"):
+				if i == 0:
+					get_node("/root/AudioManager").play_se(AudioManager.SE_FANFARE, 0.0, -10.0)
+				else:
+					get_node("/root/AudioManager").play_se(AudioManager.SE_PLACE)
+		).set_delay(delay)
 		
 		# If it's the player, do a little emphasis
 		if r["id"] == "player":
@@ -550,12 +572,87 @@ func _on_share_pressed() -> void:
 	ShareCardGenerator.generate_and_copy_share_image(self, showdown_data)
 	create_tween().tween_callback(func(): if is_instance_valid(share_btn): share_btn.disabled = false).set_delay(3.0)
 
+func _exit_tree() -> void:
+	if MatchState.player_action_received.is_connected(_on_rematch_action_received):
+		MatchState.player_action_received.disconnect(_on_rematch_action_received)
+	if has_node("/root/WebRTCManager"):
+		var wm = get_node_or_null("/root/WebRTCManager")
+		if wm and wm.webrtc_multiplayer and wm.webrtc_multiplayer.has_signal("player_disconnected"):
+			if wm.webrtc_multiplayer.player_disconnected.is_connected(_on_peer_disconnected_in_result):
+				wm.webrtc_multiplayer.player_disconnected.disconnect(_on_peer_disconnected_in_result)
+
+func _on_rematch_action_received(_sender_id: int, action: String, _data: Dictionary) -> void:
+	if action == "rematch" and is_waiting_rematch:
+		_check_rematch_ready()
+
+func _on_peer_disconnected_in_result(_id: int) -> void:
+	if is_waiting_rematch:
+		_check_rematch_ready()
+
+func _check_rematch_ready() -> void:
+	if not is_waiting_rematch:
+		return
+	
+	var active_uids = {}
+	if multiplayer.has_multiplayer_peer():
+		active_uids[str(multiplayer.get_unique_id())] = true
+		for p_id in multiplayer.get_peers():
+			active_uids[str(p_id)] = true
+	if has_node("/root/WebRTCManager"):
+		var wm = get_node_or_null("/root/WebRTCManager")
+		if wm and wm.webrtc_multiplayer:
+			for p in wm.webrtc_multiplayer._participants:
+				active_uids[str(p.get("user_id", ""))] = true
+
+	var actions_999 = MatchState.current_match_actions.get(999, {})
+	var submitted_uids = {}
+	for sender_id in actions_999.keys():
+		if actions_999[sender_id].has("rematch"):
+			var m = actions_999[sender_id]["rematch"]
+			var u = str(m.get("user_id", sender_id))
+			if u == "player" and multiplayer.has_multiplayer_peer():
+				u = str(multiplayer.get_unique_id())
+			submitted_uids[u] = true
+			submitted_uids[str(sender_id)] = true
+
+	var all_ready = true
+	for member in Global.friend_member_list:
+		if not (member is Dictionary):
+			continue
+		var uid = str(member.get("user_id", ""))
+		if uid == "player" and multiplayer.has_multiplayer_peer():
+			uid = str(multiplayer.get_unique_id())
+		
+		var is_cpu = uid.begins_with("cpu_")
+		var is_connected = active_uids.has(uid) or is_cpu
+		
+		if not is_cpu and is_connected:
+			if not submitted_uids.has(uid):
+				all_ready = false
+				break
+
+	if all_ready:
+		is_waiting_rematch = false
+		Global.set("active_showdown_results", {})
+		Global.friend_current_day = 1
+		Global.friend_match_history.clear()
+		MatchState.reset_match()
+		create_tween().tween_callback(func(): Global.change_scene_with_fade(get_tree(), "res://Main.tscn")).set_delay(0.2)
+
 func _on_play_again_pressed() -> void:
 	if play_again_btn.disabled: return
 	play_again_btn.disabled = true
 	DeskTheme.animate_click(play_again_btn, Vector2.ONE, 0.08)
-	Global.set("active_showdown_results", {})
-	create_tween().tween_callback(func(): Global.change_scene_with_fade(get_tree(), "res://Main.tscn")).set_delay(0.2)
+	
+	if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
+		is_waiting_rematch = true
+		play_again_btn.text = "再戦待機中..."
+		var my_id = str(multiplayer.get_unique_id()) if multiplayer.has_multiplayer_peer() else "player"
+		MatchState.submit_player_action.rpc("rematch", {"user_id": my_id, "day": 999})
+		_check_rematch_ready()
+	else:
+		Global.set("active_showdown_results", {})
+		create_tween().tween_callback(func(): Global.change_scene_with_fade(get_tree(), "res://Main.tscn")).set_delay(0.2)
 
 func _on_restart_pressed() -> void:
 	if restart_btn.disabled: return

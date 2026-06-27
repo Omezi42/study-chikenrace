@@ -126,6 +126,7 @@ static func play_burst_animation(phase: ChickenRacePhase, duplicate_values: Arra
 		# テキスト表示
 		phase.alert_banner.color.a = 0.5
 		phase.alert_banner.z_index = 90
+		phase.alert_label.modulate.a = 1.0
 		phase.alert_label.text = "バースト！"
 		phase.actual_score_label.text = "0点"
 		
@@ -158,20 +159,27 @@ static func play_burst_animation(phase: ChickenRacePhase, duplicate_values: Arra
 		
 		_spawn_zzz_scribbles(phase)
 		
-		phase.create_tween().tween_callback(func():
-			if is_instance_valid(phase):
-				var fade_tween = phase.create_tween().set_parallel(true)
-				fade_tween.tween_property(phase.alert_banner, "color:a", 0.0, 0.4 / speed_mult)
-				fade_tween.tween_property(phase.alert_label, "modulate:a", 0.0, 0.4 / speed_mult)
-		).set_delay(1.4 / speed_mult)
-		
-		phase.create_tween().tween_callback(func():
-			if is_instance_valid(phase):
-				phase.alert_label.text = ""
-				phase.alert_label.modulate.a = 1.0
-			if on_complete.is_valid():
-				on_complete.call()
-		).set_delay(1.8 / speed_mult)
+		var fade_tween = phase.create_tween()
+		fade_tween.tween_interval(1.4 / speed_mult)
+		fade_tween.tween_callback(func():
+			if not is_instance_valid(phase):
+				if on_complete.is_valid():
+					on_complete.call()
+				return
+			var p_tween = phase.create_tween().set_parallel(true)
+			p_tween.tween_property(phase.alert_banner, "color:a", 0.0, 0.4 / speed_mult)
+			p_tween.tween_property(phase.alert_label, "modulate:a", 0.0, 0.4 / speed_mult)
+			
+			var finish_tween = phase.create_tween()
+			finish_tween.tween_interval(0.4 / speed_mult)
+			finish_tween.tween_callback(func():
+				if is_instance_valid(phase):
+					phase.alert_label.text = ""
+					phase.alert_label.modulate.a = 1.0
+				if on_complete.is_valid():
+					on_complete.call()
+			)
+		)
 	).set_delay(1.2 / speed_mult)
 
 static func _spawn_zzz_scribbles(phase: ChickenRacePhase) -> void:

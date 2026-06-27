@@ -28,45 +28,31 @@ func _init(backend_manager: Node, sig: WebRTCSignaling) -> void:
 	signaling.ice_candidate_received.connect(_on_ice_candidate_received)
 	signaling.room_joined.connect(_on_random_room_joined)
 
+func get_signaling_url() -> String:
+	var server_url = ProjectSettings.get_setting("backend/signaling_url", "")
+	if server_url != "":
+		return server_url
+	return "wss://chicken-race-signaling.onrender.com"
+
 func create_room() -> void:
 	Global.show_loading("ルーム作成中...")
 	_is_host = true
 	var code = str(randi_range(1000, 9999))
 	_pending_room_code = code
-	
-	# Node.js signaling server URL. For production, change to WSS.
-	var server_url = ProjectSettings.get_setting("backend/signaling_url", "")
-	if server_url == "":
-		if OS.has_feature("web"):
-			server_url = "wss://chicken-race-signaling.onrender.com" # 本番用URL
-		else:
-			server_url = "ws://localhost:9080"
-			
+	var server_url = get_signaling_url()
 	signaling.connect_to_room(server_url, code)
 
 func join_room(code: String) -> void:
 	Global.show_loading("ルーム参加中...")
 	_is_host = false
 	_pending_room_code = code
-	var server_url = ProjectSettings.get_setting("backend/signaling_url", "")
-	if server_url == "":
-		if OS.has_feature("web"):
-			server_url = "wss://chicken-race-signaling.onrender.com" # 本番用URL
-		else:
-			server_url = "ws://localhost:9080"
-			
+	var server_url = get_signaling_url()
 	signaling.connect_to_room(server_url, code)
 
 func join_random_room() -> void:
 	_is_host = false # Default to false, updated dynamically if we receive ID 1
 	target_match_count = 4
-	var server_url = ProjectSettings.get_setting("backend/signaling_url", "")
-	if server_url == "":
-		if OS.has_feature("web"):
-			server_url = "wss://chicken-race-signaling.onrender.com" # 本番用URL
-		else:
-			server_url = "ws://localhost:9080"
-			
+	var server_url = get_signaling_url()
 	signaling.connect_random(server_url)
 
 func disconnect_room() -> void:
@@ -124,7 +110,13 @@ func _on_webrtc_peer_connected(id: int) -> void:
 	sync_player_info.rpc_id(id, my_name)
 
 func _on_signaling_disconnected() -> void:
-	pass
+	Global.hide_loading()
+	if _pending_room_code != "":
+		if _is_host:
+			room_created.emit(false, "")
+		else:
+			room_joined.emit(false, [])
+		_pending_room_code = ""
 
 func _on_peer_connected(id: int) -> void:
 	var pc = WebRTCPeerConnection.new()

@@ -383,6 +383,7 @@ func reset_phase_for_next_hour() -> void:
 	
 	alert_banner.color.a = 0.0
 	alert_label.text = ""
+	alert_label.modulate.a = 1.0
 	
 	DeskTheme.show_toast(self, "第 %d 時限目の勉強を開始します！" % session.current_hour)
 	
