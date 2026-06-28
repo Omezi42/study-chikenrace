@@ -201,7 +201,33 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		copy_btn.release_focus()
 		DeskTheme.animate_click(copy_btn, Vector2.ONE, 0.08)
 		var invite_text = "チキスタ対戦ルーム【%s】に招待されています！\n下記URLからゲームを開いて、フレンド対戦ロビーからコードを入力して参加してね！\nhttps://unityroom.com/games/studychickenrace" % room_code
-		DisplayServer.clipboard_set(invite_text)
+		if OS.has_feature("web"):
+			var js_code = """
+			var text = "%s";
+			function fallbackCopyTextToClipboard(text) {
+				var textArea = document.createElement("textarea");
+				textArea.value = text;
+				textArea.style.top = "0";
+				textArea.style.left = "0";
+				textArea.style.position = "fixed";
+				document.body.appendChild(textArea);
+				textArea.focus();
+				textArea.select();
+				try { document.execCommand('copy'); } catch (err) { }
+				document.body.removeChild(textArea);
+			}
+			if (navigator.clipboard && window.isSecureContext) {
+				navigator.clipboard.writeText(text).catch(function(e){
+					fallbackCopyTextToClipboard(text);
+				});
+			} else {
+				fallbackCopyTextToClipboard(text);
+			}
+			"""
+			var safe_text = invite_text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+			JavaScriptBridge.eval(js_code % safe_text)
+		else:
+			DisplayServer.clipboard_set(invite_text)
 		var orig_text = copy_btn.text
 		copy_btn.text = "コピーしました！"
 		copy_btn.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
@@ -266,7 +292,9 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	var is_polling_active = true
 	var cbs = {}
 	
-	cbs.start_game_transition = func(final_participants: Array):
+	cbs.start_game_transition = func(final_participants: Array, game_seed: int = 0):
+		if game_seed != 0:
+			seed(game_seed)
 		AudioManager.play_se(AudioManager.SE_FANFARE)
 		DisplayServer.window_request_attention()
 		is_polling_active = false
@@ -354,7 +382,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	cbs.on_game_state_synced = func(state: Dictionary):
 		if state.get("action", "") == "start_game":
 			is_polling_active = false
-			cbs.start_game_transition.call(state.get("participants", []))
+			cbs.start_game_transition.call(state.get("participants", []), state.get("seed", 0))
 
 	cbs.on_player_connected_cb = func(id): cbs.on_polled.call()
 	cbs.on_player_disconnected_cb = func(id): cbs.on_polled.call()
@@ -392,14 +420,15 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 			
 			if wrm and wrm.webrtc_multiplayer:
 				var parts = wrm.webrtc_multiplayer._participants
-				MatchState.sync_game_state.rpc({"action": "start_game", "participants": parts})
-				cbs.start_game_transition.call(parts)
+				var game_seed = randi()
+				MatchState.sync_game_state.rpc({"action": "start_game", "participants": parts, "seed": game_seed})
+				cbs.start_game_transition.call(parts, game_seed)
 			else:
 				var final_parts = [
 					{"user_id": "player", "username": Global.player_name if Global.player_name != "" else "あなた"},
 					{"user_id": "cpu_sato", "username": "佐藤くん (CPU)"}
 				]
-				cbs.start_game_transition.call(final_parts)
+				cbs.start_game_transition.call(final_parts, randi())
 		)
 		
 	exit_btn.pressed.connect(func():

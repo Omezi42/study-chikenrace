@@ -85,6 +85,7 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 				"base": base_score,
 				"adjustment": adjustment,
 				"doubts_received": doubts_on_me.duplicate(),
+				"doubts_made": p.get("doubts_made", []).duplicate(),
 				"auto_exposed": auto_exposed,
 				"is_doubt_exposed": final_exposed,
 				"actual": actual,
@@ -156,11 +157,13 @@ static func calculate_final_showdown(session: GameSession) -> Dictionary:
 			"bursts": total_bursts[p_id]
 		})
 		
-	# Tie breaker: Higher score, then lower bursts
+	# Tie breaker: Higher score, then lower bursts, then by ID to ensure deterministic results
 	rank_list.sort_custom(func(a, b):
 		if a["score"] != b["score"]:
 			return a["score"] > b["score"]
-		return a["bursts"] < b["bursts"]
+		if a["bursts"] != b["bursts"]:
+			return a["bursts"] < b["bursts"]
+		return str(a["id"]) < str(b["id"])
 	)
 	
 	var my_rank := 1

@@ -86,7 +86,7 @@ func collect_participants() -> void:
 			"declared_score": 18,
 			"actual_score": 10,
 			"hours": sato_hours,
-			"emote": "wink"
+			"emote": "confident"
 		}
 		
 	participants_data.clear()

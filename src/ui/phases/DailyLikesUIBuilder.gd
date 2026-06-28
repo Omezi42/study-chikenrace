@@ -403,15 +403,15 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	
 	match emote_key:
 		"normal":
-			emote_badge.text = "Normal"
+			emote_badge.text = "ふつう"
 			badge_style.bg_color = Color("#f0f0f0") # Studyplus-style light badge
 			emote_badge.add_theme_color_override("font_color", Color("#555555"))
 		"confident":
-			emote_badge.text = "Confident"
+			emote_badge.text = "自信あり"
 			badge_style.bg_color = Color("#e8f5e9") # Soft green
 			emote_badge.add_theme_color_override("font_color", Color("#2e7d32"))
 		"anxious":
-			emote_badge.text = "Anxious"
+			emote_badge.text = "不安"
 			badge_style.bg_color = Color("#fbe9e7") # Soft red-orange
 			emote_badge.add_theme_color_override("font_color", Color("#c62828"))
 			

@@ -18,10 +18,7 @@ var _cumulative_scores: Dictionary = {}
 
 var skip_btn: Button
 var share_btn: Button
-var play_again_btn: Button
 var restart_btn: Button
-
-var is_waiting_rematch: bool = false
 
 func _ready() -> void:
 	root_layer = Control.new()
@@ -62,14 +59,6 @@ func _ready() -> void:
 	_init_mini_scoreboard()
 	_create_skip_button()
 	
-	if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
-		if not MatchState.player_action_received.is_connected(_on_rematch_action_received):
-			MatchState.player_action_received.connect(_on_rematch_action_received)
-		if has_node("/root/WebRTCManager"):
-			var wm = get_node_or_null("/root/WebRTCManager")
-			if wm and wm.webrtc_multiplayer and wm.webrtc_multiplayer.has_signal("player_disconnected"):
-				if not wm.webrtc_multiplayer.player_disconnected.is_connected(_on_peer_disconnected_in_result):
-					wm.webrtc_multiplayer.player_disconnected.connect(_on_peer_disconnected_in_result)
 
 	is_revealing = true
 	current_step_day = 1
@@ -526,17 +515,18 @@ func _show_actions() -> void:
 	share_btn.pressed.connect(_on_share_pressed)
 	act_hbox.add_child(share_btn)
 	
-	play_again_btn = Button.new()
-	play_again_btn.text = "もう1回遊ぶ"
-	_setup_stationery_btn(play_again_btn, "green")
-	play_again_btn.pressed.connect(_on_play_again_pressed)
-	act_hbox.add_child(play_again_btn)
 	
 	restart_btn = Button.new()
 	restart_btn.text = "タイトルへ"
 	_setup_stationery_btn(restart_btn, "orange")
 	restart_btn.pressed.connect(_on_restart_pressed)
 	act_hbox.add_child(restart_btn)
+	
+	var details_btn = Button.new()
+	details_btn.text = "詳細を見る"
+	_setup_stationery_btn(details_btn, "yellow")
+	details_btn.pressed.connect(_show_details_modal)
+	act_hbox.add_child(details_btn)
 	
 	actions_container.add_child(act_hbox)
 	
@@ -573,86 +563,7 @@ func _on_share_pressed() -> void:
 	create_tween().tween_callback(func(): if is_instance_valid(share_btn): share_btn.disabled = false).set_delay(3.0)
 
 func _exit_tree() -> void:
-	if MatchState.player_action_received.is_connected(_on_rematch_action_received):
-		MatchState.player_action_received.disconnect(_on_rematch_action_received)
-	if has_node("/root/WebRTCManager"):
-		var wm = get_node_or_null("/root/WebRTCManager")
-		if wm and wm.webrtc_multiplayer and wm.webrtc_multiplayer.has_signal("player_disconnected"):
-			if wm.webrtc_multiplayer.player_disconnected.is_connected(_on_peer_disconnected_in_result):
-				wm.webrtc_multiplayer.player_disconnected.disconnect(_on_peer_disconnected_in_result)
-
-func _on_rematch_action_received(_sender_id: int, action: String, _data: Dictionary) -> void:
-	if action == "rematch" and is_waiting_rematch:
-		_check_rematch_ready()
-
-func _on_peer_disconnected_in_result(_id: int) -> void:
-	if is_waiting_rematch:
-		_check_rematch_ready()
-
-func _check_rematch_ready() -> void:
-	if not is_waiting_rematch:
-		return
-	
-	var active_uids = {}
-	if multiplayer.has_multiplayer_peer():
-		active_uids[str(multiplayer.get_unique_id())] = true
-		for p_id in multiplayer.get_peers():
-			active_uids[str(p_id)] = true
-	if has_node("/root/WebRTCManager"):
-		var wm = get_node_or_null("/root/WebRTCManager")
-		if wm and wm.webrtc_multiplayer:
-			for p in wm.webrtc_multiplayer._participants:
-				active_uids[str(p.get("user_id", ""))] = true
-
-	var actions_999 = MatchState.current_match_actions.get(999, {})
-	var submitted_uids = {}
-	for sender_id in actions_999.keys():
-		if actions_999[sender_id].has("rematch"):
-			var m = actions_999[sender_id]["rematch"]
-			var u = str(m.get("user_id", sender_id))
-			if u == "player" and multiplayer.has_multiplayer_peer():
-				u = str(multiplayer.get_unique_id())
-			submitted_uids[u] = true
-			submitted_uids[str(sender_id)] = true
-
-	var all_ready = true
-	for member in Global.friend_member_list:
-		if not (member is Dictionary):
-			continue
-		var uid = str(member.get("user_id", ""))
-		if uid == "player" and multiplayer.has_multiplayer_peer():
-			uid = str(multiplayer.get_unique_id())
-		
-		var is_cpu = uid.begins_with("cpu_")
-		var is_connected = active_uids.has(uid) or is_cpu
-		
-		if not is_cpu and is_connected:
-			if not submitted_uids.has(uid):
-				all_ready = false
-				break
-
-	if all_ready:
-		is_waiting_rematch = false
-		Global.set("active_showdown_results", {})
-		Global.friend_current_day = 1
-		Global.friend_match_history.clear()
-		MatchState.reset_match()
-		create_tween().tween_callback(func(): Global.change_scene_with_fade(get_tree(), "res://Main.tscn")).set_delay(0.2)
-
-func _on_play_again_pressed() -> void:
-	if play_again_btn.disabled: return
-	play_again_btn.disabled = true
-	DeskTheme.animate_click(play_again_btn, Vector2.ONE, 0.08)
-	
-	if Global.game_mode in [Constants.MODE_FRIEND, Constants.MODE_RANDOM]:
-		is_waiting_rematch = true
-		play_again_btn.text = "再戦待機中..."
-		var my_id = str(multiplayer.get_unique_id()) if multiplayer.has_multiplayer_peer() else "player"
-		MatchState.submit_player_action.rpc("rematch", {"user_id": my_id, "day": 999})
-		_check_rematch_ready()
-	else:
-		Global.set("active_showdown_results", {})
-		create_tween().tween_callback(func(): Global.change_scene_with_fade(get_tree(), "res://Main.tscn")).set_delay(0.2)
+	pass
 
 func _on_restart_pressed() -> void:
 	if restart_btn.disabled: return
@@ -692,3 +603,221 @@ func _spawn_confetti() -> void:
 			confetti.emitting = false
 			create_tween().tween_callback(func(): if is_instance_valid(confetti): confetti.queue_free()).set_delay(confetti.lifetime)
 	).set_delay(8.0)
+
+func _show_details_modal() -> void:
+	if has_node("/root/AudioManager"):
+		get_node("/root/AudioManager").play_se(AudioManager.SE_PAPER)
+		
+	var modal = PanelContainer.new()
+	modal.custom_minimum_size = Vector2(1000, 750)
+	modal.pivot_offset = Vector2(500, 375)
+	
+	var panel_style = StyleBoxFlat.new()
+	panel_style.bg_color = Color("#f4f1ea") # Paper-like off-white
+	panel_style.corner_radius_top_left = 16
+	panel_style.corner_radius_top_right = 16
+	panel_style.corner_radius_bottom_left = 16
+	panel_style.corner_radius_bottom_right = 16
+	panel_style.set_border_width_all(2)
+	panel_style.border_color = Color("#d0c8b0")
+	panel_style.shadow_color = Color(0,0,0,0.2)
+	panel_style.shadow_size = 20
+	panel_style.shadow_offset = Vector2(0, 10)
+	modal.add_theme_stylebox_override("panel", panel_style)
+	
+	var dim = ColorRect.new()
+	dim.color = Color(0,0,0,0.6)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(dim)
+	dim.add_child(modal)
+	
+	modal.position = get_viewport_rect().size / 2 - modal.pivot_offset
+	
+	var margin = MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 30)
+	margin.add_theme_constant_override("margin_right", 30)
+	margin.add_theme_constant_override("margin_top", 30)
+	margin.add_theme_constant_override("margin_bottom", 30)
+	modal.add_child(margin)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 20)
+	margin.add_child(vbox)
+	
+	var title = Label.new()
+	title.text = "全日程 詳細レポート"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_override("font", DeskTheme.get_font())
+	title.add_theme_font_size_override("font_size", 32)
+	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	vbox.add_child(title)
+	
+	var tab_container = TabContainer.new()
+	tab_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var tab_style = StyleBoxFlat.new()
+	tab_style.bg_color = Color("#ffffff")
+	tab_style.corner_radius_bottom_left = 8
+	tab_style.corner_radius_bottom_right = 8
+	tab_style.corner_radius_top_right = 8
+	tab_style.border_width_all = 1
+	tab_style.border_color = Color("#dddddd")
+	tab_style.content_margin_left = 20
+	tab_style.content_margin_right = 20
+	tab_style.content_margin_top = 20
+	tab_style.content_margin_bottom = 20
+	tab_container.add_theme_stylebox_override("panel", tab_style)
+	
+	var tab_bg = StyleBoxFlat.new()
+	tab_bg.bg_color = Color("#e8e4d9")
+	tab_bg.content_margin_left = 20
+	tab_bg.content_margin_right = 20
+	tab_bg.content_margin_top = 10
+	tab_bg.content_margin_bottom = 10
+	tab_bg.corner_radius_top_left = 8
+	tab_bg.corner_radius_top_right = 8
+	tab_container.add_theme_stylebox_override("tab_unselected", tab_bg)
+	
+	var tab_fg = tab_bg.duplicate()
+	tab_fg.bg_color = Color("#ffffff")
+	tab_container.add_theme_stylebox_override("tab_selected", tab_fg)
+	
+	tab_container.add_theme_font_override("font", DeskTheme.get_font())
+	tab_container.add_theme_font_size_override("font_size", 20)
+	tab_container.add_theme_color_override("font_selected_color", DeskTheme.COLOR_INK)
+	tab_container.add_theme_color_override("font_unselected_color", Color("#888888"))
+	
+	vbox.add_child(tab_container)
+	
+	var details = showdown_data.get("details", {})
+	var max_day = Constants.MAX_DAYS
+	
+	for day in range(1, max_day + 1):
+		if not details.has(day): continue
+		var day_data = details[day]
+		
+		var scroll = ScrollContainer.new()
+		scroll.name = "第%d日目" % day
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		tab_container.add_child(scroll)
+		
+		var grid = GridContainer.new()
+		grid.columns = 2
+		grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		grid.add_theme_constant_override("h_separation", 20)
+		grid.add_theme_constant_override("v_separation", 20)
+		scroll.add_child(grid)
+		
+		var keys = day_data.keys()
+		var sorted_keys = keys.duplicate()
+		if sorted_keys.has("player"):
+			sorted_keys.erase("player")
+			sorted_keys.insert(0, "player")
+			
+		for p_id in sorted_keys:
+			var info = day_data[p_id]
+			
+			var card = PanelContainer.new()
+			card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var card_style = StyleBoxFlat.new()
+			card_style.bg_color = Color.WHITE
+			card_style.corner_radius_top_left = 12
+			card_style.corner_radius_top_right = 12
+			card_style.corner_radius_bottom_left = 12
+			card_style.corner_radius_bottom_right = 12
+			card_style.set_border_width_all(1)
+			card_style.border_color = Color("#dddddd")
+			card_style.shadow_color = Color(0,0,0,0.05)
+			card_style.shadow_size = 8
+			card_style.shadow_offset = Vector2(0, 4)
+			# Top highlight bar
+			card_style.border_width_top = 6
+			card_style.border_color = DeskTheme.COLOR_GREEN if p_id == "player" else DeskTheme.COLOR_MAHOGANY
+			card.add_theme_stylebox_override("panel", card_style)
+			grid.add_child(card)
+			
+			var p_margin = MarginContainer.new()
+			p_margin.add_theme_constant_override("margin_left", 20)
+			p_margin.add_theme_constant_override("margin_right", 20)
+			p_margin.add_theme_constant_override("margin_top", 15)
+			p_margin.add_theme_constant_override("margin_bottom", 20)
+			card.add_child(p_margin)
+			
+			var p_vbox = VBoxContainer.new()
+			p_vbox.add_theme_constant_override("separation", 12)
+			p_margin.add_child(p_vbox)
+			
+			var name_lbl = Label.new()
+			var prefix = "プレイヤー: " if p_id == "player" else "ライバル: "
+			name_lbl.text = prefix + _get_participant_name(p_id)
+			name_lbl.add_theme_font_override("font", DeskTheme.get_font())
+			name_lbl.add_theme_font_size_override("font_size", 22)
+			name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+			p_vbox.add_child(name_lbl)
+			
+			var sep = ColorRect.new()
+			sep.custom_minimum_size.y = 1
+			sep.color = Color("#eeeeee")
+			p_vbox.add_child(sep)
+			
+			var score_hbox = HBoxContainer.new()
+			p_vbox.add_child(score_hbox)
+			
+			var score_lbl = Label.new()
+			score_lbl.text = "申告: %d点 / 実点: %d点" % [info.get("declared", 0), info.get("actual", 0)]
+			score_lbl.add_theme_font_override("font", DeskTheme.get_font())
+			score_lbl.add_theme_font_size_override("font_size", 18)
+			score_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+			score_hbox.add_child(score_lbl)
+			
+			if info.get("bluff_amount", 0) > 0:
+				var bluff_lbl = Label.new()
+				bluff_lbl.text = "(嘘: +%d点)" % info.get("bluff_amount", 0)
+				bluff_lbl.add_theme_font_override("font", DeskTheme.get_font())
+				bluff_lbl.add_theme_font_size_override("font_size", 16)
+				bluff_lbl.add_theme_color_override("font_color", Color("e53935"))
+				score_hbox.add_child(bluff_lbl)
+			
+			var doubts_made = info.get("doubts_made", [])
+			if doubts_made.size() > 0:
+				var m_lbl = Label.new()
+				var target_names = []
+				for t in doubts_made: target_names.append(_get_participant_name(t))
+				m_lbl.text = "・ダウトした相手: " + ", ".join(target_names)
+				m_lbl.add_theme_font_override("font", DeskTheme.get_font())
+				m_lbl.add_theme_font_size_override("font_size", 16)
+				m_lbl.add_theme_color_override("font_color", Color("1e88e5"))
+				p_vbox.add_child(m_lbl)
+				
+			var doubts_received = info.get("doubts_received", [])
+			if doubts_received.size() > 0:
+				var r_lbl = Label.new()
+				var sender_names = []
+				for s in doubts_received: sender_names.append(_get_participant_name(s))
+				r_lbl.text = "・ダウトされた相手: " + ", ".join(sender_names)
+				if info.get("is_doubt_exposed", false):
+					r_lbl.text += " (嘘バレ！)"
+					r_lbl.add_theme_color_override("font_color", Color("e53935"))
+				else:
+					r_lbl.text += " (回避)"
+					r_lbl.add_theme_color_override("font_color", Color("43a047"))
+				r_lbl.add_theme_font_override("font", DeskTheme.get_font())
+				r_lbl.add_theme_font_size_override("font_size", 16)
+				p_vbox.add_child(r_lbl)
+				
+	var close_btn = Button.new()
+	close_btn.text = "閉じる"
+	_setup_stationery_btn(close_btn, "white")
+	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	close_btn.pressed.connect(func():
+		DeskTheme.animate_click(close_btn, Vector2.ONE, 0.08)
+		if has_node("/root/AudioManager"):
+			get_node("/root/AudioManager").play_se(AudioManager.SE_CANCEL)
+		var tw = create_tween()
+		tw.tween_property(modal, "scale", Vector2.ZERO, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+		tw.tween_callback(func(): dim.queue_free())
+	)
+	vbox.add_child(close_btn)
+	
+	modal.scale = Vector2.ZERO
+	var tw2 = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw2.tween_property(modal, "scale", Vector2.ONE, 0.3)

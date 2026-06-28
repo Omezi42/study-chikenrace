@@ -60,6 +60,15 @@ func start_session() -> void:
 		match_history = new_history
 		if not match_history.has(current_day):
 			match_history[current_day] = {}
+			
+		var has_cpus = false
+		for k in match_history[current_day].keys():
+			if str(k).begins_with("cpu_"):
+				has_cpus = true
+				break
+				
+		if not has_cpus:
+			simulate_cpus_for_day(current_day)
 	else:
 		current_day = 1
 		simulate_cpus_for_day(1)
@@ -69,6 +78,10 @@ func simulate_cpus_for_day(day_idx: int) -> void:
 	match_history[day_idx] = day_data
 
 	for cpu_id in Global.opponent_profiles.keys():
+		var actual_id = Global.opponent_profiles[cpu_id].get("id", cpu_id)
+		if not str(actual_id).begins_with("cpu_"):
+			continue
+			
 		var sim = AIManager.simulate_cpu_day(cpu_id, day_idx)
 		var decl = AIManager.calculate_cpu_bluff(cpu_id, sim["actual_score"], day_idx)
 		var cpu_emote = AIManager.select_cpu_emote(cpu_id, decl - sim["actual_score"], sim["actual_score"])
@@ -243,10 +256,9 @@ func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 			continue
 		var uid = str(m.get("user_id", ""))
 		if uid == my_uuid or uid == "player":
-			if m.get("declared_score", 0) > 0 or m.get("actual_score", 0) > 0:
-				var my_rec = Global.normalize_participant_record(m, "player", Global.player_name)
-				my_rec["id"] = my_uuid
-				day_data["player"] = my_rec
+			var my_rec = Global.normalize_participant_record(m, "player", Global.player_name)
+			my_rec["id"] = my_uuid
+			day_data["player"] = my_rec
 			continue
 
 		var slot_name = ""
@@ -300,6 +312,27 @@ func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 		if not (p is Dictionary):
 			continue
 		p["doubts_received"] = []
+
+	var participants_for_ai: Array[Dictionary] = []
+	for p_id in day_data.keys():
+		var p = Global.normalize_participant_record(day_data[p_id], str(p_id))
+		var hours_typed: Array[Dictionary] = []
+		for h in p.get("hours", []):
+			hours_typed.append(h as Dictionary)
+		participants_for_ai.append({
+			"id": str(p_id),
+			"declared_score": p.get("declared_score", 0),
+			"hours": hours_typed,
+			"emote": p.get("emote", "normal")
+		})
+
+	for cpu_id in Global.opponent_profiles.keys():
+		var actual_id = Global.opponent_profiles[cpu_id].get("id", cpu_id)
+		if not str(actual_id).begins_with("cpu_"):
+			continue
+		if day_data.has(cpu_id):
+			var cpu_doubts = AIManager.make_cpu_doubts(cpu_id, participants_for_ai)
+			day_data[cpu_id]["doubts_made"] = cpu_doubts
 
 	for p_id in day_data.keys():
 		var p = day_data[p_id]
