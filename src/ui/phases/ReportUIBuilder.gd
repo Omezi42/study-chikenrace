@@ -12,6 +12,7 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	phone_panel.custom_minimum_size = Vector2(420, 840)
 	phone_panel.size = Vector2(420, 840)
 	phone_panel.pivot_offset = Vector2(210, 420)
+	phone_panel.clip_contents = true
 	
 	var phone_style = StyleBoxFlat.new()
 	phone_style.bg_color = Color("#1a1a1a") # Realistic phone body (dark bezel)

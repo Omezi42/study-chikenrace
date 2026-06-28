@@ -108,8 +108,8 @@ func _on_submit_pressed() -> void:
 		phone_panel.position = current_pos
 		
 		var slide_tween = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		# Slide from center to left margin (X=120). Y remains 140.
-		slide_tween.tween_property(phone_panel, "position", Vector2(120, 140), 0.45)
+		# Slide from center to left margin (X=180). Y remains 140.
+		slide_tween.tween_property(phone_panel, "position", Vector2(180, 140), 0.45)
 		
 		slide_tween.finished.connect(func():
 			session.submit_player_declaration(final_declared, selected_emote)

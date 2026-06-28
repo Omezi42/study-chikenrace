@@ -24,14 +24,15 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 		phone_panel.anchor_right = 0.0
 		phone_panel.anchor_top = 0.0
 		phone_panel.anchor_bottom = 0.0
-		phone_panel.offset_left = 120
-		phone_panel.offset_right = 540
+		phone_panel.offset_left = 180
+		phone_panel.offset_right = 600
 		phone_panel.offset_top = 120
 		phone_panel.offset_bottom = 960
 		phone_panel.custom_minimum_size = Vector2(420, 840)
 		phone_panel.size = Vector2(420, 840)
-		phone_panel.position = Vector2(120, 120)
+		phone_panel.position = Vector2(180, 120)
 		phone_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+		phone_panel.clip_contents = true
 	else:
 		# Fallback: Create new phone panel if not reused
 		phone_panel = PanelContainer.new()
@@ -39,14 +40,15 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 		phone_panel.anchor_right = 0.0
 		phone_panel.anchor_top = 0.0
 		phone_panel.anchor_bottom = 0.0
-		phone_panel.offset_left = 120
-		phone_panel.offset_right = 540
+		phone_panel.offset_left = 180
+		phone_panel.offset_right = 600
 		phone_panel.offset_top = 120
 		phone_panel.offset_bottom = 960
 		phone_panel.custom_minimum_size = Vector2(420, 840)
 		phone_panel.size = Vector2(420, 840)
-		phone_panel.position = Vector2(120, 120)
+		phone_panel.position = Vector2(180, 120)
 		phone_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+		phone_panel.clip_contents = true
 		
 		var phone_style = StyleBoxFlat.new()
 		phone_style.bg_color = Color("#f8f8f8") # Studyplus-style light gray feed background
@@ -125,7 +127,7 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	header_margin.add_theme_constant_override("margin_bottom", 10)
 	phone_vbox.add_child(header_margin)
 	var title_lbl = Label.new()
-	title_lbl.text = "Explore"
+	title_lbl.text = "タイムライン"
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_lbl.add_theme_font_size_override("font_size", 18)
 	title_lbl.add_theme_color_override("font_color", Color("#1a1a1a"))
@@ -272,7 +274,7 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 		for card in phase.timeline_list.get_children():
 			if is_instance_valid(card):
 				card.modulate.a = 1.0
-				card.custom_minimum_size = Vector2(480, 200)
+				card.custom_minimum_size = Vector2(360, 200)
 	)
 	right_vbox.add_child(likes_skip_btn)
 	phase.likes_skip_btn = likes_skip_btn
@@ -310,7 +312,7 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 
 static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int) -> Control:
 	var card = PanelContainer.new()
-	card.custom_minimum_size = Vector2(480, 200)
+	card.custom_minimum_size = Vector2(360, 200)
 	card.pivot_offset = Vector2(240, 100)
 	
 	var card_style = StyleBoxFlat.new()
@@ -348,7 +350,7 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	card.clip_contents = true
 	
 	card.modulate.a = 0.0
-	card.custom_minimum_size = Vector2(480, 0)
+	card.custom_minimum_size = Vector2(360, 0)
 	
 	var card_margin = MarginContainer.new()
 	card_margin.add_theme_constant_override("margin_left", 20)
@@ -461,7 +463,8 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 	
 	var inspect_btn = Button.new()
 	inspect_btn.text = "詳細を見る"
-	inspect_btn.add_theme_font_size_override("font_size", 14)
+	inspect_btn.add_theme_font_size_override("font_size", 16)
+	inspect_btn.custom_minimum_size = Vector2(120, 45)
 	
 	var btn_style_flat = StyleBoxFlat.new()
 	btn_style_flat.bg_color = Color("#f0f0f0") # Studyplus-style light action button
@@ -489,7 +492,8 @@ static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int)
 		var doubt_btn = Button.new()
 		doubt_btn.name = "DoubtButton"
 		doubt_btn.text = "ダウト！"
-		doubt_btn.add_theme_font_size_override("font_size", 14)
+		doubt_btn.add_theme_font_size_override("font_size", 16)
+		doubt_btn.custom_minimum_size = Vector2(120, 45)
 		
 		var danger_style = btn_style_flat.duplicate()
 		danger_style.bg_color = Color("#ff8c00") # Orange doubt button on light bg
@@ -596,9 +600,9 @@ static func populate_inspect_modal(phase: DailyLikesPhase, p: Dictionary) -> voi
 		var doubt_btn = Button.new()
 		doubt_btn.name = "DetailDoubtButton"
 		doubt_btn.text = "ダウト！"
-		doubt_btn.custom_minimum_size = Vector2(0, 50)
+		doubt_btn.custom_minimum_size = Vector2(0, 70)
 		doubt_btn.add_theme_font_override("font", DeskTheme.get_font())
-		doubt_btn.add_theme_font_size_override("font_size", 24)
+		doubt_btn.add_theme_font_size_override("font_size", 28)
 		doubt_btn.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
 		if phase.has_node("/root/UIHelper"):
 			phase.get_node("/root/UIHelper").apply_danger_button_style(doubt_btn)
