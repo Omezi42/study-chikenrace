@@ -77,7 +77,7 @@ func _ready() -> void:
 	
 	_add_sticky_button("ソロ模試", "CPUと対戦するオフラインモード", "blue", -1.5, func():
 		Global.game_mode = Constants.MODE_CPU
-		_start_cpu_match()
+		_show_difficulty_selection()
 	)
 	
 	_add_sticky_button("フレンド対戦", "合言葉で友達と対戦", "yellow", 1.0, func():
@@ -360,3 +360,112 @@ func _start_cpu_match() -> void:
 
 	var timer = get_tree().create_timer(0.2)
 	timer.timeout.connect(start_game)
+
+func _show_difficulty_selection() -> void:
+	var vp_size = get_viewport_rect().size
+	var fit_s = clamp(min(vp_size.x / 540.0, vp_size.y / 960.0), 0.8, 3.0)
+	var width = min(480.0, (vp_size.x * 0.95) / fit_s)
+	var height = min(600.0, (max(vp_size.y, 500.0) * 0.9) / fit_s)
+	
+	var diff_modal = PanelContainer.new()
+	diff_modal.custom_minimum_size = Vector2(width, height)
+	diff_modal.pivot_offset = Vector2(width / 2.0, height / 2.0)
+	diff_modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
+	
+	var center = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(center)
+	center.add_child(diff_modal)
+	
+	diff_modal.resized.connect(func(): diff_modal.pivot_offset = diff_modal.size * 0.5)
+	diff_modal.tree_exiting.connect(func(): if is_instance_valid(center): center.queue_free())
+	
+	var scroll = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	diff_modal.add_child(scroll)
+	
+	var margin = MarginContainer.new()
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margin.add_theme_constant_override("margin_left", 30)
+	margin.add_theme_constant_override("margin_right", 30)
+	margin.add_theme_constant_override("margin_top", 30)
+	margin.add_theme_constant_override("margin_bottom", 30)
+	scroll.add_child(margin)
+	
+	var vbox = VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 24)
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	margin.add_child(vbox)
+	
+	var title = Label.new()
+	title.text = "難易度を選択"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_override("font", DeskTheme.get_font())
+	title.add_theme_font_size_override("font_size", DeskTheme.scaled_font(28))
+	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+	vbox.add_child(title)
+	
+	var btn_vbox = VBoxContainer.new()
+	btn_vbox.add_theme_constant_override("separation", 20)
+	vbox.add_child(btn_vbox)
+	
+	var difficulties = [
+		{"id": "easy", "name": "初級 (Easy)", "desc": "相手は慎重で、あまりダウトをしてきません。\n練習に最適です。"},
+		{"id": "normal", "name": "中級 (Normal)", "desc": "標準的な強さのCPUと対戦します。\nバランスの良い難易度です。"},
+		{"id": "hard", "name": "上級 (Hard)", "desc": "相手は強気で、的確にダウトを狙ってきます。\n腕試しにどうぞ。"}
+	]
+	
+	for diff in difficulties:
+		var btn = Button.new()
+		btn.custom_minimum_size = Vector2(min(420.0, width - 40.0), 90)
+		Global.apply_white_button_style(btn)
+		
+		var inner = VBoxContainer.new()
+		inner.alignment = BoxContainer.ALIGNMENT_CENTER
+		inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		btn.add_child(inner)
+		
+		var btn_title = Label.new()
+		btn_title.text = diff["name"]
+		btn_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		btn_title.add_theme_font_override("font", DeskTheme.get_font())
+		btn_title.add_theme_font_size_override("font_size", DeskTheme.scaled_font(22))
+		btn_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
+		inner.add_child(btn_title)
+		
+		var btn_desc = Label.new()
+		btn_desc.text = diff["desc"]
+		btn_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		btn_desc.add_theme_font_override("font", DeskTheme.get_font())
+		btn_desc.add_theme_font_size_override("font_size", DeskTheme.scaled_font(13))
+		btn_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
+		inner.add_child(btn_desc)
+		
+		btn.pressed.connect(func():
+			DeskTheme.animate_click(btn, Vector2.ONE, 0.08)
+			Global.cpu_difficulty = diff["id"]
+			diff_modal.queue_free()
+			_start_cpu_match()
+		)
+		btn_vbox.add_child(btn)
+		
+	var cancel_btn = Button.new()
+	cancel_btn.text = "キャンセル"
+	cancel_btn.custom_minimum_size = Vector2(160, 45)
+	cancel_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	cancel_btn.add_theme_font_override("font", DeskTheme.get_font())
+	cancel_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
+	Global.apply_white_button_style(cancel_btn)
+	
+	cancel_btn.pressed.connect(func():
+		DeskTheme.animate_click(cancel_btn, Vector2.ONE, 0.08)
+		diff_modal.queue_free()
+	)
+	vbox.add_child(cancel_btn)
+	
+	diff_modal.scale = Vector2.ZERO
+	if get_tree() != null:
+		var tween = get_tree().create_tween().bind_node(diff_modal).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+		tween.tween_property(diff_modal, "scale", Vector2.ONE * fit_s, 0.3)

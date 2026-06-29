@@ -114,6 +114,11 @@ static func make_cpu_doubts(cpu_id: String, participants: Array[Dictionary]) -> 
 			AIProfile.TYPE_BLUFFER: ev_threshold = 0.0    # プラマイ0でGO
 			AIProfile.TYPE_HIGHROLLER: ev_threshold = -5.0 # リスクを恐れない
 			
+		if Global.game_mode == Constants.MODE_CPU:
+			match Global.cpu_difficulty:
+				"easy": ev_threshold += 6.0
+				"hard": ev_threshold -= 6.0
+			
 
 		suspect_list.append({
 			"id": p["id"],

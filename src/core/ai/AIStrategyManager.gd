@@ -71,6 +71,11 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 		AIProfile.TYPE_BLUFFER: risk_tolerance = 0.24
 		AIProfile.TYPE_HIGHROLLER: risk_tolerance = 0.48
 		
+	if Global.game_mode == Constants.MODE_CPU:
+		match Global.cpu_difficulty:
+			"easy": risk_tolerance *= 0.6
+			"hard": risk_tolerance *= 1.3
+			
 	risk_tolerance *= Global.cpu_rng.randf_range(0.85, 1.15)
 	
 	var standing = _evaluate_cpu_standing(cpu_id, day_idx)

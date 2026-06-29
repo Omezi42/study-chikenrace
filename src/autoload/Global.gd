@@ -28,6 +28,8 @@ var friend_current_day: int = 1
 var friend_match_history: Dictionary = {}
 var return_to_friend_lobby: bool = false
 
+var cpu_difficulty: String = "normal"
+
 var is_tutorial_mode: bool = false
 
 var total_doubt_successes: int = 0
