@@ -25,7 +25,23 @@ const matchmakingQueue = new Set();
 let matchTimer = null;
 let soloTimer = null;
 
+// 定期的な死活監視（Ping/Pongハートビート）
+const interval = setInterval(() => {
+    wss.clients.forEach((ws) => {
+        if (ws.isAlive === false) return ws.terminate();
+        ws.isAlive = false;
+        ws.ping();
+    });
+}, 30000); // 30秒ごとにPingを送信して接続を維持
+
+wss.on('close', () => {
+    clearInterval(interval);
+});
+
 wss.on('connection', (ws) => {
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
+
     ws.currentRoom = null;
     ws.peerId = null;
 
