@@ -1,7 +1,7 @@
 const WebSocket = require('ws');
 const http = require('http');
 
-const PORT = 7860;
+const PORT = process.env.PORT || 7860;
 const server = http.createServer((req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     if (req.url === '/api/status') {
