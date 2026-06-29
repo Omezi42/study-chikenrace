@@ -216,6 +216,6 @@ function createMatch(playerCount) {
     }
 }
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Signaling server listening on port ${PORT}`);
 });
