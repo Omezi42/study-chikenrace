@@ -12,7 +12,7 @@ signal room_joined(data: Dictionary)
 
 var ws: WebSocketPeer = WebSocketPeer.new()
 var is_connected_to_server: bool = false
-var server_url: String = "wss://5fcad032-394f-44f2-a5f9-87a3c1e6ae51-dev.e1-us-east-azure.choreoapis.dev/chikenrace/signaling-server-rc/v1.0/"
+var server_url: String = "wss://study-chikenrace.onrender.com/"
 var room_code: String = ""
 
 func _process(_delta: float) -> void:
@@ -41,10 +41,7 @@ func connect_to_room(url: String, code: String) -> Error:
 		ws = WebSocketPeer.new()
 	is_connected_to_server = false
 	ws.supported_protocols = ["ws"]
-	ws.set_handshake_headers(PackedStringArray([
-		"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-		"Origin: https://5fcad032-394f-44f2-a5f9-87a3c1e6ae51-dev.e1-us-east-azure.choreoapis.dev"
-	]))
+	# Render.com uses standard WebSocket routing. No custom headers needed.
 	var err = ws.connect_to_url(server_url)
 	if err == OK:
 		_send_join_when_ready(ws, "join")
@@ -60,10 +57,7 @@ func connect_random(url: String) -> Error:
 		ws = WebSocketPeer.new()
 	is_connected_to_server = false
 	ws.supported_protocols = ["ws"]
-	ws.set_handshake_headers(PackedStringArray([
-		"User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-		"Origin: https://5fcad032-394f-44f2-a5f9-87a3c1e6ae51-dev.e1-us-east-azure.choreoapis.dev"
-	]))
+	# Render.com uses standard WebSocket routing. No custom headers needed.
 	var err = ws.connect_to_url(server_url)
 	if err == OK:
 		_send_join_when_ready(ws, "random_join")
