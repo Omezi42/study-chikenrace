@@ -24,10 +24,14 @@ func initialize_deck() -> void:
 	draw_pile = cards.duplicate()
 	shuffle_draw_pile()
 
-func shuffle_draw_pile() -> void:
+func shuffle_draw_pile(rng: RandomNumberGenerator = null) -> void:
 	var n = draw_pile.size()
 	for i in range(n - 1, 0, -1):
-		var j = randi() % (i + 1)
+		var j = 0
+		if rng:
+			j = rng.randi() % (i + 1)
+		else:
+			j = randi() % (i + 1)
 		var temp = draw_pile[i]
 		draw_pile[i] = draw_pile[j]
 		draw_pile[j] = temp
@@ -100,8 +104,8 @@ func reset_for_next_hour() -> void:
 		discard_pile.append(card.duplicate())
 	hand.clear()
 
-func reset_for_next_day() -> void:
+func reset_for_next_day(rng: RandomNumberGenerator = null) -> void:
 	hand.clear()
 	discard_pile.clear()
 	draw_pile = cards.duplicate()
-	shuffle_draw_pile()
+	shuffle_draw_pile(rng)

@@ -461,6 +461,10 @@ func _apply_improved_typography(node: Node) -> void:
 			node.add_theme_constant_override("outline_size", outline_sz)
 		else:
 			node.remove_theme_constant_override("outline_size")
+			
+		if OS.has_feature("web"):
+			if not node.gui_input.is_connected(_on_line_edit_gui_input.bind(node)):
+				node.gui_input.connect(_on_line_edit_gui_input.bind(node))
 
 func refresh_typography() -> void:
 	var root = get_tree().root
@@ -473,3 +477,26 @@ func _apply_to_subtree(node: Node) -> void:
 		_apply_improved_typography(node)
 	for child in node.get_children():
 		_apply_to_subtree(child)
+
+func _on_line_edit_gui_input(event: InputEvent, line_edit: LineEdit) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_show_mobile_input(line_edit)
+	elif event is InputEventScreenTouch and event.pressed:
+		_show_mobile_input(line_edit)
+
+func _show_mobile_input(line_edit: LineEdit) -> void:
+	if not OS.has_feature("web"):
+		return
+	
+	var is_mobile = JavaScriptBridge.eval("/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);")
+	if is_mobile:
+		var prompt_msg = "テキストを入力してください"
+		if line_edit.placeholder_text != "":
+			prompt_msg = line_edit.placeholder_text
+			
+		var js_code = "window.prompt('%s', '%s');" % [prompt_msg, line_edit.text.replace("'", "\\'")]
+		var result = JavaScriptBridge.eval(js_code)
+		if result != null:
+			line_edit.text = str(result)
+			line_edit.text_changed.emit(line_edit.text)
+			line_edit.text_submitted.emit(line_edit.text)

@@ -8,56 +8,93 @@ static func build_layout(phase: WaitingPhase) -> void:
 	phase.add_child(main_hbox)
 	phase.fit_control_to_viewport(main_hbox, Vector2(1500, 850), Vector2(72, 72), 0.72, true)
 
-	# SMARTPHONE PANEL
+	# SMARTPHONE PANEL - Modern Bezel-less Design
 	var phone_panel = PanelContainer.new()
-	phone_panel.custom_minimum_size = Vector2(550, 780)
-	phone_panel.pivot_offset = Vector2(275, 390)
+	phone_panel.custom_minimum_size = Vector2(420, 840)
+	phone_panel.size = Vector2(420, 840)
+	phone_panel.pivot_offset = Vector2(210, 420)
+	phone_panel.clip_contents = true
 
 	var phone_style = StyleBoxFlat.new()
-	phone_style.bg_color = DeskTheme.COLOR_INK # Dark phone body (realistic bezel)
-	phone_style.border_color = Color("37474f")
-	phone_style.border_width_left = 16
-	phone_style.border_width_right = 16
-	phone_style.border_width_top = 32
-	phone_style.border_width_bottom = 32
-	phone_style.corner_radius_top_left = 28
-	phone_style.corner_radius_top_right = 28
-	phone_style.corner_radius_bottom_left = 28
-	phone_style.corner_radius_bottom_right = 28
+	phone_style.bg_color = Color("#1a1a1a") # Realistic phone body (dark bezel)
+	phone_style.border_color = Color("#2e2e2e") # Subtle bezel edge
+	phone_style.border_width_left = 6
+	phone_style.border_width_right = 6
+	phone_style.border_width_top = 6
+	phone_style.border_width_bottom = 6
+	phone_style.corner_radius_top_left = 40
+	phone_style.corner_radius_top_right = 40
+	phone_style.corner_radius_bottom_left = 40
+	phone_style.corner_radius_bottom_right = 40
 	phone_panel.add_theme_stylebox_override("panel", phone_style)
 	main_hbox.add_child(phone_panel)
 	phase.phone_panel = phone_panel
 
+	# SCREEN CONTAINER (液晶画面)
+	var screen_container = PanelContainer.new()
+	screen_container.name = "ScreenContainer"
+	screen_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	screen_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	screen_container.clip_contents = true
+	var screen_bg = StyleBoxFlat.new()
+	screen_bg.bg_color = Color("#ffffff") # 白背景
+	screen_bg.corner_radius_top_left = 34
+	screen_bg.corner_radius_top_right = 34
+	screen_bg.corner_radius_bottom_left = 34
+	screen_bg.corner_radius_bottom_right = 34
+	screen_container.add_theme_stylebox_override("panel", screen_bg)
+	phone_panel.add_child(screen_container)
+
+	# Notch / Dynamic Island
+	var notch = Panel.new()
+	notch.custom_minimum_size = Vector2(120, 24)
+	notch.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	notch.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	var notch_style = StyleBoxFlat.new()
+	notch_style.bg_color = Color("#111111")
+	notch_style.corner_radius_bottom_left = 12
+	notch_style.corner_radius_bottom_right = 12
+	notch.add_theme_stylebox_override("panel", notch_style)
+	phone_panel.add_child(notch)
+
 	var phone_vbox = VBoxContainer.new()
-	phone_vbox.add_theme_constant_override("separation", 24)
-	phone_panel.add_child(phone_vbox)
+	phone_vbox.add_theme_constant_override("separation", 0)
+	screen_container.add_child(phone_vbox)
 
-	# Status bar
-	var status_bar = Label.new()
-	status_bar.text = "16:30  |  チキスタ同期中"
-	status_bar.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	status_bar.add_theme_font_size_override("font_size", 16)
-	status_bar.add_theme_color_override("font_color", Color("#cccccc")) # Light text on dark phone body
-	phone_vbox.add_child(status_bar)
+	# Status bar margin
+	var status_margin = MarginContainer.new()
+	status_margin.add_theme_constant_override("margin_top", 10)
+	status_margin.add_theme_constant_override("margin_left", 24)
+	status_margin.add_theme_constant_override("margin_right", 24)
+	phone_vbox.add_child(status_margin)
 
-	# Card inside phone (Studyplus-style light app screen)
-	var app_card = PanelContainer.new()
-	app_card.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var app_style = StyleBoxFlat.new()
-	app_style.bg_color = Color("#ffffff") # Studyplus-style white app screen
-	app_style.corner_radius_top_left = 8
-	app_style.corner_radius_top_right = 8
-	app_style.corner_radius_bottom_left = 8
-	app_style.corner_radius_bottom_right = 8
-	app_card.add_theme_stylebox_override("panel", app_style)
-	phone_vbox.add_child(app_card)
+	var status_bar = HBoxContainer.new()
+	status_margin.add_child(status_bar)
 
+	var time_lbl = Label.new()
+	time_lbl.text = "16:30"
+	time_lbl.add_theme_font_size_override("font_size", 14)
+	time_lbl.add_theme_color_override("font_color", Color("#333333"))
+	status_bar.add_child(time_lbl)
+
+	var spacer = Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	status_bar.add_child(spacer)
+
+	var app_name = Label.new()
+	app_name.text = "チキスタ同期中"
+	app_name.add_theme_font_size_override("font_size", 14)
+	app_name.add_theme_color_override("font_color", Color("#999999"))
+	status_bar.add_child(app_name)
+
+	# Main App Content Area
 	var app_margin = MarginContainer.new()
+	app_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	app_margin.add_theme_constant_override("margin_left", 24)
 	app_margin.add_theme_constant_override("margin_right", 24)
 	app_margin.add_theme_constant_override("margin_top", 30)
 	app_margin.add_theme_constant_override("margin_bottom", 30)
-	app_card.add_child(app_margin)
+	phone_vbox.add_child(app_margin)
 
 	var app_vbox = VBoxContainer.new()
 	app_vbox.add_theme_constant_override("separation", 28)

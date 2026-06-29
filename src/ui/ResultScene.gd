@@ -517,7 +517,10 @@ func _show_actions() -> void:
 	
 	
 	restart_btn = Button.new()
-	restart_btn.text = "タイトルへ"
+	if Global.game_mode == Constants.MODE_FRIEND:
+		restart_btn.text = "ルームへ戻る"
+	else:
+		restart_btn.text = "タイトルへ"
 	_setup_stationery_btn(restart_btn, "orange")
 	restart_btn.pressed.connect(_on_restart_pressed)
 	act_hbox.add_child(restart_btn)
@@ -570,8 +573,13 @@ func _on_restart_pressed() -> void:
 	restart_btn.disabled = true
 	DeskTheme.animate_click(restart_btn, Vector2.ONE, 0.08)
 	Global.set("active_showdown_results", {})
-	if get_tree().root.has_node("WebRTCManager"):
-		get_tree().root.get_node("WebRTCManager").disconnect_room()
+	
+	if Global.game_mode == Constants.MODE_FRIEND:
+		Global.return_to_friend_lobby = true
+	else:
+		if get_tree().root.has_node("WebRTCManager"):
+			get_tree().root.get_node("WebRTCManager").disconnect_room()
+			
 	create_tween().tween_callback(func(): Global.change_scene_with_fade(get_tree(), "res://Title.tscn")).set_delay(0.2)
 
 func _spawn_confetti() -> void:
@@ -606,7 +614,7 @@ func _spawn_confetti() -> void:
 
 func _show_details_modal() -> void:
 	if has_node("/root/AudioManager"):
-		get_node("/root/AudioManager").play_se(AudioManager.SE_PAPER)
+		get_node("/root/AudioManager").play_se(AudioManager.SE_WHOOSH)
 		
 	var modal = PanelContainer.new()
 	modal.custom_minimum_size = Vector2(1000, 750)
@@ -659,7 +667,7 @@ func _show_details_modal() -> void:
 	tab_style.corner_radius_bottom_left = 8
 	tab_style.corner_radius_bottom_right = 8
 	tab_style.corner_radius_top_right = 8
-	tab_style.border_width_all = 1
+	tab_style.set_border_width_all(1)
 	tab_style.border_color = Color("#dddddd")
 	tab_style.content_margin_left = 20
 	tab_style.content_margin_right = 20

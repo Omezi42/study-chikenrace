@@ -1,5 +1,6 @@
 extends Node
 
+var cpu_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 var show_title_splash: bool = true
 
 var player_name: String:
@@ -25,6 +26,7 @@ var friend_is_host: bool = false
 var friend_member_list: Array[Dictionary] = []
 var friend_current_day: int = 1
 var friend_match_history: Dictionary = {}
+var return_to_friend_lobby: bool = false
 
 var is_tutorial_mode: bool = false
 
@@ -39,6 +41,7 @@ var active_showdown_results: Dictionary:
 	set(val): MatchState.active_showdown_results = val
 
 func _ready() -> void:
+	cpu_rng.randomize()
 	load_game()
 	
 	if OS.has_feature("web"):

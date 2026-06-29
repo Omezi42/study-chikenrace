@@ -126,6 +126,24 @@ func submit_player_declaration(declared_score: int, emote: String = "normal") ->
 			"doubts_submitted": false
 		}
 		MatchState.submit_player_action.rpc("declare", my_move)
+		
+		if Global.friend_is_host and match_history.has(current_day):
+			var day_data = match_history[current_day]
+			for cpu_id in Global.opponent_profiles.keys():
+				if day_data.has(cpu_id):
+					var cpu_rec = day_data[cpu_id]
+					var cpu_move = {
+						"user_id": cpu_id,
+						"username": cpu_rec.get("name", "CPU"),
+						"day": current_day,
+						"actual_score": cpu_rec.get("actual_score", 0),
+						"declared_score": cpu_rec.get("declared_score", 0),
+						"hours_history": cpu_rec.get("hours", []),
+						"emote": cpu_rec.get("emote", "normal"),
+						"phase": "declare",
+						"doubts_submitted": false
+					}
+					MatchState.submit_player_action.rpc("declare", cpu_move)
 
 func add_player_doubt(target_id: String) -> void:
 	if not target_id in player_doubts_made_today and player_doubts_made_today.size() < 3:
@@ -217,6 +235,41 @@ func _save_and_upload_day() -> void:
 			"client_nonce": "%s-%d-%d" % [Global.friend_room_code, current_day, Time.get_unix_time_from_system()]
 		}
 		MatchState.submit_player_action.rpc("doubts", my_move)
+		
+		if Global.friend_is_host:
+			var participants_for_ai: Array[Dictionary] = []
+			for p_id in day_data.keys():
+				var p = Global.normalize_participant_record(day_data[p_id], str(p_id))
+				var hours_typed: Array[Dictionary] = []
+				for h in p.get("hours", []):
+					hours_typed.append(h as Dictionary)
+				participants_for_ai.append({
+					"id": str(p_id),
+					"declared_score": p.get("declared_score", 0),
+					"hours": hours_typed,
+					"emote": p.get("emote", "normal")
+				})
+				
+			for cpu_id in Global.opponent_profiles.keys():
+				var actual_id = Global.opponent_profiles[cpu_id].get("id", cpu_id)
+				if not str(actual_id).begins_with("cpu_"):
+					continue
+				if day_data.has(cpu_id):
+					var cpu_doubts = AIManager.make_cpu_doubts(cpu_id, participants_for_ai)
+					var cpu_move = {
+						"user_id": cpu_id,
+						"username": day_data[cpu_id].get("name", "CPU"),
+						"day": current_day,
+						"actual_score": day_data[cpu_id].get("actual_score", 0),
+						"declared_score": day_data[cpu_id].get("declared_score", 0),
+						"hours_history": day_data[cpu_id].get("hours", []),
+						"doubts_made": cpu_doubts,
+						"doubts_submitted": true,
+						"phase": "doubts",
+						"emote": day_data[cpu_id].get("emote", "normal"),
+						"client_nonce": "%s-%d-%d" % [Global.friend_room_code, current_day, Time.get_unix_time_from_system()]
+					}
+					MatchState.submit_player_action.rpc("doubts", cpu_move)
 
 func _advance_to_next_day() -> void:
 	_reset_daily_variables()
@@ -326,13 +379,14 @@ func evaluate_friend_day_moves(day_idx: int, moves: Array) -> void:
 			"emote": p.get("emote", "normal")
 		})
 
-	for cpu_id in Global.opponent_profiles.keys():
-		var actual_id = Global.opponent_profiles[cpu_id].get("id", cpu_id)
-		if not str(actual_id).begins_with("cpu_"):
-			continue
-		if day_data.has(cpu_id):
-			var cpu_doubts = AIManager.make_cpu_doubts(cpu_id, participants_for_ai)
-			day_data[cpu_id]["doubts_made"] = cpu_doubts
+	if Global.game_mode not in [Constants.MODE_FRIEND, Constants.MODE_RANDOM] or Global.friend_is_host:
+		for cpu_id in Global.opponent_profiles.keys():
+			var actual_id = Global.opponent_profiles[cpu_id].get("id", cpu_id)
+			if not str(actual_id).begins_with("cpu_"):
+				continue
+			if day_data.has(cpu_id):
+				var cpu_doubts = AIManager.make_cpu_doubts(cpu_id, participants_for_ai)
+				day_data[cpu_id]["doubts_made"] = cpu_doubts
 
 	for p_id in day_data.keys():
 		var p = day_data[p_id]

@@ -9,3 +9,24 @@
 build/
 serve.py
 supabase_config.json
+
+# Node
+node_modules/
+
+# Godot Web Exports
+index.html
+index.js
+index.pck
+index.wasm
+index.png
+index.png.import
+index.icon.png
+index.icon.png.import
+index.apple-touch-icon.png
+index.apple-touch-icon.png.import
+index.audio.worklet.js
+index.audio.position.worklet.js
+
+# Temp and Logs
+test_output.txt
+loop_progress.json

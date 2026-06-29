@@ -62,7 +62,7 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 	
 	var deck = StudyDeck.new()
 	deck.initialize_deck()
-	deck.shuffle_draw_pile()
+	deck.shuffle_draw_pile(Global.cpu_rng)
 	
 	var risk_tolerance = 0.25
 	match cpu_type:
@@ -71,7 +71,7 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 		AIProfile.TYPE_BLUFFER: risk_tolerance = 0.24
 		AIProfile.TYPE_HIGHROLLER: risk_tolerance = 0.48
 		
-	risk_tolerance *= randf_range(0.85, 1.15)
+	risk_tolerance *= Global.cpu_rng.randf_range(0.85, 1.15)
 	
 	var standing = _evaluate_cpu_standing(cpu_id, day_idx)
 	var is_losing = standing["is_losing"]

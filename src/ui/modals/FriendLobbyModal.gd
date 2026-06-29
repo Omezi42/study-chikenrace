@@ -293,8 +293,8 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	var cbs = {}
 	
 	cbs.start_game_transition = func(final_participants: Array, game_seed: int = 0):
-		if game_seed != 0:
-			seed(game_seed)
+		randomize()
+		Global.cpu_rng.randomize()
 		AudioManager.play_se(AudioManager.SE_FANFARE)
 		DisplayServer.window_request_attention()
 		is_polling_active = false
@@ -307,6 +307,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		Global.friend_current_day = 1
 		Global.friend_match_history.clear()
 		MatchState.current_match_actions.clear()
+		MatchState.current_synced_state.clear()
 		Global.save_game()
 		
 		# Set slots for opponent profiles
@@ -406,7 +407,11 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		wrm.webrtc_multiplayer.player_disconnected.connect(cbs.on_player_disconnected_cb)
 		wrm.webrtc_multiplayer.room_joined.connect(cbs.on_room_joined_cb)
 		MatchState.game_state_synced.connect(cbs.on_game_state_synced)
-		cbs.on_polled.call()
+		
+		if MatchState.current_synced_state.get("action", "") == "start_game":
+			cbs.on_game_state_synced.call(MatchState.current_synced_state)
+		else:
+			cbs.on_polled.call()
 	else:
 		# Offline fallback
 		var mock_parts = [{"user_id": "player", "username": Global.player_name if Global.player_name != "" else "あなた"}]

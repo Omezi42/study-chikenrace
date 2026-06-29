@@ -25,7 +25,7 @@ static func calculate_cpu_bluff(cpu_id: String, actual_score: int, day_idx: int 
 		
 	var bluff_amount = 0
 	
-	var bluff_chance_mod = randf_range(0.85, 1.15)
+	var bluff_chance_mod = Global.cpu_rng.randf_range(0.85, 1.15)
 	if is_losing:
 		bluff_chance_mod *= 1.3
 	elif is_winning:
@@ -33,17 +33,17 @@ static func calculate_cpu_bluff(cpu_id: String, actual_score: int, day_idx: int 
 		
 	match cpu_type:
 		AIProfile.TYPE_CAUTIOUS:
-			if randf() < 0.15 * bluff_chance_mod:
-				bluff_amount = int(round(randi_range(1, 6) * randf_range(0.85, 1.15)))
+			if Global.cpu_rng.randf() < 0.15 * bluff_chance_mod:
+				bluff_amount = int(round(Global.cpu_rng.randi_range(1, 6) * Global.cpu_rng.randf_range(0.85, 1.15)))
 		AIProfile.TYPE_AGGRESSIVE:
-			if randf() < 0.45 * bluff_chance_mod:
-				bluff_amount = int(round(randi_range(5, 15) * randf_range(0.85, 1.15)))
+			if Global.cpu_rng.randf() < 0.45 * bluff_chance_mod:
+				bluff_amount = int(round(Global.cpu_rng.randi_range(5, 15) * Global.cpu_rng.randf_range(0.85, 1.15)))
 		AIProfile.TYPE_BLUFFER:
-			if randf() < 0.85 * bluff_chance_mod:
-				bluff_amount = int(round(randi_range(10, base_bluff_limit) * randf_range(0.85, 1.15)))
+			if Global.cpu_rng.randf() < 0.85 * bluff_chance_mod:
+				bluff_amount = int(round(Global.cpu_rng.randi_range(10, base_bluff_limit) * Global.cpu_rng.randf_range(0.85, 1.15)))
 		AIProfile.TYPE_HIGHROLLER:
-			if randf() < 0.40 * bluff_chance_mod:
-				bluff_amount = int(round(randi_range(12, base_bluff_limit) * randf_range(0.85, 1.15)))
+			if Global.cpu_rng.randf() < 0.40 * bluff_chance_mod:
+				bluff_amount = int(round(Global.cpu_rng.randi_range(12, base_bluff_limit) * Global.cpu_rng.randf_range(0.85, 1.15)))
 				
 	bluff_amount = clamp(bluff_amount, 0, base_bluff_limit)
 	return actual_score + bluff_amount
@@ -57,11 +57,11 @@ static func select_cpu_emote(cpu_id: String, bluff_amount: int, actual_score: in
 	
 	if bluff_amount == 0:
 		if actual_score >= 35 and (cpu_type == AIProfile.TYPE_HIGHROLLER or cpu_type == AIProfile.TYPE_AGGRESSIVE or cpu_type == AIProfile.TYPE_BLUFFER):
-			if randf() < 0.4:
+			if Global.cpu_rng.randf() < 0.4:
 				return "confident"
 		return "normal"
 		
-	var roll = randf()
+	var roll = Global.cpu_rng.randf()
 	match cpu_type:
 		AIProfile.TYPE_CAUTIOUS:
 			return "anxious" if roll < 0.65 else "normal"

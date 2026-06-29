@@ -74,7 +74,7 @@ func _on_poll_timeout() -> void:
 		_show_timeout_fallback_button()
 		return
 
-func _on_player_action_received(player_id: int, action: String, data: Dictionary) -> void:
+func _on_player_action_received(player_id: Variant, action: String, data: Dictionary) -> void:
 	if data.get("day", 1) == target_day:
 		_check_all_actions()
 
@@ -132,13 +132,13 @@ func _check_all_actions() -> void:
 			var is_cpu = uid.begins_with("cpu_")
 			var is_connected = active_uids.has(uid) or is_cpu
 
-			var has_moves = submitted_user_ids.has(uid) or is_cpu or not is_connected
+			var has_moves = submitted_user_ids.has(uid) or (not is_connected and not is_cpu)
 			if not has_moves:
 				all_done = false
 				break
 
 			if is_final_reveal_wait:
-				var has_doubts = doubts_submitted_ids.has(uid) or is_cpu or not is_connected
+				var has_doubts = doubts_submitted_ids.has(uid) or (not is_connected and not is_cpu)
 				if not has_doubts:
 					all_done = false
 					break
@@ -185,8 +185,8 @@ func update_members_ui(submitted_moves: Array) -> void:
 		var name_str = member.get("username", "メンバー")
 
 		# Determine status
-		var is_submitted = submitted_ids.has(uid) or uid.begins_with("cpu_")
-		var is_doubts_done = doubts_submitted_ids.has(uid) or uid.begins_with("cpu_")
+		var is_submitted = submitted_ids.has(uid)
+		var is_doubts_done = doubts_submitted_ids.has(uid)
 		var status_text = "報告まち"
 		var status_color = Color(DeskTheme.COLOR_INK, 0.4)
 

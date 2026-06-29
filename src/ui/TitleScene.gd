@@ -114,6 +114,11 @@ func _ready() -> void:
 		
 	# アニメーション開始
 	_start_entrance_animation()
+	
+	# フレンド対戦から戻ってきた場合は自動的にロビーを開く
+	if Global.return_to_friend_lobby:
+		Global.return_to_friend_lobby = false
+		FriendLobbyModal.show_lobby(self, Global.friend_room_code, Global.friend_is_host)
 
 func _start_entrance_animation() -> void:
 	# Positionでのアニメーションはレイアウトコンフリクトを起こしやすいため、

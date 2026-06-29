@@ -5,8 +5,9 @@ extends Node
 var game_mode: String = "national"
 var active_showdown_results: Dictionary = {}
 var current_match_actions: Dictionary = {}
+var current_synced_state: Dictionary = {}
 
-signal player_action_received(player_id: int, action: String, data: Dictionary)
+signal player_action_received(user_id: Variant, action: String, data: Dictionary)
 signal game_state_synced(state: Dictionary)
 
 @rpc("any_peer", "call_local")
@@ -16,17 +17,19 @@ func submit_player_action(action: String, data: Dictionary) -> void:
 		sender_id = multiplayer.get_unique_id()
 		
 	var day = data.get("day", 1)
+	var user_id = data.get("user_id", str(sender_id))
 	if not current_match_actions.has(day):
 		current_match_actions[day] = {}
-	if not current_match_actions[day].has(sender_id):
-		current_match_actions[day][sender_id] = {}
+	if not current_match_actions[day].has(user_id):
+		current_match_actions[day][user_id] = {}
 		
-	current_match_actions[day][sender_id][action] = data
+	current_match_actions[day][user_id][action] = data
 		
-	player_action_received.emit(sender_id, action, data)
+	player_action_received.emit(user_id, action, data)
 
 @rpc("authority", "call_remote")
 func sync_game_state(state: Dictionary) -> void:
+	current_synced_state = state
 	game_state_synced.emit(state)
 
 
@@ -48,6 +51,7 @@ var opponent_profiles: Dictionary = {
 func reset_match() -> void:
 	active_showdown_results.clear()
 	current_match_actions.clear()
+	current_synced_state.clear()
 
 func save_data_to_dict() -> Dictionary:
 	return {
