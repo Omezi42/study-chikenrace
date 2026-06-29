@@ -358,7 +358,7 @@ func reveal_next_day_showdown() -> void:
 		p_hbox.add_child(n_lbl)
 		
 		var score_lbl = Label.new()
-		score_lbl.text = "%d点 ➡ %d点" % [declared, actual]
+		score_lbl.text = "%d点 → %d点" % [declared, actual]
 		score_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		score_lbl.add_theme_font_size_override("font_size", 14)
 		score_lbl.add_theme_color_override("font_color", Color("b8860b") if declared > actual else Color("2e7d32"))

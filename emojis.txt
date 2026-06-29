@@ -1,0 +1,2 @@
+ResultScene.gd:361:score_lbl.text = "%d点 ➡ %d点" % [declared, actual]
+RulebookModal.gd:168:play_tutorial_btn.text = " ★ チュートリアル ★ " if is_port else " ★ チュートリアル対戦へ ★ "
