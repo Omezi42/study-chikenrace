@@ -22,7 +22,7 @@ func finish_phase(result_data: Dictionary = {}, next_phase: String = "") -> void
 		result_data["next_phase"] = next_phase
 	phase_finished.emit(result_data)
 
-func fit_control_to_viewport(node: Control, base_size: Vector2, margin: Vector2 = Vector2(48, 48), min_scale: float = 0.72, center: bool = true) -> float:
+func fit_control_to_viewport(node: Control, base_size: Vector2, margin: Vector2 = Vector2(48, 48), min_scale: float = 0.35, center: bool = true) -> float:
 	if not node:
 		return 1.0
 	var viewport_size = get_viewport_rect().size
@@ -31,13 +31,16 @@ func fit_control_to_viewport(node: Control, base_size: Vector2, margin: Vector2 
 
 	var available_size = viewport_size - margin
 	var fit_scale = min(available_size.x / base_size.x, available_size.y / base_size.y)
-	fit_scale = clamp(fit_scale, min_scale, 1.0)
-	node.pivot_offset = base_size * 0.5
+	fit_scale = clamp(fit_scale, min_scale, 3.0)
+	node.pivot_offset = Vector2.ZERO
 	node.scale = Vector2.ONE * fit_scale
 	if center:
-		node.position = viewport_size * 0.5 - node.pivot_offset
+		var actual_scaled_size = node.custom_minimum_size * fit_scale
+		if actual_scaled_size == Vector2.ZERO:
+			actual_scaled_size = base_size * fit_scale
+		node.position = (viewport_size - actual_scaled_size) * 0.5
 	return fit_scale
 
-func show_tutorial_dialog(text: String, pos: Vector2 = Vector2(700, 50), next_callback: Callable = Callable()) -> PanelContainer:
+func show_tutorial_dialog(text: String, pos: Vector2 = Vector2.ZERO, next_callback: Callable = Callable()) -> Node:
 	return Global.show_tutorial_dialog(self, text, pos, next_callback)
 

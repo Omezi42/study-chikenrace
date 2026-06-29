@@ -19,14 +19,18 @@ func _ready() -> void:
 	bg_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg_overlay)
 	
-	var modal = PanelContainer.new()
-	modal.custom_minimum_size = Vector2(460, 260)
-	modal.pivot_offset = Vector2(230, 130)
-	modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
-	add_child(modal)
+	var center = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(center)
 	
-	var viewport_size = get_viewport().get_visible_rect().size
-	modal.position = viewport_size * 0.5 - modal.pivot_offset
+	var modal = PanelContainer.new()
+	var vp_size = get_viewport().get_visible_rect().size
+	var fit_s = clamp(min(vp_size.x / 540.0, vp_size.y / 960.0), 0.8, 3.0)
+	modal.custom_minimum_size = Vector2(460 / fit_s, 260 / fit_s)
+	modal.pivot_offset = Vector2(230 / fit_s, 130 / fit_s)
+	modal.resized.connect(func(): modal.pivot_offset = modal.size * 0.5)
+	modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
+	center.add_child(modal)
 	
 	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", DeskTheme.MARGIN_DEFAULT)
@@ -87,5 +91,6 @@ func _ready() -> void:
 	
 	# Entrance Animation
 	modal.scale = Vector2.ZERO
+	var anim_fit_s = clamp(min(get_viewport().get_visible_rect().size.x / 540.0, get_viewport().get_visible_rect().size.y / 960.0), 0.8, 3.0)
 	var tween = create_tween().bind_node(modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(modal, "scale", Vector2.ONE, 0.25)
+	tween.tween_property(modal, "scale", Vector2.ONE * anim_fit_s, 0.25)

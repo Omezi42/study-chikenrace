@@ -23,11 +23,7 @@ static func create_and_show(parent_node: Node) -> void:
 	var canvas = RulebookModal.new()
 	parent_node.add_child(canvas)
 
-var _last_is_port = false
-
 func _ready() -> void:
-	if has_node("/root/ResponsiveScaler"):
-		_last_is_port = get_node("/root/ResponsiveScaler").is_portrait()
 	layer = 102
 	
 	var bg_overlay = ColorRect.new()
@@ -76,7 +72,7 @@ func _ready() -> void:
 	var close_btn = Button.new()
 	close_btn.text = " 閉じる "
 	close_btn.add_theme_font_override("font", DeskTheme.get_font())
-	close_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
+	close_btn.add_theme_font_size_override("font_size", 18)
 	close_btn.custom_minimum_size = Vector2(120, 40)
 	DeskTheme.apply_white_button_style(close_btn)
 	header_hbox.add_child(close_btn)
@@ -119,7 +115,7 @@ func _ready() -> void:
 	prev_btn.text = " ＜" if is_port else " ＜ 前へ "
 	prev_btn.custom_minimum_size = Vector2(60, 50) if is_port else Vector2(140, 50)
 	prev_btn.add_theme_font_override("font", DeskTheme.get_font())
-	prev_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(20))
+	prev_btn.add_theme_font_size_override("font_size", 20)
 	DeskTheme.apply_white_button_style(prev_btn)
 	prev_btn.pressed.connect(func():
 		DeskTheme.animate_click(prev_btn, Vector2.ONE, 0.08)
@@ -148,7 +144,7 @@ func _ready() -> void:
 	next_btn.text = "＞ " if is_port else " 次へ ＞ "
 	next_btn.custom_minimum_size = Vector2(60, 50) if is_port else Vector2(140, 50)
 	next_btn.add_theme_font_override("font", DeskTheme.get_font())
-	next_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(20))
+	next_btn.add_theme_font_size_override("font_size", 20)
 	DeskTheme.apply_white_button_style(next_btn)
 	next_btn.pressed.connect(func():
 		DeskTheme.animate_click(next_btn, Vector2.ONE, 0.08)
@@ -168,7 +164,7 @@ func _ready() -> void:
 	play_tutorial_btn.text = " ★ チュートリアル ★ " if is_port else " ★ チュートリアル対戦へ ★ "
 	play_tutorial_btn.custom_minimum_size = Vector2(250, 50) if is_port else Vector2(300, 50)
 	play_tutorial_btn.add_theme_font_override("font", DeskTheme.get_font())
-	play_tutorial_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
+	play_tutorial_btn.add_theme_font_size_override("font_size", 18)
 	_apply_tutorial_button_style(play_tutorial_btn)
 	play_tutorial_btn.pressed.connect(_start_tutorial)
 	if is_port:
@@ -197,7 +193,7 @@ func _ready() -> void:
 	var tween = create_tween().bind_node(modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(modal, "scale", Vector2.ONE * target_s, 0.3)
 	
-	_show_page(current_page, true)
+	_show_page(0, true)
 
 func _get_base_size() -> Vector2:
 	var is_port = false
@@ -213,20 +209,9 @@ func _get_target_scale() -> float:
 	var avail_w = max(vp_size.x - 20.0, 100.0)
 	var avail_h = max(vp_size.y - 20.0, 100.0)
 	var s = min(avail_w / base_size.x, avail_h / base_size.y)
-	return clamp(s, 0.3, 3.0)
+	return clamp(s, 0.3, 1.0)
 
 func _on_scale_changed(_new_scale: float) -> void:
-	var current_port = false
-	if has_node("/root/ResponsiveScaler"):
-		current_port = get_node("/root/ResponsiveScaler").is_portrait()
-	if current_port != _last_is_port:
-		var parent = get_parent()
-		if parent:
-			var new_modal = load("res://src/ui/modals/RulebookModal.gd").new()
-			new_modal.current_page = self.current_page
-			parent.add_child(new_modal)
-			self.queue_free()
-		return
 	_update_responsive_layout()
 
 func _update_responsive_layout() -> void:
@@ -235,12 +220,12 @@ func _update_responsive_layout() -> void:
 	var vp_size = get_viewport().get_visible_rect().size
 	if vp_size.x == 0:
 		vp_size = Vector2(1500, 850)
+	var base_size = _get_base_size()
 	var s = _get_target_scale()
-	var actual_size = modal.get_combined_minimum_size()
-	modal.pivot_offset = actual_size * 0.5
+	modal.pivot_offset = base_size * 0.5
 	if modal.scale != Vector2.ZERO:
 		modal.scale = Vector2.ONE * s
-	modal.position = (vp_size - actual_size) * 0.5
+	modal.position = (vp_size - base_size) * 0.5
 
 func _close_modal() -> void:
 	_clear_tweens()
@@ -366,36 +351,33 @@ func _setup_page_0(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	title_lbl.text = "① テストまであと3日！"
 	title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	
-	var center_wrapper = CenterContainer.new()
-	center_wrapper.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	visual_area.add_child(center_wrapper)
-	
 	var ctrl = Control.new()
-	ctrl.custom_minimum_size = Vector2(432, 420) if is_port else Vector2(982, 380)
-	center_wrapper.add_child(ctrl)
+	ctrl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	visual_area.add_child(ctrl)
 	
+	# Mock Notebook UI
 	var notebook = PanelContainer.new()
-	notebook.custom_minimum_size = Vector2(340, 200) if is_port else Vector2(400, 250)
-	notebook.position = Vector2(46, 120) if is_port else Vector2(290, 30)
+	notebook.custom_minimum_size = Vector2(400, 250)
+	notebook.position = Vector2(20, 100) if is_port else Vector2(290, 30)
 	notebook.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	DeskTheme.add_ruled_lines(notebook)
 	ctrl.add_child(notebook)
 	
 	var c1 = CardVisual.create({"value": 4})
-	c1.scale = Vector2(0.65, 0.65) if is_port else Vector2(0.8, 0.8)
-	c1.position = Vector2(80, 150) if is_port else Vector2(330, 60)
+	c1.scale = Vector2(0.8, 0.8)
+	c1.position = Vector2(60, 130) if is_port else Vector2(330, 60)
 	c1.rotation_degrees = -5
 	ctrl.add_child(c1)
 	
 	var c2 = CardVisual.create({"value": 10})
-	c2.scale = Vector2(0.65, 0.65) if is_port else Vector2(0.8, 0.8)
-	c2.position = Vector2(160, 150) if is_port else Vector2(450, 60)
+	c2.scale = Vector2(0.8, 0.8)
+	c2.position = Vector2(160, 130) if is_port else Vector2(450, 60)
 	c2.rotation_degrees = 5
 	ctrl.add_child(c2)
 	
 	var c3 = CardVisual.create({"value": 7})
-	c3.scale = Vector2(0.65, 0.65) if is_port else Vector2(0.8, 0.8)
-	c3.position = Vector2(240, 150) if is_port else Vector2(570, 60)
+	c3.scale = Vector2(0.8, 0.8)
+	c3.position = Vector2(260, 130) if is_port else Vector2(570, 60)
 	c3.rotation_degrees = 15
 	ctrl.add_child(c3)
 	
@@ -430,21 +412,21 @@ func _setup_page_0(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	var bubble_name = Label.new()
 	bubble_name.text = "ライバル"
 	bubble_name.add_theme_font_override("font", DeskTheme.get_font())
-	bubble_name.add_theme_font_size_override("font_size", DeskTheme.scaled_font(13))
+	bubble_name.add_theme_font_size_override("font_size", 13)
 	bubble_name.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.55))
 	bubble_vbox.add_child(bubble_name)
 	
 	var bubble_declared = Label.new()
 	bubble_declared.text = "「今日は65点！」"
 	bubble_declared.add_theme_font_override("font", DeskTheme.get_font())
-	bubble_declared.add_theme_font_size_override("font_size", DeskTheme.scaled_font(20))
+	bubble_declared.add_theme_font_size_override("font_size", 20)
 	bubble_declared.add_theme_color_override("font_color", Color("#d500f9"))
 	bubble_vbox.add_child(bubble_declared)
 	
 	var bubble_actual = Label.new()
 	bubble_actual.text = "（実際は30点...）"
 	bubble_actual.add_theme_font_override("font", DeskTheme.get_font())
-	bubble_actual.add_theme_font_size_override("font_size", DeskTheme.scaled_font(13))
+	bubble_actual.add_theme_font_size_override("font_size", 13)
 	bubble_actual.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.45))
 	bubble_vbox.add_child(bubble_actual)
 	
@@ -495,7 +477,7 @@ func _build_page(idx: int) -> Control:
 	
 	var title_lbl = Label.new()
 	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	title_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(24))
+	title_lbl.add_theme_font_size_override("font_size", 24)
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_margin.add_child(title_lbl)
 	
@@ -554,7 +536,7 @@ func _create_title_label(text: String, color: Color) -> Label:
 	var lbl = Label.new()
 	lbl.text = text
 	lbl.add_theme_font_override("font", DeskTheme.get_font())
-	lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(26))
+	lbl.add_theme_font_size_override("font_size", 26)
 	lbl.add_theme_color_override("font_color", color)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return lbl
@@ -564,61 +546,57 @@ func _setup_page_1(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	title_lbl.text = "② 自習で実点を積む"
 	title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	
-	var center_wrapper = CenterContainer.new()
-	center_wrapper.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	visual_area.add_child(center_wrapper)
-	
 	var ctrl = Control.new()
-	ctrl.custom_minimum_size = Vector2(432, 420) if is_port else Vector2(982, 380)
-	center_wrapper.add_child(ctrl)
+	ctrl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	visual_area.add_child(ctrl)
 	
 	# Mock Notebook UI (Target area)
 	var notebook = PanelContainer.new()
-	notebook.custom_minimum_size = Vector2(340, 200) if is_port else Vector2(400, 250)
-	notebook.position = Vector2(46, 120) if is_port else Vector2(480, 20)
+	notebook.custom_minimum_size = Vector2(400, 250)
+	notebook.position = Vector2(20, 100) if is_port else Vector2(480, 20)
 	notebook.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	DeskTheme.add_ruled_lines(notebook)
 	ctrl.add_child(notebook)
 	
-	var deck_pos = Vector2(280, 20) if is_port else Vector2(100, 40)
+	var deck_pos = Vector2(300, -20) if is_port else Vector2(100, 40)
 	var deck = _create_card_back()
 	deck.position = deck_pos
-	deck.scale = Vector2(0.65, 0.65) if is_port else Vector2(0.8, 0.8)
+	deck.scale = Vector2(0.8, 0.8)
 	ctrl.add_child(deck)
 	
 	var deck_lbl = Label.new()
 	deck_lbl.text = "山札"
 	deck_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	deck_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(20))
+	deck_lbl.add_theme_font_size_override("font_size", 20)
 	deck_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
-	deck_lbl.position = Vector2(160, 120) if is_port else Vector2(130, 230)
+	deck_lbl.position = Vector2(180, 100) if is_port else Vector2(130, 230)
 	ctrl.add_child(deck_lbl)
 	
 	var c1 = CardVisual.create({"value": 4})
-	c1.scale = Vector2(0.65, 0.65) if is_port else Vector2(0.8, 0.8)
-	c1.position = Vector2(80, 150) if is_port else Vector2(520, 60)
+	c1.scale = Vector2(0.8, 0.8)
+	c1.position = Vector2(60, 170) if is_port else Vector2(520, 60)
 	c1.rotation_degrees = -5
 	ctrl.add_child(c1)
 	
 	var c2 = CardVisual.create({"value": 10})
-	c2.scale = Vector2(0.65, 0.65) if is_port else Vector2(0.8, 0.8)
-	c2.position = Vector2(160, 150) if is_port else Vector2(640, 60)
+	c2.scale = Vector2(0.8, 0.8)
+	c2.position = Vector2(180, 170) if is_port else Vector2(640, 60)
 	c2.rotation_degrees = 5
 	ctrl.add_child(c2)
 	
 	var c3 = CardVisual.create({"value": 7})
-	c3.scale = Vector2(0.65, 0.65) if is_port else Vector2(0.8, 0.8)
+	c3.scale = Vector2(0.8, 0.8)
 	c3.position = deck_pos
 	c3.modulate.a = 0
 	ctrl.add_child(c3)
 	
 	var c3_back = _create_card_back()
-	c3_back.scale = Vector2(0.65, 0.65) if is_port else Vector2(0.8, 0.8)
+	c3_back.scale = Vector2(0.8, 0.8)
 	c3_back.position = deck_pos
 	c3_back.modulate.a = 0
 	ctrl.add_child(c3_back)
 	
-	rtb.text = "自習フェーズで山札からカードを引き、カードの[color=#ff4081][b]数字の合計[/b][/color]がその日の「実点」になります。\n[color=#888888]※山札（全55枚）には数字 N（1〜10）のカードがそれぞれ N 枚入っています（10は10枚、1は1枚）。[/color]"
+	rtb.text = "自習フェーズで山札からカードを引き、カード的[color=#ff4081][b]数字の合計[/b][/color]がその日の「実点」になります。\n[color=#888888]※山札（全55枚）には数字 N（1〜10）のカードがそれぞれ N 枚入っています（10は10枚、1は1枚）。[/color]"
 	
 	page.set_meta("play_animations", func():
 		var tw = page.create_tween().set_loops()
@@ -636,7 +614,7 @@ func _setup_page_1(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 		)
 		tw.tween_interval(0.5)
 		
-		var target_pos = Vector2(240, 150) if is_port else Vector2(760, 60)
+		var target_pos = Vector2(300, 170) if is_port else Vector2(760, 60)
 		tw.tween_property(c3_back, "modulate:a", 1.0, 0.1)
 		tw.parallel().tween_property(c3_back, "position", target_pos, 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.parallel().tween_property(c3_back, "rotation_degrees", 15.0, 0.6)
@@ -664,42 +642,38 @@ func _setup_page_2(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	title_lbl.text = "③ 欲張るな危険！「バースト」"
 	title_lbl.add_theme_color_override("font_color", Color("#ff4081"))
 	
-	var center_wrapper = CenterContainer.new()
-	center_wrapper.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	visual_area.add_child(center_wrapper)
-	
 	var ctrl = Control.new()
-	ctrl.custom_minimum_size = Vector2(432, 420) if is_port else Vector2(982, 380)
-	center_wrapper.add_child(ctrl)
+	ctrl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	visual_area.add_child(ctrl)
 	
 	var notebook = PanelContainer.new()
-	notebook.custom_minimum_size = Vector2(340, 200) if is_port else Vector2(500, 260)
-	var nb_pos = Vector2(46, 140) if is_port else Vector2(240, 30)
+	notebook.custom_minimum_size = Vector2(400, 250) if is_port else Vector2(500, 260)
+	var nb_pos = Vector2(20, 180) if is_port else Vector2(240, 30)
 	notebook.position = nb_pos
 	notebook.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	DeskTheme.add_ruled_lines(notebook)
 	ctrl.add_child(notebook)
 	
 	var c7_1 = CardVisual.create({"value": 7})
-	c7_1.scale = Vector2(0.65, 0.65) if is_port else Vector2(0.8, 0.8)
-	c7_1.position = Vector2(100, 150) if is_port else Vector2(300, 50)
+	c7_1.scale = Vector2(0.8, 0.8)
+	c7_1.position = Vector2(80, 210) if is_port else Vector2(300, 50)
 	c7_1.rotation_degrees = -5
 	ctrl.add_child(c7_1)
 	
 	var deck = _create_card_back()
-	var deck_pos = Vector2(280, 20) if is_port else Vector2(50, 40)
+	var deck_pos = Vector2(300, 10) if is_port else Vector2(50, 40)
 	deck.position = deck_pos
-	deck.scale = Vector2(0.65, 0.65) if is_port else Vector2(0.8, 0.8)
+	deck.scale = Vector2(0.8, 0.8)
 	ctrl.add_child(deck)
 	
 	var c7_2 = CardVisual.create({"value": 7})
-	c7_2.scale = Vector2(0.65, 0.65) if is_port else Vector2(0.8, 0.8)
+	c7_2.scale = Vector2(0.8, 0.8)
 	c7_2.position = deck_pos
 	c7_2.modulate.a = 0
 	ctrl.add_child(c7_2)
 	
 	var c7_2_back = _create_card_back()
-	c7_2_back.scale = Vector2(0.65, 0.65) if is_port else Vector2(0.8, 0.8)
+	c7_2_back.scale = Vector2(0.8, 0.8)
 	c7_2_back.position = deck_pos
 	c7_2_back.modulate.a = 0
 	ctrl.add_child(c7_2_back)
@@ -712,7 +686,7 @@ func _setup_page_2(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	burst_lbl.add_theme_color_override("font_outline_color", Color("#d50000"))
 	burst_lbl.add_theme_constant_override("outline_size", 16)
 	burst_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	burst_lbl.position = Vector2(110, 180) if is_port else Vector2(350, 80)
+	burst_lbl.position = Vector2(130, 230) if is_port else Vector2(350, 80)
 	burst_lbl.rotation_degrees = -10
 	burst_lbl.scale = Vector2.ZERO
 	ctrl.add_child(burst_lbl)
@@ -741,7 +715,7 @@ func _setup_page_2(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	prob_title_lbl.text = "バースト確率"
 	prob_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	prob_title_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	prob_title_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(13))
+	prob_title_lbl.add_theme_font_size_override("font_size", 13)
 	prob_title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	prob_vbox.add_child(prob_title_lbl)
 	
@@ -763,7 +737,7 @@ func _setup_page_2(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	prob_pct_lbl.text = "14%"
 	prob_pct_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	prob_pct_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	prob_pct_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
+	prob_pct_lbl.add_theme_font_size_override("font_size", 16)
 	prob_pct_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	prob_vbox.add_child(prob_pct_lbl)
 	rtb.text = "すでに手札にあるカードと[color=#ff4081][b]同じ数字を引く[/b][/color]と「[color=#ff4081][b]寝落ち（バースト）[/b][/color]」となり、点数が0点になります。\n画面に表示されるバースト確率を見ながら、欲張らずに「休憩（確定）」しましょう。"
@@ -773,12 +747,12 @@ func _setup_page_2(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 		tw.tween_callback(func():
 			c7_2.position = deck_pos
 			c7_2.modulate = Color.TRANSPARENT
-			c7_2.scale = Vector2(0.0, 0.65 if is_port else 0.8)
+			c7_2.scale = Vector2(0.0, 0.8)
 			c7_2.rotation_degrees = 8.0
 	
 			c7_2_back.position = deck_pos
 			c7_2_back.modulate = Color.TRANSPARENT
-			c7_2_back.scale = Vector2(0.65, 0.65) if is_port else Vector2(0.8, 0.8)
+			c7_2_back.scale = Vector2(0.8, 0.8)
 			c7_2_back.rotation_degrees = 0
 	
 			c7_1.modulate = Color.WHITE
@@ -792,7 +766,7 @@ func _setup_page_2(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 		tw.tween_interval(0.5)
 	
 		# カードを引く → 確率が上昇しオレンジに
-		var target_pos = Vector2(180, 150) if is_port else Vector2(460, 50)
+		var target_pos = Vector2(220, 170) if is_port else Vector2(460, 50)
 		tw.tween_property(c7_2_back, "modulate:a", 1.0, 0.1)
 		tw.parallel().tween_property(c7_2_back, "position", target_pos, 0.5).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tw.parallel().tween_property(c7_2_back, "rotation_degrees", 8.0, 0.5)
@@ -811,7 +785,7 @@ func _setup_page_2(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 			c7_2.modulate = Color.WHITE
 			c7_2_back.modulate = Color.TRANSPARENT
 		)
-		tw.tween_property(c7_2, "scale:x", 0.65 if is_port else 0.8, 0.2).set_ease(Tween.EASE_OUT)
+		tw.tween_property(c7_2, "scale:x", 0.8, 0.2).set_ease(Tween.EASE_OUT)
 	
 		# バースト！
 		tw.tween_property(burst_lbl, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK)
@@ -829,17 +803,13 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	title_lbl.text = "④ SNS報告は戦場。「嘘」も戦略！"
 	title_lbl.add_theme_color_override("font_color", Color("#ff8c00"))
 	
-	var center_wrapper = CenterContainer.new()
-	center_wrapper.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	visual_area.add_child(center_wrapper)
-	
 	var ctrl = Control.new()
-	ctrl.custom_minimum_size = Vector2(432, 420) if is_port else Vector2(982, 380)
-	center_wrapper.add_child(ctrl)
+	ctrl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	visual_area.add_child(ctrl)
 	
 	var phone_wrapper = Control.new()
-	phone_wrapper.position = Vector2(216, 210) if is_port else Vector2(490, 150)
-	phone_wrapper.scale = Vector2(0.35, 0.35) if is_port else Vector2(0.32, 0.32)
+	phone_wrapper.position = Vector2(250, 210) if is_port else Vector2(490, 150)
+	phone_wrapper.scale = Vector2(0.55, 0.55) if is_port else Vector2(0.32, 0.32)
 	ctrl.add_child(phone_wrapper)
 	
 	# SMARTPHONE CONTAINER (Replica of ReportUIBuilder)
@@ -907,7 +877,7 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	
 	var time_lbl = Label.new()
 	time_lbl.text = "16:00"
-	time_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(14))
+	time_lbl.add_theme_font_size_override("font_size", 14)
 	time_lbl.add_theme_color_override("font_color", Color("#333333"))
 	status_bar.add_child(time_lbl)
 	
@@ -917,7 +887,7 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	
 	var app_name = Label.new()
 	app_name.text = "チキスタ"
-	app_name.add_theme_font_size_override("font_size", DeskTheme.scaled_font(14))
+	app_name.add_theme_font_size_override("font_size", 14)
 	app_name.add_theme_color_override("font_color", Color("#999999"))
 	status_bar.add_child(app_name)
 	
@@ -931,7 +901,7 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	header_title.text = "新規投稿"
 	header_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header_title.add_theme_font_override("font", DeskTheme.get_font())
-	header_title.add_theme_font_size_override("font_size", DeskTheme.scaled_font(24))
+	header_title.add_theme_font_size_override("font_size", 24)
 	header_title.add_theme_color_override("font_color", Color("#000000"))
 	header_margin.add_child(header_title)
 	
@@ -963,7 +933,7 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	decl_title.text = "シェアする点数"
 	decl_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	decl_title.add_theme_font_override("font", DeskTheme.get_font())
-	decl_title.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
+	decl_title.add_theme_font_size_override("font_size", 16)
 	decl_title.add_theme_color_override("font_color", Color("#999999"))
 	score_vbox.add_child(decl_title)
 	
@@ -971,7 +941,7 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	declared_score_label.text = "20点"
 	declared_score_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	declared_score_label.add_theme_font_override("font", DeskTheme.get_font())
-	declared_score_label.add_theme_font_size_override("font_size", DeskTheme.scaled_font(80))
+	declared_score_label.add_theme_font_size_override("font_size", 80)
 	declared_score_label.add_theme_color_override("font_color", Color("#ff8c00")) 
 	score_vbox.add_child(declared_score_label)
 	
@@ -982,7 +952,7 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	var actual_val = Label.new()
 	actual_val.text = "実際の点数: 20"
 	actual_val.add_theme_font_override("font", DeskTheme.get_font())
-	actual_val.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
+	actual_val.add_theme_font_size_override("font_size", 16)
 	actual_val.add_theme_color_override("font_color", Color("#aaaaaa"))
 	actual_hbox.add_child(actual_val)
 	
@@ -1042,7 +1012,7 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	emote_title.text = "今の気分"
 	emote_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	emote_title.add_theme_font_override("font", DeskTheme.get_font())
-	emote_title.add_theme_font_size_override("font_size", DeskTheme.scaled_font(14))
+	emote_title.add_theme_font_size_override("font_size", 14)
 	emote_title.add_theme_color_override("font_color", Color("#999999"))
 	emote_vbox.add_child(emote_title)
 	
@@ -1082,7 +1052,7 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 		var btn = Button.new()
 		btn.text = e["text"]
 		btn.add_theme_font_override("font", DeskTheme.get_font())
-		btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(14))
+		btn.add_theme_font_size_override("font_size", 14)
 		emote_hbox.add_child(btn)
 		emote_buttons.append({"key": e["key"], "btn": btn})
 	
@@ -1114,7 +1084,7 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	warning_text.text = "申告が実点を超えています。ダウトされる危険性があります！"
 	warning_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	warning_text.add_theme_font_override("font", DeskTheme.get_font())
-	warning_text.add_theme_font_size_override("font_size", DeskTheme.scaled_font(13))
+	warning_text.add_theme_font_size_override("font_size", 13)
 	warning_text.add_theme_color_override("font_color", Color("#e65100"))
 	warn_margin.add_child(warning_text)
 	
@@ -1128,7 +1098,7 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	submit_btn.custom_minimum_size = Vector2(340, 56)
 	submit_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	submit_btn.add_theme_font_override("font", DeskTheme.get_font())
-	submit_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
+	submit_btn.add_theme_font_size_override("font_size", 18)
 	
 	var submit_style = StyleBoxFlat.new()
 	submit_style.bg_color = Color("#ff8c00")
@@ -1159,7 +1129,7 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	rtb.text = "1日の終わりに、実点より高い点数を[color=#d500f9][b]「嘘（ブラフ）の点数」[/b][/color]としてSNSに投稿できます。\nライバルを焦らせることができますが、嘘が暴かれたときは失点するリスクがあります。" # = "[center][b]◆ チキスタ投稿と「嘘（ブラフ）」の戦略 ◆[/b][/center]\n1日の終わりに、その日の勉強成果をSNS『チキスタ』に投稿（報告）します。\nスライダーを操作して、実際の実点より高い[color=#d500f9][b]「嘘（ブラフ）の点数」[/b][/color]を申告し、ライバルを焦らせることができます。\nただし、嘘があまりにも高すぎると、相手に見破られたとき（ダウト）に大損します。"
 	
 	var cursor = _create_cursor()
-	cursor.position = Vector2(220, 320) if is_port else Vector2(600, 300)
+	cursor.position = Vector2(250, 350) if is_port else Vector2(600, 300)
 	cursor.modulate.a = 0
 	ctrl.add_child(cursor)
 	
@@ -1167,12 +1137,7 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 		var tw = page.create_tween().set_loops()
 		
 		var get_target_pos = func(node: Control):
-			return ctrl.get_global_transform().affine_inverse() * (node.get_global_transform() * (node.size * 0.5))
-			
-		var start_drag_pos = func():
-			return ctrl.get_global_transform().affine_inverse() * (report_slider.get_global_transform() * Vector2(20, report_slider.size.y * 0.5))
-		var end_drag_pos = func():
-			return ctrl.get_global_transform().affine_inverse() * (report_slider.get_global_transform() * Vector2(report_slider.size.x * 0.8, report_slider.size.y * 0.5))
+			return node.global_position + node.size * 0.5 * node.get_global_transform().get_scale() - ctrl.global_position
 			
 		tw.tween_callback(func(): 
 			report_slider.value = 20
@@ -1184,7 +1149,7 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 				else:
 					btn.add_theme_stylebox_override("normal", emote_btn_style_normal)
 					btn.add_theme_color_override("font_color", Color("#444444"))
-			cursor.position = start_drag_pos.call()
+			cursor.position = report_slider.global_position + Vector2(20, report_slider.size.y * 0.5) * report_slider.get_global_transform().get_scale() - ctrl.global_position
 			cursor.modulate.a = 0
 			cursor.scale = Vector2.ONE
 		)
@@ -1192,6 +1157,11 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 		tw.tween_property(cursor, "modulate:a", 1.0, 0.2)
 		
 		# Move to start of drag
+		var start_drag_pos = func():
+			return report_slider.global_position + Vector2(20, report_slider.size.y * 0.5) * report_slider.get_global_transform().get_scale() - ctrl.global_position
+		var end_drag_pos = func():
+			return report_slider.global_position + Vector2(report_slider.size.x * 0.8, report_slider.size.y * 0.5) * report_slider.get_global_transform().get_scale() - ctrl.global_position
+			
 		tw.tween_method(func(pos): cursor.position = pos, start_drag_pos.call(), start_drag_pos.call(), 0.1)
 		tw.tween_property(cursor, "position", start_drag_pos.call(), 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		
@@ -1253,18 +1223,14 @@ func _setup_page_4(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	title_lbl.text = "⑤ チキスタでの「ダウト」宣言"
 	title_lbl.add_theme_color_override("font_color", Color("#d50000"))
 	
-	var center_wrapper = CenterContainer.new()
-	center_wrapper.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	visual_area.add_child(center_wrapper)
-	
 	var ctrl = Control.new()
-	ctrl.custom_minimum_size = Vector2(432, 420) if is_port else Vector2(982, 380)
-	center_wrapper.add_child(ctrl)
+	ctrl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	visual_area.add_child(ctrl)
 	
 	# Result Timeline Mock
 	var post_panel = PanelContainer.new()
-	post_panel.custom_minimum_size = Vector2(360, 120) if is_port else Vector2(400, 120)
-	post_panel.position = Vector2(36, 60) if is_port else Vector2(290, 40)
+	post_panel.custom_minimum_size = Vector2(400, 120)
+	post_panel.position = Vector2(20, 60) if is_port else Vector2(290, 40)
 	var pp_style = StyleBoxFlat.new()
 	pp_style.bg_color = DeskTheme.COLOR_CRAFT
 	pp_style.border_color = Color("#cfd8dc")
@@ -1287,7 +1253,7 @@ func _setup_page_4(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	pp_name.text = "ライバルの投稿"
 	pp_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	pp_name.add_theme_font_override("font", DeskTheme.get_font())
-	pp_name.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
+	pp_name.add_theme_font_size_override("font_size", 16)
 	pp_name.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	pp_vbox.add_child(pp_name)
 	
@@ -1295,16 +1261,16 @@ func _setup_page_4(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	pp_score.text = "「65点取りしました！」"
 	pp_score.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	pp_score.add_theme_font_override("font", DeskTheme.get_font())
-	pp_score.add_theme_font_size_override("font_size", DeskTheme.scaled_font(24))
+	pp_score.add_theme_font_size_override("font_size", 24)
 	pp_score.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	pp_vbox.add_child(pp_score)
 	
 	var doubt_btn = Button.new()
 	doubt_btn.text = "ダウト！"
 	doubt_btn.custom_minimum_size = Vector2(200, 60)
-	doubt_btn.position = Vector2(116, 205) if is_port else Vector2(390, 185)
+	doubt_btn.position = Vector2(120, 205) if is_port else Vector2(390, 185)
 	doubt_btn.add_theme_font_override("font", DeskTheme.get_font())
-	doubt_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(40))
+	doubt_btn.add_theme_font_size_override("font_size", 40)
 	var d_bstyle = StyleBoxFlat.new()
 	d_bstyle.bg_color = Color("#e53935")
 	d_bstyle.border_width_bottom = 8
@@ -1321,7 +1287,7 @@ func _setup_page_4(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	var result_lbl = Label.new()
 	result_lbl.text = "ダウト成功！"
 	result_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	result_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(36))
+	result_lbl.add_theme_font_size_override("font_size", 36)
 	result_lbl.add_theme_color_override("font_color", Color("#e53935"))
 	result_lbl.add_theme_color_override("font_outline_color", Color.WHITE)
 	result_lbl.add_theme_constant_override("outline_size", 8)
@@ -1342,12 +1308,12 @@ func _setup_page_4(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 		var tw = page.create_tween().set_loops()
 		
 		var get_target_pos = func(node: Control):
-			return ctrl.get_global_transform().affine_inverse() * (node.get_global_transform() * (node.size * 0.5))
+			return node.global_position + node.size * 0.5 - ctrl.global_position
 			
 		tw.tween_callback(func():
 			result_lbl.scale = Vector2.ZERO
 			post_panel.modulate.a = 1.0
-			cursor.position = ctrl.get_global_transform().affine_inverse() * (doubt_btn.get_global_transform() * Vector2(doubt_btn.size.x * 0.8, doubt_btn.size.y * 1.5))
+			cursor.position = doubt_btn.global_position + Vector2(doubt_btn.size.x * 0.8, doubt_btn.size.y * 1.5) - ctrl.global_position
 			cursor.modulate.a = 0
 			cursor.scale = Vector2.ONE
 		)
@@ -1382,18 +1348,14 @@ func _setup_page_5(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	title_lbl.text = "⑥ 最終答え合わせと得点計算"
 	title_lbl.add_theme_color_override("font_color", Color("#1b5e20"))
 	
-	var center_wrapper = CenterContainer.new()
-	center_wrapper.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	visual_area.add_child(center_wrapper)
-	
 	var ctrl = Control.new()
-	ctrl.custom_minimum_size = Vector2(432, 420) if is_port else Vector2(982, 380)
-	center_wrapper.add_child(ctrl)
+	ctrl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	visual_area.add_child(ctrl)
 	
 	# Blackboard UI
 	var board_panel = PanelContainer.new()
-	board_panel.custom_minimum_size = Vector2(360, 220) if is_port else Vector2(400, 250)
-	board_panel.position = Vector2(36, 80) if is_port else Vector2(290, 30)
+	board_panel.custom_minimum_size = Vector2(400, 250)
+	board_panel.position = Vector2(20, 100) if is_port else Vector2(290, 30)
 	var board_style = StyleBoxFlat.new()
 	board_style.bg_color = Color("#1b5e20")
 	board_style.border_color = Color("#8d6e63")
@@ -1420,7 +1382,7 @@ func _setup_page_5(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	board_title_lbl.text = "成績発表 (答え合わせ)"
 	board_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	board_title_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	board_title_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(20))
+	board_title_lbl.add_theme_font_size_override("font_size", 20)
 	board_title_lbl.add_theme_color_override("font_color", Color.WHITE)
 	board_vbox.add_child(board_title_lbl)
 	
@@ -1437,7 +1399,7 @@ func _setup_page_5(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	var line_actual = Label.new()
 	line_actual.text = "① 実際の実点：30点"
 	line_actual.add_theme_font_override("font", DeskTheme.get_font())
-	line_actual.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
+	line_actual.add_theme_font_size_override("font_size", 16)
 	line_actual.add_theme_color_override("font_color", Color.WHITE)
 	line_actual.modulate.a = 0
 	detail_vbox.add_child(line_actual)
@@ -1445,7 +1407,7 @@ func _setup_page_5(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	var line_declared = Label.new()
 	line_declared.text = "② SNS申告点：65点 (盛り幅 +35点)"
 	line_declared.add_theme_font_override("font", DeskTheme.get_font())
-	line_declared.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
+	line_declared.add_theme_font_size_override("font_size", 16)
 	line_declared.add_theme_color_override("font_color", Color.WHITE)
 	line_declared.modulate.a = 0
 	detail_vbox.add_child(line_declared)
@@ -1453,7 +1415,7 @@ func _setup_page_5(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	var line_result = Label.new()
 	line_result.text = "③ ダウト被弾！嘘バレ発生！"
 	line_result.add_theme_font_override("font", DeskTheme.get_font())
-	line_result.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
+	line_result.add_theme_font_size_override("font_size", 16)
 	line_result.add_theme_color_override("font_color", Color("#ff4444"))
 	line_result.modulate.a = 0
 	detail_vbox.add_child(line_result)
@@ -1461,7 +1423,7 @@ func _setup_page_5(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	var line_penalty = Label.new()
 	line_penalty.text = "④ 獲得点数：30点 (実点に引き下げ)"
 	line_penalty.add_theme_font_override("font", DeskTheme.get_font())
-	line_penalty.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
+	line_penalty.add_theme_font_size_override("font_size", 16)
 	line_penalty.add_theme_color_override("font_color", Color("#ffcc02"))
 	line_penalty.modulate.a = 0
 	detail_vbox.add_child(line_penalty)
@@ -1469,7 +1431,7 @@ func _setup_page_5(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	var line_final = Label.new()
 	line_final.text = "⇒ 追加の減点ペナルティは無し！"
 	line_final.add_theme_font_override("font", DeskTheme.get_font())
-	line_final.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
+	line_final.add_theme_font_size_override("font_size", 18)
 	line_final.add_theme_color_override("font_color", Color("#ffcc02"))
 	line_final.modulate.a = 0
 	detail_vbox.add_child(line_final)

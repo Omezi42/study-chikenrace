@@ -29,7 +29,7 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	target_parent.add_child(phone_panel)
 	
 	phone_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	phone_panel.position = Vector2(750, 120)
+	phone_panel.position = Vector2(540, 5)
 	phase.phone_panel = phone_panel
 	
 	# SCREEN CONTAINER (液晶画面)
@@ -341,8 +341,7 @@ static func _build_smartphone_ui(phase: ReportPhase) -> void:
 	
 	app_vbox.add_child(submit_btn)
 	
-	# Entrance slide-in
-	DeskTheme.animate_entrance(phone_panel, phone_panel.position, Vector2(0, 300), 0.5)
+	pass
 
 static func _create_modern_grabber() -> ImageTexture:
 	var img = Image.create_empty(32, 32, false, Image.FORMAT_RGBA8)

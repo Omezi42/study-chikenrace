@@ -46,9 +46,7 @@ func _ready() -> void:
 	
 	var hist_btn = Button.new()
 	hist_btn.text = "点数履歴"
-	hist_btn.custom_minimum_size = Vector2(140, 45)
 	hist_btn.add_theme_font_override("font", DeskTheme.get_font())
-	hist_btn.add_theme_font_size_override("font_size", 18)
 	hist_btn.pressed.connect(func():
 		DeskTheme.animate_click(hist_btn, Vector2.ONE, 0.08)
 		HistoryModal.create_and_show(self, session)
@@ -57,14 +55,45 @@ func _ready() -> void:
 	
 	var opt_btn = Button.new()
 	opt_btn.text = "設定/ルール"
-	opt_btn.custom_minimum_size = Vector2(140, 45)
 	opt_btn.add_theme_font_override("font", DeskTheme.get_font())
-	opt_btn.add_theme_font_size_override("font_size", 18)
 	opt_btn.pressed.connect(func():
 		DeskTheme.animate_click(opt_btn, Vector2.ONE, 0.08)
 		SettingsModal.create_and_show(self)
 	)
 	header_hbox.add_child(opt_btn)
+	
+	var update_header_size = func():
+		var is_port = false
+		var rs_scale = 1.0
+		if has_node("/root/ResponsiveScaler"):
+			var rs = get_node("/root/ResponsiveScaler")
+			is_port = rs.is_portrait()
+			rs_scale = rs.get_scale()
+		else:
+			var viewport_size = get_viewport_rect().size
+			is_port = viewport_size.x < 600
+			
+		# スマホでのUI/UXを考慮し、タッチターゲットを最大限大きく確保します
+		var final_scale = rs_scale
+		
+		header_hbox.pivot_offset = Vector2(header_hbox.size.x, 0)
+		header_hbox.scale = Vector2(final_scale, final_scale)
+		
+		# スケール倍率で無理やり拡大すると画面外にはみ出す懸念があるため、
+		# ボタンのベースサイズとフォントを直接大きくします (約2倍以上の面積)
+		var btn_w = 230 if is_port else 140
+		var btn_h = 80 if is_port else 45
+		var fsize = 32 if is_port else 18
+		hist_btn.custom_minimum_size = Vector2(btn_w, btn_h)
+		hist_btn.add_theme_font_size_override("font_size", fsize)
+		opt_btn.custom_minimum_size = Vector2(btn_w, btn_h)
+		opt_btn.add_theme_font_size_override("font_size", fsize)
+		
+	get_tree().root.size_changed.connect(update_header_size)
+	
+	# Need to wait for next frame so header_hbox.size is calculated before setting pivot
+	var timer = get_tree().create_timer(0.01)
+	timer.timeout.connect(update_header_size)
 	
 	session = GameSession.new()
 	session.start_session()

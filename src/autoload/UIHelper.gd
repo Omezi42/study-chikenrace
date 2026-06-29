@@ -41,7 +41,9 @@ func change_scene_with_fade(tree: SceneTree, target_scene_path: String, duration
 
 func show_loading(text: String = "通信中...") -> void:
 	if is_instance_valid(loading_overlay):
-		var lbl = loading_overlay.get_node_or_null("Panel/Margin/VBox/Label")
+		var lbl = loading_overlay.get_node_or_null("Center/Panel/Margin/VBox/Label")
+		if not lbl:
+			lbl = loading_overlay.get_node_or_null("Panel/Margin/VBox/Label")
 		if lbl:
 			lbl.text = text
 		return
@@ -55,10 +57,14 @@ func show_loading(text: String = "通信中...") -> void:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	loading_overlay.add_child(bg)
 	
+	var center = CenterContainer.new()
+	center.name = "Center"
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	loading_overlay.add_child(center)
+	
 	var panel = PanelContainer.new()
 	panel.name = "Panel"
 	panel.custom_minimum_size = Vector2(300, 140)
-	panel.pivot_offset = Vector2(150, 70)
 	
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color("f4efe6") # Craft paper color
@@ -75,10 +81,7 @@ func show_loading(text: String = "通信中...") -> void:
 	style.shadow_size = 12
 	style.shadow_offset = Vector2(5, 5)
 	panel.add_theme_stylebox_override("panel", style)
-	loading_overlay.add_child(panel)
-	
-	var viewport_size = get_viewport().get_visible_rect().size
-	panel.position = viewport_size * 0.5 - panel.pivot_offset
+	center.add_child(panel)
 	
 	var margin = MarginContainer.new()
 	margin.name = "Margin"
@@ -124,84 +127,95 @@ func hide_loading() -> void:
 		loading_overlay.queue_free()
 		loading_overlay = null
 
-func show_tutorial_dialog(parent: Control, text: String, pos: Vector2 = Vector2(700, 50), next_callback: Callable = Callable()) -> PanelContainer:
+func show_tutorial_dialog(parent: Control, text: String, pos: Vector2 = Vector2(700, 50), next_callback: Callable = Callable()) -> Node:
+	var canvas = CanvasLayer.new()
+	canvas.layer = 100
+	
+	var scene_tree = parent.get_tree()
+	var rs_scale = 1.0
+	if scene_tree and scene_tree.root.has_node("ResponsiveScaler"):
+		rs_scale = scene_tree.root.get_node("ResponsiveScaler").get_scale()
+	
+	var margin_container = MarginContainer.new()
+	margin_container.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	margin_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin_container.add_theme_constant_override("margin_top", int(20 * rs_scale))
+	margin_container.add_theme_constant_override("margin_left", int(20 * rs_scale))
+	margin_container.add_theme_constant_override("margin_right", int(20 * rs_scale))
+	margin_container.add_theme_constant_override("margin_bottom", int(20 * rs_scale))
+	canvas.add_child(margin_container)
+	
 	var dialog = PanelContainer.new()
 	dialog.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	dialog.custom_minimum_size = Vector2(560, 160)
-	dialog.size = Vector2(560, 160)
-	var viewport_size = parent.get_viewport_rect().size
-	if pos == Vector2(700, 50):
-		dialog.position = viewport_size * 0.5 - Vector2(280, 80)
-	else:
-		dialog.position = Vector2(
-			clamp(pos.x, 0.0, max(viewport_size.x - dialog.size.x, 0.0)),
-			clamp(pos.y, 0.0, max(viewport_size.y - dialog.size.y, 0.0))
-		)
+	margin_container.add_child(dialog)
 	
 	var style = StyleBoxFlat.new()
-	style.bg_color = Color("fff59d") # 明るい付箋イエロー
-	style.border_color = Color("fbc02d") # 濃いイエロー
-	style.border_width_left = 8
-	style.border_width_right = 2
-	style.border_width_top = 2
-	style.border_width_bottom = 2
-	style.corner_radius_top_left = 6
-	style.corner_radius_top_right = 6
-	style.corner_radius_bottom_left = 6
-	style.corner_radius_bottom_right = 6
-	style.shadow_color = Color(0, 0, 0, 0.2)
-	style.shadow_size = 12
-	style.shadow_offset = Vector2(4, 4)
+	style.bg_color = Color("ffffff") # White dialog for clean mobile feel
+	style.border_color = DeskTheme.COLOR_INK
+	style.border_width_left = int(4 * rs_scale)
+	style.border_width_right = int(4 * rs_scale)
+	style.border_width_top = int(4 * rs_scale)
+	style.border_width_bottom = int(6 * rs_scale)
+	style.corner_radius_top_left = int(16 * rs_scale)
+	style.corner_radius_top_right = int(16 * rs_scale)
+	style.corner_radius_bottom_left = int(16 * rs_scale)
+	style.corner_radius_bottom_right = int(16 * rs_scale)
+	style.shadow_color = Color(0, 0, 0, 0.25)
+	style.shadow_size = int(15 * rs_scale)
+	style.shadow_offset = Vector2(0, int(6 * rs_scale))
 	dialog.add_theme_stylebox_override("panel", style)
 	
 	var margin = MarginContainer.new()
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	margin.add_theme_constant_override("margin_left", 20)
-	margin.add_theme_constant_override("margin_right", 20)
-	margin.add_theme_constant_override("margin_top", 15)
-	margin.add_theme_constant_override("margin_bottom", 15)
+	margin.add_theme_constant_override("margin_left", int(24 * rs_scale))
+	margin.add_theme_constant_override("margin_right", int(24 * rs_scale))
+	margin.add_theme_constant_override("margin_top", int(20 * rs_scale))
+	margin.add_theme_constant_override("margin_bottom", int(20 * rs_scale))
 	dialog.add_child(margin)
 	
 	var vbox = VBoxContainer.new()
 	vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vbox.add_theme_constant_override("separation", 10)
+	vbox.add_theme_constant_override("separation", int(15 * rs_scale))
 	margin.add_child(vbox)
-
 	
 	var body = Label.new()
 	body.text = text
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_theme_font_override("font", DeskTheme.get_font())
-	body.add_theme_font_size_override("font_size", 20)
+	body.add_theme_font_size_override("font_size", int(26 * rs_scale))
 	body.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(body)
 	
 	if next_callback.is_valid():
 		var btn = Button.new()
 		btn.text = "次へ >"
-		btn.custom_minimum_size = Vector2(100, 36)
+		btn.custom_minimum_size = Vector2(int(140 * rs_scale), int(48 * rs_scale))
 		btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 		btn.add_theme_font_override("font", DeskTheme.get_font())
-		btn.add_theme_font_size_override("font_size", 18)
+		btn.add_theme_font_size_override("font_size", int(22 * rs_scale))
+		apply_action_button_style(btn)
 		btn.pressed.connect(func():
 			DeskTheme.animate_click(btn, Vector2.ONE, 0.08)
-			var out_tween = parent.create_tween().bind_node(dialog)
-			out_tween.tween_property(dialog, "scale", Vector2.ZERO, 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			var out_tween = parent.create_tween().bind_node(margin_container)
+			out_tween.tween_property(margin_container, "position:y", -300.0, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 			out_tween.tween_callback(func():
-				dialog.queue_free()
+				canvas.queue_free()
 				next_callback.call()
 			)
 		)
 		vbox.add_child(btn)
 		
-	parent.add_child(dialog)
+	parent.add_child(canvas)
 	
-	dialog.scale = Vector2.ZERO
-	dialog.pivot_offset = Vector2(280, 80)
-	var tween = parent.create_tween().bind_node(dialog).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(dialog, "scale", Vector2.ONE, 0.3)
+	# Initial positioning for slide-in animation
+	get_tree().process_frame.connect(func():
+		if is_instance_valid(margin_container):
+			margin_container.position.y = -margin_container.size.y - 50
+			var tween = parent.create_tween().bind_node(margin_container).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			tween.tween_property(margin_container, "position:y", 0.0, 0.4)
+	, CONNECT_ONE_SHOT)
 	
-	return dialog
+	return canvas
 
 func apply_white_button_style(btn: Button) -> void:
 	if not btn:

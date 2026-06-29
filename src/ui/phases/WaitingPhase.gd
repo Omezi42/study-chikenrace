@@ -7,6 +7,7 @@ var status_lbl: Label
 var members_vbox: VBoxContainer
 var loading_rect: ColorRect
 var app_vbox: VBoxContainer
+var main_hbox: HBoxContainer
 
 # Polling configuration
 var poll_timer: Timer
@@ -26,6 +27,15 @@ func _on_setup(setup_data: Dictionary) -> void:
 	is_final_reveal_wait = setup_data.get("final_wait", false)
 
 	WaitingUIBuilder.build_layout(self)
+	
+	if has_node("/root/ResponsiveScaler"):
+		var rs = get_node("/root/ResponsiveScaler")
+		if not rs.scale_changed.is_connected(_on_scale_changed):
+			rs.scale_changed.connect(_on_scale_changed)
+	_update_responsive_layout()
+	
+	if is_instance_valid(phone_panel):
+		DeskTheme.animate_entrance(phone_panel, phone_panel.position, Vector2(0, 300), 0.5)
 
 	# Connect to MatchState signals
 	MatchState.player_action_received.connect(_on_player_action_received)
@@ -47,6 +57,36 @@ func _on_setup(setup_data: Dictionary) -> void:
 
 	# Check immediately
 	_check_all_actions()
+
+func _on_scale_changed(_new_scale: float) -> void:
+	_update_responsive_layout()
+
+func get_phone_target_pos() -> Vector2:
+	if not is_instance_valid(phone_panel):
+		return Vector2.ZERO
+	var vp_size = get_viewport_rect().size
+	if vp_size.x == 0 or vp_size.y == 0:
+		if has_node("/root/ResponsiveScaler"):
+			vp_size = get_node("/root/ResponsiveScaler").get_viewport_size()
+		else:
+			vp_size = Vector2(1500, 850)
+	var phone_size = phone_panel.custom_minimum_size * phone_panel.scale
+	return Vector2((vp_size.x - phone_size.x) * 0.5, max((vp_size.y - phone_size.y) * 0.5, 10.0))
+
+func _update_responsive_layout() -> void:
+	if not is_instance_valid(phone_panel):
+		return
+	var s = 1.0
+	if has_node("/root/ResponsiveScaler"):
+		var rs = get_node("/root/ResponsiveScaler")
+		s = rs.fit_scale_for_size(phone_panel.custom_minimum_size, Vector2(20, 20), 0.35)
+	else:
+		var vp_size = get_viewport_rect().size
+		if vp_size.x > 0 and vp_size.y > 0:
+			s = clamp(min((vp_size.x - 20) / phone_panel.custom_minimum_size.x, (vp_size.y - 20) / phone_panel.custom_minimum_size.y), 0.35, 3.0)
+	phone_panel.pivot_offset = Vector2.ZERO
+	phone_panel.scale = Vector2.ONE * s
+	phone_panel.position = get_phone_target_pos()
 
 func _exit_tree() -> void:
 	if MatchState.player_action_received.is_connected(_on_player_action_received):

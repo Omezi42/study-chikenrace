@@ -35,7 +35,7 @@ func get_signaling_url() -> String:
 	return "wss://chicken-race-signaling.onrender.com"
 
 func create_room() -> void:
-	Global.show_loading("ルーム作成中...")
+	Global.show_loading("ルーム作成中...\n(初回はサーバー起動に少し時間がかかる場合があります)")
 	_is_host = true
 	var code = str(randi_range(1000, 9999))
 	_pending_room_code = code
@@ -43,7 +43,7 @@ func create_room() -> void:
 	signaling.connect_to_room(server_url, code)
 
 func join_room(code: String) -> void:
-	Global.show_loading("ルーム参加中...")
+	Global.show_loading("ルーム参加中...\n(初回はサーバー起動に少し時間がかかる場合があります)")
 	_is_host = false
 	_pending_room_code = code
 	var server_url = get_signaling_url()

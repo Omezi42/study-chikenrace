@@ -14,6 +14,10 @@ config/name="study-chikenrace"
 run/main_scene="res://Title.tscn"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 
+[audio]
+
+buses/default_bus_layout="uid://df72v8w6nqu1s"
+
 [autoload]
 
 PlayerState="*res://src/autoload/PlayerState.gd"
@@ -28,6 +32,7 @@ UIHelper="*res://src/autoload/UIHelper.gd"
 BalanceConfig="*res://src/autoload/BalanceConfig.gd"
 ClickEffectManager="*res://src/autoload/ClickEffectManager.gd"
 AnalyticsManager="*res://src/autoload/AnalyticsManager.gd"
+ResponsiveScaler="*res://src/autoload/ResponsiveScaler.gd"
 
 [backend]
 
@@ -36,9 +41,9 @@ supabase_key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 
 [display]
 
-window/size/viewport_width=1920
-window/size/viewport_height=1080
+window/subwindows/embed_subwindows=false
 window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [rendering]
 

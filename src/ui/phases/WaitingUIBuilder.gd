@@ -2,12 +2,6 @@ class_name WaitingUIBuilder
 extends RefCounted
 
 static func build_layout(phase: WaitingPhase) -> void:
-	# Layout: Centered smartphone container
-	var main_hbox = HBoxContainer.new()
-	main_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	phase.add_child(main_hbox)
-	phase.fit_control_to_viewport(main_hbox, Vector2(1500, 850), Vector2(72, 72), 0.72, true)
-
 	# SMARTPHONE PANEL - Modern Bezel-less Design
 	var phone_panel = PanelContainer.new()
 	phone_panel.custom_minimum_size = Vector2(420, 840)
@@ -27,7 +21,10 @@ static func build_layout(phase: WaitingPhase) -> void:
 	phone_style.corner_radius_bottom_left = 40
 	phone_style.corner_radius_bottom_right = 40
 	phone_panel.add_theme_stylebox_override("panel", phone_style)
-	main_hbox.add_child(phone_panel)
+	phase.add_child(phone_panel)
+	
+	phone_panel.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	phone_panel.position = Vector2(540, 5)
 	phase.phone_panel = phone_panel
 
 	# SCREEN CONTAINER (液晶画面)
@@ -151,8 +148,7 @@ static func build_layout(phase: WaitingPhase) -> void:
 	app_vbox.add_child(members_vbox)
 	phase.members_vbox = members_vbox
 
-	# Visual entrance slide in
-	DeskTheme.animate_entrance(phone_panel, phone_panel.position, Vector2(0, 300), 0.5)
+	pass
 
 static func build_member_row(phase: WaitingPhase, name_str: String, status_text: String, status_color: Color) -> void:
 	var row = PanelContainer.new()

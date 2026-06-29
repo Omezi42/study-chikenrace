@@ -26,12 +26,18 @@ func _on_setup(setup_data: Dictionary) -> void:
 			
 	ReportUIBuilder.build_layout(self)
 	
+	if has_node("/root/ResponsiveScaler"):
+		var rs = get_node("/root/ResponsiveScaler")
+		if not rs.scale_changed.is_connected(_on_scale_changed):
+			rs.scale_changed.connect(_on_scale_changed)
+	_update_responsive_layout()
+	
+	if is_instance_valid(phone_panel):
+		DeskTheme.animate_entrance(phone_panel, phone_panel.position, Vector2(0, 300), 0.5)
+	
 	if Global.is_tutorial_mode and session.current_day == 1:
-		var viewport_size = get_viewport_rect().size
-		var dialog_pos = Vector2(viewport_size.x * 0.05, viewport_size.y * 0.1)
 		show_tutorial_dialog(
-			"このゲームは、実際より高い点数を申告して友達を騙すことができます。練習として多めに申告し、スライダーを右に動かしてください。",
-			dialog_pos
+			"このゲームは、実際より高い点数を申告して友達を騙すことができます。練習として多めに申告し、スライダーを右に動かしてください。"
 		)
 		if is_instance_valid(submit_btn):
 			submit_btn.disabled = true
@@ -53,6 +59,37 @@ func _on_setup(setup_data: Dictionary) -> void:
 			if is_instance_valid(self) and is_inside_tree() and submit_btn and not submit_btn.disabled:
 				_on_submit_pressed()
 		)
+
+func _on_scale_changed(_new_scale: float) -> void:
+	_update_responsive_layout()
+
+func get_phone_target_pos(_is_final_slide: bool = false) -> Vector2:
+	if not is_instance_valid(phone_panel):
+		return Vector2.ZERO
+	var vp_size = get_viewport_rect().size
+	if vp_size.x == 0 or vp_size.y == 0:
+		if has_node("/root/ResponsiveScaler"):
+			vp_size = get_node("/root/ResponsiveScaler").get_viewport_size()
+		else:
+			vp_size = Vector2(1500, 850)
+	var phone_size = phone_panel.custom_minimum_size * phone_panel.scale
+	return Vector2((vp_size.x - phone_size.x) * 0.5, max((vp_size.y - phone_size.y) * 0.5, 10.0))
+
+func _update_responsive_layout() -> void:
+	if not is_instance_valid(phone_panel):
+		return
+	var s = 1.0
+	if has_node("/root/ResponsiveScaler"):
+		var rs = get_node("/root/ResponsiveScaler")
+		s = rs.fit_scale_for_size(phone_panel.custom_minimum_size, Vector2(20, 20), 0.35)
+	else:
+		var vp_size = get_viewport_rect().size
+		if vp_size.x > 0 and vp_size.y > 0:
+			s = clamp(min((vp_size.x - 20) / phone_panel.custom_minimum_size.x, (vp_size.y - 20) / phone_panel.custom_minimum_size.y), 0.35, 3.0)
+	phone_panel.pivot_offset = Vector2.ZERO
+	phone_panel.scale = Vector2.ONE * s
+	
+	phone_panel.position = get_phone_target_pos()
 
 func _on_slider_changed(val: float) -> void:
 	var rounded_val = int(val)
@@ -108,8 +145,8 @@ func _on_submit_pressed() -> void:
 		phone_panel.position = current_pos
 		
 		var slide_tween = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		# Slide from center to left margin (X=180). Y remains 140.
-		slide_tween.tween_property(phone_panel, "position", Vector2(180, 140), 0.45)
+		var target_pos = get_phone_target_pos(true)
+		slide_tween.tween_property(phone_panel, "position", target_pos, 0.45)
 		
 		slide_tween.finished.connect(func():
 			session.submit_player_declaration(final_declared, selected_emote)

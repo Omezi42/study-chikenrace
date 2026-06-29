@@ -15,32 +15,32 @@ func _ready() -> void:
 	margin.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	margin.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	margin.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	margin.add_theme_constant_override("margin_right", 20)
-	margin.add_theme_constant_override("margin_bottom", 20)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_bottom", 16)
 	add_child(margin)
 	
 	badge_panel = PanelContainer.new()
-	badge_panel.custom_minimum_size = Vector2(160, 40)
+	badge_panel.custom_minimum_size = Vector2(80, 24)
 	
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color(DeskTheme.COLOR_INK, 0.85)
-	style.corner_radius_top_left = 20
-	style.corner_radius_top_right = 20
-	style.corner_radius_bottom_left = 20
-	style.corner_radius_bottom_right = 20
+	style.corner_radius_top_left = 30
+	style.corner_radius_top_right = 30
+	style.corner_radius_bottom_left = 30
+	style.corner_radius_bottom_right = 30
 	style.shadow_color = Color(0, 0, 0, 0.3)
-	style.shadow_size = 4
-	style.shadow_offset = Vector2(2, 2)
+	style.shadow_size = 5
+	style.shadow_offset = Vector2(3, 3)
 	badge_panel.add_theme_stylebox_override("panel", style)
 	margin.add_child(badge_panel)
 	
 	var hbox = HBoxContainer.new()
 	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	hbox.add_theme_constant_override("separation", 10)
+	hbox.add_theme_constant_override("separation", 6)
 	badge_panel.add_child(hbox)
 	
 	icon_rect = ColorRect.new()
-	icon_rect.custom_minimum_size = Vector2(12, 12)
+	icon_rect.custom_minimum_size = Vector2(8, 8)
 	icon_rect.color = DeskTheme.COLOR_GREEN
 	icon_rect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hbox.add_child(icon_rect)
@@ -48,7 +48,7 @@ func _ready() -> void:
 	status_label = Label.new()
 	status_label.text = "オンライン"
 	status_label.add_theme_font_override("font", DeskTheme.get_font())
-	status_label.add_theme_font_size_override("font_size", 14)
+	status_label.add_theme_font_size_override("font_size", 10)
 	status_label.add_theme_color_override("font_color", Color.WHITE)
 	hbox.add_child(status_label)
 	
@@ -81,6 +81,20 @@ func _process(delta: float) -> void:
 		badge_panel.modulate.a = 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.005)
 	else:
 		badge_panel.modulate.a = 1.0
+
+	# 画面サイズに応じたスケール調整（モバイル横画面での巨大化防止）
+	var vp_size = get_viewport().get_visible_rect().size
+	if vp_size.y > 0:
+		var is_portrait = vp_size.y > vp_size.x
+		var scale_factor = 1.0
+		if not is_portrait and vp_size.y < 600:
+			# モバイル横画面のような高さが低い画面では少し小さめにする
+			scale_factor = clamp(vp_size.y / 600.0, 0.6, 1.0)
+		elif is_portrait:
+			# モバイル縦画面では他のUIに合わせて大きくする
+			scale_factor = clamp(vp_size.x / 480.0, 1.5, 3.0)
+		badge_panel.scale = Vector2(scale_factor, scale_factor)
+		badge_panel.pivot_offset = badge_panel.size # 右下基準でスケール
 
 func _set_online_mode() -> void:
 	is_online = true

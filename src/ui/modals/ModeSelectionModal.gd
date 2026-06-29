@@ -2,9 +2,14 @@ class_name ModeSelectionModal
 extends RefCounted
 
 static func create_and_show(parent: Node, on_friend_match_pressed: Callable, national_names_pool: Array) -> PanelContainer:
+	var vp_size = parent.get_viewport_rect().size
+	var is_portrait = vp_size.y > vp_size.x
+	var fit_s = clamp(min(vp_size.x / 540.0, vp_size.y / 960.0), 0.8, 3.0)
+	var width = min(480.0, (vp_size.x * 0.95) / fit_s)
+	var height = min(720.0, (max(vp_size.y, 600.0) * 0.9) / fit_s)
 	var mode_modal = PanelContainer.new()
-	mode_modal.custom_minimum_size = Vector2(720, 720)
-	mode_modal.pivot_offset = Vector2(360, 360)
+	mode_modal.custom_minimum_size = Vector2(width, height)
+	mode_modal.pivot_offset = Vector2(width / 2.0, height / 2.0)
 	
 	var style = StyleBoxFlat.new()
 	style.bg_color = DeskTheme.COLOR_CRAFT
@@ -21,16 +26,25 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	style.shadow_size = 15
 	style.shadow_offset = Vector2(6, 6)
 	mode_modal.add_theme_stylebox_override("panel", style)
+	var center = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	parent.add_child(center)
+	center.add_child(mode_modal)
+	mode_modal.resized.connect(func(): mode_modal.pivot_offset = mode_modal.size * 0.5)
+	mode_modal.tree_exiting.connect(func(): if is_instance_valid(center): center.queue_free())
 	
-	parent.add_child(mode_modal)
-	mode_modal.position = parent.get_viewport_rect().size * 0.5 - mode_modal.pivot_offset
+	var scroll = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	mode_modal.add_child(scroll)
 	
 	var margin = MarginContainer.new()
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_theme_constant_override("margin_left", 30)
 	margin.add_theme_constant_override("margin_right", 30)
 	margin.add_theme_constant_override("margin_top", 30)
 	margin.add_theme_constant_override("margin_bottom", 30)
-	mode_modal.add_child(margin)
+	scroll.add_child(margin)
 	
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 24)
@@ -41,7 +55,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	title.text = Localization.get_text("MODE_SELECTION_TITLE")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
-	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_font_size_override("font_size", DeskTheme.scaled_font(28))
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
 	
@@ -51,7 +65,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	
 	# -- 模試 (National Mode) --
 	var national_btn = Button.new()
-	national_btn.custom_minimum_size = Vector2(660, 100)
+	national_btn.custom_minimum_size = Vector2(min(440.0, width - 40.0), 100)
 	Global.apply_white_button_style(national_btn)
 	
 	var nat_inner = VBoxContainer.new()
@@ -64,7 +78,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	nat_title.text = Localization.get_text("MODE_NATIONAL_TITLE")
 	nat_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	nat_title.add_theme_font_override("font", DeskTheme.get_font())
-	nat_title.add_theme_font_size_override("font_size", 22)
+	nat_title.add_theme_font_size_override("font_size", DeskTheme.scaled_font(22))
 	nat_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	nat_inner.add_child(nat_title)
 	
@@ -72,7 +86,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	nat_desc.text = Localization.get_text("MODE_NATIONAL_DESC")
 	nat_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	nat_desc.add_theme_font_override("font", DeskTheme.get_font())
-	nat_desc.add_theme_font_size_override("font_size", 14)
+	nat_desc.add_theme_font_size_override("font_size", DeskTheme.scaled_font(14))
 	nat_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	nat_inner.add_child(nat_desc)
 	
@@ -80,7 +94,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	
 	# -- フレンド戦 (Friend Mode) --
 	var friend_btn = Button.new()
-	friend_btn.custom_minimum_size = Vector2(660, 100)
+	friend_btn.custom_minimum_size = Vector2(min(440.0, width - 40.0), 100)
 	Global.apply_white_button_style(friend_btn)
 	
 	var friend_inner = VBoxContainer.new()
@@ -93,7 +107,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	friend_title_lbl.text = Localization.get_text("MODE_FRIEND_TITLE")
 	friend_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	friend_title_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	friend_title_lbl.add_theme_font_size_override("font_size", 22)
+	friend_title_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(22))
 	friend_title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	friend_inner.add_child(friend_title_lbl)
 	
@@ -101,7 +115,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	friend_desc.text = Localization.get_text("MODE_FRIEND_DESC")
 	friend_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	friend_desc.add_theme_font_override("font", DeskTheme.get_font())
-	friend_desc.add_theme_font_size_override("font_size", 14)
+	friend_desc.add_theme_font_size_override("font_size", DeskTheme.scaled_font(14))
 	friend_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	friend_inner.add_child(friend_desc)
 	
@@ -109,7 +123,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	
 	# -- ランダムマッチ (Random Match Mode) --
 	var random_btn = Button.new()
-	random_btn.custom_minimum_size = Vector2(660, 100)
+	random_btn.custom_minimum_size = Vector2(min(440.0, width - 40.0), 100)
 	Global.apply_white_button_style(random_btn)
 	
 	var random_inner = VBoxContainer.new()
@@ -122,7 +136,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	random_title_lbl.text = Localization.get_text("MODE_RANDOM_TITLE")
 	random_title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	random_title_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	random_title_lbl.add_theme_font_size_override("font_size", 22)
+	random_title_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(22))
 	random_title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	random_inner.add_child(random_title_lbl)
 	
@@ -130,7 +144,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	random_desc.text = Localization.get_text("MODE_RANDOM_DESC")
 	random_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	random_desc.add_theme_font_override("font", DeskTheme.get_font())
-	random_desc.add_theme_font_size_override("font_size", 14)
+	random_desc.add_theme_font_size_override("font_size", DeskTheme.scaled_font(14))
 	random_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	random_inner.add_child(random_desc)
 	
@@ -138,7 +152,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	online_status.text = "（リアルタイム状況を確認中...）"
 	online_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	online_status.add_theme_font_override("font", DeskTheme.get_font())
-	online_status.add_theme_font_size_override("font_size", 13)
+	online_status.add_theme_font_size_override("font_size", DeskTheme.scaled_font(13))
 	online_status.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	random_inner.add_child(online_status)
 	
@@ -155,7 +169,7 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	cancel_btn.custom_minimum_size = Vector2(160, 45)
 	cancel_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	cancel_btn.add_theme_font_override("font", DeskTheme.get_font())
-	cancel_btn.add_theme_font_size_override("font_size", 18)
+	cancel_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 	Global.apply_white_button_style(cancel_btn)
 	vbox.add_child(cancel_btn)
 	
@@ -196,8 +210,8 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	# Entrance animation
 	mode_modal.scale = Vector2.ZERO
 	if parent.get_tree() != null:
-		var tween = parent.get_tree().create_tween().bind_node(mode_modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tween.tween_property(mode_modal, "scale", Vector2.ONE, 0.3)
+		var tween = parent.get_tree().create_tween().bind_node(mode_modal).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+		tween.tween_property(mode_modal, "scale", Vector2.ONE * fit_s, 0.3)
 		
 	return mode_modal
 
@@ -206,19 +220,34 @@ static func show_difficulty_selection(parent: Node, mode_modal: PanelContainer, 
 	if mode_modal != null and is_instance_valid(mode_modal):
 		mode_modal.queue_free()
 	
+	var vp_size = parent.get_viewport_rect().size
+	var is_portrait = vp_size.y > vp_size.x
+	var fit_s = clamp(min(vp_size.x / 540.0, vp_size.y / 960.0), 0.8, 3.0)
+	var width = min(480.0, (vp_size.x * 0.95) / fit_s)
+	var height = min(680.0, (max(vp_size.y, 600.0) * 0.9) / fit_s)
 	var diff_modal = PanelContainer.new()
-	diff_modal.custom_minimum_size = Vector2(720, 620)
-	diff_modal.pivot_offset = Vector2(360, 310)
+	diff_modal.custom_minimum_size = Vector2(width, height)
+	diff_modal.pivot_offset = Vector2(width / 2.0, height / 2.0)
 	diff_modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
-	parent.add_child(diff_modal)
-	diff_modal.position = parent.get_viewport_rect().size * 0.5 - diff_modal.pivot_offset
+	var center = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	parent.add_child(center)
+	center.add_child(diff_modal)
+	diff_modal.resized.connect(func(): diff_modal.pivot_offset = diff_modal.size * 0.5)
+	diff_modal.tree_exiting.connect(func(): if is_instance_valid(center): center.queue_free())
+	
+	var scroll = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	diff_modal.add_child(scroll)
 	
 	var margin = MarginContainer.new()
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_theme_constant_override("margin_left", 30)
 	margin.add_theme_constant_override("margin_right", 30)
 	margin.add_theme_constant_override("margin_top", 30)
 	margin.add_theme_constant_override("margin_bottom", 30)
-	diff_modal.add_child(margin)
+	scroll.add_child(margin)
 	
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 20)
@@ -229,7 +258,7 @@ static func show_difficulty_selection(parent: Node, mode_modal: PanelContainer, 
 	title.text = "模試のクラス選択"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
-	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_font_size_override("font_size", DeskTheme.scaled_font(28))
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
 	
@@ -237,7 +266,7 @@ static func show_difficulty_selection(parent: Node, mode_modal: PanelContainer, 
 	my_dev_lbl.text = "現在のあなたの偏差値: %.1f" % Global.deviation_value
 	my_dev_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	my_dev_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	my_dev_lbl.add_theme_font_size_override("font_size", 16)
+	my_dev_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
 	my_dev_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
 	vbox.add_child(my_dev_lbl)
 	
@@ -254,7 +283,7 @@ static func show_difficulty_selection(parent: Node, mode_modal: PanelContainer, 
 	
 	for cls in classes:
 		var btn = Button.new()
-		btn.custom_minimum_size = Vector2(660, 90)
+		btn.custom_minimum_size = Vector2(min(440.0, width - 40.0), 90)
 		Global.apply_white_button_style(btn)
 		
 		var unlocked = Global.deviation_value >= cls["req"]
@@ -272,7 +301,7 @@ static func show_difficulty_selection(parent: Node, mode_modal: PanelContainer, 
 			btn_title.text = "[未開放] " + cls["name"] + " (必要偏差値: %.1f)" % cls["req"]
 		btn_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		btn_title.add_theme_font_override("font", DeskTheme.get_font())
-		btn_title.add_theme_font_size_override("font_size", 20)
+		btn_title.add_theme_font_size_override("font_size", DeskTheme.scaled_font(20))
 		btn_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK if unlocked else Color(DeskTheme.COLOR_INK, 0.4))
 		inner.add_child(btn_title)
 		
@@ -280,7 +309,7 @@ static func show_difficulty_selection(parent: Node, mode_modal: PanelContainer, 
 		btn_desc.text = cls["desc"]
 		btn_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		btn_desc.add_theme_font_override("font", DeskTheme.get_font())
-		btn_desc.add_theme_font_size_override("font_size", 12)
+		btn_desc.add_theme_font_size_override("font_size", DeskTheme.scaled_font(12))
 		btn_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.5) if unlocked else Color(DeskTheme.COLOR_INK, 0.3))
 		inner.add_child(btn_desc)
 		
@@ -344,7 +373,7 @@ static func show_difficulty_selection(parent: Node, mode_modal: PanelContainer, 
 	back_btn.custom_minimum_size = Vector2(160, 45)
 	back_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back_btn.add_theme_font_override("font", DeskTheme.get_font())
-	back_btn.add_theme_font_size_override("font_size", 18)
+	back_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 	Global.apply_white_button_style(back_btn)
 	vbox.add_child(back_btn)
 	
@@ -358,8 +387,8 @@ static func show_difficulty_selection(parent: Node, mode_modal: PanelContainer, 
 	# Entrance animation
 	diff_modal.scale = Vector2.ZERO
 	if parent.get_tree() != null:
-		var tween = parent.get_tree().create_tween().bind_node(diff_modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tween.tween_property(diff_modal, "scale", Vector2.ONE, 0.3)
+		var tween = parent.get_tree().create_tween().bind_node(diff_modal).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+		tween.tween_property(diff_modal, "scale", Vector2.ONE * fit_s, 0.3)
 
 
 
@@ -368,19 +397,35 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 	if from_mode_selection:
 		mode_modal.queue_free()
 	
+	var vp_size = parent.get_viewport_rect().size
+	var is_portrait = vp_size.y > vp_size.x
+	var fit_s = clamp(min(vp_size.x / 540.0, vp_size.y / 960.0), 0.8, 3.0)
+	var width = min(480.0, (vp_size.x * 0.95) / fit_s)
+	var height = min(460.0, (max(vp_size.y, 600.0) * 0.9) / fit_s)
 	var lobby = PanelContainer.new()
-	lobby.custom_minimum_size = Vector2(650, 480)
-	lobby.pivot_offset = Vector2(325, 240)
+	lobby.custom_minimum_size = Vector2(width, height)
+	lobby.pivot_offset = Vector2(width / 2.0, height / 2.0)
+	lobby.scale = Vector2.ONE * fit_s
 	lobby.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
-	parent.add_child(lobby)
-	lobby.position = parent.get_viewport_rect().size * 0.5 - lobby.pivot_offset
+	var center = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	parent.add_child(center)
+	center.add_child(lobby)
+	lobby.resized.connect(func(): lobby.pivot_offset = lobby.size * 0.5)
+	lobby.tree_exiting.connect(func(): if is_instance_valid(center): center.queue_free())
+	
+	var scroll = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	lobby.add_child(scroll)
 	
 	var margin = MarginContainer.new()
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_theme_constant_override("margin_left", 30)
 	margin.add_theme_constant_override("margin_right", 30)
 	margin.add_theme_constant_override("margin_top", 30)
 	margin.add_theme_constant_override("margin_bottom", 30)
-	lobby.add_child(margin)
+	scroll.add_child(margin)
 	
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 24)
@@ -391,7 +436,7 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 	title.text = "全国ランダムマッチ"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
-	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_font_size_override("font_size", DeskTheme.scaled_font(28))
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
 	
@@ -399,7 +444,7 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 	status_lbl.text = "マッチングサーバーに接続中..."
 	status_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	status_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	status_lbl.add_theme_font_size_override("font_size", 18)
+	status_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 	status_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
 	vbox.add_child(status_lbl)
 	
@@ -407,7 +452,7 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 	online_lbl.text = "オンライン接続状況を確認中..."
 	online_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	online_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	online_lbl.add_theme_font_size_override("font_size", 14)
+	online_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(14))
 	online_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	vbox.add_child(online_lbl)
 	
@@ -428,7 +473,7 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 	cancel_btn.custom_minimum_size = Vector2(240, 50)
 	cancel_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	cancel_btn.add_theme_font_override("font", DeskTheme.get_font())
-	cancel_btn.add_theme_font_size_override("font_size", 18)
+	cancel_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 	Global.apply_white_button_style(cancel_btn)
 	vbox.add_child(cancel_btn)
 	
@@ -474,7 +519,7 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 		if _is_starting_game:
 			return
 		_is_starting_game = true
-		AudioManager.play_se(AudioManager.SE_FANFARE)
+		AudioManager.play_se(AudioManager.SE_CLICK)
 		DisplayServer.window_request_attention()
 
 			
@@ -526,7 +571,7 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 						var cpu_lbl = Label.new()
 						cpu_lbl.text = "・%s" % prof.get("name", "CPU")
 						cpu_lbl.add_theme_font_override("font", DeskTheme.get_font())
-						cpu_lbl.add_theme_font_size_override("font_size", 16)
+						cpu_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
 						cpu_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
 						members_vbox.add_child(cpu_lbl)
 				
@@ -561,7 +606,7 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 			var p_lbl = Label.new()
 			p_lbl.text = "・%s" % p.get("username", "ライバル")
 			p_lbl.add_theme_font_override("font", DeskTheme.get_font())
-			p_lbl.add_theme_font_size_override("font_size", 16)
+			p_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
 			p_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 			members_vbox.add_child(p_lbl)
 			

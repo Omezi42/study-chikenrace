@@ -24,13 +24,13 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 		phone_panel.anchor_right = 0.0
 		phone_panel.anchor_top = 0.0
 		phone_panel.anchor_bottom = 0.0
-		phone_panel.offset_left = 180
-		phone_panel.offset_right = 600
-		phone_panel.offset_top = 120
-		phone_panel.offset_bottom = 960
+		phone_panel.offset_left = 240
+		phone_panel.offset_right = 660
+		phone_panel.offset_top = 5
+		phone_panel.offset_bottom = 845
 		phone_panel.custom_minimum_size = Vector2(420, 840)
 		phone_panel.size = Vector2(420, 840)
-		phone_panel.position = Vector2(180, 120)
+		phone_panel.position = Vector2(240, 5)
 		phone_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 		phone_panel.clip_contents = true
 	else:
@@ -40,13 +40,13 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 		phone_panel.anchor_right = 0.0
 		phone_panel.anchor_top = 0.0
 		phone_panel.anchor_bottom = 0.0
-		phone_panel.offset_left = 180
-		phone_panel.offset_right = 600
-		phone_panel.offset_top = 120
-		phone_panel.offset_bottom = 960
+		phone_panel.offset_left = 240
+		phone_panel.offset_right = 660
+		phone_panel.offset_top = 5
+		phone_panel.offset_bottom = 845
 		phone_panel.custom_minimum_size = Vector2(420, 840)
 		phone_panel.size = Vector2(420, 840)
-		phone_panel.position = Vector2(180, 120)
+		phone_panel.position = Vector2(240, 5)
 		phone_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 		phone_panel.clip_contents = true
 		
@@ -93,9 +93,20 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	notch.add_theme_stylebox_override("panel", notch_style)
 	phone_panel.add_child(notch)
 	
+	var slide_canvas = Control.new()
+	slide_canvas.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slide_canvas.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	slide_canvas.clip_contents = false
+	screen_container.add_child(slide_canvas)
+	phase.slide_canvas = slide_canvas
+	
 	var phone_vbox = VBoxContainer.new()
+	phone_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	phone_vbox.custom_minimum_size = Vector2(0, 0)
+	phone_vbox.position = Vector2(0, 0)
 	phone_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
-	screen_container.add_child(phone_vbox)
+	slide_canvas.add_child(phone_vbox)
+	phase.timeline_screen = phone_vbox
 	
 	# Status bar
 	var status_margin = MarginContainer.new()
@@ -151,163 +162,22 @@ static func build_layout(phase: DailyLikesPhase, setup_data: Dictionary = {}) ->
 	scroll.add_child(timeline_list)
 	phase.timeline_list = timeline_list
 	
-	# RIGHT COLUMN (NOTEBOOK) - Shifted to the right of the phone UI
-	var right_vbox = VBoxContainer.new()
-	right_vbox.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	right_vbox.position = Vector2(790, 200)
-	right_vbox.size = Vector2(780, 740)
-	right_vbox.mouse_filter = Control.MOUSE_FILTER_PASS
-	right_vbox.size_flags_horizontal = Control.SIZE_FILL
-	right_vbox.size_flags_vertical = Control.SIZE_FILL
-	right_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	right_vbox.add_theme_constant_override("separation", 24)
-	notebook_target.add_child(right_vbox)
+	var phone_footer_margin = MarginContainer.new()
+	phone_footer_margin.add_theme_constant_override("margin_top", 10)
+	phone_footer_margin.add_theme_constant_override("margin_bottom", 20)
+	phone_footer_margin.add_theme_constant_override("margin_left", 16)
+	phone_footer_margin.add_theme_constant_override("margin_right", 16)
+	phone_vbox.add_child(phone_footer_margin)
+	phase.phone_footer_margin = phone_footer_margin
 	
-	var detail_modal = PanelContainer.new()
-	detail_modal.mouse_filter = Control.MOUSE_FILTER_STOP
-	detail_modal.custom_minimum_size = Vector2(780, 600)
-	detail_modal.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Build Timeline Footer (Skip & Next)
+	_build_smartphone_timeline_footer(phase, phone_footer_margin)
 	
-	var detail_style = StyleBoxFlat.new()
-	detail_style.bg_color = Color("#ffffff") # Studyplus-style white detail panel
-	detail_style.border_color = Color("#e0e0e0")
-	detail_style.border_width_left = 1
-	detail_style.border_width_right = 1
-	detail_style.border_width_top = 1
-	detail_style.border_width_bottom = 1
-	detail_style.corner_radius_top_left = 24
-	detail_style.corner_radius_top_right = 24
-	detail_style.corner_radius_bottom_left = 24
-	detail_style.corner_radius_bottom_right = 24
-	detail_style.shadow_color = Color(0, 0, 0, 0.08)
-	detail_style.shadow_size = 12
-	detail_style.shadow_offset = Vector2(0, 4)
-	detail_modal.add_theme_stylebox_override("panel", detail_style)
-	right_vbox.add_child(detail_modal)
-	phase.detail_modal = detail_modal
+	# Build Detail Screen (Smartphone Slide-in)
+	_build_smartphone_detail_screen(phase, slide_canvas)
 	
-	var detail_margin = MarginContainer.new()
-	detail_margin.mouse_filter = Control.MOUSE_FILTER_STOP
-	detail_margin.add_theme_constant_override("margin_left", DeskTheme.MARGIN_SMALL)
-	detail_margin.add_theme_constant_override("margin_right", DeskTheme.MARGIN_SMALL)
-	detail_margin.add_theme_constant_override("margin_top", DeskTheme.MARGIN_SMALL)
-	detail_margin.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_SMALL)
-	detail_modal.add_child(detail_margin)
-	
-	var detail_vbox = VBoxContainer.new()
-	detail_vbox.add_theme_constant_override("separation", 12)
-	detail_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	detail_margin.add_child(detail_vbox)
-	
-	var detail_title = Label.new()
-	detail_title.text = "ライバル詳細ログ"
-	detail_title.add_theme_font_override("font", DeskTheme.get_font())
-	detail_title.add_theme_font_size_override("font_size", 24)
-	detail_title.add_theme_color_override("font_color", Color("#1a1a1a"))
-	detail_vbox.add_child(detail_title)
-	phase.detail_title = detail_title
-	
-	var detail_body = Label.new()
-	detail_body.text = "タイムラインの「詳細確認」を押すと、ライバルが今日引いたドロー数のログがここに表示されます。"
-	detail_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail_body.add_theme_font_override("font", DeskTheme.get_font())
-	detail_body.add_theme_font_size_override("font_size", 18)
-	detail_body.add_theme_color_override("font_color", Color("#777777"))
-	detail_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail_body.custom_minimum_size = Vector2(0, 80)
-	detail_vbox.add_child(detail_body)
-	phase.detail_body = detail_body
-	
-	var detail_scroll = ScrollContainer.new()
-	detail_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	detail_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	detail_scroll.scroll_started.connect(phase._update_ellipsis_visibility)
-	detail_scroll.scroll_ended.connect(phase._update_ellipsis_visibility)
-	detail_scroll.get_v_scroll_bar().value_changed.connect(func(_val): phase._update_ellipsis_visibility())
-	detail_vbox.add_child(detail_scroll)
-	phase.detail_scroll = detail_scroll
-	
-	var detail_log_vbox = VBoxContainer.new()
-	detail_log_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail_log_vbox.add_theme_constant_override("separation", 14)
-	detail_scroll.add_child(detail_log_vbox)
-	phase.detail_log_vbox = detail_log_vbox
-	
-	var detail_ellipsis = Label.new()
-	detail_ellipsis.text = "…（下にスクロールできます）"
-	detail_ellipsis.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	detail_ellipsis.add_theme_font_override("font", DeskTheme.get_font())
-	detail_ellipsis.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_TINY)
-	detail_ellipsis.add_theme_color_override("font_color", Color("#aaaaaa"))
-	detail_ellipsis.visible = false
-	detail_vbox.add_child(detail_ellipsis)
-	phase.detail_ellipsis = detail_ellipsis
-	
-	var likes_skip_btn = Button.new()
-	likes_skip_btn.text = "タイムライン演出スキップ >>"
-	likes_skip_btn.custom_minimum_size = Vector2(360, 50)
-	likes_skip_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	likes_skip_btn.add_theme_font_override("font", DeskTheme.get_font())
-	likes_skip_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
-	
-	var skip_style = StyleBoxFlat.new()
-	skip_style.bg_color = Color("#f0f0f0") # Studyplus-style light skip button
-	skip_style.border_color = Color("#dddddd")
-	skip_style.border_width_left = 1
-	skip_style.border_width_right = 1
-	skip_style.border_width_top = 1
-	skip_style.border_width_bottom = 1
-	skip_style.corner_radius_top_left = 25
-	skip_style.corner_radius_top_right = 25
-	skip_style.corner_radius_bottom_left = 25
-	skip_style.corner_radius_bottom_right = 25
-	likes_skip_btn.add_theme_stylebox_override("normal", skip_style)
-	likes_skip_btn.add_theme_stylebox_override("hover", skip_style)
-	likes_skip_btn.add_theme_color_override("font_color", Color("#555555"))
-	
-	likes_skip_btn.pressed.connect(func():
-		likes_skip_btn.visible = false
-		for tw in phase.active_timeline_tweens:
-			if is_instance_valid(tw) and tw.is_running():
-				tw.kill()
-		phase.active_timeline_tweens.clear()
-		for card in phase.timeline_list.get_children():
-			if is_instance_valid(card):
-				card.modulate.a = 1.0
-				card.custom_minimum_size = Vector2(360, 200)
-	)
-	right_vbox.add_child(likes_skip_btn)
-	phase.likes_skip_btn = likes_skip_btn
-	
-	var next_day_btn = Button.new()
-	var is_last_day = phase.session.current_day >= Constants.MAX_DAYS
-		
-	if is_last_day:
-		next_day_btn.text = "結果発表へ進む"
-	else:
-		next_day_btn.text = "明日の勉強へ進む"
-		
-	next_day_btn.custom_minimum_size = Vector2(360, 65)
-	next_day_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	next_day_btn.add_theme_font_override("font", DeskTheme.get_font())
-	next_day_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
-	
-	var action_style = StyleBoxFlat.new()
-	action_style.bg_color = Color("#ff8c00") # Studyplus-style orange CTA
-	action_style.shadow_color = Color("#e07800", 0.35)
-	action_style.shadow_size = 6
-	action_style.shadow_offset = Vector2(0, 3)
-	action_style.corner_radius_top_left = 32
-	action_style.corner_radius_top_right = 32
-	action_style.corner_radius_bottom_left = 32
-	action_style.corner_radius_bottom_right = 32
-	next_day_btn.add_theme_stylebox_override("normal", action_style)
-	next_day_btn.add_theme_stylebox_override("hover", action_style)
-	next_day_btn.add_theme_color_override("font_color", Color.WHITE)
-	
-	next_day_btn.pressed.connect(phase._on_next_day_pressed)
-	right_vbox.add_child(next_day_btn)
-	phase.next_day_btn = next_day_btn
+	# Build for PC (Right Column)
+	_build_pc_action_panel(phase, notebook_target)
 	
 
 static func build_timeline_card(phase: DailyLikesPhase, p: Dictionary, idx: int) -> Control:
@@ -789,26 +659,52 @@ static func show_doubt_result_modal(
 	modal.add_theme_stylebox_override("panel", base_style)
 	canvas.add_child(modal)
 	
+	var is_portrait = false
+	if phase.has_method("_is_portrait_mode"):
+		is_portrait = phase._is_portrait_mode()
+		
 	var viewport_size = scene_tree.root.get_viewport().get_visible_rect().size
 	var screen_w = viewport_size.x if viewport_size.x > 0 else 1920
 	var screen_h = viewport_size.y if viewport_size.y > 0 else 1080
-	modal.position = Vector2((screen_w - 750) / 2.0, (screen_h - 500) / 2.0)
+	
+	var target_w = 950.0 if is_portrait else 750.0
+	var target_h = 1960.0 if is_portrait else 500.0
+	
+	if is_portrait:
+		target_w = min(target_w, screen_w * 0.95)
+		target_h = min(target_h, screen_h * 0.9)
+	else:
+		target_w = min(target_w, screen_w * 0.9)
+		target_h = min(target_h, screen_h * 0.9)
+		
+	modal.custom_minimum_size = Vector2(target_w, target_h)
+	modal.size = Vector2(target_w, target_h)
+	modal.pivot_offset = Vector2(target_w / 2.0, target_h / 2.0)
+	modal.position = Vector2((screen_w - target_w) / 2.0, (screen_h - target_h) / 2.0)
 	
 	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 30)
-	margin.add_theme_constant_override("margin_right", 30)
-	margin.add_theme_constant_override("margin_top", 25)
-	margin.add_theme_constant_override("margin_bottom", 25)
+	margin.add_theme_constant_override("margin_left", 56 if is_portrait else 30)
+	margin.add_theme_constant_override("margin_right", 56 if is_portrait else 30)
+	margin.add_theme_constant_override("margin_top", 70 if is_portrait else 25)
+	margin.add_theme_constant_override("margin_bottom", 70 if is_portrait else 25)
 	modal.add_child(margin)
 	
+	var scroll = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	margin.add_child(scroll)
+	
 	var vbox = VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 20)
-	margin.add_child(vbox)
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vbox.add_theme_constant_override("separation", 56 if is_portrait else 20)
+	scroll.add_child(vbox)
 	
 	var title_lbl = Label.new()
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title_lbl.custom_minimum_size = Vector2(10, 0)
 	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	title_lbl.add_theme_font_size_override("font_size", 36)
+	title_lbl.add_theme_font_size_override("font_size", 88 if is_portrait else 36)
 	
 	if is_bluff:
 		title_lbl.text = "ダウト成功！"
@@ -821,20 +717,25 @@ static func show_doubt_result_modal(
 	var desc_lbl = Label.new()
 	desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc_lbl.custom_minimum_size = Vector2(10, 0)
 	desc_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	desc_lbl.add_theme_font_size_override("font_size", 18)
+	desc_lbl.add_theme_font_size_override("font_size", 44 if is_portrait else 18)
 	desc_lbl.add_theme_color_override("font_color", Color("#333333"))
 	
 	if is_bluff:
-		desc_lbl.text = "%s は勉強報告で嘘をついていた！\n【申告】 %d 点  ➡  【実際】 %d 点" % [opp_name, declared_score, actual_score]
+		desc_lbl.text = "%s は勉強報告で嘘をついていた！\n【申告】 %d 点  →  【実際】 %d 点" % [opp_name, declared_score, actual_score]
 	else:
-		desc_lbl.text = "%s は正直に勉強していた！\n【申告】 %d 点  ➡  【実際】 %d 点" % [opp_name, declared_score, actual_score]
+		desc_lbl.text = "%s は正直に勉強していた！\n【申告】 %d 点  →  【実際】 %d 点" % [opp_name, declared_score, actual_score]
 	vbox.add_child(desc_lbl)
 	
-	var cards_hbox = HBoxContainer.new()
-	cards_hbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	cards_hbox.add_theme_constant_override("separation", 30)
-	vbox.add_child(cards_hbox)
+	var cards_container
+	if is_portrait:
+		cards_container = VBoxContainer.new()
+	else:
+		cards_container = HBoxContainer.new()
+	cards_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	cards_container.add_theme_constant_override("separation", 56 if is_portrait else 30)
+	vbox.add_child(cards_container)
 	
 	var my_card = PanelContainer.new()
 	my_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -856,31 +757,35 @@ static func show_doubt_result_modal(
 	my_style.corner_radius_bottom_left = 8
 	my_style.corner_radius_bottom_right = 8
 	my_card.add_theme_stylebox_override("panel", my_style)
-	cards_hbox.add_child(my_card)
+	cards_container.add_child(my_card)
 	
 	var my_margin = MarginContainer.new()
-	my_margin.add_theme_constant_override("margin_left", 15)
-	my_margin.add_theme_constant_override("margin_right", 15)
-	my_margin.add_theme_constant_override("margin_top", 15)
-	my_margin.add_theme_constant_override("margin_bottom", 15)
+	my_margin.add_theme_constant_override("margin_left", 42 if is_portrait else 15)
+	my_margin.add_theme_constant_override("margin_right", 42 if is_portrait else 15)
+	my_margin.add_theme_constant_override("margin_top", 42 if is_portrait else 15)
+	my_margin.add_theme_constant_override("margin_bottom", 42 if is_portrait else 15)
 	my_card.add_child(my_margin)
 	
 	var my_vbox = VBoxContainer.new()
-	my_vbox.add_theme_constant_override("separation", 8)
+	my_vbox.add_theme_constant_override("separation", 22 if is_portrait else 8)
 	my_margin.add_child(my_vbox)
 	
 	var my_title = Label.new()
 	my_title.text = "あなたへの影響"
 	my_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	my_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	my_title.custom_minimum_size = Vector2(10, 0)
 	my_title.add_theme_font_override("font", DeskTheme.get_font())
-	my_title.add_theme_font_size_override("font_size", 16)
+	my_title.add_theme_font_size_override("font_size", 44 if is_portrait else 16)
 	my_title.add_theme_color_override("font_color", Color("#1a1a1a"))
 	my_vbox.add_child(my_title)
 	
 	var my_diff_lbl = Label.new()
 	my_diff_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	my_diff_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	my_diff_lbl.custom_minimum_size = Vector2(10, 0)
 	my_diff_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	my_diff_lbl.add_theme_font_size_override("font_size", 32)
+	my_diff_lbl.add_theme_font_size_override("font_size", 88 if is_portrait else 32)
 	
 	if my_score_change >= 0:
 		my_diff_lbl.text = "+%d 点" % my_score_change
@@ -894,8 +799,9 @@ static func show_doubt_result_modal(
 	my_detail_lbl.text = my_details
 	my_detail_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	my_detail_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	my_detail_lbl.custom_minimum_size = Vector2(10, 0)
 	my_detail_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	my_detail_lbl.add_theme_font_size_override("font_size", 13)
+	my_detail_lbl.add_theme_font_size_override("font_size", 36 if is_portrait else 13)
 	my_detail_lbl.add_theme_color_override("font_color", Color("#666666"))
 	my_vbox.add_child(my_detail_lbl)
 	
@@ -919,31 +825,35 @@ static func show_doubt_result_modal(
 	opp_style.corner_radius_bottom_left = 8
 	opp_style.corner_radius_bottom_right = 8
 	opp_card.add_theme_stylebox_override("panel", opp_style)
-	cards_hbox.add_child(opp_card)
+	cards_container.add_child(opp_card)
 	
 	var opp_margin = MarginContainer.new()
-	opp_margin.add_theme_constant_override("margin_left", 15)
-	opp_margin.add_theme_constant_override("margin_right", 15)
-	opp_margin.add_theme_constant_override("margin_top", 15)
-	opp_margin.add_theme_constant_override("margin_bottom", 15)
+	opp_margin.add_theme_constant_override("margin_left", 42 if is_portrait else 15)
+	opp_margin.add_theme_constant_override("margin_right", 42 if is_portrait else 15)
+	opp_margin.add_theme_constant_override("margin_top", 42 if is_portrait else 15)
+	opp_margin.add_theme_constant_override("margin_bottom", 42 if is_portrait else 15)
 	opp_card.add_child(opp_margin)
 	
 	var opp_vbox = VBoxContainer.new()
-	opp_vbox.add_theme_constant_override("separation", 8)
+	opp_vbox.add_theme_constant_override("separation", 22 if is_portrait else 8)
 	opp_margin.add_child(opp_vbox)
 	
 	var opp_title = Label.new()
 	opp_title.text = opp_name + " への影響"
 	opp_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	opp_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	opp_title.custom_minimum_size = Vector2(10, 0)
 	opp_title.add_theme_font_override("font", DeskTheme.get_font())
-	opp_title.add_theme_font_size_override("font_size", 16)
+	opp_title.add_theme_font_size_override("font_size", 44 if is_portrait else 16)
 	opp_title.add_theme_color_override("font_color", Color("#1a1a1a"))
 	opp_vbox.add_child(opp_title)
 	
 	var opp_diff_lbl = Label.new()
 	opp_diff_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	opp_diff_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	opp_diff_lbl.custom_minimum_size = Vector2(10, 0)
 	opp_diff_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	opp_diff_lbl.add_theme_font_size_override("font_size", 32)
+	opp_diff_lbl.add_theme_font_size_override("font_size", 88 if is_portrait else 32)
 	
 	if opp_score_change < 0:
 		opp_diff_lbl.text = "%d 点" % opp_score_change
@@ -957,17 +867,18 @@ static func show_doubt_result_modal(
 	opp_detail_lbl.text = opp_details
 	opp_detail_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	opp_detail_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	opp_detail_lbl.custom_minimum_size = Vector2(10, 0)
 	opp_detail_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	opp_detail_lbl.add_theme_font_size_override("font_size", 13)
+	opp_detail_lbl.add_theme_font_size_override("font_size", 36 if is_portrait else 13)
 	opp_detail_lbl.add_theme_color_override("font_color", Color("#666666"))
 	opp_vbox.add_child(opp_detail_lbl)
 	
 	var close_btn = Button.new()
 	close_btn.text = "タイムラインに戻る"
-	close_btn.custom_minimum_size = Vector2(250, 50)
+	close_btn.custom_minimum_size = Vector2(700, 140) if is_portrait else Vector2(250, 50)
 	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	close_btn.add_theme_font_override("font", DeskTheme.get_font())
-	close_btn.add_theme_font_size_override("font_size", 18)
+	close_btn.add_theme_font_size_override("font_size", 50 if is_portrait else 18)
 	DeskTheme.apply_white_button_style(close_btn)
 	vbox.add_child(close_btn)
 	
@@ -980,7 +891,8 @@ static func show_doubt_result_modal(
 			fade_tween.tween_property(modal, "modulate:a", 0.0, 0.2)
 			fade_tween.tween_property(bg, "color:a", 0.0, 0.2)
 			fade_tween.chain().tween_callback(func():
-				canvas.queue_free()
+				if is_instance_valid(canvas):
+					canvas.queue_free()
 				if phase.has_method("_on_doubt_modal_closed"):
 					phase._on_doubt_modal_closed()
 			)
@@ -999,10 +911,17 @@ static func show_doubt_result_modal(
 	tween.tween_property(modal, "scale", Vector2.ONE, 0.35)
 
 static func show_tutorial_finish_modal(phase: DailyLikesPhase) -> void:
+	var viewport_size = phase.get_viewport_rect().size
+	if viewport_size.x == 0:
+		viewport_size = Vector2(1500, 850)
+	var fit_s = clamp(min(viewport_size.x / 540.0, viewport_size.y / 960.0), 0.8, 3.0)
+	var target_w = min(500.0, (viewport_size.x * 0.95) / fit_s)
+	var target_h = 380.0
+	
 	var modal = PanelContainer.new()
-	modal.custom_minimum_size = Vector2(650, 400)
-	modal.size = Vector2(650, 400)
-	modal.pivot_offset = Vector2(325, 200)
+	modal.custom_minimum_size = Vector2(target_w, target_h)
+	modal.pivot_offset = Vector2(target_w / 2.0, target_h / 2.0)
+	modal.resized.connect(func(): modal.pivot_offset = modal.size * 0.5)
 	
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color("#ffffff") # Studyplus-style white tutorial modal
@@ -1011,24 +930,24 @@ static func show_tutorial_finish_modal(phase: DailyLikesPhase) -> void:
 	style.border_width_right = 1
 	style.border_width_top = 1
 	style.border_width_bottom = 1
-	style.corner_radius_top_left = 24
-	style.corner_radius_top_right = 24
-	style.corner_radius_bottom_left = 24
-	style.corner_radius_bottom_right = 24
+	style.corner_radius_top_left = 16
+	style.corner_radius_top_right = 16
+	style.corner_radius_bottom_left = 16
+	style.corner_radius_bottom_right = 16
 	style.shadow_color = Color(0, 0, 0, 0.15)
-	style.shadow_size = 30
-	style.shadow_offset = Vector2(0, 10)
+	style.shadow_size = 15
+	style.shadow_offset = Vector2(0, 8)
 	modal.add_theme_stylebox_override("panel", style)
 	
 	phase.add_child(modal)
-	var viewport_size = phase.get_viewport_rect().size
 	modal.position = viewport_size * 0.5 - modal.pivot_offset
 	
 	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 30)
-	margin.add_theme_constant_override("margin_right", 30)
-	margin.add_theme_constant_override("margin_top", 30)
-	margin.add_theme_constant_override("margin_bottom", 30)
+	var m = 24
+	margin.add_theme_constant_override("margin_left", m)
+	margin.add_theme_constant_override("margin_right", m)
+	margin.add_theme_constant_override("margin_top", m)
+	margin.add_theme_constant_override("margin_bottom", m)
 	modal.add_child(margin)
 	
 	var vbox = VBoxContainer.new()
@@ -1040,7 +959,7 @@ static func show_tutorial_finish_modal(phase: DailyLikesPhase) -> void:
 	title.text = "チュートリアル完了！"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
-	title.add_theme_font_size_override("font_size", 32)
+	title.add_theme_font_size_override("font_size", DeskTheme.scaled_font(28))
 	title.add_theme_color_override("font_color", Color("#00e676"))
 	vbox.add_child(title)
 	
@@ -1048,7 +967,7 @@ static func show_tutorial_finish_modal(phase: DailyLikesPhase) -> void:
 	body.text = "お疲れ様でした！『テスト勉強チキンレース』の基本的な遊び方（カードを引く駆け引き、寝落ちのリスク、点数報告でのブラフ、嘘とダウトの見極め）をマスターしました。\n\nソロ模試やランダム対戦でライバルたちを実力と駆け引きで圧倒し、勝利を掴み取りましょう！"
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.add_theme_font_override("font", DeskTheme.get_font())
-	body.add_theme_font_size_override("font_size", 18)
+	body.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
 	body.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(body)
 	
@@ -1057,7 +976,7 @@ static func show_tutorial_finish_modal(phase: DailyLikesPhase) -> void:
 	btn.custom_minimum_size = Vector2(240, 50)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	btn.add_theme_font_override("font", DeskTheme.get_font())
-	btn.add_theme_font_size_override("font_size", 20)
+	btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 	DeskTheme.apply_white_button_style(btn)
 	btn.pressed.connect(func():
 		DeskTheme.animate_click(btn, Vector2.ONE, 0.08)
@@ -1073,4 +992,313 @@ static func show_tutorial_finish_modal(phase: DailyLikesPhase) -> void:
 	
 	modal.scale = Vector2.ZERO
 	var tween = phase.create_tween().bind_node(modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(modal, "scale", Vector2.ONE, 0.3)
+	tween.tween_property(modal, "scale", Vector2.ONE * fit_s, 0.3)
+
+static func _build_smartphone_timeline_footer(phase: DailyLikesPhase, target: Control) -> void:
+	var container = VBoxContainer.new()
+	container.add_theme_constant_override("separation", 12)
+	target.add_child(container)
+	
+	var likes_skip_btn = Button.new()
+	likes_skip_btn.text = "タイムライン演出スキップ >>"
+	likes_skip_btn.custom_minimum_size = Vector2(340, 40)
+	likes_skip_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	likes_skip_btn.add_theme_font_override("font", DeskTheme.get_font())
+	likes_skip_btn.add_theme_font_size_override("font_size", 12)
+	
+	var skip_style = StyleBoxFlat.new()
+	skip_style.bg_color = Color("#f0f0f0")
+	skip_style.border_color = Color("#dddddd")
+	skip_style.border_width_left = 1
+	skip_style.border_width_right = 1
+	skip_style.border_width_top = 1
+	skip_style.border_width_bottom = 1
+	skip_style.corner_radius_top_left = 25
+	skip_style.corner_radius_top_right = 25
+	skip_style.corner_radius_bottom_left = 25
+	skip_style.corner_radius_bottom_right = 25
+	likes_skip_btn.add_theme_stylebox_override("normal", skip_style)
+	likes_skip_btn.add_theme_stylebox_override("hover", skip_style)
+	likes_skip_btn.add_theme_color_override("font_color", Color("#555555"))
+	
+	likes_skip_btn.pressed.connect(func():
+		likes_skip_btn.visible = false
+		if is_instance_valid(phase.pc_likes_skip_btn): phase.pc_likes_skip_btn.visible = false
+		for tw in phase.active_timeline_tweens:
+			if is_instance_valid(tw) and tw.is_running():
+				tw.kill()
+		phase.active_timeline_tweens.clear()
+		for card in phase.timeline_list.get_children():
+			if is_instance_valid(card):
+				card.modulate.a = 1.0
+				card.custom_minimum_size = Vector2(360, 200)
+	)
+	container.add_child(likes_skip_btn)
+	phase.likes_skip_btn = likes_skip_btn
+	
+	var next_day_btn = Button.new()
+	var is_last_day = phase.session.current_day >= Constants.MAX_DAYS
+	if is_last_day:
+		next_day_btn.text = "結果発表へ進む"
+	else:
+		next_day_btn.text = "明日の勉強へ進む"
+	next_day_btn.custom_minimum_size = Vector2(340, 50)
+	next_day_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	next_day_btn.add_theme_font_override("font", DeskTheme.get_font())
+	next_day_btn.add_theme_font_size_override("font_size", 16)
+	
+	var action_style = StyleBoxFlat.new()
+	action_style.bg_color = Color("#ff8c00")
+	action_style.shadow_color = Color("#e07800", 0.35)
+	action_style.shadow_size = 6
+	action_style.shadow_offset = Vector2(0, 3)
+	action_style.corner_radius_top_left = 32
+	action_style.corner_radius_top_right = 32
+	action_style.corner_radius_bottom_left = 32
+	action_style.corner_radius_bottom_right = 32
+	next_day_btn.add_theme_stylebox_override("normal", action_style)
+	next_day_btn.add_theme_stylebox_override("hover", action_style)
+	next_day_btn.add_theme_color_override("font_color", Color.WHITE)
+	
+	next_day_btn.pressed.connect(phase._on_next_day_pressed)
+	container.add_child(next_day_btn)
+	phase.next_day_btn = next_day_btn
+
+static func _build_smartphone_detail_screen(phase: DailyLikesPhase, canvas: Control) -> void:
+	var detail_screen = VBoxContainer.new()
+	detail_screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	detail_screen.custom_minimum_size = Vector2(0, 0)
+	detail_screen.position = Vector2(9999, 0) # off-screen to the right
+	detail_screen.add_theme_constant_override("separation", 0)
+	canvas.add_child(detail_screen)
+	phase.detail_screen = detail_screen
+	
+	# Header with back button
+	var header_margin = MarginContainer.new()
+	if Global.is_tutorial_mode:
+		header_margin.add_theme_constant_override("margin_top", 140)
+	else:
+		header_margin.add_theme_constant_override("margin_top", 44)
+	header_margin.add_theme_constant_override("margin_bottom", 10)
+	header_margin.add_theme_constant_override("margin_left", 16)
+	header_margin.add_theme_constant_override("margin_right", 16)
+	detail_screen.add_child(header_margin)
+	
+	var header_hbox = HBoxContainer.new()
+	header_margin.add_child(header_hbox)
+	
+	var back_btn = Button.new()
+	back_btn.text = "< 戻る"
+	back_btn.flat = true
+	back_btn.add_theme_font_override("font", DeskTheme.get_font())
+	back_btn.add_theme_font_size_override("font_size", 16)
+	back_btn.add_theme_color_override("font_color", Color("#007aff"))
+	back_btn.pressed.connect(phase._on_detail_back_pressed)
+	header_hbox.add_child(back_btn)
+	phase.close_detail_btn = back_btn
+	
+	var title = Label.new()
+	title.text = "ライバル詳細"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.add_theme_font_size_override("font_size", 16)
+	title.add_theme_color_override("font_color", Color("#111111"))
+	header_hbox.add_child(title)
+	phase.detail_title = title
+	
+	# Content body
+	var content_margin = MarginContainer.new()
+	content_margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content_margin.add_theme_constant_override("margin_left", 16)
+	content_margin.add_theme_constant_override("margin_right", 16)
+	content_margin.add_theme_constant_override("margin_bottom", 20)
+	detail_screen.add_child(content_margin)
+	
+	var detail_vbox = VBoxContainer.new()
+	detail_vbox.add_theme_constant_override("separation", 12)
+	content_margin.add_child(detail_vbox)
+	
+	var detail_body = Label.new()
+	detail_body.text = "ライバルが今日引いたドロー数のログがここに表示されます。"
+	detail_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail_body.add_theme_font_override("font", DeskTheme.get_font())
+	detail_body.add_theme_font_size_override("font_size", 14)
+	detail_body.add_theme_color_override("font_color", Color("#555555"))
+	detail_vbox.add_child(detail_body)
+	phase.detail_body = detail_body
+	
+	var detail_scroll = ScrollContainer.new()
+	detail_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	detail_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	detail_scroll.scroll_started.connect(phase._update_ellipsis_visibility)
+	detail_scroll.scroll_ended.connect(phase._update_ellipsis_visibility)
+	detail_scroll.get_v_scroll_bar().value_changed.connect(func(_val): phase._update_ellipsis_visibility())
+	detail_vbox.add_child(detail_scroll)
+	phase.detail_scroll = detail_scroll
+	
+	var detail_log_vbox = VBoxContainer.new()
+	detail_log_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail_log_vbox.add_theme_constant_override("separation", 12)
+	detail_scroll.add_child(detail_log_vbox)
+	phase.detail_log_vbox = detail_log_vbox
+	
+	var detail_ellipsis = Label.new()
+	detail_ellipsis.text = "…（下にスクロールできます）"
+	detail_ellipsis.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	detail_ellipsis.add_theme_font_override("font", DeskTheme.get_font())
+	detail_ellipsis.add_theme_font_size_override("font_size", 12)
+	detail_ellipsis.add_theme_color_override("font_color", Color("#aaaaaa"))
+	detail_ellipsis.visible = false
+	detail_vbox.add_child(detail_ellipsis)
+	phase.detail_ellipsis = detail_ellipsis
+	
+	var bottom_margin = MarginContainer.new()
+	bottom_margin.add_theme_constant_override("margin_top", 10)
+	bottom_margin.add_theme_constant_override("margin_bottom", 20)
+	bottom_margin.add_theme_constant_override("margin_left", 16)
+	bottom_margin.add_theme_constant_override("margin_right", 16)
+	detail_vbox.add_child(bottom_margin)
+	
+	var bottom_close_btn = Button.new()
+	bottom_close_btn.text = "閉じる"
+	bottom_close_btn.custom_minimum_size = Vector2(0, 50)
+	bottom_close_btn.add_theme_font_override("font", DeskTheme.get_font())
+	bottom_close_btn.add_theme_font_size_override("font_size", 16)
+	if phase.has_node("/root/UIHelper"):
+		phase.get_node("/root/UIHelper").apply_white_button_style(bottom_close_btn)
+	bottom_close_btn.pressed.connect(phase._on_detail_back_pressed)
+	bottom_margin.add_child(bottom_close_btn)
+
+static func _build_pc_action_panel(phase: DailyLikesPhase, target: Control) -> void:
+	var container = VBoxContainer.new()
+	container.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	container.position = Vector2(700, 5)
+	container.custom_minimum_size = Vector2(780, 840)
+	container.size = Vector2(780, 840)
+	container.mouse_filter = Control.MOUSE_FILTER_PASS
+	container.size_flags_horizontal = Control.SIZE_FILL
+	container.size_flags_vertical = Control.SIZE_FILL
+	container.alignment = BoxContainer.ALIGNMENT_CENTER
+	container.add_theme_constant_override("separation", 24)
+	phase.pc_right_vbox = container
+	target.add_child(container)
+	
+	var detail_modal = PanelContainer.new()
+	detail_modal.mouse_filter = Control.MOUSE_FILTER_STOP
+	detail_modal.custom_minimum_size = Vector2(780, 600)
+	detail_modal.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
+	var detail_style = StyleBoxFlat.new()
+	detail_style.bg_color = Color("#ffffff")
+	detail_style.border_color = Color("#e0e0e0")
+	detail_style.border_width_left = 1
+	detail_style.border_width_right = 1
+	detail_style.border_width_top = 1
+	detail_style.border_width_bottom = 1
+	detail_style.corner_radius_top_left = 24
+	detail_style.corner_radius_top_right = 24
+	detail_style.corner_radius_bottom_left = 24
+	detail_style.corner_radius_bottom_right = 24
+	detail_style.shadow_color = Color(0, 0, 0, 0.08)
+	detail_style.shadow_size = 12
+	detail_style.shadow_offset = Vector2(0, 4)
+	detail_modal.add_theme_stylebox_override("panel", detail_style)
+	container.add_child(detail_modal)
+	phase.pc_detail_modal = detail_modal
+	
+	var detail_margin = MarginContainer.new()
+	detail_margin.mouse_filter = Control.MOUSE_FILTER_STOP
+	detail_margin.add_theme_constant_override("margin_left", DeskTheme.MARGIN_SMALL)
+	detail_margin.add_theme_constant_override("margin_right", DeskTheme.MARGIN_SMALL)
+	detail_margin.add_theme_constant_override("margin_top", DeskTheme.MARGIN_SMALL)
+	detail_margin.add_theme_constant_override("margin_bottom", DeskTheme.MARGIN_SMALL)
+	detail_modal.add_child(detail_margin)
+	
+	var detail_vbox = VBoxContainer.new()
+	detail_vbox.add_theme_constant_override("separation", 12)
+	detail_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	detail_margin.add_child(detail_vbox)
+	
+	var detail_title = Label.new()
+	detail_title.text = "ライバル詳細ログ"
+	detail_title.add_theme_font_override("font", DeskTheme.get_font())
+	detail_title.add_theme_font_size_override("font_size", 24)
+	detail_title.add_theme_color_override("font_color", Color("#1a1a1a"))
+	detail_vbox.add_child(detail_title)
+	phase.pc_detail_title = detail_title
+	
+	var detail_scroll = ScrollContainer.new()
+	detail_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	detail_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	detail_vbox.add_child(detail_scroll)
+	
+	var detail_log_vbox = VBoxContainer.new()
+	detail_log_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail_log_vbox.add_theme_constant_override("separation", 14)
+	detail_scroll.add_child(detail_log_vbox)
+	phase.pc_detail_log_vbox = detail_log_vbox
+	
+	var likes_skip_btn = Button.new()
+	likes_skip_btn.text = "タイムライン演出スキップ >>"
+	likes_skip_btn.custom_minimum_size = Vector2(360, 50)
+	likes_skip_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	likes_skip_btn.add_theme_font_override("font", DeskTheme.get_font())
+	likes_skip_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_SMALL)
+	
+	var skip_style = StyleBoxFlat.new()
+	skip_style.bg_color = Color("#f0f0f0")
+	skip_style.border_color = Color("#dddddd")
+	skip_style.border_width_left = 1
+	skip_style.border_width_right = 1
+	skip_style.border_width_top = 1
+	skip_style.border_width_bottom = 1
+	skip_style.corner_radius_top_left = 25
+	skip_style.corner_radius_top_right = 25
+	skip_style.corner_radius_bottom_left = 25
+	skip_style.corner_radius_bottom_right = 25
+	likes_skip_btn.add_theme_stylebox_override("normal", skip_style)
+	likes_skip_btn.add_theme_stylebox_override("hover", skip_style)
+	likes_skip_btn.add_theme_color_override("font_color", Color("#555555"))
+	
+	likes_skip_btn.pressed.connect(func():
+		likes_skip_btn.visible = false
+		if is_instance_valid(phase.likes_skip_btn): phase.likes_skip_btn.visible = false
+		for tw in phase.active_timeline_tweens:
+			if is_instance_valid(tw) and tw.is_running():
+				tw.kill()
+		phase.active_timeline_tweens.clear()
+		for card in phase.timeline_list.get_children():
+			if is_instance_valid(card):
+				card.modulate.a = 1.0
+				card.custom_minimum_size = Vector2(360, 200)
+	)
+	container.add_child(likes_skip_btn)
+	phase.pc_likes_skip_btn = likes_skip_btn
+	
+	var next_day_btn = Button.new()
+	var is_last_day = phase.session.current_day >= Constants.MAX_DAYS
+	if is_last_day:
+		next_day_btn.text = "結果発表へ進む"
+	else:
+		next_day_btn.text = "明日の勉強へ進む"
+	next_day_btn.custom_minimum_size = Vector2(360, 65)
+	next_day_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	next_day_btn.add_theme_font_override("font", DeskTheme.get_font())
+	next_day_btn.add_theme_font_size_override("font_size", DeskTheme.FONT_SIZE_NORMAL)
+	
+	var action_style = StyleBoxFlat.new()
+	action_style.bg_color = Color("#ff8c00")
+	action_style.shadow_color = Color("#e07800", 0.35)
+	action_style.shadow_size = 6
+	action_style.shadow_offset = Vector2(0, 3)
+	action_style.corner_radius_top_left = 32
+	action_style.corner_radius_top_right = 32
+	action_style.corner_radius_bottom_left = 32
+	action_style.corner_radius_bottom_right = 32
+	next_day_btn.add_theme_stylebox_override("normal", action_style)
+	next_day_btn.add_theme_stylebox_override("hover", action_style)
+	next_day_btn.add_theme_color_override("font_color", Color.WHITE)
+	
+	next_day_btn.pressed.connect(phase._on_next_day_pressed)
+	container.add_child(next_day_btn)
+	phase.pc_next_day_btn = next_day_btn

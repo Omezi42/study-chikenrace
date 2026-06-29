@@ -26,38 +26,36 @@ func _ready() -> void:
 	bg_tex.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg_tex)
 	
-	# 中央配置用のラッパー (確実に中央に固定するため)
-	var center_wrapper = CenterContainer.new()
-	center_wrapper.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(center_wrapper)
-	
-	# 中央の大きなノートコンテナ
+	# 中央の大きなノートコンテナ（直接配置で正確にセンタリング）
 	main_notebook = PanelContainer.new()
-	main_notebook.custom_minimum_size = Vector2(800, 800)
-	main_notebook.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
+	main_notebook.custom_minimum_size = Vector2(760, 680)
+	var craft_panel = DeskTheme.create_craft_panel()
+	craft_panel.content_margin_top = 24
+	craft_panel.content_margin_bottom = 28
+	main_notebook.add_theme_stylebox_override("panel", craft_panel)
 	
 	# 罫線を追加
 	DeskTheme.add_ruled_lines(main_notebook)
-	center_wrapper.add_child(main_notebook)
+	add_child(main_notebook)
 	
 	# ノート内の要素を配置するVBox
 	var vbox = VBoxContainer.new()
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	vbox.add_theme_constant_override("separation", 50)
+	vbox.add_theme_constant_override("separation", 18)
 	main_notebook.add_child(vbox)
 	
 	# ロゴ
 	var logo_container = CenterContainer.new()
-	logo_container.custom_minimum_size = Vector2(0, 250)
+	logo_container.custom_minimum_size = Vector2(0, 160)
 	vbox.add_child(logo_container)
 	
 	title_logo = TitleLogo.new()
-	title_logo.scale = Vector2(1.8, 1.8)
+	title_logo.scale = Vector2(1.5, 1.5)
 	logo_container.add_child(title_logo)
 	
 	# モードボタン群
 	mode_button_group = VBoxContainer.new()
-	mode_button_group.add_theme_constant_override("separation", 35)
+	mode_button_group.add_theme_constant_override("separation", 12)
 	mode_button_group.alignment = BoxContainer.ALIGNMENT_CENTER
 	vbox.add_child(mode_button_group)
 	
@@ -97,14 +95,14 @@ func _ready() -> void:
 	# 右下・左下に散らばっていた設定や遊び方の付箋を、ノート内にまとめる
 	var bottom_hbox = HBoxContainer.new()
 	bottom_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	bottom_hbox.add_theme_constant_override("separation", 40)
+	bottom_hbox.add_theme_constant_override("separation", 30)
 	vbox.add_child(bottom_hbox)
 	
-	_add_small_sticky(bottom_hbox, "あそびかた", "green", -3.0, func():
+	_add_small_sticky(bottom_hbox, "あそびかた", "green", -2.0, func():
 		RulebookModal.create_and_show(self)
 	)
 	
-	_add_small_sticky(bottom_hbox, "設定・名前", "orange", 4.5, func():
+	_add_small_sticky(bottom_hbox, "設定・名前", "orange", 2.0, func():
 		SettingsModal.create_and_show(self)
 	)
 	
@@ -113,6 +111,10 @@ func _ready() -> void:
 		get_node("/root/AudioManager").play_bgm(AudioManager.BGM_MAIN, 1.5)
 		
 	# アニメーション開始
+	if has_node("/root/ResponsiveScaler"):
+		var rs = get_node("/root/ResponsiveScaler")
+		if not rs.scale_changed.is_connected(_on_scale_changed):
+			rs.scale_changed.connect(_on_scale_changed)
 	_start_entrance_animation()
 	
 	# フレンド対戦から戻ってきた場合は自動的にロビーを開く
@@ -120,15 +122,111 @@ func _ready() -> void:
 		Global.return_to_friend_lobby = false
 		FriendLobbyModal.show_lobby(self, Global.friend_room_code, Global.friend_is_host)
 
+func _get_target_notebook_scale() -> Vector2:
+	return Vector2.ONE
+
+func _on_scale_changed(_new_scale: float) -> void:
+	_update_layout()
+
+func _update_layout() -> void:
+	if not is_instance_valid(main_notebook):
+		return
+	var vp_size = get_viewport_rect().size
+	if vp_size.x == 0:
+		vp_size = Vector2(1500, 850)
+		
+	# ビットマップ引き伸ばしによる「文字のぼやけ」を完全に防止するため scale は絶対に等倍 1.0 に固定する
+	main_notebook.scale = Vector2.ONE
+	
+	var is_portrait = vp_size.y > vp_size.x
+	
+	# ノートのサイズを画面に合わせていっぱいに広げる（「真ん中にちっちゃくあるだけ」を完全に廃止！）
+	var target_w: float
+	var target_h: float
+	if is_portrait:
+		# 縦画面：画面幅・高さの約92〜94%をしっかり使って広々と配置
+		target_w = clamp(vp_size.x - 32.0, 360.0, vp_size.x - 20.0)
+		target_h = clamp(vp_size.y - 48.0, 620.0, vp_size.y - 20.0)
+	else:
+		# 横画面：PC等の画面中央にバランスよく配置。モバイルの横画面でもはみ出ないように高さを制限
+		var min_h = min(vp_size.y - 10.0, 640.0)
+		target_h = clamp(vp_size.y - 20.0, min_h, 840.0)
+		target_w = clamp(target_h * 0.95, 300.0, 850.0)
+		
+	main_notebook.custom_minimum_size = Vector2(target_w, target_h)
+	main_notebook.size = Vector2(target_w, target_h)
+	
+	# ノートを画面中央に正確に配置
+	main_notebook.pivot_offset = Vector2.ZERO
+	main_notebook.position = Vector2((vp_size.x - target_w) * 0.5, (vp_size.y - target_h) * 0.5)
+	
+	# ノートの大きさに合わせて全UI要素（ロゴ、ボタン、フォント）の拡大倍率（ui_scale）を均等に計算
+	# これにより「タイトルだけ拡大されてほかはちっちゃい」問題を完全に解決しつつ、フォントがネイティブにクッキリ描画される！
+	var ui_scale = clamp(target_w / 480.0, 0.75, 2.5) if is_portrait else clamp(target_h / 850.0, 0.3, 1.3)
+	
+	# 要素間のスペース（separation）も画面サイズに合わせて縮小することで、はみ出しを完全に防ぐ
+	for child in main_notebook.get_children():
+		if child is VBoxContainer:
+			child.add_theme_constant_override("separation", int(18 * ui_scale))
+			for sub in child.get_children():
+				if sub is VBoxContainer:
+					sub.add_theme_constant_override("separation", int(12 * ui_scale))
+				elif sub is HBoxContainer:
+					sub.add_theme_constant_override("separation", int(30 * ui_scale))
+	
+	# ロゴのサイズバランス調整
+	if is_instance_valid(title_logo):
+		var logo_s = (0.85 if is_portrait else 1.15) * ui_scale
+		title_logo.scale = Vector2.ONE
+		if title_logo.has_method("apply_scale"):
+			title_logo.apply_scale(logo_s)
+		if title_logo.get_parent() is Control:
+			title_logo.get_parent().custom_minimum_size.y = 230.0 * logo_s
+			
+	# ボタン群（モード選択ボタン・下部ボタン）のサイズとフォントサイズを比例拡大
+	var big_btn_w = min(420.0 * ui_scale, target_w - 40.0)
+	var small_btn_w = min(200.0 * ui_scale, (target_w - 50.0) / 2.0)
+	
+	for btn in sticky_buttons:
+		if not is_instance_valid(btn):
+			continue
+		var container = btn.get_parent() as CenterContainer
+		
+		var is_big = false
+		for child in btn.get_children():
+			if child is VBoxContainer:
+				is_big = true
+				if child.get_child_count() >= 2:
+					var title_lbl = child.get_child(0) as Label
+					var desc_lbl = child.get_child(1) as Label
+					if is_instance_valid(title_lbl):
+						title_lbl.add_theme_font_size_override("font_size", int(25 * ui_scale))
+					if is_instance_valid(desc_lbl):
+						desc_lbl.add_theme_font_size_override("font_size", int(13 * ui_scale))
+				break
+				
+		if is_big:
+			if container:
+				container.custom_minimum_size = Vector2(big_btn_w, 74.0 * ui_scale)
+			btn.custom_minimum_size = Vector2(big_btn_w, 68.0 * ui_scale)
+			btn.size = Vector2(big_btn_w, 68.0 * ui_scale)
+		else:
+			btn.add_theme_font_size_override("font_size", int(19 * ui_scale))
+			if container:
+				container.custom_minimum_size = Vector2(small_btn_w, 54.0 * ui_scale)
+			btn.custom_minimum_size = Vector2(small_btn_w - 10.0, 50.0 * ui_scale)
+			btn.size = Vector2(small_btn_w - 10.0, 50.0 * ui_scale)
+			
+		btn.pivot_offset = btn.custom_minimum_size / 2.0
+
 func _start_entrance_animation() -> void:
-	# Positionでのアニメーションはレイアウトコンフリクトを起こしやすいため、
-	# ScaleとAlphaのフェードインに変更して安全かつリッチに表示する
+	_update_layout()
+	var target_scale = main_notebook.scale
 	main_notebook.modulate.a = 0.0
-	main_notebook.pivot_offset = main_notebook.custom_minimum_size / 2.0
-	main_notebook.scale = Vector2(0.9, 0.9)
+	main_notebook.scale = target_scale * 0.9
 	
 	var tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(main_notebook, "scale", Vector2.ONE, 0.6)
+	tween.tween_property(main_notebook, "scale", target_scale, 0.6)
 	tween.tween_property(main_notebook, "modulate:a", 1.0, 0.5)
 	
 	# 付箋のフェードイン（時間差）
@@ -145,10 +243,10 @@ func _start_entrance_animation() -> void:
 
 func _add_sticky_button(title_text: String, desc_text: String, color: String, rot: float, callback: Callable) -> void:
 	var btn_container = CenterContainer.new()
-	btn_container.custom_minimum_size = Vector2(400, 90)
+	btn_container.custom_minimum_size = Vector2(400, 72)
 	
 	var btn = Button.new()
-	btn.custom_minimum_size = Vector2(380, 85)
+	btn.custom_minimum_size = Vector2(380, 68)
 	btn.add_theme_stylebox_override("normal", DeskTheme.create_sticky_note_style(color))
 	
 	# ホバーやプレスのスタイルも少し変更（浮き出る感じ）
@@ -172,7 +270,7 @@ func _add_sticky_button(title_text: String, desc_text: String, color: String, ro
 	title_lbl.text = title_text
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	title_lbl.add_theme_font_size_override("font_size", 26)
+	title_lbl.add_theme_font_size_override("font_size", 25)
 	title_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	inner.add_child(title_lbl)
 	
@@ -180,7 +278,7 @@ func _add_sticky_button(title_text: String, desc_text: String, color: String, ro
 	desc_lbl.text = desc_text
 	desc_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	desc_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	desc_lbl.add_theme_font_size_override("font_size", 14)
+	desc_lbl.add_theme_font_size_override("font_size", 13)
 	desc_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.7))
 	inner.add_child(desc_lbl)
 	
@@ -197,8 +295,11 @@ func _add_sticky_button(title_text: String, desc_text: String, color: String, ro
 	sticky_buttons.append(btn)
 
 func _add_small_sticky(parent: Control, text: String, color: String, rot: float, callback: Callable) -> void:
+	var btn_container = CenterContainer.new()
+	btn_container.custom_minimum_size = Vector2(200, 54)
+	
 	var btn = Button.new()
-	btn.custom_minimum_size = Vector2(200, 60)
+	btn.custom_minimum_size = Vector2(185, 50)
 	btn.add_theme_stylebox_override("normal", DeskTheme.create_sticky_note_style(color))
 	
 	var hover_style = DeskTheme.create_sticky_note_style(color)
@@ -210,7 +311,7 @@ func _add_small_sticky(parent: Control, text: String, color: String, rot: float,
 	
 	btn.text = text
 	btn.add_theme_font_override("font", DeskTheme.get_font())
-	btn.add_theme_font_size_override("font_size", 20)
+	btn.add_theme_font_size_override("font_size", 19)
 	btn.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	
 	btn.rotation_degrees = rot
@@ -224,7 +325,8 @@ func _add_small_sticky(parent: Control, text: String, color: String, rot: float,
 		callback.call()
 	)
 	
-	parent.add_child(btn)
+	btn_container.add_child(btn)
+	parent.add_child(btn_container)
 	sticky_buttons.append(btn)
 
 

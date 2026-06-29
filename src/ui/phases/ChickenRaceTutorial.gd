@@ -3,7 +3,7 @@ extends RefCounted
 
 var phase: ChickenRacePhase
 var tutorial_step: int = 0
-var tutorial_dialog_node: PanelContainer = null
+var tutorial_dialog_node: Node = null
 var current_hour: int = 1
 
 # ハイライト管理用
@@ -46,14 +46,10 @@ func start() -> void:
 	clear_highlights()
 	DeskTheme.show_toast(phase, "チュートリアルへようこそ！", 2.5, DeskTheme.COLOR_GREEN)
 	
-	var viewport_size = phase.get_viewport_rect().size
-	var dialog_pos = Vector2(viewport_size.x * 0.58, viewport_size.y * 0.08)
-	
 	var t = phase.get_tree().create_timer(0.2)
 	t.timeout.connect(func():
 		tutorial_dialog_node = phase.show_tutorial_dialog(
-			"勉強カードを引くと、数字がそのまま得点になります。このゲームでは『数字が大きいカードほど山札に多く入っていて引きやすい』のが特徴です。まずは1枚引いてみましょう。",
-			dialog_pos
+			"勉強カードを引くと、数字がそのまま得点になります。このゲームでは『数字が大きいカードほど山札に多く入っていて引きやすい』のが特徴です。まずは1枚引いてみましょう。"
 		)
 		phase.draw_btn.disabled = false
 		highlight(phase.draw_btn)
@@ -67,12 +63,8 @@ func start_hour_2() -> void:
 	
 	clear_highlights()
 	
-	var viewport_size = phase.get_viewport_rect().size
-	var dialog_pos = Vector2(viewport_size.x * 0.58, viewport_size.y * 0.08)
-	
 	tutorial_dialog_node = phase.show_tutorial_dialog(
-		"第2時限目です。今度はもう少し枚数を引いて、高得点（10点以上）を狙ってみましょう！まずはカードを引いてください。",
-		dialog_pos
+		"第2時限目です。今度はもう少し枚数を引いて、高得点（10点以上）を狙ってみましょう！まずはカードを引いてください。"
 	)
 	phase.draw_btn.disabled = false
 	highlight(phase.draw_btn)
@@ -85,12 +77,8 @@ func start_hour_3() -> void:
 	
 	clear_highlights()
 	
-	var viewport_size = phase.get_viewport_rect().size
-	var dialog_pos = Vector2(viewport_size.x * 0.58, viewport_size.y * 0.08)
-	
 	tutorial_dialog_node = phase.show_tutorial_dialog(
-		"最後の時限です。すでに手札にある数字と同じ数字を引き直すと『寝落ち（バースト）』になり、その時限は0点になります。まずは1枚引いてみましょう。",
-		dialog_pos
+		"最後の時限です。すでに手札にある数字と同じ数字を引き直すと『寝落ち（バースト）』になり、その時限は0点になります。まずは1枚引いてみましょう。"
 	)
 	phase.draw_btn.disabled = false
 	highlight(phase.draw_btn)
@@ -103,25 +91,20 @@ func advance_step() -> void:
 	clear_highlights()
 	tutorial_step += 1
 	
-	var viewport_size = phase.get_viewport_rect().size
-	var dialog_pos = Vector2(viewport_size.x * 0.58, viewport_size.y * 0.08)
-	
 	if current_hour == 1:
 		match tutorial_step:
 			1:
 				phase.stop_btn.disabled = true
 				phase.draw_btn.disabled = false
 				tutorial_dialog_node = phase.show_tutorial_dialog(
-					"5点のカードを引きました！山札には『5』が5枚、『10』は10枚も入っています。数字が大きいほど高得点を狙えますが、同じ数字を引き直して寝落ち（0点）になる確率も上がります。もう1枚引いてみましょう。",
-					dialog_pos
+					"5点のカードを引きました！山札には『5』が5枚、『10』は10枚も入っています。数字が大きいほど高得点を狙えますが、同じ数字を引き直して寝落ち（0点）になる確率も上がります。もう1枚引いてみましょう。"
 				)
 				highlight(phase.draw_btn)
 			2:
 				phase.draw_btn.disabled = true 
 				phase.stop_btn.disabled = false 
 				tutorial_dialog_node = phase.show_tutorial_dialog(
-					"合計9点になりました！これ以上引いて同じ数字が出ると0点になってしまいます。安全のために『休憩』を押して得点を確定させましょう。",
-					dialog_pos
+					"合計9点になりました！これ以上引いて同じ数字が出ると0点になってしまいます。安全のために『休憩』を押して得点を確定させましょう。"
 				)
 				highlight(phase.stop_btn)
 	elif current_hour == 2:
@@ -130,24 +113,21 @@ func advance_step() -> void:
 				phase.stop_btn.disabled = true
 				phase.draw_btn.disabled = false
 				tutorial_dialog_node = phase.show_tutorial_dialog(
-					"6点です。まだまだ安全に伸ばせます。もう1枚引きましょう！",
-					dialog_pos
+					"6点です。まだまだ安全に伸ばせます。もう1枚引きましょう！"
 				)
 				highlight(phase.draw_btn)
 			2:
 				phase.stop_btn.disabled = true
 				phase.draw_btn.disabled = false
 				tutorial_dialog_node = phase.show_tutorial_dialog(
-					"合計9点になりました。いい調子！さらにもう1枚攻めてみましょう。",
-					dialog_pos
+					"合計9点になりました。いい調子！さらにもう1枚攻めてみましょう。"
 				)
 				highlight(phase.draw_btn)
 			3:
 				phase.draw_btn.disabled = true 
 				phase.stop_btn.disabled = false 
 				tutorial_dialog_node = phase.show_tutorial_dialog(
-					"合計13点になりました！素晴らしい高得点です。寝落ちする前に『休憩』して時限を終えましょう。",
-					dialog_pos
+					"合計13点になりました！素晴らしい高得点です。寝落ちする前に『休憩』して時限を終えましょう。"
 				)
 				highlight(phase.stop_btn)
 	elif current_hour == 3:
@@ -156,8 +136,7 @@ func advance_step() -> void:
 				phase.stop_btn.disabled = true
 				phase.draw_btn.disabled = false
 				tutorial_dialog_node = phase.show_tutorial_dialog(
-					"7点のカードです。山札に『7』は多く入っているため、引き直して寝落ちする危険が高いです！リスクを知るため、あえてもう一度引いて寝落ちを体験してみましょう。",
-					dialog_pos
+					"7点のカードです。山札に『7』は多く入っているため、引き直して寝落ちする危険が高いです！リスクを知るため、あえてもう一度引いて寝落ちを体験してみましょう。"
 				)
 				highlight(phase.draw_btn)
 

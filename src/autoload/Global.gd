@@ -257,7 +257,7 @@ func hide_loading() -> void:
 	if has_node("/root/UIHelper"):
 		get_node("/root/UIHelper").hide_loading()
 
-func show_tutorial_dialog(parent: Control, text: String, pos: Vector2 = Vector2(700, 50), next_callback: Callable = Callable()) -> PanelContainer:
+func show_tutorial_dialog(parent: Control, text: String, pos: Vector2 = Vector2.ZERO, next_callback: Callable = Callable()) -> Node:
 	if has_node("/root/UIHelper"):
 		return get_node("/root/UIHelper").show_tutorial_dialog(parent, text, pos, next_callback)
 	return null

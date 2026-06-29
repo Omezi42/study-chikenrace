@@ -3,6 +3,9 @@ extends PhaseBase
 
 # UI Controls
 var main_hbox: HBoxContainer
+var slide_canvas: Control
+var timeline_screen: VBoxContainer
+var detail_screen: VBoxContainer
 var phone_panel: PanelContainer
 var timeline_list: VBoxContainer
 var next_day_btn: Button
@@ -25,7 +28,16 @@ var participants_data: Array = []
 var local_doubts_count: int = 3 # 3 doubt votes per day max
 var active_timeline_tweens: Array[Tween] = []
 var likes_skip_btn: Button
-var tutorial_dialog_node: PanelContainer = null
+var tutorial_dialog_node: Node = null
+
+# Responsive PC fallback UI variables
+var pc_right_vbox: VBoxContainer
+var phone_footer_margin: MarginContainer
+var pc_next_day_btn: Button
+var pc_likes_skip_btn: Button
+var pc_detail_modal: PanelContainer
+var pc_detail_log_vbox: VBoxContainer
+var pc_detail_title: Label
 
 var active_tweens: Array[Tween] = []
 var restored_nodes: Dictionary = {}
@@ -44,8 +56,13 @@ func _on_setup(setup_data: Dictionary) -> void:
 		net_mgr.connection_lost.connect(_on_connection_lost)
 	
 	DailyLikesUIBuilder.build_layout(self, setup_data)
-
 	
+	if has_node("/root/ResponsiveScaler"):
+		var rs = get_node("/root/ResponsiveScaler")
+		if not rs.scale_changed.is_connected(_on_scale_changed):
+			rs.scale_changed.connect(_on_scale_changed)
+	_update_responsive_layout()
+
 	# Fetch participants data
 	collect_participants()
 	populate_timeline()
@@ -53,21 +70,98 @@ func _on_setup(setup_data: Dictionary) -> void:
 	
 	# Entrance slide in
 	var from_report = setup_data.get("from_report", false)
-	if is_instance_valid(phone_panel) and not from_report:
-		DeskTheme.animate_entrance(phone_panel, phone_panel.position, Vector2(0, 300), 0.5)
+	if is_instance_valid(phone_panel):
+		var target_pos = _get_phone_target_pos()
+		if not from_report:
+			DeskTheme.animate_entrance(phone_panel, target_pos, Vector2(0, 300), 0.5)
+		else:
+			var tw = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			tw.tween_property(phone_panel, "position", target_pos, 0.45)
 	DeskTheme.animate_entrance(self, self.position, Vector2(0, 300), 0.5)
 	
 	if Global.is_tutorial_mode and session.current_day == 1:
-		next_day_btn.text = "テストを開始する"
-		next_day_btn.disabled = true
+		if is_instance_valid(next_day_btn):
+			next_day_btn.text = "テストを開始する"
+			next_day_btn.disabled = true
+		if is_instance_valid(pc_next_day_btn):
+			pc_next_day_btn.text = "テストを開始する"
+			pc_next_day_btn.disabled = true
 		clear_highlights()
-		var viewport_size = get_viewport_rect().size
-		var dialog_pos = Vector2(viewport_size.x - 620, viewport_size.y - 220)
 		tutorial_dialog_node = show_tutorial_dialog(
-			"友達のドロー回数に対して点数が高すぎる場合は嘘の可能性があります。見破ればボーナスです。怪しい友達に『ダウト！』を押してみましょう。",
-			dialog_pos
+			"友達のドロー回数に対して点数が高すぎる場合は嘘の可能性があります。見破ればボーナスです。怪しい友達に『ダウト！』を押してみましょう。"
 		)
 		highlight_rival_doubt_buttons()
+
+func _on_scale_changed(_new_scale: float) -> void:
+	_update_responsive_layout()
+
+func _is_portrait_mode() -> bool:
+	if has_node("/root/ResponsiveScaler"):
+		return get_node("/root/ResponsiveScaler").is_portrait()
+	return false
+
+func _get_phone_target_pos() -> Vector2:
+	if not is_instance_valid(phone_panel):
+		return Vector2.ZERO
+	var vp_size = get_viewport_rect().size
+	if vp_size.x == 0 or vp_size.y == 0:
+		if has_node("/root/ResponsiveScaler"):
+			vp_size = get_node("/root/ResponsiveScaler").get_viewport_size()
+		else:
+			vp_size = Vector2(1500, 850)
+		
+	if not _is_portrait_mode():
+		var margin = Vector2(40, 40)
+		var avail_w = max(vp_size.x - margin.x, 100.0)
+		var avail_h = max(vp_size.y - margin.y, 100.0)
+		var s = clamp(min(avail_w / 1240.0, avail_h / 840.0), 0.35, 3.0)
+		var start_x = (vp_size.x - 1240.0 * s) * 0.5
+		var start_y = max((vp_size.y - 840.0 * s) * 0.5, 10.0)
+		return Vector2(start_x, start_y)
+	else:
+		var phone_size = phone_panel.custom_minimum_size * phone_panel.scale
+		return Vector2((vp_size.x - phone_size.x) * 0.5, max((vp_size.y - phone_size.y) * 0.5, 20.0))
+
+func _update_responsive_layout() -> void:
+	if not is_instance_valid(phone_panel):
+		return
+	var is_port = _is_portrait_mode()
+	if is_instance_valid(pc_right_vbox):
+		pc_right_vbox.visible = not is_port
+	if is_instance_valid(phone_footer_margin):
+		phone_footer_margin.visible = is_port
+		
+	var vp_size = get_viewport_rect().size
+	if vp_size.x == 0 or vp_size.y == 0:
+		if has_node("/root/ResponsiveScaler"):
+			vp_size = get_node("/root/ResponsiveScaler").get_viewport_size()
+		else:
+			vp_size = Vector2(1500, 850)
+			
+	if is_port:
+		var s = 1.0
+		if has_node("/root/ResponsiveScaler"):
+			var rs = get_node("/root/ResponsiveScaler")
+			s = rs.fit_scale_for_size(phone_panel.custom_minimum_size, Vector2(40, 40), 0.35)
+		phone_panel.pivot_offset = Vector2.ZERO
+		phone_panel.scale = Vector2.ONE * s
+		phone_panel.position = _get_phone_target_pos()
+	else:
+		var margin = Vector2(40, 40)
+		var avail_w = max(vp_size.x - margin.x, 100.0)
+		var avail_h = max(vp_size.y - margin.y, 100.0)
+		var s = clamp(min(avail_w / 1240.0, avail_h / 840.0), 0.35, 3.0)
+		var start_x = (vp_size.x - 1240.0 * s) * 0.5
+		var start_y = max((vp_size.y - 840.0 * s) * 0.5, 10.0)
+		
+		phone_panel.pivot_offset = Vector2.ZERO
+		phone_panel.scale = Vector2.ONE * s
+		phone_panel.position = Vector2(start_x, start_y)
+		
+		if is_instance_valid(pc_right_vbox):
+			pc_right_vbox.pivot_offset = Vector2.ZERO
+			pc_right_vbox.scale = Vector2.ONE * s
+			pc_right_vbox.position = Vector2(start_x + (420.0 + 40.0) * s, start_y)
 
 func collect_participants() -> void:
 	if Global.is_tutorial_mode:
@@ -171,9 +265,14 @@ func populate_timeline() -> void:
 			
 		if idx == participants_data.size() - 1:
 			tween.chain().tween_callback(func():
-				if is_instance_valid(likes_skip_btn):
-					likes_skip_btn.visible = false
+				_hide_skip_buttons()
 			)
+
+func _hide_skip_buttons() -> void:
+	if is_instance_valid(likes_skip_btn):
+		likes_skip_btn.visible = false
+	if is_instance_valid(pc_likes_skip_btn):
+		pc_likes_skip_btn.visible = false
 
 func update_remaining_votes() -> void:
 	pass
@@ -183,7 +282,30 @@ func _on_inspect_pressed(p: Dictionary) -> void:
 		tutorial_dialog_node.queue_free()
 		tutorial_dialog_node = null
 		
-	DailyLikesUIBuilder.populate_inspect_modal(self, p)
+	if not _is_portrait_mode() and is_instance_valid(pc_detail_title) and is_instance_valid(pc_detail_log_vbox):
+		var orig_title = detail_title
+		var orig_vbox = detail_log_vbox
+		var orig_modal = detail_modal
+		detail_title = pc_detail_title
+		detail_log_vbox = pc_detail_log_vbox
+		detail_modal = pc_detail_modal
+		DailyLikesUIBuilder.populate_inspect_modal(self, p)
+		detail_title = orig_title
+		detail_log_vbox = orig_vbox
+		detail_modal = orig_modal
+		if is_instance_valid(pc_detail_modal):
+			pc_detail_modal.visible = true
+	else:
+		DailyLikesUIBuilder.populate_inspect_modal(self, p)
+		if is_instance_valid(timeline_screen) and is_instance_valid(detail_screen):
+			var screen_w = get_viewport_rect().size.x
+			detail_screen.position.x = screen_w
+			var tw = create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			tw.tween_property(timeline_screen, "position:x", -screen_w, 0.4)
+			tw.tween_property(detail_screen, "position:x", 0.0, 0.4)
+			detail_screen.visible = true
+		elif is_instance_valid(detail_modal):
+			detail_modal.visible = true
 	
 	# Update ellipsis visibility after layout pass
 	await get_tree().process_frame
@@ -191,15 +313,14 @@ func _on_inspect_pressed(p: Dictionary) -> void:
 
 	if Global.is_tutorial_mode and session.current_day == 1:
 		clear_highlights()
-		var detail_btn = detail_modal.find_child("DetailDoubtButton", true, false)
-		if detail_btn and not detail_btn.disabled:
-			highlight(detail_btn)
+		var target_modal = detail_modal if _is_portrait_mode() else pc_detail_modal
+		if is_instance_valid(target_modal):
+			var detail_btn = target_modal.find_child("DetailDoubtButton", true, false)
+			if detail_btn and not detail_btn.disabled:
+				highlight(detail_btn)
 		
-		var viewport_size = get_viewport_rect().size
-		var dialog_pos = Vector2(viewport_size.x - 620, viewport_size.y - 220)
 		tutorial_dialog_node = show_tutorial_dialog(
-			"詳細ログから友達の行動履歴を確認できます。点数に対してドロー回数が少なすぎますね。詳細パネルの『ダウト！』を押してみましょう。",
-			dialog_pos
+			"詳細ログから友達の行動履歴を確認できます。点数に対してドロー回数が少なすぎますね。詳細パネルの『ダウト！』を押してみましょう。"
 		)
 
 func _update_ellipsis_visibility() -> void:
@@ -305,15 +426,15 @@ func _on_doubt_pressed(target_id: String, card_node: Control, btn: Button) -> vo
 func _on_doubt_modal_closed() -> void:
 	if Global.is_tutorial_mode and session.current_day == 1:
 		clear_highlights()
-		var viewport_size = get_viewport_rect().size
-		var dialog_pos = Vector2(viewport_size.x - 620, viewport_size.y - 220)
 		tutorial_dialog_node = show_tutorial_dialog(
-			"基本ルールは以上です。本番のテスト（ゲーム）を開始して勝利を目指しましょう！",
-			dialog_pos
+			"基本ルールは以上です。本番のテスト（ゲーム）を開始して勝利を目指しましょう！"
 		)
 		if is_instance_valid(next_day_btn):
 			next_day_btn.disabled = false
 			highlight(next_day_btn)
+		if is_instance_valid(pc_next_day_btn):
+			pc_next_day_btn.disabled = false
+			highlight(pc_next_day_btn)
 
 func show_tutorial_finish_modal() -> void:
 	DailyLikesUIBuilder.show_tutorial_finish_modal(self)
@@ -323,8 +444,12 @@ func _on_next_day_pressed() -> void:
 		tutorial_dialog_node.queue_free()
 		tutorial_dialog_node = null
 		
-	next_day_btn.disabled = true
-	DeskTheme.animate_click(next_day_btn, Vector2.ONE, 0.08)
+	if is_instance_valid(next_day_btn):
+		next_day_btn.disabled = true
+		DeskTheme.animate_click(next_day_btn, Vector2.ONE, 0.08)
+	if is_instance_valid(pc_next_day_btn):
+		pc_next_day_btn.disabled = true
+		DeskTheme.animate_click(pc_next_day_btn, Vector2.ONE, 0.08)
 	
 	var timer = get_tree().create_timer(0.25)
 	timer.timeout.connect(func():
@@ -403,3 +528,16 @@ func highlight_rival_doubt_buttons() -> void:
 			if btn and not btn.disabled:
 				highlight(btn)
 	)
+
+func _on_detail_back_pressed() -> void:
+	if tutorial_dialog_node:
+		tutorial_dialog_node.queue_free()
+		tutorial_dialog_node = null
+		
+	if is_instance_valid(timeline_screen) and is_instance_valid(detail_screen):
+		if has_node("/root/AudioManager"):
+			get_node("/root/AudioManager").play_se(AudioManager.SE_CLICK)
+		var screen_w = get_viewport_rect().size.x
+		var tw = create_tween().set_parallel(true).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.tween_property(timeline_screen, "position:x", 0.0, 0.4)
+		tw.tween_property(detail_screen, "position:x", screen_w, 0.4)

@@ -9,8 +9,11 @@ var tutorial_next_btn: Button
 var tutorial_page_lbl: Label
 
 func _init() -> void:
-	custom_minimum_size = Vector2(1000, 770)
-	pivot_offset = Vector2(500, 385)
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	offset_left = 15
+	offset_right = -15
+	offset_top = 20
+	offset_bottom = -20
 	
 	var style = StyleBoxFlat.new()
 	style.bg_color = DeskTheme.COLOR_CRAFT
@@ -25,10 +28,8 @@ func _init() -> void:
 	style.corner_radius_bottom_right = 12
 	style.shadow_color = Color(0, 0, 0, 0.3)
 	style.shadow_size = 15
-	style.shadow_offset = Vector2(6, 6)
+	style.shadow_offset = Vector2(0, 8)
 	add_theme_stylebox_override("panel", style)
-	
-	position = get_viewport_rect().size * 0.5 - pivot_offset
 	
 	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 20)
@@ -46,36 +47,38 @@ func _init() -> void:
 	header_title.text = "テスト勉強チキンレースのあそびかた"
 	header_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	header_title.add_theme_font_override("font", DeskTheme.get_font())
-	header_title.add_theme_font_size_override("font_size", 24)
+	header_title.add_theme_font_size_override("font_size", DeskTheme.scaled_font(24))
 	header_title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(header_title)
 	
 	# Texture Rect for slide
 	tutorial_slide_tex = TextureRect.new()
-	tutorial_slide_tex.custom_minimum_size = Vector2(960, 520)
+	tutorial_slide_tex.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tutorial_slide_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tutorial_slide_tex.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(tutorial_slide_tex)
 	
 	# Description Label below slide
 	tutorial_desc_lbl = Label.new()
-	tutorial_desc_lbl.custom_minimum_size = Vector2(960, 80)
+	tutorial_desc_lbl.custom_minimum_size = Vector2(0, 100)
 	tutorial_desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tutorial_desc_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	tutorial_desc_lbl.add_theme_font_size_override("font_size", 18)
+	tutorial_desc_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 	tutorial_desc_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(tutorial_desc_lbl)
 	
 	# Bottom Nav HBox
 	var nav_hbox = HBoxContainer.new()
 	nav_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	nav_hbox.add_theme_constant_override("separation", 40)
+	nav_hbox.add_theme_constant_override("separation", 20)
+	nav_hbox.size_flags_vertical = Control.SIZE_SHRINK_END
 	vbox.add_child(nav_hbox)
 	
 	tutorial_back_btn = Button.new()
 	tutorial_back_btn.text = "前へ"
 	tutorial_back_btn.custom_minimum_size = Vector2(120, 45)
 	tutorial_back_btn.add_theme_font_override("font", DeskTheme.get_font())
-	tutorial_back_btn.add_theme_font_size_override("font_size", 18)
+	tutorial_back_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 	Global.apply_white_button_style(tutorial_back_btn)
 	tutorial_back_btn.pressed.connect(_on_tutorial_back_pressed)
 	nav_hbox.add_child(tutorial_back_btn)
@@ -83,7 +86,7 @@ func _init() -> void:
 	tutorial_page_lbl = Label.new()
 	tutorial_page_lbl.text = "1 / 4"
 	tutorial_page_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	tutorial_page_lbl.add_theme_font_size_override("font_size", 20)
+	tutorial_page_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(20))
 	tutorial_page_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	nav_hbox.add_child(tutorial_page_lbl)
 	
@@ -91,17 +94,17 @@ func _init() -> void:
 	tutorial_next_btn.text = "次へ >"
 	tutorial_next_btn.custom_minimum_size = Vector2(120, 45)
 	tutorial_next_btn.add_theme_font_override("font", DeskTheme.get_font())
-	tutorial_next_btn.add_theme_font_size_override("font_size", 18)
+	tutorial_next_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 	Global.apply_white_button_style(tutorial_next_btn)
 	tutorial_next_btn.pressed.connect(_on_tutorial_next_pressed)
 	nav_hbox.add_child(tutorial_next_btn)
 	
 func _ready() -> void:
 	update_tutorial_slide()
-	scale = Vector2.ZERO
+	modulate.a = 0.0
 	if get_tree() != null:
-		var tween = get_tree().create_tween().bind_node(self).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tween.tween_property(self, "scale", Vector2.ONE, 0.3)
+		var tween = get_tree().create_tween().bind_node(self)
+		tween.tween_property(self, "modulate:a", 1.0, 0.2)
 
 func update_tutorial_slide() -> void:
 	var path = "res://assets/tutorial/slide%d.png" % current_tutorial_page
@@ -134,8 +137,8 @@ func _on_tutorial_next_pressed() -> void:
 		update_tutorial_slide()
 	else:
 		if get_tree() != null:
-			var tween = get_tree().create_tween().bind_node(self).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-			tween.tween_property(self, "scale", Vector2.ZERO, 0.2)
+			var tween = get_tree().create_tween().bind_node(self)
+			tween.tween_property(self, "modulate:a", 0.0, 0.2)
 			tween.chain().tween_callback(func():
 				queue_free()
 			)

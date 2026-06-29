@@ -62,7 +62,7 @@ func connect_random(url: String) -> Error:
 	return err
 
 func _send_join_when_ready(peer: WebSocketPeer, join_type: String) -> void:
-	var timeout = 12.0
+	var timeout = 45.0 # Increased timeout for free tier server spin-up
 	var elapsed = 0.0
 	while peer.get_ready_state() == WebSocketPeer.STATE_CONNECTING and elapsed < timeout:
 		await get_tree().process_frame

@@ -2,19 +2,34 @@ class_name FriendLobbyModal
 extends RefCounted
 
 static func create_selection_modal(parent: Node) -> void:
+	var vp_size = parent.get_viewport_rect().size
+	var is_portrait = vp_size.y > vp_size.x
+	var fit_s = clamp(min(vp_size.x / 540.0, vp_size.y / 960.0), 0.8, 3.0)
+	var width = min(480.0, (vp_size.x * 0.95) / fit_s)
+	var height = min(360.0, (max(vp_size.y, 600.0) * 0.9) / fit_s)
+	var center = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	parent.add_child(center)
 	var sel_modal = PanelContainer.new()
-	sel_modal.custom_minimum_size = Vector2(500, 360)
-	sel_modal.pivot_offset = Vector2(250, 180)
+	sel_modal.custom_minimum_size = Vector2(width, height)
+	sel_modal.pivot_offset = Vector2(width / 2.0, height / 2.0)
+	sel_modal.resized.connect(func(): sel_modal.pivot_offset = sel_modal.size * 0.5)
 	sel_modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
-	parent.add_child(sel_modal)
-	sel_modal.position = parent.get_viewport_rect().size * 0.5 - sel_modal.pivot_offset
+	center.add_child(sel_modal)
+	sel_modal.tree_exiting.connect(func(): if is_instance_valid(center): center.queue_free())
+	
+	var scroll = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sel_modal.add_child(scroll)
 	
 	var margin = MarginContainer.new()
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_theme_constant_override("margin_left", 30)
 	margin.add_theme_constant_override("margin_right", 30)
 	margin.add_theme_constant_override("margin_top", 30)
 	margin.add_theme_constant_override("margin_bottom", 30)
-	sel_modal.add_child(margin)
+	scroll.add_child(margin)
 	
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 24)
@@ -25,16 +40,16 @@ static func create_selection_modal(parent: Node) -> void:
 	title.text = "友達対戦ロビー"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
-	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_font_size_override("font_size", DeskTheme.scaled_font(26))
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
 	
 	# Create Room Button
 	var create_btn = Button.new()
 	create_btn.text = "新しいルームを作る"
-	create_btn.custom_minimum_size = Vector2(400, 60)
+	create_btn.custom_minimum_size = Vector2(min(360.0, width - 80.0), 60)
 	create_btn.add_theme_font_override("font", DeskTheme.get_font())
-	create_btn.add_theme_font_size_override("font_size", 18)
+	create_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 	Global.apply_white_button_style(create_btn)
 	vbox.add_child(create_btn)
 	
@@ -47,17 +62,17 @@ static func create_selection_modal(parent: Node) -> void:
 	var join_input = LineEdit.new()
 	join_input.placeholder_text = "4桁のコードを入力"
 	join_input.max_length = 4
-	join_input.custom_minimum_size = Vector2(240, 45)
+	join_input.custom_minimum_size = Vector2(min(240.0, width - 160.0), 45)
 	join_input.alignment = HORIZONTAL_ALIGNMENT_CENTER
 	join_input.add_theme_font_override("font", DeskTheme.get_font())
-	join_input.add_theme_font_size_override("font_size", 16)
+	join_input.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
 	join_hbox.add_child(join_input)
 	
 	var join_btn = Button.new()
 	join_btn.text = "入室"
 	join_btn.custom_minimum_size = Vector2(100, 45)
 	join_btn.add_theme_font_override("font", DeskTheme.get_font())
-	join_btn.add_theme_font_size_override("font_size", 16)
+	join_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
 	Global.apply_white_button_style(join_btn)
 	join_hbox.add_child(join_btn)
 	
@@ -66,7 +81,7 @@ static func create_selection_modal(parent: Node) -> void:
 	cancel_btn.text = "閉じる"
 	cancel_btn.custom_minimum_size = Vector2(100, 45)
 	cancel_btn.add_theme_font_override("font", DeskTheme.get_font())
-	cancel_btn.add_theme_font_size_override("font_size", 16)
+	cancel_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
 	Global.apply_white_button_style(cancel_btn)
 	vbox.add_child(cancel_btn)
 	
@@ -141,24 +156,39 @@ static func create_selection_modal(parent: Node) -> void:
 	
 	sel_modal.scale = Vector2.ZERO
 	if parent.get_tree() != null:
-		var tween = parent.get_tree().create_tween().bind_node(sel_modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tween.tween_property(sel_modal, "scale", Vector2.ONE, 0.3)
+		var tween = parent.get_tree().create_tween().bind_node(sel_modal).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+		tween.tween_property(sel_modal, "scale", Vector2.ONE * fit_s, 0.3)
 
 static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	Global.game_mode = Constants.MODE_FRIEND
+	var vp_size = parent.get_viewport_rect().size
+	var is_portrait = vp_size.y > vp_size.x
+	var fit_s = clamp(min(vp_size.x / 540.0, vp_size.y / 960.0), 0.8, 3.0)
+	var width = min(480.0, (vp_size.x * 0.95) / fit_s)
+	var height = min(500.0, (max(vp_size.y, 600.0) * 0.9) / fit_s)
+	var center = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	parent.add_child(center)
 	var lobby_modal = PanelContainer.new()
-	lobby_modal.custom_minimum_size = Vector2(600, 500)
-	lobby_modal.pivot_offset = Vector2(300, 250)
+	lobby_modal.custom_minimum_size = Vector2(width, height)
+	lobby_modal.pivot_offset = Vector2(width / 2.0, height / 2.0)
+	lobby_modal.resized.connect(func(): lobby_modal.pivot_offset = lobby_modal.size * 0.5)
 	lobby_modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
-	parent.add_child(lobby_modal)
-	lobby_modal.position = parent.get_viewport_rect().size * 0.5 - lobby_modal.pivot_offset
+	center.add_child(lobby_modal)
+	lobby_modal.tree_exiting.connect(func(): if is_instance_valid(center): center.queue_free())
+	
+	var scroll = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	lobby_modal.add_child(scroll)
 	
 	var margin = MarginContainer.new()
+	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	margin.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_theme_constant_override("margin_left", 30)
 	margin.add_theme_constant_override("margin_right", 30)
 	margin.add_theme_constant_override("margin_top", 30)
 	margin.add_theme_constant_override("margin_bottom", 30)
-	lobby_modal.add_child(margin)
+	scroll.add_child(margin)
 	
 	var vbox = VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 20)
@@ -176,7 +206,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
-	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_font_size_override("font_size", DeskTheme.scaled_font(26))
 	vbox.add_child(title)
 	
 	# Room Code display
@@ -184,16 +214,16 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	code_lbl.text = "ルームコード: " + room_code
 	code_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	code_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	code_lbl.add_theme_font_size_override("font_size", 36)
+	code_lbl.add_theme_font_size_override("font_size", 36 if width > 350 else 28)
 	code_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	vbox.add_child(code_lbl)
 	
 	var copy_btn = Button.new()
 	copy_btn.text = "招待文をコピー"
-	copy_btn.custom_minimum_size = Vector2(220, 45)
+	copy_btn.custom_minimum_size = Vector2(min(220.0, width - 80.0), 45)
 	copy_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	copy_btn.add_theme_font_override("font", DeskTheme.get_font())
-	copy_btn.add_theme_font_size_override("font_size", 16)
+	copy_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
 	Global.apply_white_button_style(copy_btn)
 	vbox.add_child(copy_btn)
 	
@@ -248,7 +278,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		hint_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	hint_lbl.add_theme_font_size_override("font_size", 14)
+	hint_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(14))
 	hint_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	vbox.add_child(hint_lbl)
 	
@@ -264,10 +294,10 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	
 	if is_host:
 		start_btn_lobby.text = "自習を開始する！"
-		start_btn_lobby.custom_minimum_size = Vector2(260, 50)
+		start_btn_lobby.custom_minimum_size = Vector2(min(260.0, width - 80.0), 50)
 		start_btn_lobby.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		start_btn_lobby.add_theme_font_override("font", DeskTheme.get_font())
-		start_btn_lobby.add_theme_font_size_override("font_size", 18)
+		start_btn_lobby.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 		start_btn_lobby.disabled = true # Enabled when 2+ players join
 		Global.apply_white_button_style(start_btn_lobby)
 		vbox.add_child(start_btn_lobby)
@@ -275,18 +305,18 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		waiting_lbl.text = "ホストがゲームを開始するのを待っています..."
 		waiting_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		waiting_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		waiting_lbl.add_theme_font_size_override("font_size", 16)
+		waiting_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
 		waiting_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		vbox.add_child(waiting_lbl)
 		
 	# Exit Button
 	var exit_btn = Button.new()
 	exit_btn.text = "ロビーを出る"
-	exit_btn.custom_minimum_size = Vector2(160, 45)
+	exit_btn.custom_minimum_size = Vector2(min(160.0, width - 80.0), 45)
 	exit_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	Global.apply_white_button_style(exit_btn)
 	exit_btn.add_theme_font_override("font", DeskTheme.get_font())
-	exit_btn.add_theme_font_size_override("font_size", 16)
+	exit_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
 	vbox.add_child(exit_btn)
 	# Polling Logic via SceneTree timers
 	var is_polling_active = true
@@ -295,7 +325,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	cbs.start_game_transition = func(final_participants: Array, game_seed: int = 0):
 		randomize()
 		Global.cpu_rng.randomize()
-		AudioManager.play_se(AudioManager.SE_FANFARE)
+		AudioManager.play_se(AudioManager.SE_CLICK)
 		DisplayServer.window_request_attention()
 		is_polling_active = false
 		if cbs.has("cleanup_signals"):
@@ -373,7 +403,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 				name_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 			name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			name_lbl.add_theme_font_override("font", DeskTheme.get_font())
-			name_lbl.add_theme_font_size_override("font_size", 18)
+			name_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 			list_vbox.add_child(name_lbl)
 			
 		# If host, enable start button if we have at least 2 players
@@ -448,5 +478,5 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	
 	lobby_modal.scale = Vector2.ZERO
 	if parent.get_tree() != null:
-		var tween = parent.get_tree().create_tween().bind_node(lobby_modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tween.tween_property(lobby_modal, "scale", Vector2.ONE, 0.3)
+		var tween = parent.get_tree().create_tween().bind_node(lobby_modal).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT)
+		tween.tween_property(lobby_modal, "scale", Vector2.ONE * fit_s, 0.3)

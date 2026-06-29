@@ -17,32 +17,40 @@ func _ready() -> void:
 	add_child(bg_overlay)
 	
 	var modal = PanelContainer.new()
-	modal.custom_minimum_size = Vector2(500, 560)
-	modal.pivot_offset = Vector2(250, 280)
+	var viewport_size = get_viewport().get_visible_rect().size
+	var fit_s = clamp(min(viewport_size.x / 540.0, viewport_size.y / 960.0), 0.8, 3.0)
+	var target_w = min(500.0, (viewport_size.x * 0.95) / fit_s)
+	var target_h = min(620.0, (viewport_size.y * 0.95) / fit_s)
+	modal.custom_minimum_size = Vector2(target_w, target_h)
+	modal.pivot_offset = Vector2(target_w * 0.5, target_h * 0.5)
 	modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	add_child(modal)
 	
-	var viewport_size = get_viewport().get_visible_rect().size
-	modal.position = viewport_size * 0.5 - modal.pivot_offset
+	modal.position = (viewport_size - Vector2(target_w, target_h)) * 0.5
 	
 	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 30)
-	margin.add_theme_constant_override("margin_right", 30)
-	margin.add_theme_constant_override("margin_top", 25)
-	margin.add_theme_constant_override("margin_bottom", 25)
+	margin.add_theme_constant_override("margin_left", 20)
+	margin.add_theme_constant_override("margin_right", 20)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_bottom", 20)
 	modal.add_child(margin)
 	
+	var scroll = ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	margin.add_child(scroll)
+	
 	var vbox = VBoxContainer.new()
+	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_theme_constant_override("separation", 15)
 	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	margin.add_child(vbox)
+	scroll.add_child(vbox)
 	
 	# Title
 	var title = Label.new()
 	title.text = "設定・ルール"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
-	title.add_theme_font_size_override("font_size", 26)
+	title.add_theme_font_size_override("font_size", DeskTheme.scaled_font(26))
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(title)
 	
@@ -51,7 +59,7 @@ func _ready() -> void:
 	rule_btn.text = "あそびかた・ルールを確認する"
 	rule_btn.custom_minimum_size = Vector2(0, 48)
 	rule_btn.add_theme_font_override("font", DeskTheme.get_font())
-	rule_btn.add_theme_font_size_override("font_size", 18)
+	rule_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 	rule_btn.add_theme_color_override("font_color", Color("1b5e20"))
 	DeskTheme.apply_white_button_style(rule_btn)
 	rule_btn.pressed.connect(func():
@@ -70,7 +78,7 @@ func _ready() -> void:
 	var name_label = Label.new()
 	name_label.text = "プレイヤーネーム"
 	name_label.add_theme_font_override("font", DeskTheme.get_font())
-	name_label.add_theme_font_size_override("font_size", 16)
+	name_label.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
 	name_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	name_vbox.add_child(name_label)
 	
@@ -79,7 +87,7 @@ func _ready() -> void:
 	name_input.placeholder_text = "名前を入力 (例: あなた)"
 	name_input.custom_minimum_size = Vector2(0, 45)
 	name_input.add_theme_font_override("font", DeskTheme.get_font())
-	name_input.add_theme_font_size_override("font_size", 18)
+	name_input.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 	var line_style = StyleBoxFlat.new()
 	line_style.bg_color = Color("faf6f0")
 	line_style.border_color = Color("d7ccc8")
@@ -104,7 +112,7 @@ func _ready() -> void:
 	mute_checkbox.text = " 全音声をミュート（消音）"
 	mute_checkbox.button_pressed = SettingsState.is_muted
 	mute_checkbox.add_theme_font_override("font", DeskTheme.get_font())
-	mute_checkbox.add_theme_font_size_override("font_size", 16)
+	mute_checkbox.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
 	mute_checkbox.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	mute_checkbox.add_theme_color_override("font_pressed_color", DeskTheme.COLOR_INK)
 	mute_checkbox.add_theme_color_override("font_hover_color", DeskTheme.COLOR_INK)
@@ -125,7 +133,7 @@ func _ready() -> void:
 	var bgm_label = Label.new()
 	bgm_label.text = "BGM 音量"
 	bgm_label.add_theme_font_override("font", DeskTheme.get_font())
-	bgm_label.add_theme_font_size_override("font_size", 16)
+	bgm_label.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
 	bgm_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	bgm_vbox.add_child(bgm_label)
 	
@@ -134,7 +142,7 @@ func _ready() -> void:
 	bgm_slider.max_value = 1.0
 	bgm_slider.step = 0.05
 	bgm_slider.value = SettingsState.bgm_volume
-	bgm_slider.custom_minimum_size = Vector2(300, 30)
+	bgm_slider.custom_minimum_size = Vector2(min(300.0, viewport_size.x * 0.7), 30)
 	bgm_vbox.add_child(bgm_slider)
 	
 	bgm_slider.value_changed.connect(func(val):
@@ -154,7 +162,7 @@ func _ready() -> void:
 	var se_label = Label.new()
 	se_label.text = "SE 音量"
 	se_label.add_theme_font_override("font", DeskTheme.get_font())
-	se_label.add_theme_font_size_override("font_size", 16)
+	se_label.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
 	se_label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	se_vbox.add_child(se_label)
 	
@@ -163,7 +171,7 @@ func _ready() -> void:
 	se_slider.max_value = 1.0
 	se_slider.step = 0.05
 	se_slider.value = SettingsState.se_volume
-	se_slider.custom_minimum_size = Vector2(300, 30)
+	se_slider.custom_minimum_size = Vector2(min(300.0, viewport_size.x * 0.7), 30)
 	se_vbox.add_child(se_slider)
 	
 	se_slider.value_changed.connect(func(val):
@@ -174,11 +182,16 @@ func _ready() -> void:
 		SettingsState.apply_settings()
 		Global.save_game()
 	)
-	# Bottom Buttons HBox
-	var bottom_hbox = HBoxContainer.new()
-	bottom_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	bottom_hbox.add_theme_constant_override("separation", 20)
-	vbox.add_child(bottom_hbox)
+	# Bottom Buttons
+	var bottom_box
+	if viewport_size.x < 450:
+		bottom_box = VBoxContainer.new()
+		bottom_box.add_theme_constant_override("separation", 15)
+	else:
+		bottom_box = HBoxContainer.new()
+		bottom_box.add_theme_constant_override("separation", 20)
+	bottom_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_child(bottom_box)
 	
 	# Check if we are in game (not on the Title screen)
 	var is_in_game = false
@@ -190,9 +203,9 @@ func _ready() -> void:
 	if is_in_game:
 		var return_btn = Button.new()
 		return_btn.text = "タイトルへ戻る"
-		return_btn.custom_minimum_size = Vector2(200, 45)
+		return_btn.custom_minimum_size = Vector2(min(200.0, target_w - 60.0), 45)
 		return_btn.add_theme_font_override("font", DeskTheme.get_font())
-		return_btn.add_theme_font_size_override("font_size", 18)
+		return_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 		DeskTheme.apply_white_button_style(return_btn)
 		return_btn.pressed.connect(func():
 			return_btn.release_focus()
@@ -206,14 +219,14 @@ func _ready() -> void:
 					parent_node.get_tree().root.get_node("Global").change_scene_with_fade(parent_node.get_tree(), "res://Title.tscn")
 			)
 		)
-		bottom_hbox.add_child(return_btn)
+		bottom_box.add_child(return_btn)
 	
 	# Close Button
 	var close_btn = Button.new()
 	close_btn.text = " 閉じる "
-	close_btn.custom_minimum_size = Vector2(200, 45)
+	close_btn.custom_minimum_size = Vector2(min(200.0, target_w - 60.0), 45)
 	close_btn.add_theme_font_override("font", DeskTheme.get_font())
-	close_btn.add_theme_font_size_override("font_size", 18)
+	close_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 	DeskTheme.apply_white_button_style(close_btn)
 	close_btn.pressed.connect(func():
 		close_btn.release_focus()
@@ -226,12 +239,13 @@ func _ready() -> void:
 			queue_free()
 		)
 	)
-	bottom_hbox.add_child(close_btn)
+	bottom_box.add_child(close_btn)
 	
 	# Entrance Animation
 	modal.scale = Vector2.ZERO
+	fit_s = clamp(min(get_viewport().get_visible_rect().size.x / 540.0, get_viewport().get_visible_rect().size.y / 960.0), 0.8, 3.0)
 	var tween = create_tween().bind_node(modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(modal, "scale", Vector2.ONE, 0.3)
+	tween.tween_property(modal, "scale", Vector2.ONE * fit_s, 0.3)
 
 func show_confirm_dialog(parent_node: Node, text: String, on_confirm: Callable) -> void:
 	if not parent_node or not parent_node.is_inside_tree():
@@ -247,13 +261,16 @@ func show_confirm_dialog(parent_node: Node, text: String, on_confirm: Callable) 
 	canvas.add_child(bg_overlay)
 	
 	var modal = PanelContainer.new()
-	modal.custom_minimum_size = Vector2(400, 200)
-	modal.pivot_offset = Vector2(200, 100)
+	var viewport_size = get_viewport().get_visible_rect().size
+	var fit_s = clamp(min(viewport_size.x / 540.0, viewport_size.y / 960.0), 0.8, 3.0)
+	var target_w = min(400.0, (viewport_size.x * 0.95) / fit_s)
+	var target_h = min(200.0, (viewport_size.y * 0.95) / fit_s)
+	modal.custom_minimum_size = Vector2(target_w, target_h)
+	modal.pivot_offset = Vector2(target_w * 0.5, target_h * 0.5)
 	modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
 	canvas.add_child(modal)
 	
-	var viewport_size = get_viewport().get_visible_rect().size
-	modal.position = viewport_size * 0.5 - modal.pivot_offset
+	modal.position = (viewport_size - Vector2(target_w, target_h)) * 0.5
 	
 	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 20)
@@ -271,7 +288,7 @@ func show_confirm_dialog(parent_node: Node, text: String, on_confirm: Callable) 
 	label.text = text
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.add_theme_font_override("font", DeskTheme.get_font())
-	label.add_theme_font_size_override("font_size", 18)
+	label.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 	label.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	vbox.add_child(label)
 	
@@ -284,7 +301,7 @@ func show_confirm_dialog(parent_node: Node, text: String, on_confirm: Callable) 
 	yes_btn.text = "はい"
 	yes_btn.custom_minimum_size = Vector2(120, 45)
 	yes_btn.add_theme_font_override("font", DeskTheme.get_font())
-	yes_btn.add_theme_font_size_override("font_size", 18)
+	yes_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 	DeskTheme.apply_white_button_style(yes_btn)
 	yes_btn.add_theme_color_override("font_color", Color("d32f2f"))
 	btn_hbox.add_child(yes_btn)
@@ -293,7 +310,7 @@ func show_confirm_dialog(parent_node: Node, text: String, on_confirm: Callable) 
 	no_btn.text = "いいえ"
 	no_btn.custom_minimum_size = Vector2(120, 45)
 	no_btn.add_theme_font_override("font", DeskTheme.get_font())
-	no_btn.add_theme_font_size_override("font_size", 18)
+	no_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 	DeskTheme.apply_white_button_style(no_btn)
 	btn_hbox.add_child(no_btn)
 	
@@ -320,5 +337,6 @@ func show_confirm_dialog(parent_node: Node, text: String, on_confirm: Callable) 
 	)
 	
 	modal.scale = Vector2.ZERO
+	fit_s = clamp(min(get_viewport().get_visible_rect().size.x / 540.0, get_viewport().get_visible_rect().size.y / 960.0), 0.8, 3.0)
 	var anim_tween = create_tween().bind_node(modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	anim_tween.tween_property(modal, "scale", Vector2.ONE, 0.3)
+	anim_tween.tween_property(modal, "scale", Vector2.ONE * fit_s, 0.3)

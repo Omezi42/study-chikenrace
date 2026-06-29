@@ -423,49 +423,7 @@ static func show_toast(caller_node: Node, text: String, duration: float = 1.8, b
 	canvas.layer = 100 # High layer to be on top
 	scene_tree.root.add_child.call_deferred(canvas)
 	
-	# Create Toast PanelContainer
-	var panel = PanelContainer.new()
-	panel.custom_minimum_size = Vector2(460, 60)
-	panel.pivot_offset = Vector2(230, 30)
-	
-	# Styling (like a cute yellow sticky note or craft paper)
-	var style = StyleBoxFlat.new()
-	style.bg_color = COLOR_HIGHLIGHTER # Bright sticky note yellow
-	if bg_color != Color():
-		style.border_color = bg_color
-		style.border_width_left = 8
-		style.border_width_right = 2
-		style.border_width_top = 2
-		style.border_width_bottom = 2
-	else:
-		style.border_color = COLOR_INK
-		style.border_width_left = 2
-		style.border_width_right = 2
-		style.border_width_top = 2
-		style.border_width_bottom = 2
-	style.corner_radius_top_left = 4
-	style.corner_radius_top_right = 4
-	style.corner_radius_bottom_left = 4
-	style.corner_radius_bottom_right = 4
-	style.shadow_color = Color(0, 0, 0, 0.2)
-	style.shadow_size = 4
-	style.shadow_offset = Vector2(2, 2)
-	panel.add_theme_stylebox_override("panel", style)
-	
-	var label = Label.new()
-	label.text = text
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	var font = get_font()
-	if font != null:
-		label.add_theme_font_override("font", font)
-	label.add_theme_font_size_override("font_size", 20)
-	label.add_theme_color_override("font_color", COLOR_INK)
-	panel.add_child(label)
-	
-	canvas.add_child(panel)
-	
-	# Positioning (bottom center of the screen)
+	# Determine screen size for responsive width
 	var screen_w = 1920
 	var screen_h = 1080
 	var viewport_size = scene_tree.root.get_viewport().get_visible_rect().size
@@ -473,8 +431,67 @@ static func show_toast(caller_node: Node, text: String, duration: float = 1.8, b
 		screen_w = viewport_size.x
 		screen_h = viewport_size.y
 		
-	var start_pos = Vector2((screen_w - 460) / 2.0, screen_h - 100)
-	var end_pos = Vector2((screen_w - 460) / 2.0, screen_h - 160)
+	# Get the same base scale other UI elements use from ResponsiveScaler.
+	# The toast sits on its own CanvasLayer and doesn't inherit the game UI scaling,
+	# so we need to apply it explicitly.
+	var rs_scale = 1.0
+	if scene_tree.root.has_node("ResponsiveScaler"):
+		var rs = scene_tree.root.get_node("ResponsiveScaler")
+		rs_scale = rs.get_scale()
+	
+	var panel_w = min(460.0 * rs_scale, screen_w - 40.0)
+
+	# Create Toast PanelContainer
+	var panel = PanelContainer.new()
+	panel.custom_minimum_size = Vector2(panel_w, 60 * rs_scale)
+	panel.pivot_offset = Vector2(panel_w / 2.0, 30 * rs_scale)
+	
+	# Styling (like a cute yellow sticky note or craft paper)
+	var style = StyleBoxFlat.new()
+	style.bg_color = COLOR_HIGHLIGHTER # Bright sticky note yellow
+	if bg_color != Color():
+		style.border_color = bg_color
+		style.border_width_left = int(8 * rs_scale)
+		style.border_width_right = int(2 * rs_scale)
+		style.border_width_top = int(2 * rs_scale)
+		style.border_width_bottom = int(2 * rs_scale)
+	else:
+		style.border_color = COLOR_INK
+		style.border_width_left = int(2 * rs_scale)
+		style.border_width_right = int(2 * rs_scale)
+		style.border_width_top = int(2 * rs_scale)
+		style.border_width_bottom = int(2 * rs_scale)
+	style.corner_radius_top_left = int(4 * rs_scale)
+	style.corner_radius_top_right = int(4 * rs_scale)
+	style.corner_radius_bottom_left = int(4 * rs_scale)
+	style.corner_radius_bottom_right = int(4 * rs_scale)
+	style.shadow_color = Color(0, 0, 0, 0.2)
+	style.shadow_size = int(4 * rs_scale)
+	style.shadow_offset = Vector2(2 * rs_scale, 2 * rs_scale)
+	style.content_margin_left = int(16 * rs_scale)
+	style.content_margin_right = int(16 * rs_scale)
+	style.content_margin_top = int(10 * rs_scale)
+	style.content_margin_bottom = int(10 * rs_scale)
+	panel.add_theme_stylebox_override("panel", style)
+	
+	var label = Label.new()
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var font = get_font()
+	if font != null:
+		label.add_theme_font_override("font", font)
+	var f_size = int(32 * rs_scale)
+	label.add_theme_font_size_override("font_size", f_size)
+	label.add_theme_color_override("font_color", COLOR_INK)
+	panel.add_child(label)
+	
+	canvas.add_child(panel)
+	
+	# Positioning (bottom center of the screen)
+	var start_pos = Vector2((screen_w - panel_w) / 2.0, screen_h - 100 * rs_scale)
+	var end_pos = Vector2((screen_w - panel_w) / 2.0, screen_h - 160 * rs_scale)
 	
 	panel.position = start_pos
 	panel.modulate.a = 0.0
@@ -491,7 +508,7 @@ static func show_toast(caller_node: Node, text: String, duration: float = 1.8, b
 	timer.timeout.connect(func():
 		if panel and panel.is_inside_tree():
 			var fade_tween = scene_tree.create_tween().set_parallel(true).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-			fade_tween.tween_property(panel, "position", end_pos - Vector2(0, 30), 0.3)
+			fade_tween.tween_property(panel, "position", end_pos - Vector2(0, 30 * rs_scale), 0.3)
 			fade_tween.tween_property(panel, "modulate:a", 0.0, 0.25)
 			fade_tween.chain().tween_callback(func():
 				canvas.queue_free()
@@ -946,3 +963,13 @@ static func flash_highlight(node: Control) -> Tween:
 	tween.parallel().tween_property(node, "modulate", Color("fff176"), 0.45)
 	tween.parallel().tween_property(node, "modulate", original_modulate, 0.45)
 	return tween
+
+static func scaled_font(base_size: int) -> int:
+	var screen_w = 1920
+	var scene_tree = Engine.get_main_loop()
+	if scene_tree and scene_tree.root:
+		var viewport_size = scene_tree.root.get_viewport().get_visible_rect().size
+		if viewport_size.x > 0:
+			screen_w = viewport_size.x
+	var is_mobile = screen_w < 600
+	return int(base_size * 1.5) if is_mobile else base_size

@@ -21,9 +21,18 @@ static func animate_draw_card(phase: ChickenRacePhase, card: Dictionary, card_ui
 	).set_delay(0.4 / speed_mult)
 
 static func show_hour_result_popup(phase: ChickenRacePhase, score: int, is_burst: bool) -> void:
+	var rs_scale = 1.0
+	if phase.has_node("/root/ResponsiveScaler"):
+		var rs = phase.get_node("/root/ResponsiveScaler")
+		rs_scale = rs.get_scale()
+
 	var popup = PanelContainer.new()
-	popup.custom_minimum_size = Vector2(320, 100)
-	popup.pivot_offset = Vector2(160, 50)
+	var base_w = 448
+	var base_h = 140
+	var final_w = base_w * rs_scale
+	var final_h = base_h * rs_scale
+	popup.custom_minimum_size = Vector2(final_w, final_h)
+	popup.pivot_offset = Vector2(final_w / 2.0, final_h / 2.0)
 	
 	var style = DeskTheme.create_sticky_note_style("red" if is_burst else "green")
 	popup.add_theme_stylebox_override("panel", style)
@@ -42,7 +51,8 @@ static func show_hour_result_popup(phase: ChickenRacePhase, score: int, is_burst
 		main_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	main_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	main_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	main_lbl.add_theme_font_size_override("font_size", 22)
+	var base_main_font = 30
+	main_lbl.add_theme_font_size_override("font_size", int(base_main_font * rs_scale))
 	vbox.add_child(main_lbl)
 	
 	var score_lbl = Label.new()
@@ -50,7 +60,8 @@ static func show_hour_result_popup(phase: ChickenRacePhase, score: int, is_burst
 	score_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	score_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	score_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	score_lbl.add_theme_font_size_override("font_size", 26)
+	var base_score_font = 36
+	score_lbl.add_theme_font_size_override("font_size", int(base_score_font * rs_scale))
 	vbox.add_child(score_lbl)
 	
 	phase.add_child(popup)

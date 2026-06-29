@@ -61,6 +61,25 @@ func _ready() -> void:
 	# アニメーション開始
 	_start_animations()
 
+func apply_scale(s: float) -> void:
+	custom_minimum_size = Vector2(500, 220) * s
+	pivot_offset = custom_minimum_size / 2.0
+	
+	text1_container.custom_minimum_size = Vector2(500, 80) * s
+	text1_container.pivot_offset = text1_container.custom_minimum_size / 2.0
+	
+	highlighter_line.custom_minimum_size = Vector2(420, 36) * s
+	highlighter_line.size = Vector2(420, 36) * s
+	highlighter_line.position = Vector2(40, 30) * s
+	highlighter_line.pivot_offset = Vector2(0, 18) * s
+	
+	label_test_study.add_theme_font_size_override("font_size", int(54 * s))
+	label_test_study.pivot_offset = Vector2(250, 40) * s
+	
+	label_chicken_race.add_theme_font_size_override("font_size", int(72 * s))
+	label_chicken_race.custom_minimum_size = Vector2(500, 100) * s
+	label_chicken_race.pivot_offset = Vector2(250, 50) * s
+
 func _start_animations() -> void:
 	# 1. マーカーラインの起動演出 (0.3秒遅延で scale.x: 0 -> 1)
 	var highlighter_tween = create_tween().bind_node(self).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)

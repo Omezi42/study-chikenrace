@@ -19,14 +19,20 @@ func _ready() -> void:
 	bg_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg_overlay)
 	
-	var modal = PanelContainer.new()
-	modal.custom_minimum_size = Vector2(700, 620)
-	modal.pivot_offset = Vector2(350, 310)
-	modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
-	add_child(modal)
+	var center = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(center)
 	
+	var modal = PanelContainer.new()
 	var viewport_size = get_viewport().get_visible_rect().size
-	modal.position = viewport_size * 0.5 - modal.pivot_offset
+	var fit_s = clamp(min(viewport_size.x / 540.0, viewport_size.y / 960.0), 0.8, 3.0)
+	var target_w = min(480.0, (viewport_size.x * 0.95) / fit_s)
+	var target_h = min(620.0, (viewport_size.y * 0.95) / fit_s)
+	modal.custom_minimum_size = Vector2(target_w, target_h)
+	modal.pivot_offset = Vector2(target_w * 0.5, target_h * 0.5)
+	modal.resized.connect(func(): modal.pivot_offset = modal.size * 0.5)
+	modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
+	center.add_child(modal)
 	
 	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 35)
@@ -44,7 +50,7 @@ func _ready() -> void:
 	title.text = "スコア・行動履歴"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
-	title.add_theme_font_size_override("font_size", 28)
+	title.add_theme_font_size_override("font_size", DeskTheme.scaled_font(28))
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	root_vbox.add_child(title)
 	
@@ -88,7 +94,7 @@ func _ready() -> void:
 	close_btn.text = " 閉じる "
 	close_btn.custom_minimum_size = Vector2(220, 45)
 	close_btn.add_theme_font_override("font", DeskTheme.get_font())
-	close_btn.add_theme_font_size_override("font_size", 18)
+	close_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 	DeskTheme.apply_white_button_style(close_btn)
 	close_btn.pressed.connect(func():
 		close_btn.release_focus()
@@ -103,8 +109,9 @@ func _ready() -> void:
 	
 	# Entrance Animation
 	modal.scale = Vector2.ZERO
+	var anim_fit_s = clamp(min(get_viewport().get_visible_rect().size.x / 540.0, get_viewport().get_visible_rect().size.y / 960.0), 0.8, 3.0)
 	var tween = create_tween().bind_node(modal).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(modal, "scale", Vector2.ONE, 0.3)
+	tween.tween_property(modal, "scale", Vector2.ONE * anim_fit_s, 0.3)
 
 func _build_today_section(container: VBoxContainer) -> void:
 	var sec_vbox = VBoxContainer.new()
@@ -114,7 +121,7 @@ func _build_today_section(container: VBoxContainer) -> void:
 	var header = Label.new()
 	header.text = "本日の時限履歴 (第%d日目)" % session.current_day
 	header.add_theme_font_override("font", DeskTheme.get_font())
-	header.add_theme_font_size_override("font_size", 20)
+	header.add_theme_font_size_override("font_size", DeskTheme.scaled_font(20))
 	header.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	sec_vbox.add_child(header)
 	
@@ -123,7 +130,7 @@ func _build_today_section(container: VBoxContainer) -> void:
 		var empty_lbl = Label.new()
 		empty_lbl.text = "まだ本日の授業（チキンレース）を行っていません。"
 		empty_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		empty_lbl.add_theme_font_size_override("font_size", 16)
+		empty_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
 		empty_lbl.add_theme_color_override("font_color", Color("78909c"))
 		sec_vbox.add_child(empty_lbl)
 	else:
@@ -138,7 +145,7 @@ func _build_today_section(container: VBoxContainer) -> void:
 			var status_str = "バースト！ (0点)" if bursted else "+%d点" % score
 			row_lbl.text = "  %d時限目 : %d枚引いた -- %s" % [hour_idx, draws, status_str]
 			row_lbl.add_theme_font_override("font", DeskTheme.get_font())
-			row_lbl.add_theme_font_size_override("font_size", 16)
+			row_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
 			if bursted:
 				row_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
 			else:
@@ -148,7 +155,7 @@ func _build_today_section(container: VBoxContainer) -> void:
 	var total_lbl = Label.new()
 	total_lbl.text = "> 本日の獲得合計点 : %d点" % session.player_actual_score_today
 	total_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	total_lbl.add_theme_font_size_override("font_size", 18)
+	total_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 	total_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_GREEN)
 	sec_vbox.add_child(total_lbl)
 
@@ -176,7 +183,7 @@ func _build_past_days_section(container: VBoxContainer) -> void:
 	var header = Label.new()
 	header.text = "これまでのスコア履歴"
 	header.add_theme_font_override("font", DeskTheme.get_font())
-	header.add_theme_font_size_override("font_size", 20)
+	header.add_theme_font_size_override("font_size", DeskTheme.scaled_font(20))
 	header.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	sec_vbox.add_child(header)
 	
@@ -189,7 +196,7 @@ func _build_past_days_section(container: VBoxContainer) -> void:
 		var day_lbl = Label.new()
 		day_lbl.text = "【 第%d日目の成績 】" % d
 		day_lbl.add_theme_font_override("font", DeskTheme.get_font())
-		day_lbl.add_theme_font_size_override("font_size", 18)
+		day_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
 		day_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 		day_vbox.add_child(day_lbl)
 		
@@ -235,5 +242,5 @@ func _build_past_days_section(container: VBoxContainer) -> void:
 				row.text = "  ・ %s : 申告 %d点" % [p_name, dec_score]
 				row.add_theme_color_override("font_color", Color("455a64"))
 			row.add_theme_font_override("font", DeskTheme.get_font())
-			row.add_theme_font_size_override("font_size", 15)
+			row.add_theme_font_size_override("font_size", DeskTheme.scaled_font(15))
 			day_vbox.add_child(row)

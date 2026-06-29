@@ -11,6 +11,7 @@ var stop_btn: Button
 var decision_panel: DecisionPanel
 var alert_banner: ColorRect
 var alert_label: Label
+var main_vbox: VBoxContainer
 
 var engine: ChickenRaceEngine
 var current_hand_cards: Array:
@@ -62,10 +63,36 @@ func _on_setup(setup_data: Dictionary) -> void:
 	if Global.is_tutorial_mode:
 		tutorial_controller = ChickenRaceTutorial.new(self)
 		tutorial_controller.start()
+		
+	if has_node("/root/ResponsiveScaler"):
+		var rs = get_node("/root/ResponsiveScaler")
+		if not rs.scale_changed.is_connected(_on_scale_changed):
+			rs.scale_changed.connect(_on_scale_changed)
+	_update_responsive_layout()
+
+func _on_scale_changed(_new_scale: float) -> void:
+	_update_responsive_layout()
+
+func _update_responsive_layout() -> void:
+	if is_instance_valid(main_vbox):
+		var is_port = false
+		if has_node("/root/ResponsiveScaler"):
+			is_port = get_node("/root/ResponsiveScaler").is_portrait()
+			
+		var scale_val = 1.0
+		if is_port:
+			scale_val = fit_control_to_viewport(main_vbox, Vector2(520, 900), Vector2(10, 20), 0.5, true)
+		else:
+			scale_val = fit_control_to_viewport(main_vbox, Vector2(520, 900), Vector2(10, 20), 0.35, true)
+			
+		if is_instance_valid(alert_label):
+			alert_label.add_theme_font_size_override("font_size", int(80 * scale_val))
 
 func _build_ui() -> void:
-	var main_vbox = VBoxContainer.new()
-	main_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	main_vbox = VBoxContainer.new()
+	main_vbox.custom_minimum_size = Vector2(500, 860)
+	main_vbox.size = Vector2(500, 860)
+	main_vbox.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
 	main_vbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	main_vbox.add_theme_constant_override("separation", 30)
 	add_child(main_vbox)
@@ -103,7 +130,7 @@ func _build_ui() -> void:
 	
 	# Hand Container
 	hand_container = Control.new()
-	hand_container.custom_minimum_size = Vector2(800, 250)
+	hand_container.custom_minimum_size = Vector2(480, 220)
 	hand_container.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	main_vbox.add_child(hand_container)
 	
@@ -116,14 +143,14 @@ func _build_ui() -> void:
 	# Actions
 	var action_hbox = HBoxContainer.new()
 	action_hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	action_hbox.add_theme_constant_override("separation", 40)
+	action_hbox.add_theme_constant_override("separation", 20)
 	main_vbox.add_child(action_hbox)
 	
 	draw_btn = Button.new()
 	draw_btn.text = "カードを引く"
-	draw_btn.custom_minimum_size = Vector2(240, 80)
+	draw_btn.custom_minimum_size = Vector2(200, 70)
 	draw_btn.add_theme_font_override("font", DeskTheme.get_font())
-	draw_btn.add_theme_font_size_override("font_size", 28)
+	draw_btn.add_theme_font_size_override("font_size", 24)
 	if has_node("/root/UIHelper"):
 		get_node("/root/UIHelper").apply_action_button_style(draw_btn)
 	draw_btn.pressed.connect(_on_draw_pressed)
@@ -131,9 +158,9 @@ func _build_ui() -> void:
 	
 	stop_btn = Button.new()
 	stop_btn.text = "休憩する"
-	stop_btn.custom_minimum_size = Vector2(240, 80)
+	stop_btn.custom_minimum_size = Vector2(200, 70)
 	stop_btn.add_theme_font_override("font", DeskTheme.get_font())
-	stop_btn.add_theme_font_size_override("font_size", 28)
+	stop_btn.add_theme_font_size_override("font_size", 24)
 	if has_node("/root/UIHelper"):
 		get_node("/root/UIHelper").apply_danger_button_style(stop_btn)
 	stop_btn.pressed.connect(_on_stop_pressed)
@@ -304,16 +331,28 @@ func _on_stop_pressed() -> void:
 	
 	DeskTheme.animate_click(stop_btn, Vector2.ONE, 0.08)
 	
+	var rs_scale = 1.0
+	if has_node("/root/ResponsiveScaler"):
+		var rs = get_node("/root/ResponsiveScaler")
+		rs_scale = rs.get_scale()
+
 	var stamp = Label.new()
 	stamp.text = "STOP"
 	stamp.add_theme_font_override("font", DeskTheme.get_font())
-	stamp.add_theme_font_size_override("font_size", 100)
 	stamp.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
 	stamp.rotation_degrees = -15
 	stamp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	stamp.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	stamp.custom_minimum_size = Vector2(600, 150)
-	stamp.pivot_offset = Vector2(300, 75)
+
+	var base_fsize = 120
+	stamp.add_theme_font_size_override("font_size", int(base_fsize * rs_scale))
+	
+	var base_w = 720
+	var base_h = 180
+	var final_w = base_w * rs_scale
+	var final_h = base_h * rs_scale
+	stamp.custom_minimum_size = Vector2(final_w, final_h)
+	stamp.pivot_offset = Vector2(final_w / 2.0, final_h / 2.0)
 	
 	var vp_size = get_viewport_rect().size
 	stamp.position = vp_size / 2 - stamp.pivot_offset
