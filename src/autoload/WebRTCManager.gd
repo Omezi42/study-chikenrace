@@ -9,9 +9,11 @@ var webrtc_multiplayer: WebRTCMultiplayerService
 
 func _ready() -> void:
 	signaling = WebRTCSignaling.new()
+	signaling.name = "WebRTCSignaling"
 	add_child(signaling)
 	
 	webrtc_multiplayer = WebRTCMultiplayerService.new(self, signaling)
+	webrtc_multiplayer.name = "WebRTCMultiplayerService"
 	add_child(webrtc_multiplayer)
 	
 	signaling.disconnected_from_server.connect(func(): connection_lost.emit())

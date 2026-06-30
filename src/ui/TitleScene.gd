@@ -145,8 +145,8 @@ func _update_layout() -> void:
 	var target_h: float
 	if is_portrait:
 		# 縦画面：画面幅・高さの約92〜94%をしっかり使って広々と配置
-		target_w = clamp(vp_size.x - 32.0, 360.0, vp_size.x - 20.0)
-		target_h = clamp(vp_size.y - 48.0, 620.0, vp_size.y - 20.0)
+		target_w = clamp(vp_size.x - 32.0, 320.0, vp_size.x - 20.0)
+		target_h = clamp(vp_size.y - 48.0, 480.0, vp_size.y - 20.0)
 	else:
 		# 横画面：PC等の画面中央にバランスよく配置。モバイルの横画面でもはみ出ないように高さを制限
 		var min_h = min(vp_size.y - 10.0, 640.0)
@@ -162,7 +162,10 @@ func _update_layout() -> void:
 	
 	# ノートの大きさに合わせて全UI要素（ロゴ、ボタン、フォント）の拡大倍率（ui_scale）を均等に計算
 	# これにより「タイトルだけ拡大されてほかはちっちゃい」問題を完全に解決しつつ、フォントがネイティブにクッキリ描画される！
-	var ui_scale = clamp(target_w / 480.0, 0.75, 2.5) if is_portrait else clamp(target_h / 850.0, 0.3, 1.3)
+	# スマホ画面において縦方向の解像度に沿ってぴったり収まるように高さを基準にスケールを算出
+	var ui_scale_w = target_w / 480.0
+	var ui_scale_h = target_h / 750.0
+	var ui_scale = clamp(min(ui_scale_w, ui_scale_h), 0.5, 2.5) if is_portrait else clamp(target_h / 850.0, 0.3, 1.3)
 	
 	# 要素間のスペース（separation）も画面サイズに合わせて縮小することで、はみ出しを完全に防ぐ
 	for child in main_notebook.get_children():

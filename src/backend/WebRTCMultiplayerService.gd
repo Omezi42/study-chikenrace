@@ -15,6 +15,9 @@ var _is_host: bool = false
 var _participants: Array = []
 var target_match_count: int = 4
 
+var _remote_description_set: Dictionary = {}
+var _ice_candidate_buffer: Dictionary = {}
+
 func _init(backend_manager: Node, sig: WebRTCSignaling) -> void:
 	bm = backend_manager
 	signaling = sig
@@ -63,6 +66,8 @@ func disconnect_room() -> void:
 		webrtc_peer.close()
 	bm.multiplayer.multiplayer_peer = null
 	_participants.clear()
+	_remote_description_set.clear()
+	_ice_candidate_buffer.clear()
 
 func _on_signaling_connected(my_id: int) -> void:
 	webrtc_peer = WebRTCMultiplayerPeer.new()
@@ -87,9 +92,9 @@ func _on_signaling_connected(my_id: int) -> void:
 
 func _on_random_room_joined(data: Dictionary) -> void:
 	print("WebRTC Signaling joined random room: ", data)
-	_pending_room_code = data.get("room_code", "")
-	_is_host = data.get("is_host", false)
+	_pending_room_code = data.get("room", "")
 	target_match_count = int(data.get("match_count", 4))
+	room_joined.emit(true, _participants)
 	# For random match, signaling server handles the rest (making offers/answers)
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -151,6 +156,9 @@ func _on_peer_disconnected(id: int) -> void:
 	for i in range(_participants.size() - 1, -1, -1):
 		if _participants[i]["user_id"] == str(id):
 			_participants.remove_at(i)
+			
+	_remote_description_set.erase(id)
+	_ice_candidate_buffer.erase(id)
 	
 	player_disconnected.emit(id)
 
@@ -172,15 +180,31 @@ func _on_offer_received(id: int, offer: String) -> void:
 	if peer_dict and peer_dict.has("connection"):
 		var pc = peer_dict["connection"] as WebRTCPeerConnection
 		pc.set_remote_description("offer", offer)
+		_remote_description_set[id] = true
+		pc.create_answer()
+		_flush_ice_candidates(id, pc)
 
 func _on_answer_received(id: int, answer: String) -> void:
 	var peer_dict = webrtc_peer.get_peer(id)
 	if peer_dict and peer_dict.has("connection"):
 		var pc = peer_dict["connection"] as WebRTCPeerConnection
 		pc.set_remote_description("answer", answer)
+		_remote_description_set[id] = true
+		_flush_ice_candidates(id, pc)
 
 func _on_ice_candidate_received(id: int, media: String, index: int, name: String) -> void:
 	var peer_dict = webrtc_peer.get_peer(id)
 	if peer_dict and peer_dict.has("connection"):
 		var pc = peer_dict["connection"] as WebRTCPeerConnection
-		pc.add_ice_candidate(media, index, name)
+		if _remote_description_set.get(id, false):
+			pc.add_ice_candidate(media, index, name)
+		else:
+			if not _ice_candidate_buffer.has(id):
+				_ice_candidate_buffer[id] = []
+			_ice_candidate_buffer[id].append({"media": media, "index": index, "name": name})
+
+func _flush_ice_candidates(id: int, pc: WebRTCPeerConnection) -> void:
+	if _ice_candidate_buffer.has(id):
+		for candidate in _ice_candidate_buffer[id]:
+			pc.add_ice_candidate(candidate["media"], candidate["index"], candidate["name"])
+		_ice_candidate_buffer.erase(id)

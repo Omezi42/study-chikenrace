@@ -199,10 +199,10 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	
 	var title = Label.new()
 	if is_mock:
-		title.text = "ロビー：オフライン (CPU合流待ち)"
+		title.text = "ロビー：オフライン\n(CPU合流待ち)"
 		title.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
 	else:
-		title.text = "ロビー：友達の合流待ち (人数確認中)"
+		title.text = "ロビー：友達の合流待ち\n(人数確認中)"
 		title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_override("font", DeskTheme.get_font())
@@ -271,10 +271,10 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 	
 	var hint_lbl = Label.new()
 	if is_mock:
-		hint_lbl.text = "注: 接続エラーまたは未ログインのため、CPU対戦となります"
+		hint_lbl.text = "注: 接続エラーまたは未ログインのため、\nCPU対戦となります"
 		hint_lbl.add_theme_color_override("font_color", DeskTheme.COLOR_TENSION)
 	else:
-		hint_lbl.text = "（友達にこのコードを教えて入室させてね！）"
+		hint_lbl.text = "（友達にこのコードを教えて\n入室させてね！）"
 		hint_lbl.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
 	hint_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint_lbl.add_theme_font_override("font", DeskTheme.get_font())
@@ -302,7 +302,7 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		Global.apply_white_button_style(start_btn_lobby)
 		vbox.add_child(start_btn_lobby)
 	else:
-		waiting_lbl.text = "ホストがゲームを開始するのを待っています..."
+		waiting_lbl.text = "ホストがゲームを開始するのを\n待っています..."
 		waiting_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		waiting_lbl.add_theme_font_override("font", DeskTheme.get_font())
 		waiting_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16))
@@ -408,7 +408,23 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 			
 		# If host, enable start button if we have at least 2 players
 		if is_host:
-			start_btn_lobby.disabled = (parts.size() < 2)
+			var all_connected = true
+			if wrm and wrm.webrtc_multiplayer:
+				var my_id = str(parent.multiplayer.get_unique_id()) if parent.multiplayer.has_multiplayer_peer() else "player"
+				for p in parts:
+					var uid = p.get("user_id", "")
+					if uid != my_id and uid != "player":
+						if not parent.multiplayer.get_peers().has(int(uid)):
+							all_connected = false
+							break
+			
+			start_btn_lobby.disabled = (parts.size() < 2 or not all_connected)
+			if parts.size() >= 2 and not all_connected:
+				start_btn_lobby.text = "接続を確立中..."
+			elif parts.size() >= 2:
+				start_btn_lobby.text = "自習を開始する！"
+			else:
+				start_btn_lobby.text = "友達を待っています..."
 
 	cbs.on_game_state_synced = func(state: Dictionary):
 		if state.get("action", "") == "start_game":
@@ -429,6 +445,10 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 				wrm.webrtc_multiplayer.room_joined.disconnect(cbs.on_room_joined_cb)
 		if MatchState.game_state_synced.is_connected(cbs.on_game_state_synced):
 			MatchState.game_state_synced.disconnect(cbs.on_game_state_synced)
+		if parent.multiplayer.peer_connected.is_connected(cbs.on_player_connected_cb):
+			parent.multiplayer.peer_connected.disconnect(cbs.on_player_connected_cb)
+		if parent.multiplayer.peer_disconnected.is_connected(cbs.on_player_disconnected_cb):
+			parent.multiplayer.peer_disconnected.disconnect(cbs.on_player_disconnected_cb)
 
 	lobby_modal.tree_exiting.connect(func(): cbs.cleanup_signals.call())
 
@@ -437,6 +457,9 @@ static func show_lobby(parent: Node, room_code: String, is_host: bool) -> void:
 		wrm.webrtc_multiplayer.player_disconnected.connect(cbs.on_player_disconnected_cb)
 		wrm.webrtc_multiplayer.room_joined.connect(cbs.on_room_joined_cb)
 		MatchState.game_state_synced.connect(cbs.on_game_state_synced)
+		
+		parent.multiplayer.peer_connected.connect(cbs.on_player_connected_cb)
+		parent.multiplayer.peer_disconnected.connect(cbs.on_player_disconnected_cb)
 		
 		if MatchState.current_synced_state.get("action", "") == "start_game":
 			cbs.on_game_state_synced.call(MatchState.current_synced_state)

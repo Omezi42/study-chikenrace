@@ -485,15 +485,9 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 	
 	var cbs = {}
 	
-	var disconnect_cbs_func = func():
-		if cbs.has("room_joined") and bm.webrtc_multiplayer.room_joined.is_connected(cbs["room_joined"]):
-			bm.webrtc_multiplayer.room_joined.disconnect(cbs["room_joined"])
-		if cbs.has("player_connected") and bm.webrtc_multiplayer.player_connected.is_connected(cbs["player_connected"]):
-			bm.webrtc_multiplayer.player_connected.disconnect(cbs["player_connected"])
-		if cbs.has("player_disconnected") and bm.webrtc_multiplayer.player_disconnected.is_connected(cbs["player_disconnected"]):
-			bm.webrtc_multiplayer.player_disconnected.disconnect(cbs["player_disconnected"])
-			
-	lobby.tree_exiting.connect(disconnect_cbs_func)
+	var disconnect_cbs_func = func(): pass # Reassigned below to capture all signals
+	
+	lobby.tree_exiting.connect(func(): disconnect_cbs_func.call())
 	
 	var clean_up_lobby = func():
 		if is_instance_valid(poll_timer):
@@ -611,7 +605,16 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 			members_vbox.add_child(p_lbl)
 			
 		if participants.size() >= target_count and not _is_starting_game:
-			start_game_func.call()
+			var all_connected = true
+			var my_id = str(parent.multiplayer.get_unique_id()) if parent.multiplayer.has_multiplayer_peer() else "player"
+			for p in participants:
+				var uid = p.get("user_id", "")
+				if uid != my_id and uid != "player":
+					if not parent.multiplayer.get_peers().has(int(uid)):
+						all_connected = false
+						break
+			if all_connected:
+				start_game_func.call()
 
 	cbs["room_joined"] = func(success: bool, participants: Array):
 		if not is_instance_valid(status_lbl):
@@ -625,11 +628,25 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 		update_participants_display.call()
 				
 	bm.webrtc_multiplayer.player_connected.connect(cbs["player_connected"])
+	parent.multiplayer.peer_connected.connect(cbs["player_connected"])
 	
 	cbs["player_disconnected"] = func(id: int):
 		update_participants_display.call()
 				
 	bm.webrtc_multiplayer.player_disconnected.connect(cbs["player_disconnected"])
+	parent.multiplayer.peer_disconnected.connect(cbs["player_disconnected"])
+	
+	disconnect_cbs_func = func():
+		if cbs.has("room_joined") and bm.webrtc_multiplayer.room_joined.is_connected(cbs["room_joined"]):
+			bm.webrtc_multiplayer.room_joined.disconnect(cbs["room_joined"])
+		if cbs.has("player_connected") and bm.webrtc_multiplayer.player_connected.is_connected(cbs["player_connected"]):
+			bm.webrtc_multiplayer.player_connected.disconnect(cbs["player_connected"])
+		if cbs.has("player_disconnected") and bm.webrtc_multiplayer.player_disconnected.is_connected(cbs["player_disconnected"]):
+			bm.webrtc_multiplayer.player_disconnected.disconnect(cbs["player_disconnected"])
+		if cbs.has("player_connected") and parent.multiplayer.peer_connected.is_connected(cbs["player_connected"]):
+			parent.multiplayer.peer_connected.disconnect(cbs["player_connected"])
+		if cbs.has("player_disconnected") and parent.multiplayer.peer_disconnected.is_connected(cbs["player_disconnected"]):
+			parent.multiplayer.peer_disconnected.disconnect(cbs["player_disconnected"])
 	
 	Global.game_mode = Constants.MODE_RANDOM
 	bm.webrtc_multiplayer.join_random_room()

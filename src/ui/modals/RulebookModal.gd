@@ -39,9 +39,9 @@ func _ready() -> void:
 	var is_port = false
 	if has_node("/root/ResponsiveScaler"):
 		is_port = get_node("/root/ResponsiveScaler").is_portrait()
-	var design_w: float = 500.0 if is_port else 1050.0
+	var design_w: float = 600.0 if is_port else 1050.0
 	var design_h: float = 850.0 if is_port else 750.0
-	page_width = design_w - 68.0
+	page_width = design_w - 152.0
 	modal.custom_minimum_size = Vector2(design_w, design_h)
 	modal.pivot_offset = Vector2.ZERO
 	modal.add_theme_stylebox_override("panel", DeskTheme.create_craft_panel())
@@ -66,7 +66,7 @@ func _ready() -> void:
 	vbox.add_child(header_hbox)
 	
 	var title = Label.new()
-	title.text = "テスト勉強チキンレースの遊び方"
+	title.text = "遊び方" if is_port else "テスト勉強チキンレースの遊び方"
 	title.add_theme_font_override("font", DeskTheme.get_font())
 	title.add_theme_font_size_override("font_size", 22 if is_port else 28)
 	title.add_theme_color_override("font_color", DeskTheme.COLOR_INK)
@@ -76,8 +76,8 @@ func _ready() -> void:
 	var close_btn = Button.new()
 	close_btn.text = " 閉じる "
 	close_btn.add_theme_font_override("font", DeskTheme.get_font())
-	close_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(18))
-	close_btn.custom_minimum_size = Vector2(120, 40)
+	close_btn.add_theme_font_size_override("font_size", DeskTheme.scaled_font(16 if is_port else 18))
+	close_btn.custom_minimum_size = Vector2(80 if is_port else 120, 40)
 	DeskTheme.apply_white_button_style(close_btn)
 	header_hbox.add_child(close_btn)
 	close_btn.pressed.connect(_close_modal)
@@ -203,7 +203,7 @@ func _get_base_size() -> Vector2:
 	var is_port = false
 	if has_node("/root/ResponsiveScaler"):
 		is_port = get_node("/root/ResponsiveScaler").is_portrait()
-	return Vector2(500.0, 850.0) if is_port else Vector2(1050.0, 750.0)
+	return Vector2(600.0, 850.0) if is_port else Vector2(1050.0, 750.0)
 
 func _get_target_scale() -> float:
 	var vp_size = get_viewport().get_visible_rect().size
@@ -371,7 +371,7 @@ func _setup_page_0(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	visual_area.add_child(center_wrapper)
 	
 	var ctrl = Control.new()
-	ctrl.custom_minimum_size = Vector2(432, 420) if is_port else Vector2(982, 380)
+	ctrl.custom_minimum_size = Vector2(page_width, 420) if is_port else Vector2(page_width, 380)
 	center_wrapper.add_child(ctrl)
 	
 	var notebook = PanelContainer.new()
@@ -483,6 +483,7 @@ func _setup_page_0(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 
 func _build_page(idx: int) -> Control:
 	var page = Control.new()
+	page.clip_contents = true
 	var vbox = VBoxContainer.new()
 	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	page.add_child(vbox)
@@ -534,6 +535,7 @@ func _build_page(idx: int) -> Control:
 	rtb.add_theme_font_size_override("bold_font_size", 20)
 	rtb.add_theme_color_override("default_color", DeskTheme.COLOR_INK)
 	rtb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rtb.custom_minimum_size = Vector2(10, 0)
 	text_vcenter.add_child(rtb)
 	
 	var is_port = false
@@ -569,7 +571,7 @@ func _setup_page_1(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	visual_area.add_child(center_wrapper)
 	
 	var ctrl = Control.new()
-	ctrl.custom_minimum_size = Vector2(432, 420) if is_port else Vector2(982, 380)
+	ctrl.custom_minimum_size = Vector2(page_width, 420) if is_port else Vector2(page_width, 380)
 	center_wrapper.add_child(ctrl)
 	
 	# Mock Notebook UI (Target area)
@@ -669,7 +671,7 @@ func _setup_page_2(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	visual_area.add_child(center_wrapper)
 	
 	var ctrl = Control.new()
-	ctrl.custom_minimum_size = Vector2(432, 420) if is_port else Vector2(982, 380)
+	ctrl.custom_minimum_size = Vector2(page_width, 420) if is_port else Vector2(page_width, 380)
 	center_wrapper.add_child(ctrl)
 	
 	var notebook = PanelContainer.new()
@@ -834,7 +836,7 @@ func _setup_page_3(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	visual_area.add_child(center_wrapper)
 	
 	var ctrl = Control.new()
-	ctrl.custom_minimum_size = Vector2(432, 420) if is_port else Vector2(982, 380)
+	ctrl.custom_minimum_size = Vector2(page_width, 420) if is_port else Vector2(page_width, 380)
 	center_wrapper.add_child(ctrl)
 	
 	var phone_wrapper = Control.new()
@@ -1258,7 +1260,7 @@ func _setup_page_4(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	visual_area.add_child(center_wrapper)
 	
 	var ctrl = Control.new()
-	ctrl.custom_minimum_size = Vector2(432, 420) if is_port else Vector2(982, 380)
+	ctrl.custom_minimum_size = Vector2(page_width, 420) if is_port else Vector2(page_width, 380)
 	center_wrapper.add_child(ctrl)
 	
 	# Result Timeline Mock
@@ -1387,7 +1389,7 @@ func _setup_page_5(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 	visual_area.add_child(center_wrapper)
 	
 	var ctrl = Control.new()
-	ctrl.custom_minimum_size = Vector2(432, 420) if is_port else Vector2(982, 380)
+	ctrl.custom_minimum_size = Vector2(page_width, 420) if is_port else Vector2(page_width, 380)
 	center_wrapper.add_child(ctrl)
 	
 	# Blackboard UI

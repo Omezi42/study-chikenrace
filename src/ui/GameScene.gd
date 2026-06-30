@@ -63,6 +63,7 @@ func _ready() -> void:
 	header_hbox.add_child(opt_btn)
 	
 	var update_header_size = func():
+		var viewport_size = get_viewport_rect().size
 		var is_port = false
 		var rs_scale = 1.0
 		if has_node("/root/ResponsiveScaler"):
@@ -70,24 +71,24 @@ func _ready() -> void:
 			is_port = rs.is_portrait()
 			rs_scale = rs.get_scale()
 		else:
-			var viewport_size = get_viewport_rect().size
 			is_port = viewport_size.x < 600
 			
-		# スマホでのUI/UXを考慮し、タッチターゲットを最大限大きく確保します
-		var final_scale = rs_scale
+		header_hbox.scale = Vector2.ONE
 		
-		header_hbox.pivot_offset = Vector2(header_hbox.size.x, 0)
-		header_hbox.scale = Vector2(final_scale, final_scale)
+		# 画面横幅の約8%〜15%を基準にする
+		var ratio = 0.15 if is_port else 0.08
+		var btn_w = max(100.0, viewport_size.x * ratio)
+		var btn_h = btn_w * 0.35
+		var fsize = max(14.0, btn_h * 0.45)
 		
-		# スケール倍率で無理やり拡大すると画面外にはみ出す懸念があるため、
-		# ボタンのベースサイズとフォントを直接大きくします (約2倍以上の面積)
-		var btn_w = 230 if is_port else 140
-		var btn_h = 80 if is_port else 45
-		var fsize = 32 if is_port else 18
 		hist_btn.custom_minimum_size = Vector2(btn_w, btn_h)
-		hist_btn.add_theme_font_size_override("font_size", fsize)
+		hist_btn.add_theme_font_size_override("font_size", int(fsize))
 		opt_btn.custom_minimum_size = Vector2(btn_w, btn_h)
-		opt_btn.add_theme_font_size_override("font_size", fsize)
+		opt_btn.add_theme_font_size_override("font_size", int(fsize))
+		
+		header_margin.add_theme_constant_override("margin_right", int(20 * rs_scale))
+		header_margin.add_theme_constant_override("margin_top", int(20 * rs_scale))
+		header_hbox.add_theme_constant_override("separation", int(10 * rs_scale))
 		
 	get_tree().root.size_changed.connect(update_header_size)
 	
