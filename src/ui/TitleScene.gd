@@ -414,21 +414,29 @@ func _show_difficulty_selection() -> void:
 	vbox.add_child(btn_vbox)
 	
 	var difficulties = [
-		{"id": "easy", "name": "初級 (Easy)", "desc": "相手は慎重で、あまりダウトをしてきません。\n練習に最適です。"},
-		{"id": "normal", "name": "中級 (Normal)", "desc": "標準的な強さのCPUと対戦します。\nバランスの良い難易度です。"},
-		{"id": "hard", "name": "上級 (Hard)", "desc": "相手は強気で、的確にダウトを狙ってきます。\n腕試しにどうぞ。"}
+		{"id": "easy", "name": "初級 (Easy)", "desc": "標準的な強さのCPUと対戦します。\nまずはここから練習してみましょう。"},
+		{"id": "normal", "name": "中級 (Normal)", "desc": "相手は強気で、隙があればダウトを狙ってきます。\n手ごたえのある標準モードです。"},
+		{"id": "hard", "name": "上級 (Hard)", "desc": "リスク管理と高度な心理戦を行うとびきり難しい難易度。\n理不尽なチートなしで極限まで鍛え上げられたCPUです。"}
 	]
 	
 	for diff in difficulties:
 		var btn = Button.new()
-		btn.custom_minimum_size = Vector2(min(420.0, width - 40.0), 90)
+		btn.custom_minimum_size = Vector2(min(420.0, width - 40.0), 95)
 		Global.apply_white_button_style(btn)
+		
+		var inner_margin = MarginContainer.new()
+		inner_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		inner_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		inner_margin.add_theme_constant_override("margin_left", 14)
+		inner_margin.add_theme_constant_override("margin_right", 14)
+		inner_margin.add_theme_constant_override("margin_top", 8)
+		inner_margin.add_theme_constant_override("margin_bottom", 8)
+		btn.add_child(inner_margin)
 		
 		var inner = VBoxContainer.new()
 		inner.alignment = BoxContainer.ALIGNMENT_CENTER
-		inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		btn.add_child(inner)
+		inner_margin.add_child(inner)
 		
 		var btn_title = Label.new()
 		btn_title.text = diff["name"]
@@ -441,6 +449,8 @@ func _show_difficulty_selection() -> void:
 		var btn_desc = Label.new()
 		btn_desc.text = diff["desc"]
 		btn_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		btn_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		btn_desc.custom_minimum_size = Vector2(10, 0)
 		btn_desc.add_theme_font_override("font", DeskTheme.get_font())
 		btn_desc.add_theme_font_size_override("font_size", DeskTheme.scaled_font(13))
 		btn_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))

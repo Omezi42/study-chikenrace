@@ -498,6 +498,8 @@ func _build_page(idx: int) -> Control:
 	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
 	title_lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(24))
 	title_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title_lbl.custom_minimum_size = Vector2(10, 0)
 	title_margin.add_child(title_lbl)
 	
 	var visual_area = Control.new()
@@ -559,6 +561,8 @@ func _create_title_label(text: String, color: Color) -> Label:
 	lbl.add_theme_font_size_override("font_size", DeskTheme.scaled_font(26))
 	lbl.add_theme_color_override("font_color", color)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.custom_minimum_size = Vector2(10, 0)
 	return lbl
 
 # --- Page 1: Overview (Card Drawing) ---
@@ -626,14 +630,15 @@ func _setup_page_1(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 		var tw = page.create_tween().set_loops()
 		# Reset
 		tw.tween_callback(func():
+			var c_scale = 0.65 if is_port else 0.8
 			c3.position = deck_pos
 			c3.modulate.a = 0.0
-			c3.scale = Vector2(0.0, 0.8)
+			c3.scale = Vector2(0.0, c_scale)
 			c3.rotation_degrees = 15.0
 			
 			c3_back.position = deck_pos
 			c3_back.modulate.a = 1.0
-			c3_back.scale = Vector2(0.8, 0.8)
+			c3_back.scale = Vector2(c_scale, c_scale)
 			c3_back.rotation_degrees = 0.0
 		)
 		tw.tween_interval(0.5)
@@ -650,7 +655,8 @@ func _setup_page_1(page: Control, visual_area: Control, rtb: RichTextLabel, titl
 			c3.modulate.a = 1.0
 			c3_back.modulate.a = 0.0
 		)
-		tw.tween_property(c3, "scale:x", 0.8, 0.2).set_ease(Tween.EASE_OUT)
+		var target_scale_x = 0.65 if is_port else 0.8
+		tw.tween_property(c3, "scale:x", target_scale_x, 0.2).set_ease(Tween.EASE_OUT)
 		
 		tw.tween_interval(1.5)
 		# Fade out c3 to restart

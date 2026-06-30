@@ -69,14 +69,21 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 		AIProfile.TYPE_CAUTIOUS: risk_tolerance = 0.15
 		AIProfile.TYPE_AGGRESSIVE: risk_tolerance = 0.38
 		AIProfile.TYPE_BLUFFER: risk_tolerance = 0.24
-		AIProfile.TYPE_HIGHROLLER: risk_tolerance = 0.48
-		
+	var rand_mod = Global.cpu_rng.randf_range(0.85, 1.15)
 	if Global.game_mode == Constants.MODE_CPU:
 		match Global.cpu_difficulty:
-			"easy": risk_tolerance *= 0.6
-			"hard": risk_tolerance *= 1.3
+			"easy":
+				# 旧ノーマル相当（標準バランス）
+				pass
+			"normal":
+				# 旧ハード相当（強気にリスクを取る）
+				risk_tolerance *= 1.3
+			"hard":
+				# とびきり難しいハード：乱数のブレを減らし、的確なリスク管理を行う
+				risk_tolerance *= 1.15
+				rand_mod = Global.cpu_rng.randf_range(0.94, 1.06)
 			
-	risk_tolerance *= Global.cpu_rng.randf_range(0.85, 1.15)
+	risk_tolerance *= rand_mod
 	
 	var standing = _evaluate_cpu_standing(cpu_id, day_idx)
 	var is_losing = standing["is_losing"]
@@ -104,6 +111,15 @@ static func simulate_cpu_day(cpu_id: String, day_idx: int) -> Dictionary:
 			if draw_count >= 2:
 				if burst_prob >= risk_tolerance:
 					break
+				if Global.game_mode == Constants.MODE_CPU and Global.cpu_difficulty == "hard":
+					var hard_cap = 0.42
+					match cpu_type:
+						AIProfile.TYPE_CAUTIOUS: hard_cap = 0.28
+						AIProfile.TYPE_BLUFFER: hard_cap = 0.38
+						AIProfile.TYPE_AGGRESSIVE: hard_cap = 0.45
+						AIProfile.TYPE_HIGHROLLER: hard_cap = 0.52
+					if burst_prob >= hard_cap:
+						break
 				
 			var card = deck.draw_card()
 			if card.is_empty():

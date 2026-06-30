@@ -635,9 +635,30 @@ static func show_doubt_result_modal(
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	canvas.add_child(bg)
 	
+	var is_portrait = false
+	if phase.has_method("_is_portrait_mode"):
+		is_portrait = phase._is_portrait_mode()
+		
+	var viewport_size = scene_tree.root.get_viewport().get_visible_rect().size
+	var screen_w = viewport_size.x if viewport_size.x > 0 else 1920
+	var screen_h = viewport_size.y if viewport_size.y > 0 else 1080
+	if viewport_size.x == 0 or viewport_size.y == 0:
+		if phase.has_node("/root/ResponsiveScaler"):
+			viewport_size = phase.get_node("/root/ResponsiveScaler").get_viewport_size()
+			screen_w = viewport_size.x
+			screen_h = viewport_size.y
+	
+	var target_w = min(480.0, screen_w * 0.94) if is_portrait else min(750.0, screen_w * 0.9)
+	var target_h = min(780.0, screen_h * 0.88) if is_portrait else min(520.0, screen_h * 0.85)
+	
+	var center = CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	canvas.add_child(center)
+	
 	var modal = PanelContainer.new()
-	modal.custom_minimum_size = Vector2(750, 500)
-	modal.pivot_offset = Vector2(375, 250)
+	modal.custom_minimum_size = Vector2(target_w, target_h)
+	modal.pivot_offset = Vector2(target_w * 0.5, target_h * 0.5)
+	modal.resized.connect(func(): modal.pivot_offset = modal.size * 0.5)
 	
 	var base_style = StyleBoxFlat.new()
 	base_style.bg_color = Color("#ffffff") # Studyplus-style white doubt modal
@@ -657,47 +678,25 @@ static func show_doubt_result_modal(
 	else:
 		base_style.border_color = Color("#e65100") # Orange failure border
 	modal.add_theme_stylebox_override("panel", base_style)
-	canvas.add_child(modal)
-	
-	var is_portrait = false
-	if phase.has_method("_is_portrait_mode"):
-		is_portrait = phase._is_portrait_mode()
-		
-	var viewport_size = scene_tree.root.get_viewport().get_visible_rect().size
-	var screen_w = viewport_size.x if viewport_size.x > 0 else 1920
-	var screen_h = viewport_size.y if viewport_size.y > 0 else 1080
-	
-	var target_w = 700.0 if is_portrait else 750.0
-	var target_h = 750.0 if is_portrait else 500.0
-	
-	var fit_s = 1.0
-	if is_portrait:
-		fit_s = clamp((screen_w / target_w) * 0.92, 0.4, 2.0)
-		fit_s = min(fit_s, (screen_h / target_h) * 0.95)
-	else:
-		fit_s = clamp(min(screen_w / target_w, screen_h / target_h) * 0.9, 0.4, 2.0)
-		
-	modal.custom_minimum_size = Vector2(target_w, target_h)
-	modal.size = Vector2(target_w, target_h)
-	modal.pivot_offset = Vector2(target_w / 2.0, target_h / 2.0)
-	modal.scale = Vector2(fit_s, fit_s)
-	modal.position = Vector2((screen_w - target_w) / 2.0, (screen_h - target_h) / 2.0)
+	center.add_child(modal)
 	
 	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 30 if is_portrait else 30)
-	margin.add_theme_constant_override("margin_right", 30 if is_portrait else 30)
-	margin.add_theme_constant_override("margin_top", 40 if is_portrait else 25)
-	margin.add_theme_constant_override("margin_bottom", 40 if is_portrait else 25)
+	margin.add_theme_constant_override("margin_left", 20 if is_portrait else 30)
+	margin.add_theme_constant_override("margin_right", 20 if is_portrait else 30)
+	margin.add_theme_constant_override("margin_top", 24 if is_portrait else 25)
+	margin.add_theme_constant_override("margin_bottom", 24 if is_portrait else 25)
 	modal.add_child(margin)
 	
 	var scroll = ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_child(scroll)
 	
 	var vbox = VBoxContainer.new()
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.add_theme_constant_override("separation", 30 if is_portrait else 20)
+	vbox.add_theme_constant_override("separation", 18 if is_portrait else 20)
 	scroll.add_child(vbox)
 	
 	var title_lbl = Label.new()
@@ -705,7 +704,7 @@ static func show_doubt_result_modal(
 	title_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	title_lbl.custom_minimum_size = Vector2(10, 0)
 	title_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	title_lbl.add_theme_font_size_override("font_size", 44 if is_portrait else 36)
+	title_lbl.add_theme_font_size_override("font_size", 32 if is_portrait else 36)
 	
 	if is_bluff:
 		title_lbl.text = "ダウト成功！"
@@ -720,7 +719,7 @@ static func show_doubt_result_modal(
 	desc_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc_lbl.custom_minimum_size = Vector2(10, 0)
 	desc_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	desc_lbl.add_theme_font_size_override("font_size", 24 if is_portrait else 18)
+	desc_lbl.add_theme_font_size_override("font_size", 16 if is_portrait else 18)
 	desc_lbl.add_theme_color_override("font_color", Color("#333333"))
 	
 	if is_bluff:
@@ -735,7 +734,7 @@ static func show_doubt_result_modal(
 	else:
 		cards_container = HBoxContainer.new()
 	cards_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	cards_container.add_theme_constant_override("separation", 30 if is_portrait else 30)
+	cards_container.add_theme_constant_override("separation", 16 if is_portrait else 30)
 	vbox.add_child(cards_container)
 	
 	var my_card = PanelContainer.new()
@@ -761,14 +760,14 @@ static func show_doubt_result_modal(
 	cards_container.add_child(my_card)
 	
 	var my_margin = MarginContainer.new()
-	my_margin.add_theme_constant_override("margin_left", 20 if is_portrait else 15)
-	my_margin.add_theme_constant_override("margin_right", 20 if is_portrait else 15)
-	my_margin.add_theme_constant_override("margin_top", 20 if is_portrait else 15)
-	my_margin.add_theme_constant_override("margin_bottom", 20 if is_portrait else 15)
+	my_margin.add_theme_constant_override("margin_left", 16 if is_portrait else 15)
+	my_margin.add_theme_constant_override("margin_right", 16 if is_portrait else 15)
+	my_margin.add_theme_constant_override("margin_top", 16 if is_portrait else 15)
+	my_margin.add_theme_constant_override("margin_bottom", 16 if is_portrait else 15)
 	my_card.add_child(my_margin)
 	
 	var my_vbox = VBoxContainer.new()
-	my_vbox.add_theme_constant_override("separation", 12 if is_portrait else 8)
+	my_vbox.add_theme_constant_override("separation", 10 if is_portrait else 8)
 	my_margin.add_child(my_vbox)
 	
 	var my_title = Label.new()
@@ -777,7 +776,7 @@ static func show_doubt_result_modal(
 	my_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	my_title.custom_minimum_size = Vector2(10, 0)
 	my_title.add_theme_font_override("font", DeskTheme.get_font())
-	my_title.add_theme_font_size_override("font_size", 22 if is_portrait else 16)
+	my_title.add_theme_font_size_override("font_size", 18 if is_portrait else 16)
 	my_title.add_theme_color_override("font_color", Color("#1a1a1a"))
 	my_vbox.add_child(my_title)
 	
@@ -786,7 +785,7 @@ static func show_doubt_result_modal(
 	my_diff_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	my_diff_lbl.custom_minimum_size = Vector2(10, 0)
 	my_diff_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	my_diff_lbl.add_theme_font_size_override("font_size", 44 if is_portrait else 32)
+	my_diff_lbl.add_theme_font_size_override("font_size", 34 if is_portrait else 32)
 	
 	if my_score_change >= 0:
 		my_diff_lbl.text = "+%d 点" % my_score_change
@@ -802,7 +801,7 @@ static func show_doubt_result_modal(
 	my_detail_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	my_detail_lbl.custom_minimum_size = Vector2(10, 0)
 	my_detail_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	my_detail_lbl.add_theme_font_size_override("font_size", 18 if is_portrait else 13)
+	my_detail_lbl.add_theme_font_size_override("font_size", 15 if is_portrait else 13)
 	my_detail_lbl.add_theme_color_override("font_color", Color("#666666"))
 	my_vbox.add_child(my_detail_lbl)
 	
@@ -829,14 +828,14 @@ static func show_doubt_result_modal(
 	cards_container.add_child(opp_card)
 	
 	var opp_margin = MarginContainer.new()
-	opp_margin.add_theme_constant_override("margin_left", 20 if is_portrait else 15)
-	opp_margin.add_theme_constant_override("margin_right", 20 if is_portrait else 15)
-	opp_margin.add_theme_constant_override("margin_top", 20 if is_portrait else 15)
-	opp_margin.add_theme_constant_override("margin_bottom", 20 if is_portrait else 15)
+	opp_margin.add_theme_constant_override("margin_left", 16 if is_portrait else 15)
+	opp_margin.add_theme_constant_override("margin_right", 16 if is_portrait else 15)
+	opp_margin.add_theme_constant_override("margin_top", 16 if is_portrait else 15)
+	opp_margin.add_theme_constant_override("margin_bottom", 16 if is_portrait else 15)
 	opp_card.add_child(opp_margin)
 	
 	var opp_vbox = VBoxContainer.new()
-	opp_vbox.add_theme_constant_override("separation", 12 if is_portrait else 8)
+	opp_vbox.add_theme_constant_override("separation", 10 if is_portrait else 8)
 	opp_margin.add_child(opp_vbox)
 	
 	var opp_title = Label.new()
@@ -845,7 +844,7 @@ static func show_doubt_result_modal(
 	opp_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	opp_title.custom_minimum_size = Vector2(10, 0)
 	opp_title.add_theme_font_override("font", DeskTheme.get_font())
-	opp_title.add_theme_font_size_override("font_size", 22 if is_portrait else 16)
+	opp_title.add_theme_font_size_override("font_size", 18 if is_portrait else 16)
 	opp_title.add_theme_color_override("font_color", Color("#1a1a1a"))
 	opp_vbox.add_child(opp_title)
 	
@@ -854,7 +853,7 @@ static func show_doubt_result_modal(
 	opp_diff_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	opp_diff_lbl.custom_minimum_size = Vector2(10, 0)
 	opp_diff_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	opp_diff_lbl.add_theme_font_size_override("font_size", 44 if is_portrait else 32)
+	opp_diff_lbl.add_theme_font_size_override("font_size", 34 if is_portrait else 32)
 	
 	if opp_score_change < 0:
 		opp_diff_lbl.text = "%d 点" % opp_score_change
@@ -870,16 +869,16 @@ static func show_doubt_result_modal(
 	opp_detail_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	opp_detail_lbl.custom_minimum_size = Vector2(10, 0)
 	opp_detail_lbl.add_theme_font_override("font", DeskTheme.get_font())
-	opp_detail_lbl.add_theme_font_size_override("font_size", 18 if is_portrait else 13)
+	opp_detail_lbl.add_theme_font_size_override("font_size", 15 if is_portrait else 13)
 	opp_detail_lbl.add_theme_color_override("font_color", Color("#666666"))
 	opp_vbox.add_child(opp_detail_lbl)
 	
 	var close_btn = Button.new()
 	close_btn.text = "タイムラインに戻る"
-	close_btn.custom_minimum_size = Vector2(350, 70) if is_portrait else Vector2(250, 50)
+	close_btn.custom_minimum_size = Vector2(280, 56) if is_portrait else Vector2(250, 50)
 	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	close_btn.add_theme_font_override("font", DeskTheme.get_font())
-	close_btn.add_theme_font_size_override("font_size", 24 if is_portrait else 18)
+	close_btn.add_theme_font_size_override("font_size", 20 if is_portrait else 18)
 	DeskTheme.apply_white_button_style(close_btn)
 	vbox.add_child(close_btn)
 	

@@ -411,7 +411,7 @@ static func add_spiral_binding_overlay(parent_node: Control, size: Vector2, line
 	binding.add_child(drawer)
 
 # 8. Floating Sticky-Note Toast Message
-static func show_toast(caller_node: Node, text: String, duration: float = 1.8, bg_color: Color = Color()) -> void:
+static func show_toast(caller_node: Node, text: String, duration: float = 1.8, bg_color: Color = Color(), font_size: int = FONT_SIZE_NORMAL) -> void:
 	if not caller_node or not caller_node.is_inside_tree():
 		return
 	var scene_tree = caller_node.get_tree()
@@ -439,7 +439,8 @@ static func show_toast(caller_node: Node, text: String, duration: float = 1.8, b
 		var rs = scene_tree.root.get_node("ResponsiveScaler")
 		rs_scale = rs.get_scale()
 	
-	var panel_w = min(460.0 * rs_scale, screen_w - 40.0)
+	var estimated_w = max(460.0 * rs_scale, (text.length() * font_size + 48.0) * rs_scale)
+	var panel_w = min(estimated_w, screen_w - 40.0)
 
 	# Create Toast PanelContainer
 	var panel = PanelContainer.new()
@@ -482,7 +483,7 @@ static func show_toast(caller_node: Node, text: String, duration: float = 1.8, b
 	var font = get_font()
 	if font != null:
 		label.add_theme_font_override("font", font)
-	var f_size = int(32 * rs_scale)
+	var f_size = int(font_size * rs_scale)
 	label.add_theme_font_size_override("font_size", f_size)
 	label.add_theme_color_override("font_color", COLOR_INK)
 	panel.add_child(label)
@@ -965,11 +966,6 @@ static func flash_highlight(node: Control) -> Tween:
 	return tween
 
 static func scaled_font(base_size: int) -> int:
-	var screen_w = 1920
-	var scene_tree = Engine.get_main_loop()
-	if scene_tree and scene_tree.root:
-		var viewport_size = scene_tree.root.get_viewport().get_visible_rect().size
-		if viewport_size.x > 0:
-			screen_w = viewport_size.x
-	var is_mobile = screen_w < 600
-	return int(base_size * 1.5) if is_mobile else base_size
+	# ResponsiveScalerやモーダルのスケール機構が画面全体をモバイルに合わせて調整するため、
+	# フォント単体を拡大するとレイアウト枠を超えてテキストはみ出しやスライダー侵食の原因になる。
+	return base_size

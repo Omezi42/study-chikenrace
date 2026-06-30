@@ -68,11 +68,17 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	national_btn.custom_minimum_size = Vector2(min(440.0, width - 40.0), 100)
 	Global.apply_white_button_style(national_btn)
 	
+	var nat_margin = MarginContainer.new()
+	nat_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	nat_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	nat_margin.add_theme_constant_override("margin_left", 14)
+	nat_margin.add_theme_constant_override("margin_right", 14)
+	national_btn.add_child(nat_margin)
+	
 	var nat_inner = VBoxContainer.new()
 	nat_inner.alignment = BoxContainer.ALIGNMENT_CENTER
-	nat_inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	nat_inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	national_btn.add_child(nat_inner)
+	nat_margin.add_child(nat_inner)
 	
 	var nat_title = Label.new()
 	nat_title.text = Localization.get_text("MODE_NATIONAL_TITLE")
@@ -85,6 +91,8 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	var nat_desc = Label.new()
 	nat_desc.text = Localization.get_text("MODE_NATIONAL_DESC")
 	nat_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nat_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	nat_desc.custom_minimum_size = Vector2(10, 0)
 	nat_desc.add_theme_font_override("font", DeskTheme.get_font())
 	nat_desc.add_theme_font_size_override("font_size", DeskTheme.scaled_font(14))
 	nat_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
@@ -97,11 +105,17 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	friend_btn.custom_minimum_size = Vector2(min(440.0, width - 40.0), 100)
 	Global.apply_white_button_style(friend_btn)
 	
+	var friend_margin = MarginContainer.new()
+	friend_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	friend_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	friend_margin.add_theme_constant_override("margin_left", 14)
+	friend_margin.add_theme_constant_override("margin_right", 14)
+	friend_btn.add_child(friend_margin)
+	
 	var friend_inner = VBoxContainer.new()
 	friend_inner.alignment = BoxContainer.ALIGNMENT_CENTER
-	friend_inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	friend_inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	friend_btn.add_child(friend_inner)
+	friend_margin.add_child(friend_inner)
 	
 	var friend_title_lbl = Label.new()
 	friend_title_lbl.text = Localization.get_text("MODE_FRIEND_TITLE")
@@ -114,6 +128,8 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	var friend_desc = Label.new()
 	friend_desc.text = Localization.get_text("MODE_FRIEND_DESC")
 	friend_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	friend_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	friend_desc.custom_minimum_size = Vector2(10, 0)
 	friend_desc.add_theme_font_override("font", DeskTheme.get_font())
 	friend_desc.add_theme_font_size_override("font_size", DeskTheme.scaled_font(14))
 	friend_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
@@ -126,11 +142,17 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	random_btn.custom_minimum_size = Vector2(min(440.0, width - 40.0), 100)
 	Global.apply_white_button_style(random_btn)
 	
+	var random_margin = MarginContainer.new()
+	random_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	random_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	random_margin.add_theme_constant_override("margin_left", 14)
+	random_margin.add_theme_constant_override("margin_right", 14)
+	random_btn.add_child(random_margin)
+	
 	var random_inner = VBoxContainer.new()
 	random_inner.alignment = BoxContainer.ALIGNMENT_CENTER
-	random_inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	random_inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	random_btn.add_child(random_inner)
+	random_margin.add_child(random_inner)
 	
 	var random_title_lbl = Label.new()
 	random_title_lbl.text = Localization.get_text("MODE_RANDOM_TITLE")
@@ -143,6 +165,8 @@ static func create_and_show(parent: Node, on_friend_match_pressed: Callable, nat
 	var random_desc = Label.new()
 	random_desc.text = Localization.get_text("MODE_RANDOM_DESC")
 	random_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	random_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	random_desc.custom_minimum_size = Vector2(10, 0)
 	random_desc.add_theme_font_override("font", DeskTheme.get_font())
 	random_desc.add_theme_font_size_override("font_size", DeskTheme.scaled_font(14))
 	random_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.6))
@@ -283,16 +307,24 @@ static func show_difficulty_selection(parent: Node, mode_modal: PanelContainer, 
 	
 	for cls in classes:
 		var btn = Button.new()
-		btn.custom_minimum_size = Vector2(min(440.0, width - 40.0), 90)
+		btn.custom_minimum_size = Vector2(min(440.0, width - 40.0), 95)
 		Global.apply_white_button_style(btn)
 		
 		var unlocked = Global.deviation_value >= cls["req"]
 		
+		var inner_margin = MarginContainer.new()
+		inner_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		inner_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		inner_margin.add_theme_constant_override("margin_left", 14)
+		inner_margin.add_theme_constant_override("margin_right", 14)
+		inner_margin.add_theme_constant_override("margin_top", 8)
+		inner_margin.add_theme_constant_override("margin_bottom", 8)
+		btn.add_child(inner_margin)
+		
 		var inner = VBoxContainer.new()
 		inner.alignment = BoxContainer.ALIGNMENT_CENTER
-		inner.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		inner.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		btn.add_child(inner)
+		inner_margin.add_child(inner)
 		
 		var btn_title = Label.new()
 		if unlocked:
@@ -308,6 +340,8 @@ static func show_difficulty_selection(parent: Node, mode_modal: PanelContainer, 
 		var btn_desc = Label.new()
 		btn_desc.text = cls["desc"]
 		btn_desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		btn_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		btn_desc.custom_minimum_size = Vector2(10, 0)
 		btn_desc.add_theme_font_override("font", DeskTheme.get_font())
 		btn_desc.add_theme_font_size_override("font_size", DeskTheme.scaled_font(12))
 		btn_desc.add_theme_color_override("font_color", Color(DeskTheme.COLOR_INK, 0.5) if unlocked else Color(DeskTheme.COLOR_INK, 0.3))

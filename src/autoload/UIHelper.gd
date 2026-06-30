@@ -6,8 +6,8 @@ func _ready() -> void:
 	get_tree().node_added.connect(_on_node_added)
 
 # Global helper to perform smooth scene changes with a paper fade overlay
-func show_toast(text: String, duration: float = 1.8, bg_color: Color = Color()) -> void:
-	DeskTheme.show_toast(self, text, duration, bg_color)
+func show_toast(text: String, duration: float = 1.8, bg_color: Color = Color(), font_size: int = 22) -> void:
+	DeskTheme.show_toast(self, text, duration, bg_color, font_size)
 
 func change_scene_with_fade(tree: SceneTree, target_scene_path: String, duration: float = 0.35) -> void:
 	if tree.root.has_node("AudioManager"):

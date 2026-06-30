@@ -84,6 +84,23 @@ static func make_cpu_doubts(cpu_id: String, participants: Array[Dictionary]) -> 
 			suspiciousness = clamp(suspiciousness + intuition_bonus, 0.0, 1.0)
 		# ------------------------------------------------------------------------------------------
 			
+		if Global.game_mode == Constants.MODE_CPU and Global.cpu_difficulty == "hard":
+			if p["id"] == "player" and history["sample_size"] > 0:
+				var lie_rate = history["lie_rate"]
+				if lie_rate >= 0.5:
+					suspiciousness = clamp(suspiciousness + 0.15, 0.0, 1.0)
+				elif lie_rate >= 0.3:
+					suspiciousness = clamp(suspiciousness + 0.08, 0.0, 1.0)
+				elif lie_rate == 0.0 and history["sample_size"] >= 2:
+					suspiciousness = clamp(suspiciousness - 0.10, 0.0, 1.0)
+			
+			var bursted_count = 0
+			for h in p["hours"]:
+				if h.get("bursted", false):
+					bursted_count += 1
+			if bursted_count >= 1 and p["declared_score"] >= 35:
+				suspiciousness = clamp(suspiciousness + 0.15, 0.0, 1.0)
+
 		# EV Calculation
 		# ダウト失敗ペナルティ
 		var penalty_base: int = 15
@@ -116,8 +133,17 @@ static func make_cpu_doubts(cpu_id: String, participants: Array[Dictionary]) -> 
 			
 		if Global.game_mode == Constants.MODE_CPU:
 			match Global.cpu_difficulty:
-				"easy": ev_threshold += 6.0
-				"hard": ev_threshold -= 6.0
+				"easy":
+					# 旧ノーマル相当
+					pass
+				"normal":
+					# 旧ハード相当
+					ev_threshold -= 6.0
+				"hard":
+					# とびきり難しいハード：的確な期待値判断で隙を見逃さない
+					ev_threshold -= 8.0
+					if suspiciousness < 0.25 and ev_threshold < -2.0:
+						ev_threshold = -2.0
 			
 
 		suspect_list.append({

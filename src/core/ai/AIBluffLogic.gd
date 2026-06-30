@@ -46,6 +46,15 @@ static func calculate_cpu_bluff(cpu_id: String, actual_score: int, day_idx: int 
 				bluff_amount = int(round(Global.cpu_rng.randi_range(12, base_bluff_limit) * Global.cpu_rng.randf_range(0.85, 1.15)))
 				
 	bluff_amount = clamp(bluff_amount, 0, base_bluff_limit)
+	if Global.game_mode == Constants.MODE_CPU and Global.cpu_difficulty == "hard":
+		if actual_score < 18 and (is_losing or day_idx >= 2):
+			if Global.cpu_rng.randf() < 0.70:
+				var target_fake = Global.cpu_rng.randi_range(30, 42)
+				if target_fake > actual_score:
+					return target_fake
+		if actual_score >= 45 and not is_losing:
+			if Global.cpu_rng.randf() < 0.80:
+				return actual_score
 	return actual_score + bluff_amount
 
 static func select_cpu_emote(cpu_id: String, bluff_amount: int, actual_score: int) -> String:
@@ -54,6 +63,13 @@ static func select_cpu_emote(cpu_id: String, bluff_amount: int, actual_score: in
 		actual_id = Global.opponent_profiles[cpu_id]["id"]
 	var cpu_info = AIProfile._get_cpu_info(actual_id)
 	var cpu_type = cpu_info["type"]
+	
+	if Global.game_mode == Constants.MODE_CPU and Global.cpu_difficulty == "hard":
+		if bluff_amount > 0 and bluff_amount <= 20:
+			return "confident" if Global.cpu_rng.randf() < 0.4 else "normal"
+		elif bluff_amount == 0 and actual_score >= 40:
+			if Global.cpu_rng.randf() < 0.35:
+				return "anxious"
 	
 	if bluff_amount == 0:
 		if actual_score >= 35 and (cpu_type == AIProfile.TYPE_HIGHROLLER or cpu_type == AIProfile.TYPE_AGGRESSIVE or cpu_type == AIProfile.TYPE_BLUFFER):
