@@ -32,7 +32,7 @@ func get_signaling_url() -> String:
 	var server_url = ProjectSettings.get_setting("backend/signaling_url", "")
 	if server_url != "":
 		return server_url
-	return "wss://chicken-race-signaling.onrender.com"
+	return "wss://study-chikenrace.onrender.com"
 
 func create_room() -> void:
 	Global.show_loading("ルーム作成中...\n(初回はサーバー起動に少し時間がかかる場合があります)")

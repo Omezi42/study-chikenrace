@@ -637,7 +637,7 @@ static func _show_matching_lobby(parent: Node, mode_modal: PanelContainer, bm: N
 static func _fetch_server_status(parent: Node, on_success: Callable) -> void:
 	var ws_url = ProjectSettings.get_setting("backend/signaling_url", "")
 	if ws_url == "":
-		ws_url = "wss://chicken-race-signaling.onrender.com"
+		ws_url = "wss://study-chikenrace.onrender.com"
 			
 	var http_url = ws_url.replace("wss://", "https://").replace("ws://", "http://") + "/api/status"
 	
