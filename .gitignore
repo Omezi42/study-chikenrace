@@ -30,3 +30,4 @@ index.audio.position.worklet.js
 # Temp and Logs
 test_output.txt
 loop_progress.json
+ffmpeg.exe
